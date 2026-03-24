@@ -1,4 +1,5 @@
 import Header from '@/components/header'
+import AnimatedBrowserMockup from '@/svgs/web'
 import Link from 'next/link'
 
 export default function MainLanding() {
@@ -28,6 +29,9 @@ export default function MainLanding() {
           <div className="featureCard">
             <h2>Want to make a website?</h2>
             <p>Se hva vi tilbyr av nettsidemaler og løsninger som guest.</p>
+            <div style={{ width: 500 }}>
+      <AnimatedBrowserMockup />
+    </div>  
             <Link href="/landings/guest/websites">
               <button className="secondaryBtn">Check it out</button>
             </Link>
