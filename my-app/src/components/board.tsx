@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
@@ -322,7 +322,7 @@ export default function CircuitBoardViewer({
           backdropFilter: 'blur(10px)',
         }}
       >
-        Drag to rotate ΓÇó Scroll to zoom
+        Drag to rotate ??? Scroll to zoom
       </div>
     </div>
   )

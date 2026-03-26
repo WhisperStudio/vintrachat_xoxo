@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useMemo, useState } from 'react'
 import {
@@ -174,9 +174,9 @@ export default function ChatWidgetBuilder() {
                         <li key={feature.label} className={`feature-item ${feature.status}`}>
                           <span className="feature-dot" />
                           <span className="feature-label">{feature.label}</span>
-                          {feature.status === 'included' && <span className="feature-mark">Γ£ô</span>}
-                          {feature.status === 'excluded' && <span className="feature-mark">Γ£ò</span>}
-                          {feature.status === 'highlight' && <span className="feature-mark">Γê₧</span>}
+                          {feature.status === 'included' && <span className="feature-mark">???</span>}
+                          {feature.status === 'excluded' && <span className="feature-mark">???</span>}
+                          {feature.status === 'highlight' && <span className="feature-mark">???</span>}
                         </li>
                       ))}
                     </ul>

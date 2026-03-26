@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg: #f6f7fb;
   --bg-2: #eef1f7;
 
@@ -801,7 +801,7 @@ body {
 }
 
 .g-img::after {
-  content: '≡ƒöì';
+  content: '????';
   position: absolute;
   inset: 0;
   display: grid;

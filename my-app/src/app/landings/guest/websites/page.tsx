@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { CSSProperties, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -1009,7 +1009,7 @@ Configuration:
                 </div>
               )}
 
-              <p className="disclaimer">≡ƒÆí {t.priceDisclaimer}</p>
+              <p className="disclaimer">???? {t.priceDisclaimer}</p>
             </div>
 
             <div>
@@ -1124,7 +1124,7 @@ Configuration:
                           {inputs.ecommerce && (
                             <div className={`cart ${tDesignClass}`}>
                               <span className="cart-ico">
-                                ≡ƒ¢Æ
+                                ????
                                 <span className={`badge ${tDesignClass}`}>3</span>
                               </span>
                               <span className="cart-text">NOK 2,499</span>
@@ -1149,7 +1149,7 @@ Configuration:
                       ) : activeFeature === 'viewer3D' && inputs.viewer3D ? (
                         <div className="viewer3d">
                           <div className="viewer-canvas">
-                            ≡ƒÄ«<span className="badge-360">360┬░</span>
+                            ????<span className="badge-360">360??</span>
                           </div>
                           <div className="viewer-controls">
                             <button type="button">Rotate</button>
@@ -1300,7 +1300,7 @@ Configuration:
 
                       {inputs.ai && (
                         <div className={`ai-btn ${tDesignClass}`}>
-                          <span className="ai-ico">≡ƒñû</span>
+                          <span className="ai-ico">????</span>
                         </div>
                       )}
                     </div>
