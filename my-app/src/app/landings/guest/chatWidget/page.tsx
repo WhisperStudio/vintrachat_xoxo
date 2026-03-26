@@ -9,11 +9,16 @@ import {
   FiCheckCircle,
   FiChevronDown,
   FiChevronUp,
+  FiCheck,
+  FiX,
+  FiLogIn,
 } from 'react-icons/fi'
+import { FaInfinity } from 'react-icons/fa'
 import './ChatWidget.css'
 import Header from '@/components/header'
 
 type Plan = 'free' | 'pro' | 'business'
+type BillingCycle = 'monthly' | 'yearly'
 type BubbleStyle = 'rounded' | 'soft' | 'sharp'
 type HeaderStyle = 'minimal' | 'gradient' | 'dark'
 type BodyStyle = 'clean' | 'cards' | 'airy'
@@ -21,16 +26,17 @@ type FooterStyle = 'simple' | 'glass' | 'bordered'
 
 type InputsState = {
   plan: Plan
+  billingCycle: BillingCycle
   bubbleStyle: BubbleStyle
   headerStyle: HeaderStyle
   bodyStyle: BodyStyle
   footerStyle: FooterStyle
 }
 
-const planPrices: Record<Plan, number> = {
-  free: 0,
-  pro: 29,
-  business: 59,
+const planPrices: Record<Plan, { monthly: number; yearly: number }> = {
+  free: { monthly: 0, yearly: 0 },
+  pro: { monthly: 29, yearly: 29 * 12 },
+  business: { monthly: 59, yearly: 59 * 12 },
 }
 
 const planFeatures: Record<Plan, Array<{ label: string; status: 'included' | 'excluded' | 'highlight' }>> = {
@@ -61,6 +67,7 @@ const planFeatures: Record<Plan, Array<{ label: string; status: 'included' | 'ex
 export default function ChatWidgetBuilder() {
   const [inputs, setInputs] = useState<InputsState>({
     plan: 'pro',
+    billingCycle: 'monthly',
     bubbleStyle: 'soft',
     headerStyle: 'gradient',
     bodyStyle: 'cards',
@@ -74,6 +81,8 @@ export default function ChatWidgetBuilder() {
     body: false,
     footer: false,
   })
+
+  const [showBreakdown, setShowBreakdown] = useState(false)
 
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [messages, setMessages] = useState([
@@ -95,7 +104,7 @@ export default function ChatWidgetBuilder() {
     }
   }
 
-  const total = useMemo(() => planPrices[inputs.plan], [inputs.plan])
+  const total = useMemo(() => planPrices[inputs.plan][inputs.billingCycle], [inputs.plan, inputs.billingCycle])
 
   const updateInput = <K extends keyof InputsState>(key: K, value: InputsState[K]) => {
     setInputs((prev) => ({ ...prev, [key]: value }))
@@ -104,6 +113,7 @@ export default function ChatWidgetBuilder() {
   const resetBuilder = () => {
     setInputs({
       plan: 'pro',
+      billingCycle: 'monthly',
       bubbleStyle: 'soft',
       headerStyle: 'gradient',
       bodyStyle: 'cards',
@@ -174,12 +184,43 @@ export default function ChatWidgetBuilder() {
                         <li key={feature.label} className={`feature-item ${feature.status}`}>
                           <span className="feature-dot" />
                           <span className="feature-label">{feature.label}</span>
-                          {feature.status === 'included' && <span className="feature-mark">???</span>}
-                          {feature.status === 'excluded' && <span className="feature-mark">???</span>}
-                          {feature.status === 'highlight' && <span className="feature-mark">???</span>}
+                          {feature.status === 'included' && <FiCheck className="feature-icon" />}
+                          {feature.status === 'excluded' && <FiX className="feature-icon" />}
+                          {feature.status === 'highlight' && <FaInfinity className="feature-icon highlight" />}
                         </li>
                       ))}
                     </ul>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="group">
+              <button
+                type="button"
+                className={`dropbtn ${openSections.bubble ? 'open' : ''}`}
+                onClick={() => toggleSection('bubble')}
+              >
+                <span className="label">Billing cycle</span>
+                <span className="dropbtn-icon">
+                  {openSections.bubble ? <FiChevronUp /> : <FiChevronDown />}
+                </span>
+              </button>
+
+              <div className={`option-grid option-grid-2 dropdown-content`}>
+                {(['monthly', 'yearly'] as BillingCycle[]).map((cycle) => (
+                  <label
+                    key={cycle}
+                    className={`option-card ${inputs.billingCycle === cycle ? 'checked' : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name="billingCycle"
+                      checked={inputs.billingCycle === cycle}
+                      onChange={() => updateInput('billingCycle', cycle)}
+                    />
+                    <span className="option-title">{cycle === 'monthly' ? 'Monthly' : 'Yearly'}</span>
+                    <span className="option-desc">{cycle === 'monthly' ? 'Billed every month' : 'Billed once a year'}</span>
                   </label>
                 ))}
               </div>
@@ -373,14 +414,50 @@ export default function ChatWidgetBuilder() {
                 <p className="total-label">Subscription total</p>
                 <h3 className="total-price">
                   ${total}
-                  <span>/month</span>
+                  <span>/{inputs.billingCycle === 'monthly' ? 'month' : 'year'}</span>
                 </h3>
+                {inputs.billingCycle === 'monthly' && (
+                  <p className="yearly-note">Yearly: ${planPrices[inputs.plan].yearly} / year</p>
+                )}
+              </div>
+
+              <div className="breakdown-section">
+                <button 
+                  type="button"
+                  className="breakdown-toggle"
+                  onClick={() => setShowBreakdown(!showBreakdown)}
+                >
+                  <span>Plan breakdown</span>
+                  {showBreakdown ? <FiChevronUp /> : <FiChevronDown />}
+                </button>
+                
+                {showBreakdown && (
+                  <div className="breakdown-content">
+                    <h4>{inputs.plan.charAt(0).toUpperCase() + inputs.plan.slice(1)} Plan</h4>
+                    <ul className="breakdown-list">
+                      {planFeatures[inputs.plan].map((feature) => (
+                        <li key={feature.label} className={`breakdown-item ${feature.status}`}>
+                          <span className="breakdown-feature">{feature.label}</span>
+                          <span className="breakdown-status">
+                            {feature.status === 'included' && <FiCheck className="breakdown-icon" />}
+                            {feature.status === 'excluded' && <FiX className="breakdown-icon" />}
+                            {feature.status === 'highlight' && <FaInfinity className="breakdown-icon highlight" />}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               <div className="summary-list">
                 <div className="summary-row">
                   <span>Plan</span>
                   <strong>{inputs.plan}</strong>
+                </div>
+                <div className="summary-row">
+                  <span>Billing cycle</span>
+                  <strong>{inputs.billingCycle}</strong>
                 </div>
                 <div className="summary-row">
                   <span>Bubble style</span>
@@ -399,6 +476,10 @@ export default function ChatWidgetBuilder() {
                   <strong>{inputs.footerStyle}</strong>
                 </div>
               </div>
+
+              <button className="continue-btn" type="button">
+                <FiLogIn /> Continue to login
+              </button>
             </div>
           </div>
         </div>
