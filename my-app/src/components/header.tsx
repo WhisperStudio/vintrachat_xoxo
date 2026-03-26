@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React from 'react'
 import Link from 'next/link'
@@ -113,7 +113,7 @@ export default function Header() {
           {!isLoggedIn ? (
             <>
               <NavLink href="/landings/guest/websites">Websites</NavLink>
-              <NavLink href="/landings/guest/chat-widget">Chat Widget</NavLink>
+              <NavLink href="/landings/guest/chatWidget">Chat Widget</NavLink>
             </>
           ) : (
             <>

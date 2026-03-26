@@ -1,6 +1,6 @@
-'use client'
+﻿'use client'
 
-import { useMemo, useState } from 'react'
+import { CSSProperties, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   FiArrowRight,
@@ -10,7 +10,6 @@ import {
   FiRefreshCw,
   FiSliders,
   FiZap,
-  FiMessageCircle,
   FiChevronDown,
   FiChevronUp,
   FiDatabase,
@@ -22,11 +21,11 @@ import { FaCcVisa, FaCcMastercard, FaPaypal } from 'react-icons/fa'
 import Header from '@/components/header'
 import './WebPage.css'
 
-type Language = 'no' | 'en'
 type Country = 'NO' | 'SE' | 'DK' | 'FI' | 'DE' | 'FR' | 'UK' | 'US'
-type PreviewMode = 'webside' | 'admin'
+type PreviewMode = 'website' | 'admin'
 type DesignLevel = 'standard' | 'premium' | 'elite'
 type PreviewBackgroundEffect = 'default' | 'stars' | 'wave'
+type ColorTheme = 'modern' | 'chilling' | 'corporate' | 'luxury'
 type ActiveFeature =
   | 'home'
   | 'ecommerce'
@@ -36,10 +35,12 @@ type ActiveFeature =
   | 'contactForm'
   | 'blog'
   | 'booking'
+  | 'page'
 
 type InputsState = {
   pages: number
   design: DesignLevel
+  colorTheme: ColorTheme
   ecommerce: boolean
   ecommerceLevel: number
   seo: boolean
@@ -62,11 +63,14 @@ type InputsState = {
 type Translation = {
   heroTitle: string
   heroSubtitle: string
+  heroMeta: string
   configureProject: string
   pageCount: string
   designComplexity: string
+  colorStyle: string
   addons: string
   configuration: string
+  extraFeatures: string
   ecommerceTitle: string
   ecommerceDesc: string
   seoTitle: string
@@ -116,7 +120,7 @@ type Translation = {
   vat: string
   totalInclVat: string
   exVat: string
-  webside: string
+  website: string
   adminPanel: string
   loginForAccess: string
 }
@@ -136,6 +140,21 @@ type Breakdown = {
   vatRate: number
 }
 
+type ThemePalette = {
+  name: string
+  description: string
+  colors: [string, string, string, string]
+  surface: string
+  softSurface: string
+  text: string
+  muted: string
+  gradient: string
+  button: string
+  buttonText: string
+  border: string
+  glow: string
+}
+
 const formatCurrency = (amount: number): string =>
   new Intl.NumberFormat('nb-NO', {
     style: 'currency',
@@ -143,11 +162,137 @@ const formatCurrency = (amount: number): string =>
     minimumFractionDigits: 0,
   }).format(amount)
 
+const themePalettes: Record<ColorTheme, ThemePalette> = {
+  modern: {
+    name: 'Modern',
+    description: 'Strong, clean, vibrant colors for modern digital brands.',
+    colors: ['#2563eb', '#7c3aed', '#ec4899', '#f8fafc'],
+    surface: '#f8fbff',
+    softSurface: '#eef4ff',
+    text: '#14213d',
+    muted: '#5b6b84',
+    gradient: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 58%, #ec4899 100%)',
+    button: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+    buttonText: '#ffffff',
+    border: 'rgba(37, 99, 235, 0.16)',
+    glow: 'rgba(124, 58, 237, 0.22)',
+  },
+  chilling: {
+    name: 'Chilling',
+    description: 'Pastel and relaxing colors for softer, calmer websites.',
+    colors: ['#8ecae6', '#b8c0ff', '#ffc8dd', '#fdfcfb'],
+    surface: '#fcfcff',
+    softSurface: '#f6f5ff',
+    text: '#243447',
+    muted: '#6b7a90',
+    gradient: 'linear-gradient(135deg, #8ecae6 0%, #b8c0ff 55%, #ffc8dd 100%)',
+    button: 'linear-gradient(135deg, #8ecae6, #b8c0ff)',
+    buttonText: '#1f2937',
+    border: 'rgba(184, 192, 255, 0.22)',
+    glow: 'rgba(255, 200, 221, 0.24)',
+  },
+  corporate: {
+    name: 'Corporate',
+    description: 'Professional and trustworthy tones for real business websites.',
+    colors: ['#0f172a', '#1d4ed8', '#0f766e', '#f8fafc'],
+    surface: '#f7fafc',
+    softSurface: '#eef3f8',
+    text: '#0f172a',
+    muted: '#475569',
+    gradient: 'linear-gradient(135deg, #0f172a 0%, #1d4ed8 55%, #0f766e 100%)',
+    button: 'linear-gradient(135deg, #0f172a, #1d4ed8)',
+    buttonText: '#ffffff',
+    border: 'rgba(15, 23, 42, 0.14)',
+    glow: 'rgba(29, 78, 216, 0.2)',
+  },
+  luxury: {
+    name: 'Luxury',
+    description: 'Elegant premium tones for high-end brands and showcase pages.',
+    colors: ['#111827', '#7c2d12', '#d4af37', '#f9f6ef'],
+    surface: '#fffdf7',
+    softSurface: '#f7f2e7',
+    text: '#1f2937',
+    muted: '#6b7280',
+    gradient: 'linear-gradient(135deg, #111827 0%, #7c2d12 45%, #d4af37 100%)',
+    button: 'linear-gradient(135deg, #111827, #d4af37)',
+    buttonText: '#ffffff',
+    border: 'rgba(212, 175, 55, 0.22)',
+    glow: 'rgba(212, 175, 55, 0.22)',
+  },
+}
+
+const translations: Translation = {
+  heroTitle: 'From idea to launch.',
+  heroSubtitle: 'Configure a custom, fast and user-friendly website with us.',
+  heroMeta: 'Try and make a mockup of your idea with estimated pricing, visual preview and flexible feature options.',
+  configureProject: 'Configure your project',
+  pageCount: 'Number of pages',
+  designComplexity: 'Design level',
+  colorStyle: 'Color style',
+  addons: 'Add-ons',
+  configuration: 'Core configuration',
+  extraFeatures: 'Extra features',
+  ecommerceTitle: 'E-commerce',
+  ecommerceDesc: 'Sell products or services online.',
+  seoTitle: 'SEO & Analytics',
+  seoDesc: 'Get found on Google and track performance.',
+  careTitle: 'Care & Maintenance',
+  careDesc: 'Monthly updates and support.',
+  adminTitle: 'Admin Panel',
+  adminDesc: 'Manage content, data and users.',
+  databaseTitle: 'Database',
+  databaseDesc: 'Store and manage dynamic data.',
+  databaseDescRequired: 'Required for e-commerce.',
+  databaseComplexity: 'Database complexity',
+  aiTitle: 'AI Assistant',
+  aiDesc: 'Smart chatbot and simple automation.',
+  galleryTitle: 'Gallery',
+  galleryDesc: 'Image gallery with categories and zoom.',
+  galleryComplexity: 'Gallery complexity',
+  viewer3DTitle: '3D Viewer',
+  viewer3DDesc: 'Interactive 3D product or model preview.',
+  viewer3DComplexity: '3D viewer complexity',
+  customDesignTitle: 'Custom Design',
+  customDesignDesc: 'Tailored visuals and creative layout ideas.',
+  contactFormTitle: 'Contact Form',
+  contactFormDesc: 'Professional lead and contact form.',
+  blogTitle: 'Blog',
+  blogDesc: 'CMS-powered blog section.',
+  bookingTitle: 'Booking System',
+  bookingDesc: 'Appointments and calendar booking.',
+  ecommerceComplexity: 'E-commerce complexity',
+  adminComplexity: 'Admin panel complexity',
+  basic: 'Basic',
+  advanced: 'Advanced',
+  priceDisclaimer:
+    'Prices may vary based on scope and project complexity. This calculator is meant as a realistic estimate.',
+  estimateNote: 'This is an estimated price',
+  estimateTitle: 'Your price estimate',
+  estimatedCost: 'Estimated cost',
+  estimatedWaitTime: 'Estimated timeline',
+  monthlyLabel: 'Monthly cost',
+  perMonth: '/mo',
+  weeks: 'weeks',
+  startProject: 'Start project',
+  copy: 'Copy',
+  reset: 'Reset',
+  costBreakdown: 'Cost breakdown',
+  selectCountry: 'Select country for VAT calculation:',
+  priceBeforeVat: 'Price before VAT:',
+  vat: 'VAT',
+  totalInclVat: 'Total incl. VAT:',
+  exVat: 'ex. VAT',
+  website: 'Website',
+  adminPanel: 'Admin Panel',
+  loginForAccess: 'Log in for full access',
+}
+
 export default function GuestWebsites() {
-  const [lang, setLang] = useState<Language>('no')
+  const t = translations
+
   const [country, setCountry] = useState<Country>('NO')
   const [showBreakdown, setShowBreakdown] = useState(false)
-  const [previewMode, setPreviewMode] = useState<PreviewMode>('webside')
+  const [previewMode, setPreviewMode] = useState<PreviewMode>('website')
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeFeature, setActiveFeature] = useState<ActiveFeature>('home')
   const [previewBackgroundEffect, setPreviewBackgroundEffect] =
@@ -156,6 +301,7 @@ export default function GuestWebsites() {
   const [inputs, setInputs] = useState<InputsState>({
     pages: 5,
     design: 'premium',
+    colorTheme: 'modern',
     ecommerce: false,
     ecommerceLevel: 5,
     seo: true,
@@ -175,136 +321,21 @@ export default function GuestWebsites() {
     booking: false,
   })
 
-  const translations: Record<Language, Translation> = {
-    no: {
-      heroTitle: 'Moderne nettsider som konverterer',
-      heroSubtitle:
-        'Fra idé til lansering. Vi bygger skreddersydde, lynraske og brukervennlige nettsider som styrker din merkevare og gir resultater.',
-      configureProject: 'Konfigurer ditt prosjekt',
-      pageCount: 'Antall sider',
-      designComplexity: 'Design & kompleksitet',
-      addons: 'Tilleggsfunksjoner',
-      configuration: 'Konfigurasjon',
-      ecommerceTitle: 'Nettbutikk',
-      ecommerceDesc: 'Selg produkter eller tjenester',
-      seoTitle: 'SEO & Analyse',
-      seoDesc: 'Bli funnet på Google',
-      careTitle: 'Drift & Vedlikehold',
-      careDesc: 'Månedlig oppfølging',
-      adminTitle: 'Admin Panel',
-      adminDesc: 'Administrer innhold og brukere',
-      databaseTitle: 'Database',
-      databaseDesc: 'Lagre og håndtere data',
-      databaseDescRequired: 'Påkrevd for nettbutikk',
-      databaseComplexity: 'Database kompleksitet',
-      aiTitle: 'AI Assistent',
-      aiDesc: 'Smart chatbot og automatisering',
-      galleryTitle: 'Galleri',
-      galleryDesc: 'Bildegalleri med zoom og kategorier',
-      galleryComplexity: 'Galleri kompleksitet',
-      viewer3DTitle: '3D Visning',
-      viewer3DDesc: 'Interaktiv 3D produktvisning',
-      viewer3DComplexity: '3D Visning kompleksitet',
-      customDesignTitle: 'Egendefinert Design',
-      customDesignDesc: 'Skreddersydd design etter dine ønsker',
-      contactFormTitle: 'Kontaktskjema',
-      contactFormDesc: 'Profesjonelt kontaktskjema',
-      blogTitle: 'Blogg',
-      blogDesc: 'Bloggfunksjonalitet med CMS',
-      bookingTitle: 'Booking System',
-      bookingDesc: 'Timebestilling og kalender',
-      ecommerceComplexity: 'Nettbutikk kompleksitet',
-      adminComplexity: 'Admin panel kompleksitet',
-      basic: 'Grunnleggende',
-      advanced: 'Avansert',
-      priceDisclaimer:
-        'Prisene kan variere basert på prosjektets kompleksitet. Send inn prosjektet ditt om du er usikker, så finner vi riktig konfigurasjon for deg.',
-      estimateNote: 'Dette er et prisestimat',
-      estimateTitle: 'Ditt prisestimat',
-      estimatedCost: 'Estimert kostnad',
-      estimatedWaitTime: 'Estimert ventetid',
-      monthlyLabel: 'Månedlig kostnad',
-      perMonth: '/mnd',
-      weeks: 'uker',
-      startProject: 'Start prosjektet',
-      copy: 'Kopier',
-      reset: 'Nullstill',
-      costBreakdown: 'Kostnadsfordeling',
-      selectCountry: 'Velg land for MVA-beregning:',
-      priceBeforeVat: 'Pris før MVA:',
-      vat: 'MVA',
-      totalInclVat: 'Total inkl. MVA:',
-      exVat: 'eks. mva',
-      webside: 'Webside',
-      adminPanel: 'Admin Panel',
-      loginForAccess: 'Logg inn for full tilgang',
-    },
-    en: {
-      heroTitle: 'Modern websites that convert',
-      heroSubtitle:
-        'From idea to launch. We build custom, blazing-fast and user-friendly websites that strengthen your brand and deliver results.',
-      configureProject: 'Configure your project',
-      pageCount: 'Number of pages',
-      designComplexity: 'Design & complexity',
-      addons: 'Add-ons',
-      configuration: 'Configuration',
-      ecommerceTitle: 'E-commerce',
-      ecommerceDesc: 'Sell products or services',
-      seoTitle: 'SEO & Analytics',
-      seoDesc: 'Be found on Google',
-      careTitle: 'Care & Maintenance',
-      careDesc: 'Monthly follow-up',
-      adminTitle: 'Admin Panel',
-      adminDesc: 'Manage content and users',
-      databaseTitle: 'Database',
-      databaseDesc: 'Store and manage data',
-      databaseDescRequired: 'Required for e-commerce',
-      databaseComplexity: 'Database complexity',
-      aiTitle: 'AI Assistant',
-      aiDesc: 'Smart chatbot and automation',
-      galleryTitle: 'Gallery',
-      galleryDesc: 'Image gallery with zoom and categories',
-      galleryComplexity: 'Gallery complexity',
-      viewer3DTitle: '3D Viewer',
-      viewer3DDesc: 'Interactive 3D product display',
-      viewer3DComplexity: '3D Viewer complexity',
-      customDesignTitle: 'Custom Design',
-      customDesignDesc: 'Tailored design to your wishes',
-      contactFormTitle: 'Contact Form',
-      contactFormDesc: 'Professional contact form',
-      blogTitle: 'Blog',
-      blogDesc: 'Blog functionality with CMS',
-      bookingTitle: 'Booking System',
-      bookingDesc: 'Appointment booking and calendar',
-      ecommerceComplexity: 'E-commerce complexity',
-      adminComplexity: 'Admin panel complexity',
-      basic: 'Basic',
-      advanced: 'Advanced',
-      priceDisclaimer:
-        "Prices may vary based on project complexity. Submit your project if you're unsure, and we'll find the right configuration for you.",
-      estimateNote: 'This is a price estimate',
-      estimateTitle: 'Your Price Estimate',
-      estimatedCost: 'Estimated cost',
-      estimatedWaitTime: 'Estimated wait time',
-      monthlyLabel: 'Monthly cost',
-      perMonth: '/mo',
-      weeks: 'weeks',
-      startProject: 'Start Project',
-      copy: 'Copy',
-      reset: 'Reset',
-      costBreakdown: 'Cost breakdown',
-      selectCountry: 'Select country for VAT calculation:',
-      priceBeforeVat: 'Price before VAT:',
-      vat: 'VAT',
-      totalInclVat: 'Total incl. VAT:',
-      exVat: 'ex. VAT',
-      webside: 'Website',
-      adminPanel: 'Admin Panel',
-      loginForAccess: 'Log in for full access',
-    },
-  }
+  const [openSections, setOpenSections] = useState({
+    design: true,
+    colors: true,
+    addons: false,
+    configuration: false,
+    extraFeatures: false,
+    complexity: false,
+  })
 
-  const t = translations[lang]
+  const toggleSection = (section: keyof typeof openSections) => {
+    setOpenSections((prev) => ({
+      ...prev,
+      [section]: !prev[section],
+    }))
+  }
 
   const vatRates: Record<Country, number> = {
     NO: 25,
@@ -390,20 +421,23 @@ export default function GuestWebsites() {
     )
 
     const items: BreakdownItem[] = [
-      { name: 'Grunnpakke', cost: priceMap.base },
-      { name: `${inputs.pages} sider (${inputs.design})`, cost: inputs.pages * priceMap.perPage * dMul },
+      { name: 'Base package', cost: priceMap.base },
+      {
+        name: `${inputs.pages} pages (${inputs.design})`,
+        cost: inputs.pages * priceMap.perPage * dMul,
+      },
     ]
 
-    if (inputs.ecommerce) items.push({ name: 'Nettbutikk', cost: ecommerceCost })
-    if (inputs.seo) items.push({ name: 'SEO & Analyse', cost: priceMap.seo })
+    if (inputs.ecommerce) items.push({ name: 'E-commerce', cost: ecommerceCost })
+    if (inputs.seo) items.push({ name: 'SEO & Analytics', cost: priceMap.seo })
     if (inputs.admin) items.push({ name: 'Admin Panel', cost: adminCost })
     if (inputs.database) items.push({ name: 'Database', cost: databaseCost })
-    if (inputs.ai) items.push({ name: 'AI Assistent', cost: priceMap.ai })
-    if (inputs.gallery) items.push({ name: 'Galleri', cost: galleryCost })
-    if (inputs.viewer3D) items.push({ name: '3D Visning', cost: viewerCost })
-    if (inputs.customDesign) items.push({ name: 'Egendefinert Design', cost: priceMap.customDesign })
-    if (inputs.contactForm) items.push({ name: 'Kontaktskjema', cost: priceMap.contactForm })
-    if (inputs.blog) items.push({ name: 'Blogg', cost: priceMap.blog })
+    if (inputs.ai) items.push({ name: 'AI Assistant', cost: priceMap.ai })
+    if (inputs.gallery) items.push({ name: 'Gallery', cost: galleryCost })
+    if (inputs.viewer3D) items.push({ name: '3D Viewer', cost: viewerCost })
+    if (inputs.customDesign) items.push({ name: 'Custom Design', cost: priceMap.customDesign })
+    if (inputs.contactForm) items.push({ name: 'Contact Form', cost: priceMap.contactForm })
+    if (inputs.blog) items.push({ name: 'Blog', cost: priceMap.blog })
     if (inputs.booking) items.push({ name: 'Booking System', cost: priceMap.booking })
 
     const vatAmount = oneTime * (vatRate / 100)
@@ -435,37 +469,56 @@ export default function GuestWebsites() {
       if (key === 'gallery' && value === true) setActiveFeature('gallery')
       if (key === 'viewer3D' && value === true) setActiveFeature('viewer3D')
       if (key === 'customDesign' && value === true) setActiveFeature('customDesign')
-
-      if (value === false && activeFeature === key) {
-        setActiveFeature('home')
-      }
+      if (key === 'contactForm' && value === true) setActiveFeature('contactForm')
+      if (key === 'blog' && value === true) setActiveFeature('blog')
+      if (key === 'booking' && value === true) setActiveFeature('booking')
 
       return next
     })
   }
 
-  const copyEstimate = async () => {
-    const text = `Estimat for nettsideprosjekt:
------------------------------
-Engangskostnad: ${formatCurrency(breakdown.oneTimeCost)} eks. mva
-Total inkl. MVA: ${formatCurrency(breakdown.totalWithVat)}
-Månedlig kostnad: ${formatCurrency(breakdown.monthlyCost)}/mnd
-Estimert tidslinje: ~${breakdown.weeks} uker
+  const selectedPalette = themePalettes[inputs.colorTheme]
 
-Konfigurasjon:
-- Sider: ${inputs.pages}
-- Design: ${inputs.design}
-- Nettbutikk: ${inputs.ecommerce ? 'Ja' : 'Nei'}
-- SEO & Analyse: ${inputs.seo ? 'Ja' : 'Nei'}
-- Admin Panel: ${inputs.admin ? 'Ja' : 'Nei'}
-- Database: ${inputs.database ? 'Ja' : 'Nei'}
-- Drift & Vedlikehold: ${inputs.carePlan ? 'Ja' : 'Nei'}`
+  const previewStyle = useMemo(
+    (): CSSProperties =>
+      ({
+        '--preview-surface': selectedPalette.surface,
+        '--preview-soft-surface': selectedPalette.softSurface,
+        '--preview-text': selectedPalette.text,
+        '--preview-muted': selectedPalette.muted,
+        '--preview-gradient': selectedPalette.gradient,
+        '--preview-button': selectedPalette.button,
+        '--preview-button-text': selectedPalette.buttonText,
+        '--preview-border': selectedPalette.border,
+        '--preview-glow': selectedPalette.glow,
+      }) as CSSProperties,
+    [selectedPalette]
+  )
+
+  const copyEstimate = async () => {
+    const text = `Website estimate
+-----------------------------
+One-time cost: ${formatCurrency(breakdown.oneTimeCost)} ex. VAT
+Total incl. VAT: ${formatCurrency(breakdown.totalWithVat)}
+Monthly cost: ${formatCurrency(breakdown.monthlyCost)}/mo
+Estimated timeline: ~${breakdown.weeks} weeks
+
+Configuration:
+- Pages: ${inputs.pages}
+- Design level: ${inputs.design}
+- Color style: ${inputs.colorTheme}
+- E-commerce: ${inputs.ecommerce ? 'Yes' : 'No'}
+- SEO & Analytics: ${inputs.seo ? 'Yes' : 'No'}
+- Admin Panel: ${inputs.admin ? 'Yes' : 'No'}
+- Database: ${inputs.database ? 'Yes' : 'No'}
+- AI Assistant: ${inputs.ai ? 'Yes' : 'No'}
+- Care & Maintenance: ${inputs.carePlan ? 'Yes' : 'No'}`
 
     try {
       await navigator.clipboard.writeText(text.trim())
-      alert('Estimat kopiert til utklippstavlen!')
+      alert('Estimate copied to clipboard.')
     } catch {
-      alert('Kunne ikke kopiere akkurat nå.')
+      alert('Could not copy right now.')
     }
   }
 
@@ -473,6 +526,7 @@ Konfigurasjon:
     setInputs({
       pages: 5,
       design: 'premium',
+      colorTheme: 'modern',
       ecommerce: false,
       ecommerceLevel: 5,
       seo: true,
@@ -492,10 +546,24 @@ Konfigurasjon:
       booking: false,
     })
     setShowBreakdown(false)
-    setPreviewMode('webside')
+    setPreviewMode('website')
     setMenuOpen(false)
     setActiveFeature('home')
+    setOpenSections({
+      design: true,
+      colors: true,
+      addons: false,
+      configuration: false,
+      extraFeatures: false,
+      complexity: false,
+    })
     setPreviewBackgroundEffect('default')
+  }
+
+  const designDescriptions: Record<DesignLevel, string> = {
+    standard: 'Simple and clean. Minimal effects and straightforward layout.',
+    premium: 'Balanced and polished. Better shadows, nicer spacing and moderate animation.',
+    elite: 'High-end presentation. Rich layout, stronger animation and premium visual energy.',
   }
 
   const tDesignClass = `design-${inputs.design}`
@@ -503,22 +571,28 @@ Konfigurasjon:
     previewBackgroundEffect !== 'default' ? `bg-${previewBackgroundEffect}` : ''
 
   const featureNav = [
-    inputs.ecommerce ? { id: 'ecommerce' as ActiveFeature, label: '🛒 Nettbutikk' } : null,
-    inputs.gallery ? { id: 'gallery' as ActiveFeature, label: '🖼️ Galleri' } : null,
-    inputs.viewer3D ? { id: 'viewer3D' as ActiveFeature, label: '🎮 3D Visning' } : null,
-    inputs.customDesign ? { id: 'customDesign' as ActiveFeature, label: '✨ Custom Design' } : null,
-    inputs.blog ? { id: 'blog' as ActiveFeature, label: '📝 Blogg' } : null,
-    inputs.contactForm ? { id: 'contactForm' as ActiveFeature, label: '📧 Kontakt' } : null,
-    inputs.booking ? { id: 'booking' as ActiveFeature, label: '📅 Booking' } : null,
+    inputs.ecommerce ? { id: 'ecommerce' as ActiveFeature, label: 'Store' } : null,
+    inputs.gallery ? { id: 'gallery' as ActiveFeature, label: 'Gallery' } : null,
+    inputs.viewer3D ? { id: 'viewer3D' as ActiveFeature, label: '3D View' } : null,
+    inputs.customDesign ? { id: 'customDesign' as ActiveFeature, label: 'Custom' } : null,
+    inputs.blog ? { id: 'blog' as ActiveFeature, label: 'Blog' } : null,
+    inputs.contactForm ? { id: 'contactForm' as ActiveFeature, label: 'Contact' } : null,
+    inputs.booking ? { id: 'booking' as ActiveFeature, label: 'Booking' } : null,
   ].filter(Boolean) as { id: ActiveFeature; label: string }[]
 
   const remainingPages = Math.max(0, inputs.pages - 1 - featureNav.length)
   const navItems = [
     ...featureNav,
     ...Array.from({ length: remainingPages }, (_, i) => ({
-      id: `page-${i}` as ActiveFeature,
-      label: `Side ${featureNav.length + i + 2}`,
+      id: 'page' as ActiveFeature,
+      label: `Page ${featureNav.length + i + 2}`,
     })),
+  ]
+
+  const previewCards = [
+    { title: 'Fast setup', desc: 'Launch quickly with a clean modern structure.' },
+    { title: 'Great UX', desc: 'Strong layout and smooth browsing on every device.' },
+    { title: 'Built to grow', desc: 'Flexible foundation with room for more features.' },
   ]
 
   return (
@@ -528,25 +602,9 @@ Konfigurasjon:
       <div className="page-wrapper">
         <main className="content">
           <section className="hero">
-            <div className="lang-switch">
-              <button
-                className={`lang ${lang === 'en' ? 'active' : ''}`}
-                onClick={() => setLang('en')}
-                type="button"
-              >
-                EN
-              </button>
-              <button
-                className={`lang ${lang === 'no' ? 'active' : ''}`}
-                onClick={() => setLang('no')}
-                type="button"
-              >
-                NO
-              </button>
-            </div>
-
-            <h1 className="hero-title">{t.heroTitle}</h1>
-            <p className="hero-sub">{t.heroSubtitle}</p>
+            <h2 className="hero-title">{t.heroTitle}</h2>
+            <h3 className="hero-sub">{t.heroSubtitle}</h3>
+            <p className="hero-meta">{t.heroMeta}</p>
           </section>
 
           <div className="grid">
@@ -571,8 +629,18 @@ Konfigurasjon:
               </div>
 
               <div className="group">
-                <label className="label">{t.designComplexity}</label>
-                <div className="toggle-grid">
+                <button
+                  type="button"
+                  className={`dropbtn ${openSections.design ? 'open' : ''}`}
+                  onClick={() => toggleSection('design')}
+                >
+                  <span className="label">{t.designComplexity}</span>
+                  <span className="dropbtn-icon">
+                    {openSections.design ? <FiChevronUp /> : <FiChevronDown />}
+                  </span>
+                </button>
+
+                <div className={`toggle-grid toggle-grid-3 dropdown-content ${openSections.design ? 'open' : ''}`}>
                   {(['standard', 'premium', 'elite'] as DesignLevel[]).map((level) => (
                     <label
                       key={level}
@@ -583,15 +651,72 @@ Konfigurasjon:
                         checked={inputs.design === level}
                         onChange={() => updateInput('design', level)}
                       />
-                      <span className="toggle-title">{level}</span>
+                      <span className="toggle-title design-level-title">{level}</span>
+                      <span className="toggle-desc">{designDescriptions[level]}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
               <div className="group">
-                <label className="label">{t.addons}</label>
-                <div className="toggle-grid">
+                <button
+                  type="button"
+                  className={`dropbtn ${openSections.colors ? 'open' : ''}`}
+                  onClick={() => toggleSection('colors')}
+                >
+                  <span className="label">{t.colorStyle}</span>
+                  <span className="dropbtn-icon">
+                    {openSections.colors ? <FiChevronUp /> : <FiChevronDown />}
+                  </span>
+                </button>
+
+                <div className={`theme-grid dropdown-content ${openSections.colors ? 'open' : ''}`}>
+                  {(Object.keys(themePalettes) as ColorTheme[]).map((themeKey) => {
+                    const theme = themePalettes[themeKey]
+                    const isActive = inputs.colorTheme === themeKey
+
+                    return (
+                      <button
+                        key={themeKey}
+                        type="button"
+                        className={`theme-card ${isActive ? 'active' : ''}`}
+                        onClick={() => updateInput('colorTheme', themeKey)}
+                      >
+                        <div className="theme-card-top">
+                          <div>
+                            <h4>{theme.name}</h4>
+                            <p>{theme.description}</p>
+                          </div>
+                        </div>
+
+                        <div className="theme-palette">
+                          {theme.colors.map((color) => (
+                            <span
+                              key={color}
+                              className="theme-swatch"
+                              style={{ background: color }}
+                            />
+                          ))}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="group">
+                <button
+                  type="button"
+                  className={`dropbtn ${openSections.addons ? 'open' : ''}`}
+                  onClick={() => toggleSection('addons')}
+                >
+                  <span className="label">{t.addons}</span>
+                  <span className="dropbtn-icon">
+                    {openSections.addons ? <FiChevronUp /> : <FiChevronDown />}
+                  </span>
+                </button>
+
+                <div className={`toggle-grid dropdown-content ${openSections.addons ? 'open' : ''}`}>
                   <label className={`toggle ${inputs.ecommerce ? 'checked' : ''}`}>
                     <input
                       type="checkbox"
@@ -631,8 +756,18 @@ Konfigurasjon:
               </div>
 
               <div className="group">
-                <label className="label">{t.configuration}</label>
-                <div className="toggle-grid">
+                <button
+                  type="button"
+                  className={`dropbtn ${openSections.configuration ? 'open' : ''}`}
+                  onClick={() => toggleSection('configuration')}
+                >
+                  <span className="label">{t.configuration}</span>
+                  <span className="dropbtn-icon">
+                    {openSections.configuration ? <FiChevronUp /> : <FiChevronDown />}
+                  </span>
+                </button>
+
+                <div className={`toggle-grid dropdown-content ${openSections.configuration ? 'open' : ''}`}>
                   <label className={`toggle ${inputs.admin ? 'checked' : ''}`}>
                     <input
                       type="checkbox"
@@ -679,8 +814,18 @@ Konfigurasjon:
               </div>
 
               <div className="group">
-                <label className="label">Ekstra Funksjoner</label>
-                <div className="toggle-grid">
+                <button
+                  type="button"
+                  className={`dropbtn ${openSections.extraFeatures ? 'open' : ''}`}
+                  onClick={() => toggleSection('extraFeatures')}
+                >
+                  <span className="label">{t.extraFeatures}</span>
+                  <span className="dropbtn-icon">
+                    {openSections.extraFeatures ? <FiChevronUp /> : <FiChevronDown />}
+                  </span>
+                </button>
+
+                <div className={`toggle-grid dropdown-content ${openSections.extraFeatures ? 'open' : ''}`}>
                   {[
                     ['gallery', t.galleryTitle, t.galleryDesc],
                     ['viewer3D', t.viewer3DTitle, t.viewer3DDesc],
@@ -698,7 +843,10 @@ Konfigurasjon:
                           type="checkbox"
                           checked={checked}
                           onChange={(e) =>
-                            updateInput(typedKey, e.target.checked as InputsState[keyof InputsState])
+                            updateInput(
+                              typedKey,
+                              e.target.checked as InputsState[keyof InputsState]
+                            )
                           }
                         />
                         <span className="toggle-title">{title}</span>
@@ -715,144 +863,153 @@ Konfigurasjon:
                 inputs.gallery ||
                 inputs.viewer3D) && (
                 <div className="group">
-                  {inputs.ecommerce && (
-                    <div className="mini-group">
-                      <label className="label">
-                        {t.ecommerceComplexity}
-                        <span className="value">
-                          {formatCurrency(
-                            dyn(priceMap.ecommerce.min, priceMap.ecommerce.max, inputs.ecommerceLevel)
-                          )}
-                        </span>
-                      </label>
-                      <input
-                        className="slider"
-                        type="range"
-                        min="1"
-                        max="10"
-                        value={inputs.ecommerceLevel}
-                        onChange={(e) =>
-                          updateInput('ecommerceLevel', parseInt(e.target.value, 10))
-                        }
-                      />
-                      <div className="scale-row">
-                        <span>{t.basic}</span>
-                        <span>{t.advanced}</span>
-                      </div>
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    className={`dropbtn ${openSections.complexity ? 'open' : ''}`}
+                    onClick={() => toggleSection('complexity')}
+                  >
+                    <span className="label">Complexity settings</span>
+                    <span className="dropbtn-icon">
+                      {openSections.complexity ? <FiChevronUp /> : <FiChevronDown />}
+                    </span>
+                  </button>
 
-                  {inputs.admin && (
-                    <div className="mini-group">
-                      <label className="label">
-                        {t.adminComplexity}
-                        <span className="value">
-                          {formatCurrency(
-                            dyn(priceMap.admin.min, priceMap.admin.max, inputs.adminLevel)
-                          )}
-                        </span>
-                      </label>
-                      <input
-                        className="slider"
-                        type="range"
-                        min="1"
-                        max="10"
-                        value={inputs.adminLevel}
-                        onChange={(e) =>
-                          updateInput('adminLevel', parseInt(e.target.value, 10))
-                        }
-                      />
-                      <div className="scale-row">
-                        <span>{t.basic}</span>
-                        <span>{t.advanced}</span>
+                  <div className={`dropdown-content block ${openSections.complexity ? 'open' : ''}`}>
+                    {inputs.ecommerce && (
+                      <div className="mini-group">
+                        <label className="label">
+                          {t.ecommerceComplexity}
+                          <span className="value">
+                            {formatCurrency(
+                              dyn(priceMap.ecommerce.min, priceMap.ecommerce.max, inputs.ecommerceLevel)
+                            )}
+                          </span>
+                        </label>
+                        <input
+                          className="slider"
+                          type="range"
+                          min="1"
+                          max="10"
+                          value={inputs.ecommerceLevel}
+                          onChange={(e) =>
+                            updateInput('ecommerceLevel', parseInt(e.target.value, 10))
+                          }
+                        />
+                        <div className="scale-row">
+                          <span>{t.basic}</span>
+                          <span>{t.advanced}</span>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {inputs.database && !inputs.ecommerce && (
-                    <div className="mini-group">
-                      <label className="label">
-                        {t.databaseComplexity}
-                        <span className="value">
-                          {formatCurrency(
-                            dyn(priceMap.database.min, priceMap.database.max, inputs.databaseLevel)
-                          )}
-                        </span>
-                      </label>
-                      <input
-                        className="slider"
-                        type="range"
-                        min="1"
-                        max="10"
-                        value={inputs.databaseLevel}
-                        onChange={(e) =>
-                          updateInput('databaseLevel', parseInt(e.target.value, 10))
-                        }
-                      />
-                      <div className="scale-row">
-                        <span>{t.basic}</span>
-                        <span>{t.advanced}</span>
+                    {inputs.admin && (
+                      <div className="mini-group">
+                        <label className="label">
+                          {t.adminComplexity}
+                          <span className="value">
+                            {formatCurrency(dyn(priceMap.admin.min, priceMap.admin.max, inputs.adminLevel))}
+                          </span>
+                        </label>
+                        <input
+                          className="slider"
+                          type="range"
+                          min="1"
+                          max="10"
+                          value={inputs.adminLevel}
+                          onChange={(e) => updateInput('adminLevel', parseInt(e.target.value, 10))}
+                        />
+                        <div className="scale-row">
+                          <span>{t.basic}</span>
+                          <span>{t.advanced}</span>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {inputs.gallery && (
-                    <div className="mini-group">
-                      <label className="label">
-                        {t.galleryComplexity}
-                        <span className="value">
-                          {formatCurrency(
-                            dyn(priceMap.gallery.min, priceMap.gallery.max, inputs.galleryLevel)
-                          )}
-                        </span>
-                      </label>
-                      <input
-                        className="slider"
-                        type="range"
-                        min="1"
-                        max="10"
-                        value={inputs.galleryLevel}
-                        onChange={(e) =>
-                          updateInput('galleryLevel', parseInt(e.target.value, 10))
-                        }
-                      />
-                      <div className="scale-row">
-                        <span>{t.basic}</span>
-                        <span>{t.advanced}</span>
+                    {inputs.database && !inputs.ecommerce && (
+                      <div className="mini-group">
+                        <label className="label">
+                          {t.databaseComplexity}
+                          <span className="value">
+                            {formatCurrency(
+                              dyn(priceMap.database.min, priceMap.database.max, inputs.databaseLevel)
+                            )}
+                          </span>
+                        </label>
+                        <input
+                          className="slider"
+                          type="range"
+                          min="1"
+                          max="10"
+                          value={inputs.databaseLevel}
+                          onChange={(e) =>
+                            updateInput('databaseLevel', parseInt(e.target.value, 10))
+                          }
+                        />
+                        <div className="scale-row">
+                          <span>{t.basic}</span>
+                          <span>{t.advanced}</span>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {inputs.viewer3D && (
-                    <div className="mini-group">
-                      <label className="label">
-                        {t.viewer3DComplexity}
-                        <span className="value">
-                          {formatCurrency(
-                            dyn(priceMap.viewer3D.min, priceMap.viewer3D.max, inputs.viewer3DLevel)
-                          )}
-                        </span>
-                      </label>
-                      <input
-                        className="slider"
-                        type="range"
-                        min="1"
-                        max="10"
-                        value={inputs.viewer3DLevel}
-                        onChange={(e) =>
-                          updateInput('viewer3DLevel', parseInt(e.target.value, 10))
-                        }
-                      />
-                      <div className="scale-row">
-                        <span>{t.basic}</span>
-                        <span>{t.advanced}</span>
+                    {inputs.gallery && (
+                      <div className="mini-group">
+                        <label className="label">
+                          {t.galleryComplexity}
+                          <span className="value">
+                            {formatCurrency(
+                              dyn(priceMap.gallery.min, priceMap.gallery.max, inputs.galleryLevel)
+                            )}
+                          </span>
+                        </label>
+                        <input
+                          className="slider"
+                          type="range"
+                          min="1"
+                          max="10"
+                          value={inputs.galleryLevel}
+                          onChange={(e) =>
+                            updateInput('galleryLevel', parseInt(e.target.value, 10))
+                          }
+                        />
+                        <div className="scale-row">
+                          <span>{t.basic}</span>
+                          <span>{t.advanced}</span>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+
+                    {inputs.viewer3D && (
+                      <div className="mini-group">
+                        <label className="label">
+                          {t.viewer3DComplexity}
+                          <span className="value">
+                            {formatCurrency(
+                              dyn(priceMap.viewer3D.min, priceMap.viewer3D.max, inputs.viewer3DLevel)
+                            )}
+                          </span>
+                        </label>
+                        <input
+                          className="slider"
+                          type="range"
+                          min="1"
+                          max="10"
+                          value={inputs.viewer3DLevel}
+                          onChange={(e) =>
+                            updateInput('viewer3DLevel', parseInt(e.target.value, 10))
+                          }
+                        />
+                        <div className="scale-row">
+                          <span>{t.basic}</span>
+                          <span>{t.advanced}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
-              <p className="disclaimer">💡 {t.priceDisclaimer}</p>
+              <p className="disclaimer">≡ƒÆí {t.priceDisclaimer}</p>
             </div>
 
             <div>
@@ -866,11 +1023,11 @@ Konfigurasjon:
                 {inputs.admin && (
                   <div className="view-switch">
                     <button
-                      className={`view-btn ${previewMode === 'webside' ? 'active' : ''}`}
-                      onClick={() => setPreviewMode('webside')}
+                      className={`view-btn ${previewMode === 'website' ? 'active' : ''}`}
+                      onClick={() => setPreviewMode('website')}
                       type="button"
                     >
-                      <FiGlobe /> {t.webside}
+                      <FiGlobe /> {t.website}
                     </button>
                     <button
                       className={`view-btn ${previewMode === 'admin' ? 'active' : ''}`}
@@ -883,7 +1040,7 @@ Konfigurasjon:
                 )}
 
                 {previewMode === 'admin' && inputs.admin ? (
-                  <div className="admin-panel">
+                  <div className={`admin-panel ${tDesignClass}`} style={previewStyle}>
                     <div className="admin-header">
                       <h3>Admin Dashboard</h3>
                       <span className="muted">v2.0</span>
@@ -891,10 +1048,10 @@ Konfigurasjon:
 
                     <div className="stats">
                       {[
-                        ['Besøkende i dag', '1,284'],
-                        ['Ordrer', '47'],
-                        ['Omsetning', 'kr 28,450'],
-                        ['Konvertering', '3.7%'],
+                        ['Visitors today', '1,284'],
+                        ['Orders', '47'],
+                        ['Revenue', 'NOK 28,450'],
+                        ['Conversion rate', '3.7%'],
                       ].map(([k, v], i) => (
                         <div key={i} className="stat">
                           <h4>{k}</h4>
@@ -905,10 +1062,10 @@ Konfigurasjon:
 
                     <div className="admin-menu">
                       <div className="admin-item">
-                        <FiPackage /> Produkter
+                        <FiPackage /> Products
                       </div>
                       <div className="admin-item">
-                        <FiSliders /> Innstillinger
+                        <FiSliders /> Settings
                       </div>
                       <div className="admin-item">
                         <FiDatabase /> Database
@@ -916,10 +1073,10 @@ Konfigurasjon:
                     </div>
                   </div>
                 ) : (
-                  <div className={`mock-site ${tDesignClass} ${bgEffectClass}`}>
+                  <div className={`mock-site ${tDesignClass} ${bgEffectClass}`} style={previewStyle}>
                     <div className="site-inner">
                       <div className="site-top">
-                        <div className="site-logo">Logo</div>
+                        <div className="site-logo">BrandName</div>
 
                         <nav className="site-nav">
                           {navItems.length > 5 ? (
@@ -941,17 +1098,7 @@ Konfigurasjon:
                                       key={i}
                                       className="menu-item"
                                       onClick={() => {
-                                        if (
-                                          n.id === 'ecommerce' ||
-                                          n.id === 'gallery' ||
-                                          n.id === 'viewer3D' ||
-                                          n.id === 'customDesign' ||
-                                          n.id === 'contactForm' ||
-                                          n.id === 'blog' ||
-                                          n.id === 'booking'
-                                        ) {
-                                          setActiveFeature(n.id)
-                                        }
+                                        if (n.id !== 'page') setActiveFeature(n.id)
                                       }}
                                     >
                                       {n.label}
@@ -966,17 +1113,7 @@ Konfigurasjon:
                                 key={i}
                                 className="nav-link"
                                 onClick={() => {
-                                  if (
-                                    n.id === 'ecommerce' ||
-                                    n.id === 'gallery' ||
-                                    n.id === 'viewer3D' ||
-                                    n.id === 'customDesign' ||
-                                    n.id === 'contactForm' ||
-                                    n.id === 'blog' ||
-                                    n.id === 'booking'
-                                  ) {
-                                    setActiveFeature(n.id)
-                                  }
+                                  if (n.id !== 'page') setActiveFeature(n.id)
                                 }}
                               >
                                 {n.label}
@@ -987,10 +1124,10 @@ Konfigurasjon:
                           {inputs.ecommerce && (
                             <div className={`cart ${tDesignClass}`}>
                               <span className="cart-ico">
-                                🛒
+                                ≡ƒ¢Æ
                                 <span className={`badge ${tDesignClass}`}>3</span>
                               </span>
-                              <span className="cart-text">kr 2,499</span>
+                              <span className="cart-text">NOK 2,499</span>
                             </div>
                           )}
                         </nav>
@@ -1012,33 +1149,32 @@ Konfigurasjon:
                       ) : activeFeature === 'viewer3D' && inputs.viewer3D ? (
                         <div className="viewer3d">
                           <div className="viewer-canvas">
-                            🎮<span className="badge-360">360°</span>
+                            ≡ƒÄ«<span className="badge-360">360┬░</span>
                           </div>
                           <div className="viewer-controls">
-                            <button type="button">↻ Roter</button>
-                            <button type="button">🔍 Zoom</button>
-                            <button type="button">⚙️ Innstillinger</button>
+                            <button type="button">Rotate</button>
+                            <button type="button">Zoom</button>
+                            <button type="button">Settings</button>
                           </div>
                           <p className="muted center">
-                            Interaktiv 3D-visning lar kundene dine utforske produkter fra alle
-                            vinkler.
+                            Interactive 3D viewing lets customers explore products from every angle.
                           </p>
                         </div>
                       ) : activeFeature === 'customDesign' && inputs.customDesign ? (
                         <div className="custom-design">
-                          <h3 className="cd-title">Egendefinert Design</h3>
+                          <h3 className="cd-title">Custom Design</h3>
                           <p className="cd-note">
-                            Vi lager dine ønsker så langt det er oppnåelig! Her er noen eksempler:
+                            Tailored design direction with visual personality, layout ideas and effects.
                           </p>
 
                           <div className="cd-grid">
                             {[
-                              ['🎨 Unike Fargepaletter', 'Skreddersydde farger som matcher din merkevare perfekt'],
-                              ['🖼️ Custom Layouts', 'Helt unike sidestrukturer designet for ditt innhold'],
-                              ['✨ Spesialeffekter', 'Parallax, partikler, og andre wow-effekter'],
-                              ['🎭 Interaktive Elementer', 'Hover-effekter, animasjoner og mikro-interaksjoner'],
-                              ['📱 Responsivt Design', 'Perfekt tilpasset alle skjermstørrelser'],
-                              ['🎯 Konverteringsoptimalisering', 'Design som driver resultater og salg'],
+                              ['Color Systems', 'Connected theme palettes matched to the preview.'],
+                              ['Custom Layouts', 'More unique page structures for your content.'],
+                              ['Visual Effects', 'Gradients, glow, motion and layered presentation.'],
+                              ['Interactions', 'Hover states, small animations and micro-interactions.'],
+                              ['Responsive Design', 'Strong scaling across desktop and mobile.'],
+                              ['Conversion Focus', 'Layout choices designed to support action.'],
                             ].map(([h, p], i) => (
                               <div key={i} className="cd-option">
                                 <h4>{h}</h4>
@@ -1048,7 +1184,7 @@ Konfigurasjon:
                           </div>
 
                           <p className="cd-note">
-                            <strong>Prøv bakgrunnseffekter:</strong>
+                            <strong>Preview background effects:</strong>
                           </p>
 
                           <div className="bg-buttons">
@@ -1057,47 +1193,51 @@ Konfigurasjon:
                               onClick={() => setPreviewBackgroundEffect('default')}
                               type="button"
                             >
-                              🌐 Standard
+                              Default
                             </button>
                             <button
                               className={`bg-btn ${previewBackgroundEffect === 'stars' ? 'active' : ''}`}
                               onClick={() => setPreviewBackgroundEffect('stars')}
                               type="button"
                             >
-                              ⭐ Stjerner
+                              Stars
                             </button>
                             <button
                               className={`bg-btn ${previewBackgroundEffect === 'wave' ? 'active' : ''}`}
                               onClick={() => setPreviewBackgroundEffect('wave')}
                               type="button"
                             >
-                              🌊 Gradient Wave
+                              Gradient Wave
                             </button>
                           </div>
                         </div>
                       ) : (
                         <>
                           <div className="hero-mock">
+                            <div className="tier-badge">{inputs.design}</div>
+
                             <h2 className={`mock-title ${tDesignClass}`}>
                               {activeFeature === 'ecommerce' && inputs.ecommerce
-                                ? 'Nettbutikk'
+                                ? 'Online Store'
                                 : inputs.design === 'standard'
-                                ? 'Moderne Nettside'
+                                ? 'Simple Website'
                                 : inputs.design === 'premium'
-                                ? 'Premium Opplevelse'
-                                : 'Elite Performance'}
+                                ? 'Premium Experience'
+                                : 'Elite Brand Experience'}
                             </h2>
 
                             <p className={`mock-sub ${tDesignClass}`}>
                               {activeFeature === 'ecommerce' && inputs.ecommerce
-                                ? 'Handle trygt og enkelt online'
-                                : 'Profesjonell nettside for din bedrift'}
+                                ? 'Smooth shopping flow with clean product presentation.'
+                                : inputs.design === 'standard'
+                                ? 'Clear structure, basic layout and solid usability.'
+                                : inputs.design === 'premium'
+                                ? 'A polished website with stronger visuals and soft motion.'
+                                : 'A rich, animated and high-end presentation built to stand out.'}
                             </p>
 
                             <span className={`mock-btn ${tDesignClass}`}>
-                              {activeFeature === 'ecommerce' && inputs.ecommerce
-                                ? 'Se produkter'
-                                : 'Kom i gang'}
+                              {activeFeature === 'ecommerce' && inputs.ecommerce ? 'View products' : 'Get started'}
                             </span>
                           </div>
 
@@ -1105,9 +1245,9 @@ Konfigurasjon:
                             <>
                               <div className="product-grid">
                                 {[
-                                  { name: 'Produkt 1', price: 'kr 799', c1: '#ddd6fe', c2: '#e0e7ff' },
-                                  { name: 'Produkt 2', price: 'kr 899', c1: '#fce7f3', c2: '#fbcfe8' },
-                                  { name: 'Produkt 3', price: 'kr 699', c1: '#dbeafe', c2: '#bfdbfe' },
+                                  { name: 'Product One', price: 'NOK 799', c1: '#ddd6fe', c2: '#e0e7ff' },
+                                  { name: 'Product Two', price: 'NOK 899', c1: '#fce7f3', c2: '#fbcfe8' },
+                                  { name: 'Product Three', price: 'NOK 699', c1: '#dbeafe', c2: '#bfdbfe' },
                                 ].map((p, i) => (
                                   <div key={i} className={`product ${tDesignClass}`}>
                                     <div
@@ -1121,16 +1261,14 @@ Konfigurasjon:
                                       <p className={`p-price ${tDesignClass}`}>{p.price}</p>
                                     </div>
                                     <button className={`p-add ${tDesignClass}`} type="button">
-                                      Legg i handlekurv
+                                      Add to cart
                                     </button>
                                   </div>
                                 ))}
                               </div>
 
                               <div className={`payments ${tDesignClass}`}>
-                                <p className={`pay-label ${tDesignClass}`}>
-                                  Sikre betalingsmetoder
-                                </p>
+                                <p className={`pay-label ${tDesignClass}`}>Secure payment methods</p>
                                 <div className="pay-icons">
                                   <span className={`pay-ico ${tDesignClass}`}>
                                     <FaCcVisa />
@@ -1149,24 +1287,21 @@ Konfigurasjon:
                             </>
                           ) : (
                             <div className="three-cards">
-                              {[...Array(3)].map((_, i) => (
-                                <div key={i} className={`tcard ${tDesignClass}`} />
+                              {previewCards.map((card, i) => (
+                                <div key={i} className={`tcard ${tDesignClass}`}>
+                                  <h4>{card.title}</h4>
+                                  <p>{card.desc}</p>
+                                </div>
                               ))}
                             </div>
                           )}
                         </>
                       )}
 
-                      {inputs.ai ? (
+                      {inputs.ai && (
                         <div className={`ai-btn ${tDesignClass}`}>
-                          <span className="ai-ico">🤖</span>
+                          <span className="ai-ico">≡ƒñû</span>
                         </div>
-                      ) : (
-                        inputs.design === 'elite' && (
-                          <div className="chat-fab">
-                            <FiMessageCircle color="#fff" size={24} />
-                          </div>
-                        )
                       )}
                     </div>
                   </div>
@@ -1231,14 +1366,14 @@ Konfigurasjon:
                     value={country}
                     onChange={(e) => setCountry(e.target.value as Country)}
                   >
-                    <option value="NO">Norge (25% MVA)</option>
-                    <option value="SE">Sverige (25% moms)</option>
-                    <option value="DK">Danmark (25% moms)</option>
-                    <option value="FI">Finland (24% ALV)</option>
-                    <option value="DE">Tyskland (19% MwSt)</option>
-                    <option value="FR">Frankrike (20% TVA)</option>
-                    <option value="UK">Storbritannia (20% VAT)</option>
-                    <option value="US">USA (0% tax)</option>
+                    <option value="NO">Norway (25% VAT)</option>
+                    <option value="SE">Sweden (25% VAT)</option>
+                    <option value="DK">Denmark (25% VAT)</option>
+                    <option value="FI">Finland (24% VAT)</option>
+                    <option value="DE">Germany (19% VAT)</option>
+                    <option value="FR">France (20% VAT)</option>
+                    <option value="UK">United Kingdom (20% VAT)</option>
+                    <option value="US">United States (0% tax)</option>
                   </select>
 
                   <div className="tax-sum">

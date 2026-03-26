@@ -1,6 +1,7 @@
-import Header from '@/components/header'
+﻿import Header from '@/components/header'
 import AnimatedBrowserMockup from '@/svgs/web'
 import Link from 'next/link'
+import CircuitBoardViewer from '@/components/board'
 
 export default function MainLanding() {
   return (
@@ -9,10 +10,10 @@ export default function MainLanding() {
       <main className="page">
         <section className="hero">
           <span className="badge">Guest view</span>
-          <h1>Velkommen til V.O.T.E</h1>
+          <h1>Welcome to Vintra</h1>
           <p>
-            Utforsk nettsider og chat widgets før du logger inn. Denne siden er laget
-            for å gi en ryddig førstegangsopplevelse.
+            Utforsk nettsider og chat widgets f├╕r du logger inn. Denne siden er laget
+            for ├Ñ gi en ryddig f├╕rstegangsopplevelse.
           </p>
 
           <div className="heroActions">
@@ -28,7 +29,7 @@ export default function MainLanding() {
         <section className="cardGrid">
           <div className="featureCard">
             <h2>Want to make a website?</h2>
-            <p>Se hva vi tilbyr av nettsidemaler og løsninger som guest.</p>
+            <p>Se hva vi tilbyr av nettsidemaler og l├╕sninger som guest.</p>
             <div style={{ width: 500 }}>
       <AnimatedBrowserMockup />
     </div>  
@@ -39,8 +40,11 @@ export default function MainLanding() {
 
           <div className="featureCard">
             <h2>Want to have a chat widget?</h2>
-            <p>Test konseptet og se hvordan widget-løsningen fungerer.</p>
-            <Link href="/landings/guest/chat-widget">
+            <p>Test konseptet og se hvordan widget-l├╕sningen fungerer.</p>
+            <section style={{ padding: '40px' }}>
+      
+    </section>
+            <Link href="/landings/guest/chatWidget">
               <button className="primaryBtn">Check it out</button>
             </Link>
           </div>
