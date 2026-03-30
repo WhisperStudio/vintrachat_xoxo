@@ -16,6 +16,9 @@ import {
   FiShield,
   FiGlobe,
   FiCheck,
+  FiMinus,
+  FiPlus,
+  FiX,
 } from 'react-icons/fi'
 import { FaCcVisa, FaCcMastercard, FaPaypal } from 'react-icons/fa'
 import Header from '@/components/header'
@@ -155,6 +158,23 @@ type ThemePalette = {
   glow: string
 }
 
+type Product = {
+  id: number
+  name: string
+  price: number
+  priceLabel: string
+  c1: string
+  c2: string
+}
+
+type CartItem = {
+  id: number
+  name: string
+  price: number
+  image: string
+  qty: number
+}
+
 const formatCurrency = (amount: number): string =>
   new Intl.NumberFormat('nb-NO', {
     style: 'currency',
@@ -220,6 +240,12 @@ const themePalettes: Record<ColorTheme, ThemePalette> = {
     glow: 'rgba(212, 175, 55, 0.22)',
   },
 }
+
+const demoProducts: Product[] = [
+  { id: 1, name: 'Product One', price: 799, priceLabel: 'NOK 799', c1: '#ddd6fe', c2: '#e0e7ff' },
+  { id: 2, name: 'Product Two', price: 899, priceLabel: 'NOK 899', c1: '#fce7f3', c2: '#fbcfe8' },
+  { id: 3, name: 'Product Three', price: 699, priceLabel: 'NOK 699', c1: '#dbeafe', c2: '#bfdbfe' },
+]
 
 const translations: Translation = {
   heroTitle: 'From idea to launch.',
@@ -329,6 +355,58 @@ export default function GuestWebsites() {
     extraFeatures: false,
     complexity: false,
   })
+
+  const [cartOpen, setCartOpen] = useState(false)
+  const [cart, setCart] = useState<CartItem[]>([])
+
+  const cartCount = cart.reduce((sum, item) => sum + item.qty, 0)
+  const cartTotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0)
+
+  const addToCart = (product: Product) => {
+    setCartOpen(true)
+    setCart((prev) => {
+      const existing = prev.find((item) => item.id === product.id)
+
+      if (existing) {
+        return prev.map((item) =>
+          item.id === product.id ? { ...item, qty: item.qty + 1 } : item
+        )
+      }
+
+      return [
+        ...prev,
+        {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          image: `linear-gradient(135deg, ${product.c1}, ${product.c2})`,
+          qty: 1,
+        },
+      ]
+    })
+  }
+
+  const increaseQty = (id: number) => {
+    setCart((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, qty: item.qty + 1 } : item
+      )
+    )
+  }
+
+  const decreaseQty = (id: number) => {
+    setCart((prev) =>
+      prev
+        .map((item) =>
+          item.id === id ? { ...item, qty: item.qty - 1 } : item
+        )
+        .filter((item) => item.qty > 0)
+    )
+  }
+
+  const removeItem = (id: number) => {
+    setCart((prev) => prev.filter((item) => item.id !== id))
+  }
 
   const toggleSection = (section: keyof typeof openSections) => {
     setOpenSections((prev) => ({
@@ -1122,13 +1200,19 @@ Configuration:
                           )}
 
                           {inputs.ecommerce && (
-                            <div className={`cart ${tDesignClass}`}>
+                            <button
+                              className={`cart ${tDesignClass}`}
+                              type="button"
+                              onClick={() => setCartOpen(true)}
+                            >
                               <span className="cart-ico">
-                                ????
-                                <span className={`badge ${tDesignClass}`}>3</span>
+                                <FiPackage />
+                                {cartCount > 0 && <span className={`badge ${tDesignClass}`}>{cartCount}</span>}
                               </span>
-                              <span className="cart-text">NOK 2,499</span>
-                            </div>
+                              <span className="cart-text">
+                                {cartCount > 0 ? formatCurrency(cartTotal) : 'Cart'}
+                              </span>
+                            </button>
                           )}
                         </nav>
                       </div>
@@ -1243,13 +1327,18 @@ Configuration:
 
                           {activeFeature === 'ecommerce' && inputs.ecommerce ? (
                             <>
+                              <div className="hero-mock">
+                                <div className="tier-badge">{inputs.design}</div>
+                                <h2 className={`mock-title ${tDesignClass}`}>Online Store</h2>
+                                <p className={`mock-sub ${tDesignClass}`}>
+                                  Smooth shopping flow with clean product presentation.
+                                </p>
+                                <span className={`mock-btn ${tDesignClass}`}>View products</span>
+                              </div>
+
                               <div className="product-grid">
-                                {[
-                                  { name: 'Product One', price: 'NOK 799', c1: '#ddd6fe', c2: '#e0e7ff' },
-                                  { name: 'Product Two', price: 'NOK 899', c1: '#fce7f3', c2: '#fbcfe8' },
-                                  { name: 'Product Three', price: 'NOK 699', c1: '#dbeafe', c2: '#bfdbfe' },
-                                ].map((p, i) => (
-                                  <div key={i} className={`product ${tDesignClass}`}>
+                                {demoProducts.map((p) => (
+                                  <div key={p.id} className={`product ${tDesignClass}`}>
                                     <div
                                       className={`p-img ${tDesignClass}`}
                                       style={{
@@ -1258,9 +1347,13 @@ Configuration:
                                     />
                                     <div className="p-info">
                                       <h4 className={`p-name ${tDesignClass}`}>{p.name}</h4>
-                                      <p className={`p-price ${tDesignClass}`}>{p.price}</p>
+                                      <p className={`p-price ${tDesignClass}`}>{p.priceLabel}</p>
                                     </div>
-                                    <button className={`p-add ${tDesignClass}`} type="button">
+                                    <button
+                                      className={`p-add ${tDesignClass}`}
+                                      type="button"
+                                      onClick={() => addToCart(p)}
+                                    >
                                       Add to cart
                                     </button>
                                   </div>
@@ -1305,6 +1398,79 @@ Configuration:
                       )}
                     </div>
                   </div>
+                )}
+
+                {cartOpen && (
+                  <>
+                    <div className="cart-overlay" onClick={() => setCartOpen(false)} />
+                    <aside className={`cart-drawer ${tDesignClass}`}>
+                      <div className="cart-drawer-head">
+                        <h3>Your cart</h3>
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          onClick={() => setCartOpen(false)}
+                        >
+                          <FiX />
+                        </button>
+                      </div>
+
+                      <div className="cart-drawer-body">
+                        {cart.length === 0 ? (
+                          <div className="cart-empty">
+                            <p>No products added yet.</p>
+                            <span>Try adding one of the demo products.</span>
+                          </div>
+                        ) : (
+                          cart.map((item) => (
+                            <div key={item.id} className="cart-item">
+                              <div
+                                className="cart-thumb"
+                                style={{ background: item.image }}
+                              />
+                              <div className="cart-item-info">
+                                <h4>{item.name}</h4>
+                                <p>{formatCurrency(item.price)}</p>
+                                <button
+                                  type="button"
+                                  className="remove-btn"
+                                  onClick={() => removeItem(item.id)}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+
+                              <div className="cart-item-actions">
+                                <button
+                                  type="button"
+                                  onClick={() => decreaseQty(item.id)}
+                                >
+                                  <FiMinus />
+                                </button>
+                                <span>{item.qty}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => increaseQty(item.id)}
+                                >
+                                  <FiPlus />
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      <div className="cart-drawer-foot">
+                        <div className="cart-total-row">
+                          <span>Total</span>
+                          <strong>{formatCurrency(cartTotal)}</strong>
+                        </div>
+                        <button type="button" className="checkout-btn">
+                          Go to checkout
+                        </button>
+                      </div>
+                    </aside>
+                  </>
                 )}
               </div>
 

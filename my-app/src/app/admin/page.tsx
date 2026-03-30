@@ -15,20 +15,16 @@ type AdminTab =
   | 'settings'
 
 export default function AdminPage() {
-  const { isLoggedIn, user, updatePurchases } = useAuth()
+  const { isAuthenticated, dbUser, loading } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
 
   useEffect(() => {
-    if (!isLoggedIn) router.push('/auth/login')
-  }, [isLoggedIn, router])
+    if (!loading && !isAuthenticated) router.push('/auth/login')
+  }, [isAuthenticated, loading, router])
 
-  if (!isLoggedIn || !user) return null
-
-  const unlocked = {
-    websites: user.purchases.websites,
-    widgets: user.purchases.chatWidget,
-  }
+  if (loading) return <div>Loading...</div>
+  if (!isAuthenticated || !dbUser) return null
 
   return (
     <>
@@ -51,17 +47,17 @@ export default function AdminPage() {
           </button>
 
           <button
-            onClick={() => unlocked.websites && setActiveTab('websites')}
-            className={!unlocked.websites ? 'sideLocked' : activeTab === 'websites' ? 'sideActive' : ''}
+            onClick={() => setActiveTab('websites')}
+            className={activeTab === 'websites' ? 'sideActive' : ''}
           >
-            Websites {!unlocked.websites && '(Locked)'}
+            Websites
           </button>
 
           <button
-            onClick={() => unlocked.widgets && setActiveTab('widgets')}
-            className={!unlocked.widgets ? 'sideLocked' : activeTab === 'widgets' ? 'sideActive' : ''}
+            onClick={() => setActiveTab('widgets')}
+            className={activeTab === 'widgets' ? 'sideActive' : ''}
           >
-            Chat Widgets {!unlocked.widgets && '(Locked)'}
+            Chat Widgets
           </button>
 
           <div className="sidebarBottom">
@@ -78,12 +74,12 @@ export default function AdminPage() {
               <p>Her får du en rask oversikt over konto, produkter og status.</p>
               <div className="miniGrid">
                 <div className="miniStat">
-                  <strong>{user.purchases.websites ? 'Active' : 'Inactive'}</strong>
-                  <span>Website Product</span>
+                  <strong>{dbUser?.displayName || 'User'}</strong>
+                  <span>Account Name</span>
                 </div>
                 <div className="miniStat">
-                  <strong>{user.purchases.chatWidget ? 'Active' : 'Inactive'}</strong>
-                  <span>Chat Widget Product</span>
+                  <strong>{dbUser?.email}</strong>
+                  <span>Email</span>
                 </div>
               </div>
             </div>
@@ -127,36 +123,9 @@ export default function AdminPage() {
           {activeTab === 'settings' && (
             <div className="infoCard">
               <h1>Settings</h1>
-              <p>Midletidig lokal demo for kjøp/access.</p>
-
+              <p>Administrer kontoinnstillinger og preferanser her.</p>
               <div className="settingsToggleRow">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={user.purchases.websites}
-                    onChange={(e) =>
-                      updatePurchases({
-                        ...user.purchases,
-                        websites: e.target.checked,
-                      })
-                    }
-                  />
-                  Unlock Websites
-                </label>
-
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={user.purchases.chatWidget}
-                    onChange={(e) =>
-                      updatePurchases({
-                        ...user.purchases,
-                        chatWidget: e.target.checked,
-                      })
-                    }
-                  />
-                  Unlock Chat Widget
-                </label>
+                <p>Innstillinger kommer snart...</p>
               </div>
             </div>
           )}

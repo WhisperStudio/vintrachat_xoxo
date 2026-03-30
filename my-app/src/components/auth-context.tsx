@@ -3,10 +3,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User as FirebaseUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { setupAuthListener, getCurrentUser } from '@/lib/email-auth';
+import { setupAuthListener, getCurrentUserFromDB } from '@/lib/auth';
 import { User as DBUser, Business } from '@/types/database';
 import { getBusinessInfo } from '@/lib/auth';
-import { signOut as firebaseSignOut } from 'firebase/auth';
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
@@ -14,8 +13,6 @@ interface AuthContextType {
   business: Business | null;
   loading: boolean;
   error: string | null;
-  isAuthenticated: boolean;
-  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -24,8 +21,6 @@ const AuthContext = createContext<AuthContextType>({
   business: null,
   loading: true,
   error: null,
-  isAuthenticated: false,
-  logout: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -43,11 +38,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (authUser) {
           // Hent brukerdata fra database
-          const userData = await getCurrentUser();
+          const userData = await getCurrentUserFromDB(authUser);
           setDBUser(userData || null);
 
-          // Hvis bruker finnes, hent bedriftsinformasjon
-          if (userData && userData.businessId) {
+          // Hvis brukers finnes, hent bedriftsinformasjon
+          if (userData) {
             const businessData = await getBusinessInfo(userData.businessId);
             setBusiness(businessData || null);
           }
@@ -67,22 +62,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const logout = async () => {
-    try {
-      await firebaseSignOut(auth);
-    } catch (err) {
-      console.error('Logout error:', err);
-    }
-  };
-
   const value: AuthContextType = {
     firebaseUser,
     dbUser,
     business,
     loading,
     error,
-    isAuthenticated: !!firebaseUser && !!dbUser,
-    logout,
   };
 
   return (

@@ -195,36 +195,7 @@ export default function ChatWidgetBuilder() {
               </div>
             </div>
 
-            <div className="group">
-              <button
-                type="button"
-                className={`dropbtn ${openSections.bubble ? 'open' : ''}`}
-                onClick={() => toggleSection('bubble')}
-              >
-                <span className="label">Billing cycle</span>
-                <span className="dropbtn-icon">
-                  {openSections.bubble ? <FiChevronUp /> : <FiChevronDown />}
-                </span>
-              </button>
-
-              <div className={`option-grid option-grid-2 dropdown-content`}>
-                {(['monthly', 'yearly'] as BillingCycle[]).map((cycle) => (
-                  <label
-                    key={cycle}
-                    className={`option-card ${inputs.billingCycle === cycle ? 'checked' : ''}`}
-                  >
-                    <input
-                      type="radio"
-                      name="billingCycle"
-                      checked={inputs.billingCycle === cycle}
-                      onChange={() => updateInput('billingCycle', cycle)}
-                    />
-                    <span className="option-title">{cycle === 'monthly' ? 'Monthly' : 'Yearly'}</span>
-                    <span className="option-desc">{cycle === 'monthly' ? 'Billed every month' : 'Billed once a year'}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+            
 
             <div className="group">
               <button
