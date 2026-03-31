@@ -4,7 +4,7 @@ import Header from '@/components/header'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { verifyEmail } from '@/lib/email-auth'
+import { verifyEmail } from '@/lib/auth.service'
 
 export default function VerifyEmailPage() {
   const searchParams = useSearchParams()
@@ -42,18 +42,18 @@ export default function VerifyEmailPage() {
         <div className="authCard">
           {status === 'loading' && (
             <>
-              <h1>Veryfing Email...</h1>
-              <p>Please wait while we verify your email.</p>
+              <h1>Verifiserer email...</h1>
+              <p>Vennligst vent mens vi verifiserer email adressen din.</p>
             </>
           )}
 
           {status === 'success' && (
             <>
-              <h1>✅ Email Verified!</h1>
+              <h1>✅ Email verifisert!</h1>
               <p>{message}</p>
               <Link href="/auth/login">
                 <button className="primaryBtn fullWidth" style={{ marginTop: '20px' }}>
-                  Go to Login
+                  Gå til innlogging
                 </button>
               </Link>
             </>
@@ -61,12 +61,12 @@ export default function VerifyEmailPage() {
 
           {status === 'error' && (
             <>
-              <h1>❌ Verification Failed</h1>
+              <h1>❌ Verifikasjon mislyktes</h1>
               <p style={{ color: '#d32f2f' }}>{message}</p>
-              <p>Try registering again or contact support.</p>
+              <p>Prøv å registrere deg igjen eller kontakt support.</p>
               <Link href="/auth/signup">
                 <button className="primaryBtn fullWidth" style={{ marginTop: '20px' }}>
-                  Create New Account
+                  Opprett ny konto
                 </button>
               </Link>
             </>

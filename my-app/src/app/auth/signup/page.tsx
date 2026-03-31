@@ -4,7 +4,7 @@ import Header from '@/components/header'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Link from 'next/link'
-import { signUpWithEmail } from '@/lib/email-auth'
+import { signUpWithEmail } from '@/lib/auth.service'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -71,8 +71,8 @@ export default function SignupPage() {
       )
 
       if (result.success) {
-        // Auto-redirect to home after successful signup (no email verification needed in dev)
-        router.push('/')
+        // Redirect to verification sent page
+        router.push(`/auth/verify-email-sent?email=${encodeURIComponent(email)}`)
       } else {
         setError(result.message)
       }

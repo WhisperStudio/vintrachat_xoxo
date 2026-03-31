@@ -29,12 +29,11 @@ export default function VerifyEmailSentPage() {
     setResendMessage('')
 
     try {
-      const response = await fetch('/api/auth/send-verification-email', {
+      const response = await fetch('/api/auth/resend-verification-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
-          token: 'placeholder', // This will be generated on backend if needed
           displayName: 'Bruker',
         }),
       })
@@ -65,9 +64,9 @@ export default function VerifyEmailSentPage() {
             }}>
               ✅
             </div>
-            <h1>All done!</h1>
+            <h1>Nesten ferdig!</h1>
             <p style={{ color: '#666', marginTop: '10px' }}>
-              We have sent a verification link to your email:
+              Vi har sendt en verifikasjonslenke til din email:
             </p>
             <p style={{
               fontWeight: 'bold',
@@ -89,16 +88,16 @@ export default function VerifyEmailSentPage() {
             borderLeft: '4px solid #007bff',
           }}>
             <p style={{ margin: 0 }}>
-              <strong>💡 Tip:</strong> Check your spam folder if you don't see the email within a few minutes.
+              <strong>💡 Hint:</strong> Sjekk spam-mappen hvis du ikke ser emailen innen noen minutter.
             </p>
           </div>
 
-          <h3 style={{ marginTop: '25px', marginBottom: '15px' }}>Next Step:</h3>
+          <h3 style={{ marginTop: '25px', marginBottom: '15px' }}>Neste steg:</h3>
           <ol style={{ textAlign: 'left', lineHeight: '1.8' }}>
-            <li>📧 Open the mail from us</li>
-            <li>🔗 Click on the "Verify Email" link</li>
-            <li>✨ You will be redirected to the login page</li>
-            <li>🔐 Log in with your email and password</li>
+            <li>📧 Åpne emailen fra oss</li>
+            <li>🔗 Klikk på "Verifiser email" lenken</li>
+            <li>✨ Du vil bli omdirigert til innloggingssiden</li>
+            <li>🔐 Logg inn med din email og passord</li>
           </ol>
 
           {resendMessage && (
@@ -131,12 +130,12 @@ export default function VerifyEmailSentPage() {
               transition: 'background-color 0.3s',
             }}
           >
-            {resendLoading ? 'Sender...' : cooldown > 0 ? `Send again (${cooldown}s)` : 'Send again'}
+            {resendLoading ? 'Sender...' : cooldown > 0 ? `Send igjen (${cooldown}s)` : 'Send igjen'}
           </button>
 
           <div style={{ marginTop: '25px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
             <p style={{ color: '#999', fontSize: '14px', marginBottom: '15px' }}>
-              After verification, you can log in here:
+              Etter verifikasjon kan du logge inn her:
             </p>
             <Link href="/auth/login" style={{ textDecoration: 'none' }}>
               <button style={{
@@ -153,7 +152,7 @@ export default function VerifyEmailSentPage() {
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#efefef'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
               >
-                Go to Login
+                Gå til innlogging
               </button>
             </Link>
           </div>
@@ -164,7 +163,7 @@ export default function VerifyEmailSentPage() {
             color: '#999',
             fontSize: '12px',
           }}>
-            Need help? <Link href="/auth/signup" style={{ color: '#007bff', textDecoration: 'none' }}>Try registering again</Link>
+            Trenger hjelp? <Link href="/auth/signup" style={{ color: '#007bff', textDecoration: 'none' }}>Prøv å registrere deg igjen</Link>
           </p>
         </div>
       </main>
