@@ -4,7 +4,7 @@ import Header from '@/components/header'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { resetPassword } from '@/lib/email-auth'
+import { resetPassword } from '@/lib/auth.service'
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams()

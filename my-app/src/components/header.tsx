@@ -3,7 +3,8 @@
 import React from 'react'
 import Link from 'next/link'
 import styled from 'styled-components'
-import { useAuth } from './auth-provider'
+import { useAuth } from '@/context/AuthContext'
+
 import { useRouter } from 'next/navigation'
 
 const StyledHeader = styled.header`
@@ -94,23 +95,23 @@ const UserText = styled.span`
 `
 
 export default function Header() {
-  const { isLoggedIn, user, logout } = useAuth()
+  const { isAuthenticated, dbUser, logout } = useAuth()
   const router = useRouter()
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     router.push('/landings/main')
   }
 
   return (
     <StyledHeader>
       <Left>
-        <Brand href={isLoggedIn ? '/landings/user' : '/landings/main'}>
+        <Brand href={isAuthenticated ? '/landings/user' : '/landings/main'}>
           V.O.T.E
         </Brand>
 
         <Nav>
-          {!isLoggedIn ? (
+          {!isAuthenticated ? (
             <>
               <NavLink href="/landings/guest/websites">Websites</NavLink>
               <NavLink href="/landings/guest/chatWidget">Chat Widget</NavLink>
@@ -127,7 +128,7 @@ export default function Header() {
       </Left>
 
       <Right>
-        {!isLoggedIn ? (
+        {!isAuthenticated ? (
           <>
             <Link href="/auth/login">
               <GhostButton>Log In</GhostButton>
@@ -138,7 +139,7 @@ export default function Header() {
           </>
         ) : (
           <>
-            <UserText>Hei, {user?.name}</UserText>
+            <UserText>Hei, {dbUser?.displayName || dbUser?.email}</UserText>
             <GhostButton onClick={handleLogout}>Log Out</GhostButton>
           </>
         )}
@@ -146,3 +147,4 @@ export default function Header() {
     </StyledHeader>
   )
 }
+

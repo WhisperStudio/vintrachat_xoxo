@@ -4,7 +4,7 @@ import Header from '@/components/header'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Link from 'next/link'
-import { signInWithEmail } from '@/lib/email-auth'
+import { signInWithEmail } from '@/lib/auth.service'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -32,7 +32,7 @@ export default function LoginPage() {
     try {
       const result = await signInWithEmail(email, password)
 
-      if (result.success && result.user) {
+      if (result.success && result.user) { 
         // Redirect to dashboard
         if (result.user.businessId) {
           router.push(`/dashboard/${result.user.businessId}`)

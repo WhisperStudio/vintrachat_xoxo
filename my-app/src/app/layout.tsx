@@ -1,5 +1,5 @@
 import './globals.css'
-import { AuthProvider } from '@/components/auth-provider'
+import { AuthProvider } from '@/context/AuthContext'
 
 export const metadata = {
   title: 'V.O.T.E',

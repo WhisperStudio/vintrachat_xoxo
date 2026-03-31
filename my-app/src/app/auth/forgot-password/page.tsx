@@ -4,7 +4,7 @@ import Header from '@/components/header'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Link from 'next/link'
-import { requestPasswordReset } from '@/lib/email-auth'
+import { requestPasswordReset } from '@/lib/auth.service'
 
 export default function ForgotPasswordPage() {
   const router = useRouter()
@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
                 </label>
 
                 <button className="primaryBtn fullWidth" type="submit" disabled={loading}>
-                  {loading ? 'Sender...' : 'Send Reset Link'}
+                  {loading ? 'Sender...' : 'Send Reset Lenke'}
                 </button>
               </form>
 
