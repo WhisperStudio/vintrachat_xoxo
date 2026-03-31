@@ -5,55 +5,35 @@ export async function POST(req: NextRequest) {
   try {
     const { email, displayName, token } = await req.json();
 
-    if (!email || !displayName || !token) {
+    if (!email || !token) {
       return NextResponse.json(
-        { success: false, message: "Missing required fields" },
+        { success: false, message: "Missing fields" },
         { status: 400 }
       );
     }
 
     const resend = new Resend(process.env.RESEND_API_KEY!);
 
-    const verificationLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/verify-email?token=${token}`;
+    const link = `${process.env.NEXT_PUBLIC_APP_URL}/auth/verify-email?token=${token}`;
 
     await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL!,
       to: email,
       subject: "Verifiser email adressen din",
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Hei ${displayName}!</h2>
-          
-          <p>Takk for at du registrerte deg. For å fullføre registreringen, verifiser email adressen din ved å klikke lenken nedenfor:</p>
-          
-          <p>
-            <a href="${verificationLink}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
-              Verifiser email
-            </a>
-          </p>
-          
-          <p>Eller kopier denne lenken i nettleseren din:</p>
-          <p style="word-break: break-all; color: #666;">
-            ${verificationLink}
-          </p>
-          
-          <p style="color: #999; font-size: 12px;">
-            Lenken utløper om 24 timer.
-          </p>
-          
-          <p style="color: #999; font-size: 12px;">
-            Hvis du ikke opprettet denne kontoen, kan du ignorere denne emailen.
-          </p>
+        <div>
+          <h2>Hei ${displayName || ""}</h2>
+          <p>Klikk under for å verifisere:</p>
+          <a href="${link}">Verifiser email</a>
         </div>
       `,
     });
 
     return NextResponse.json({ success: true });
-
   } catch (err: any) {
     console.error("Send verification email error:", err);
     return NextResponse.json(
-      { success: false, message: err.message },
+      { success: false, message: "Server error" },
       { status: 500 }
     );
   }

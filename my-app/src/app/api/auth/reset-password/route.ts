@@ -1,67 +1,64 @@
 import { NextRequest, NextResponse } from "next/server";
-import * as admin from "firebase-admin";
-
-if (!admin.apps.length) {
-  const serviceAccount = require("../../../../serviceAccountKey.json");
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-}
+import { adminDb, adminAuth } from "@/lib/firebase-admin";
 
 export async function POST(req: NextRequest) {
   try {
-    const { uid, newPassword, token } = await req.json();
+    const { uid, token, newPassword } = await req.json();
 
-    if (!uid || !newPassword || !token) {
+    if (!uid || !token || !newPassword) {
       return NextResponse.json(
-        { success: false, message: "Missing required fields" },
+        { success: false, message: "Missing fields" },
         { status: 400 }
       );
     }
 
-    if (newPassword.length < 6) {
-      return NextResponse.json(
-        { success: false, message: "Passord må være minst 6 tegn" },
-        { status: 400 }
-      );
-    }
-
-    // Verify token exists and hasn't expired
-    const db = admin.firestore();
-    const userDoc = await db.collection("users").doc(uid).get();
+    const userDoc = await adminDb.collection("users").doc(uid).get();
 
     if (!userDoc.exists) {
       return NextResponse.json(
-        { success: false, message: "Bruker ikke funnet" },
+        { success: false, message: "User not found" },
         { status: 404 }
       );
     }
 
-    const userData = userDoc.data();
-    
-    if (!userData?.passwordResetToken || userData.passwordResetToken !== token) {
+    const user = userDoc.data();
+
+    // 🔥 FIX: check user exists
+    if (!user) {
       return NextResponse.json(
-        { success: false, message: "Ugyldig reset token" },
+        { success: false, message: "User data missing" },
+        { status: 500 }
+      );
+    }
+
+    if (user.passwordResetToken !== token) {
+      return NextResponse.json(
+        { success: false, message: "Invalid token" },
         { status: 400 }
       );
     }
 
-    // Check if token has expired
-    const tokenExpiry = userData.passwordResetTokenExpiry?.toDate?.() || new Date(0);
-    if (new Date() > tokenExpiry) {
+    // 🔥 FIX: safe handling of expiry
+    if (!user.passwordResetTokenExpiry) {
       return NextResponse.json(
-        { success: false, message: "Reset token har utløpt" },
+        { success: false, message: "Token missing expiry" },
         { status: 400 }
       );
     }
 
-    // Update password using Firebase Admin SDK
-    const auth = admin.auth();
-    await auth.updateUser(uid, {
+    const expiry = new Date(user.passwordResetTokenExpiry);
+
+    if (new Date() > expiry) {
+      return NextResponse.json(
+        { success: false, message: "Token expired" },
+        { status: 400 }
+      );
+    }
+
+    await adminAuth.updateUser(uid, {
       password: newPassword,
     });
 
-    // Clear the reset token from Firestore
     await userDoc.ref.update({
       passwordResetToken: "",
       passwordResetTokenExpiry: null,
@@ -69,12 +66,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Passord endret. Du kan nå logge inn med ditt nye passord.",
+      message: "Password updated",
     });
   } catch (err: any) {
     console.error("Reset password error:", err);
     return NextResponse.json(
-      { success: false, message: err.message || "Passordopp resetting feilet" },
+      { success: false, message: "Server error" },
       { status: 500 }
     );
   }
