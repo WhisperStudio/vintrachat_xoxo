@@ -1,7 +1,7 @@
 'use client'
 
 import Header from '@/components/header'
-import { useAuth } from '@/components/auth-provider'
+import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
