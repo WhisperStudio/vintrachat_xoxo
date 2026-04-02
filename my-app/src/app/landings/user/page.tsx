@@ -2,21 +2,22 @@
 
 import Header from '@/components/header'
 import Link from 'next/link'
-import { useAuth } from '@/components/auth-provider'
+import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
 export default function UserLanding() {
-  const { isLoggedIn, user } = useAuth()
+  const { isAuthenticated, dbUser, loading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (!loading && !isAuthenticated) {
       router.push('/auth/login')
     }
-  }, [isLoggedIn, router])
+  }, [isAuthenticated, loading, router])
 
-  if (!isLoggedIn) return null
+  if (loading) return null
+  if (!isAuthenticated) return null
 
   return (
     <>
@@ -24,36 +25,11 @@ export default function UserLanding() {
       <main className="page">
         <section className="hero">
           <span className="badge success">Logged in</span>
-          <h1>Velkommen tilbake, {user?.name}</h1>
-          <p>
-            Her ser du dine produkter, snarveier og administrasjon. Alt er satt opp
-            så du lett kan bygge videre senere.
-          </p>
+          <h1>Velkommen tilbake, {dbUser?.displayName}</h1>
 
           <div className="heroActions">
             <Link href="/admin">
-              <button className="primaryBtn">Go to Admin Panel</button>
-            </Link>
-            <Link href="/landings/auth/websites">
-              <button className="secondaryBtn">My Products</button>
-            </Link>
-          </div>
-        </section>
-
-        <section className="cardGrid">
-          <div className="featureCard">
-            <h2>Your Websites</h2>
-            <p>Se og administrer nettsider du har tilgang til.</p>
-            <Link href="/landings/auth/websites">
-              <button className="secondaryBtn">Open websites</button>
-            </Link>
-          </div>
-
-          <div className="featureCard">
-            <h2>Your Chat Widgets</h2>
-            <p>Se og administrer widgets, innstillinger og visninger.</p>
-            <Link href="/landings/auth/chat-widget">
-              <button className="primaryBtn">Open widgets</button>
+              <button className="primaryBtn">Admin Panel</button>
             </Link>
           </div>
         </section>

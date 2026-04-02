@@ -120,7 +120,7 @@ export default function Header() {
             <>
               <NavLink href="/landings/user">Dashboard</NavLink>
               <NavLink href="/landings/auth/websites">My Websites</NavLink>
-              <NavLink href="/landings/auth/chat-widget">My Chat Widgets</NavLink>
+              <NavLink href="/landings/auth/chatWidget">My Chat Widgets</NavLink>
               <NavLink href="/admin">Admin Panel</NavLink>
             </>
           )}
