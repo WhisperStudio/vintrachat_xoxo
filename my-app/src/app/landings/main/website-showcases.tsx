@@ -947,6 +947,7 @@ export function WebsiteShowcaseModal({ label, onClose }: { label: string; onClos
       </div>
     </div>
   )
+  
 }
 
 // Usage: in your carousel, wrap MiniSiteMockup in an onClick that sets selectedLabel state,
