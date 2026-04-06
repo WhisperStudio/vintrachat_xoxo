@@ -23,7 +23,7 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 
-import { AuthResponse, UserRole } from "@/types/database";
+import { AuthResponse, UserRole, BusinessUser, ChatWidgetConfig } from "@/types/database";
 
 // ----------------------
 // Google Auth
@@ -116,7 +116,9 @@ export function generateChatWidgetKey() {
 export async function signUpWithEmail(
   email: string,
   password: string,
-  displayName: string
+  displayName: string,
+  accountType?: 'business' | 'user',
+  businessName?: string
 ) {
   try {
     const cred = await createUserWithEmailAndPassword(
@@ -135,6 +137,8 @@ export async function signUpWithEmail(
         email,
         token,
         displayName,
+        accountType,
+        businessName,
       }),
     });
 
@@ -143,6 +147,8 @@ export async function signUpWithEmail(
       email,
       displayName,
       token,
+      accountType,
+      businessName,
       createdAt: serverTimestamp(),
     });
 
@@ -172,17 +178,40 @@ export async function verifyEmail(token: string) {
 
   const docSnap = snap.docs[0];
   const data = docSnap.data();
+  const userId = docSnap.id;
 
-  // legg til i pending_users
-  await setDoc(doc(db, "pending_users", docSnap.id), {
-    email: data.email,
-    displayName: data.displayName,
-    createdAt: serverTimestamp(),
-  });
+  try {
+    if (data.accountType === 'business' && data.businessName) {
+      // OPPRETT BUSINESS + ADMIN USER
+      const businessId = await createBusiness(userId, data.businessName, data.email);
+      
+      // Slett pending_auth etter vellykket opprettelse
+      await deleteDoc(docSnap.ref);
+      
+      return { 
+        success: true, 
+        message: `Business "${data.businessName}" opprettet! Du er nå admin.`,
+        businessId 
+      };
+    } else {
+      // VANLIG BRUKER - legg til i pending_users (venter på invitasjon)
+      await setDoc(doc(db, "pending_users", userId), {
+        email: data.email,
+        displayName: data.displayName,
+        createdAt: serverTimestamp(),
+      });
 
-  await deleteDoc(docSnap.ref);
+      await deleteDoc(docSnap.ref);
 
-  return { success: true, message: "Email verifisert" };
+      return { 
+        success: true, 
+        message: "Email verifisert. Du venter nå på invitasjon fra en bedrift." 
+      };
+    }
+  } catch (err) {
+    console.error("Verify email error:", err);
+    return { success: false, message: "Feil ved verifisering" };
+  }
 }
 
 // ----------------------
@@ -194,8 +223,22 @@ export async function createBusiness(
   email: string
 ) {
   const businessRef = doc(collection(db, "businesses"));
-
   const businessId = businessRef.id;
+
+  // Default chat widget config
+  const defaultWidgetConfig = {
+    designLevel: 'standard' as const,
+    colorTheme: 'modern' as const,
+    position: 'bottom-right' as const,
+    customBranding: {
+      title: businessName,
+      description: 'Vi er her for å hjelpe deg!',
+    },
+    settings: {
+      autoOpen: false,
+      delayMs: 3000,
+    },
+  };
 
   // business root
   await setDoc(businessRef, {
@@ -203,7 +246,9 @@ export async function createBusiness(
     email,
     ownerId: userId,
     chatWidgetKey: generateChatWidgetKey(),
+    chatWidgetConfig: defaultWidgetConfig,
     createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   });
 
   // legg user som admin
@@ -214,38 +259,11 @@ export async function createBusiness(
       role: "admin",
       status: "active",
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     }
   );
 
   return businessId;
-}
-
-// ----------------------
-// ACCEPT INVITE
-// ----------------------
-export async function acceptInvite(
-  userId: string,
-  businessId: string,
-  role: UserRole
-) {
-  const pendingRef = doc(db, "pending_users", userId);
-  const snap = await getDoc(pendingRef);
-
-  if (!snap.exists()) return;
-
-  const data = snap.data();
-
-  await setDoc(
-    doc(db, `businesses/${businessId}/users/${userId}`),
-    {
-      ...data,
-      role,
-      status: "active",
-      createdAt: serverTimestamp(),
-    }
-  );
-
-  await deleteDoc(pendingRef);
 }
 
 // ----------------------
@@ -255,13 +273,24 @@ export async function signInWithEmail(email: string, password: string) {
   try {
     const cred = await signInWithEmailAndPassword(auth, email, password);
 
+    // Sjekk om user er pending_users (venter på invitasjon)
     const pendingRef = doc(db, "pending_users", cred.user.uid);
     const pendingSnap = await getDoc(pendingRef);
 
     if (pendingSnap.exists()) {
       return {
         success: false,
-        message: "Du må akseptere invitasjon først",
+        message: "Du må akseptere invitasjon først. Sjekk emailen din.",
+      };
+    }
+
+    // Sjekk om user eksisterer i business structure
+    const userExists = await getCurrentUser(cred.user);
+    
+    if (!userExists) {
+      return {
+        success: false,
+        message: "Bruker ikke funnet. Du må verifisere emailen din først.",
       };
     }
 
@@ -269,6 +298,176 @@ export async function signInWithEmail(email: string, password: string) {
       success: true,
       message: "Innlogging OK",
     };
+  } catch (err: any) {
+    return { success: false, message: err.message };
+  }
+}
+
+// ----------------------
+// REQUEST PASSWORD RESET
+// ----------------------
+export async function requestPasswordReset(email: string) {
+  try {
+    const token = generateToken();
+    
+    // Lagre token i pending_password_resets
+    await setDoc(doc(collection(db, "pending_password_resets")), {
+      email,
+      token,
+      createdAt: serverTimestamp(),
+      expiresAt: new Date(Date.now() + 3600000), // 1 hour
+    });
+    
+    // Send email (implementer senere)
+    console.log(`Password reset token for ${email}: ${token}`);
+    
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, message: err.message };
+  }
+}
+
+// ----------------------
+// RESET PASSWORD
+// ----------------------
+export async function resetPassword(token: string, newPassword: string) {
+  try {
+    const q = query(
+      collection(db, "pending_password_resets"),
+      where("token", "==", token),
+      where("expiresAt", ">", new Date())
+    );
+    
+    const snap = await getDocs(q);
+    
+    if (snap.empty) {
+      return { success: false, message: "Ugyldig eller utløpt token" };
+    }
+    
+    const resetDoc = snap.docs[0];
+    const email = resetDoc.data().email;
+    
+    // Finn bruker basert på email (i business structure)
+    const usersRef = collection(db, "businesses");
+    const businessQuery = query(usersRef, where("email", "==", email));
+    const businessSnap = await getDocs(businessQuery);
+    
+    if (businessSnap.empty) {
+      return { success: false, message: "Bruker ikke funnet" };
+    }
+    
+    // Reset passord i Firebase Auth
+    // Dette krever Firebase Admin SDK - implementer senere
+    console.log(`Would reset password for ${email}`);
+    
+    // Slett reset token
+    await deleteDoc(resetDoc.ref);
+    
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, message: err.message };
+  }
+}
+
+// ----------------------
+// GET CURRENT USER (fra business)
+// ----------------------
+export async function getCurrentUser(firebaseUser: FirebaseUser) {
+  // Sjekk om user er admin/owner først
+  const businessesRef = collection(db, "businesses");
+  const ownerQuery = query(businessesRef, where("ownerId", "==", firebaseUser.uid));
+  const ownerSnap = await getDocs(ownerQuery);
+  
+  if (!ownerSnap.empty) {
+    // User er admin/owner
+    const businessDoc = ownerSnap.docs[0];
+    const userDoc = await getDoc(
+      doc(db, `businesses/${businessDoc.id}/users/${firebaseUser.uid}`)
+    );
+    
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      return {
+        id: firebaseUser.uid,
+        email: userData.email || firebaseUser.email,
+        displayName: userData.displayName,
+        businessId: businessDoc.id,
+        role: userData.role,
+        status: userData.status,
+        createdAt: userData.createdAt?.toDate() || new Date(),
+        updatedAt: userData.updatedAt?.toDate() || new Date(),
+        lastLogin: userData.lastLogin?.toDate(),
+      } as BusinessUser;
+    }
+  }
+  
+  // Sjekk om user er vanlig user i noen business
+  const businessDocs = await getDocs(businessesRef);
+  
+  for (const businessDoc of businessDocs.docs) {
+    const userDoc = await getDoc(
+      doc(db, `businesses/${businessDoc.id}/users/${firebaseUser.uid}`)
+    );
+    
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      return {
+        id: firebaseUser.uid,
+        email: userData.email || firebaseUser.email,
+        displayName: userData.displayName,
+        businessId: businessDoc.id,
+        role: userData.role,
+        status: userData.status,
+        createdAt: userData.createdAt?.toDate() || new Date(),
+        updatedAt: userData.updatedAt?.toDate() || new Date(),
+        lastLogin: userData.lastLogin?.toDate(),
+      } as BusinessUser;
+    }
+  }
+  
+  return null;
+}
+
+// ----------------------
+// GET BUSINESS INFO
+// ----------------------
+export async function getBusinessInfo(businessId: string) {
+  const businessRef = doc(db, "businesses", businessId);
+  const snap = await getDoc(businessRef);
+  
+  if (snap.exists()) {
+    const data = snap.data();
+    return {
+      id: snap.id,
+      name: data.name,
+      email: data.email,
+      ownerId: data.ownerId,
+      chatWidgetKey: data.chatWidgetKey,
+      createdAt: data.createdAt?.toDate() || new Date(),
+      updatedAt: data.updatedAt?.toDate() || new Date(),
+      chatWidgetConfig: data.chatWidgetConfig,
+    };
+  }
+  
+  return null;
+}
+
+// ----------------------
+// UPDATE CHAT WIDGET CONFIG
+// ----------------------
+export async function updateChatWidgetConfig(
+  businessId: string,
+  config: Partial<ChatWidgetConfig>
+) {
+  try {
+    const businessRef = doc(db, "businesses", businessId);
+    
+    await updateDoc(businessRef, {
+      "chatWidgetConfig": config,
+      updatedAt: serverTimestamp(),
+    });
+    
+    return { success: true, message: "Widget config oppdatert" };
   } catch (err: any) {
     return { success: false, message: err.message };
   }

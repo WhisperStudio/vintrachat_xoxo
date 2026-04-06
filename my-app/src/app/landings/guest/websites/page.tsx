@@ -22,46 +22,24 @@ import {
 } from 'react-icons/fi'
 import { FaCcVisa, FaCcMastercard, FaPaypal } from 'react-icons/fa'
 import Header from '@/components/header'
+import { 
+  DesignLevelSelector,
+  ColorThemeSelector,
+  AddonSelector,
+  ConfigurationSelector,
+  ExtraFeaturesSelector,
+  ComplexitySettings
+} from './components'
+import type {
+  Country,
+  PreviewMode,
+  DesignLevel,
+  PreviewBackgroundEffect,
+  ColorTheme,
+  ActiveFeature,
+  InputsState
+} from './types'
 import './WebPage.css'
-
-type Country = 'NO' | 'SE' | 'DK' | 'FI' | 'DE' | 'FR' | 'UK' | 'US'
-type PreviewMode = 'website' | 'admin'
-type DesignLevel = 'standard' | 'premium' | 'elite'
-type PreviewBackgroundEffect = 'default' | 'stars' | 'wave'
-type ColorTheme = 'modern' | 'chilling' | 'corporate' | 'luxury'
-type ActiveFeature =
-  | 'home'
-  | 'ecommerce'
-  | 'gallery'
-  | 'viewer3D'
-  | 'customDesign'
-  | 'contactForm'
-  | 'blog'
-  | 'booking'
-  | 'page'
-
-type InputsState = {
-  pages: number
-  design: DesignLevel
-  colorTheme: ColorTheme
-  ecommerce: boolean
-  ecommerceLevel: number
-  seo: boolean
-  carePlan: boolean
-  admin: boolean
-  adminLevel: number
-  database: boolean
-  databaseLevel: number
-  ai: boolean
-  gallery: boolean
-  galleryLevel: number
-  viewer3D: boolean
-  viewer3DLevel: number
-  customDesign: boolean
-  contactForm: boolean
-  blog: boolean
-  booking: boolean
-}
 
 type Translation = {
   heroTitle: string
@@ -706,386 +684,77 @@ Configuration:
                 />
               </div>
 
-              <div className="group">
-                <button
-                  type="button"
-                  className={`dropbtn ${openSections.design ? 'open' : ''}`}
-                  onClick={() => toggleSection('design')}
-                >
-                  <span className="label">{t.designComplexity}</span>
-                  <span className="dropbtn-icon">
-                    {openSections.design ? <FiChevronUp /> : <FiChevronDown />}
-                  </span>
-                </button>
+              <DesignLevelSelector
+                designLevel={inputs.design}
+                isOpen={openSections.design}
+                onToggle={() => toggleSection('design')}
+                onDesignLevelChange={(level) => updateInput('design', level)}
+              />
 
-                <div className={`toggle-grid toggle-grid-3 dropdown-content ${openSections.design ? 'open' : ''}`}>
-                  {(['standard', 'premium', 'elite'] as DesignLevel[]).map((level) => (
-                    <label
-                      key={level}
-                      className={`toggle ${inputs.design === level ? 'checked' : ''}`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={inputs.design === level}
-                        onChange={() => updateInput('design', level)}
-                      />
-                      <span className="toggle-title design-level-title">{level}</span>
-                      <span className="toggle-desc">{designDescriptions[level]}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <ColorThemeSelector
+                colorTheme={inputs.colorTheme}
+                isOpen={openSections.colors}
+                onToggle={() => toggleSection('colors')}
+                onColorThemeChange={(theme) => updateInput('colorTheme', theme)}
+              />
 
-              <div className="group">
-                <button
-                  type="button"
-                  className={`dropbtn ${openSections.colors ? 'open' : ''}`}
-                  onClick={() => toggleSection('colors')}
-                >
-                  <span className="label">{t.colorStyle}</span>
-                  <span className="dropbtn-icon">
-                    {openSections.colors ? <FiChevronUp /> : <FiChevronDown />}
-                  </span>
-                </button>
+              <AddonSelector
+                inputs={{
+                  ecommerce: inputs.ecommerce,
+                  seo: inputs.seo,
+                  carePlan: inputs.carePlan
+                }}
+                isOpen={openSections.addons}
+                onToggle={() => toggleSection('addons')}
+                onInputChange={(key, value) => updateInput(key, value)}
+              />
 
-                <div className={`theme-grid dropdown-content ${openSections.colors ? 'open' : ''}`}>
-                  {(Object.keys(themePalettes) as ColorTheme[]).map((themeKey) => {
-                    const theme = themePalettes[themeKey]
-                    const isActive = inputs.colorTheme === themeKey
+              <ConfigurationSelector
+                inputs={{
+                  admin: inputs.admin,
+                  database: inputs.database,
+                  ai: inputs.ai,
+                  ecommerce: inputs.ecommerce
+                }}
+                isOpen={openSections.configuration}
+                onToggle={() => toggleSection('configuration')}
+                onInputChange={(key, value) => updateInput(key, value)}
+              />
 
-                    return (
-                      <button
-                        key={themeKey}
-                        type="button"
-                        className={`theme-card ${isActive ? 'active' : ''}`}
-                        onClick={() => updateInput('colorTheme', themeKey)}
-                      >
-                        <div className="theme-card-top">
-                          <div>
-                            <h4>{theme.name}</h4>
-                            <p>{theme.description}</p>
-                          </div>
-                        </div>
+              <ExtraFeaturesSelector
+                inputs={{
+                  gallery: inputs.gallery,
+                  viewer3D: inputs.viewer3D,
+                  customDesign: inputs.customDesign,
+                  contactForm: inputs.contactForm,
+                  blog: inputs.blog,
+                  booking: inputs.booking
+                }}
+                isOpen={openSections.extraFeatures}
+                onToggle={() => toggleSection('extraFeatures')}
+                onInputChange={(key, value) => updateInput(key, value)}
+              />
 
-                        <div className="theme-palette">
-                          {theme.colors.map((color) => (
-                            <span
-                              key={color}
-                              className="theme-swatch"
-                              style={{ background: color }}
-                            />
-                          ))}
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div className="group">
-                <button
-                  type="button"
-                  className={`dropbtn ${openSections.addons ? 'open' : ''}`}
-                  onClick={() => toggleSection('addons')}
-                >
-                  <span className="label">{t.addons}</span>
-                  <span className="dropbtn-icon">
-                    {openSections.addons ? <FiChevronUp /> : <FiChevronDown />}
-                  </span>
-                </button>
-
-                <div className={`toggle-grid dropdown-content ${openSections.addons ? 'open' : ''}`}>
-                  <label className={`toggle ${inputs.ecommerce ? 'checked' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={inputs.ecommerce}
-                      onChange={(e) => updateInput('ecommerce', e.target.checked)}
-                    />
-                    <span className="toggle-title">
-                      {t.ecommerceTitle} <FiPackage />
-                    </span>
-                    <span className="toggle-desc">{t.ecommerceDesc}</span>
-                  </label>
-
-                  <label className={`toggle ${inputs.seo ? 'checked' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={inputs.seo}
-                      onChange={(e) => updateInput('seo', e.target.checked)}
-                    />
-                    <span className="toggle-title">
-                      {t.seoTitle} <FiZap />
-                    </span>
-                    <span className="toggle-desc">{t.seoDesc}</span>
-                  </label>
-
-                  <label className={`toggle ${inputs.carePlan ? 'checked' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={inputs.carePlan}
-                      onChange={(e) => updateInput('carePlan', e.target.checked)}
-                    />
-                    <span className="toggle-title">
-                      {t.careTitle} <FiCheck />
-                    </span>
-                    <span className="toggle-desc">{t.careDesc}</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="group">
-                <button
-                  type="button"
-                  className={`dropbtn ${openSections.configuration ? 'open' : ''}`}
-                  onClick={() => toggleSection('configuration')}
-                >
-                  <span className="label">{t.configuration}</span>
-                  <span className="dropbtn-icon">
-                    {openSections.configuration ? <FiChevronUp /> : <FiChevronDown />}
-                  </span>
-                </button>
-
-                <div className={`toggle-grid dropdown-content ${openSections.configuration ? 'open' : ''}`}>
-                  <label className={`toggle ${inputs.admin ? 'checked' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={inputs.admin}
-                      onChange={(e) => updateInput('admin', e.target.checked)}
-                    />
-                    <span className="toggle-title">
-                      {t.adminTitle} <FiShield />
-                    </span>
-                    <span className="toggle-desc">{t.adminDesc}</span>
-                  </label>
-
-                  <label
-                    className={`toggle ${inputs.database ? 'checked' : ''} ${
-                      inputs.ecommerce ? 'disabled' : ''
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={inputs.database}
-                      disabled={inputs.ecommerce}
-                      onChange={(e) => updateInput('database', e.target.checked)}
-                    />
-                    <span className="toggle-title">
-                      {t.databaseTitle} <FiDatabase />
-                    </span>
-                    <span className="toggle-desc">
-                      {inputs.ecommerce ? t.databaseDescRequired : t.databaseDesc}
-                    </span>
-                  </label>
-
-                  <label className={`toggle ${inputs.ai ? 'checked' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={inputs.ai}
-                      onChange={(e) => updateInput('ai', e.target.checked)}
-                    />
-                    <span className="toggle-title">
-                      {t.aiTitle} <FiZap />
-                    </span>
-                    <span className="toggle-desc">{t.aiDesc}</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="group">
-                <button
-                  type="button"
-                  className={`dropbtn ${openSections.extraFeatures ? 'open' : ''}`}
-                  onClick={() => toggleSection('extraFeatures')}
-                >
-                  <span className="label">{t.extraFeatures}</span>
-                  <span className="dropbtn-icon">
-                    {openSections.extraFeatures ? <FiChevronUp /> : <FiChevronDown />}
-                  </span>
-                </button>
-
-                <div className={`toggle-grid dropdown-content ${openSections.extraFeatures ? 'open' : ''}`}>
-                  {[
-                    ['gallery', t.galleryTitle, t.galleryDesc],
-                    ['viewer3D', t.viewer3DTitle, t.viewer3DDesc],
-                    ['customDesign', t.customDesignTitle, t.customDesignDesc],
-                    ['contactForm', t.contactFormTitle, t.contactFormDesc],
-                    ['blog', t.blogTitle, t.blogDesc],
-                    ['booking', t.bookingTitle, t.bookingDesc],
-                  ].map(([key, title, desc]) => {
-                    const typedKey = key as keyof InputsState
-                    const checked = Boolean(inputs[typedKey])
-
-                    return (
-                      <label key={key} className={`toggle ${checked ? 'checked' : ''}`}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(e) =>
-                            updateInput(
-                              typedKey,
-                              e.target.checked as InputsState[keyof InputsState]
-                            )
-                          }
-                        />
-                        <span className="toggle-title">{title}</span>
-                        <span className="toggle-desc">{desc}</span>
-                      </label>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {(inputs.ecommerce ||
-                inputs.admin ||
-                (inputs.database && !inputs.ecommerce) ||
-                inputs.gallery ||
-                inputs.viewer3D) && (
-                <div className="group">
-                  <button
-                    type="button"
-                    className={`dropbtn ${openSections.complexity ? 'open' : ''}`}
-                    onClick={() => toggleSection('complexity')}
-                  >
-                    <span className="label">Complexity settings</span>
-                    <span className="dropbtn-icon">
-                      {openSections.complexity ? <FiChevronUp /> : <FiChevronDown />}
-                    </span>
-                  </button>
-
-                  <div className={`dropdown-content block ${openSections.complexity ? 'open' : ''}`}>
-                    {inputs.ecommerce && (
-                      <div className="mini-group">
-                        <label className="label">
-                          {t.ecommerceComplexity}
-                          <span className="value">
-                            {formatCurrency(
-                              dyn(priceMap.ecommerce.min, priceMap.ecommerce.max, inputs.ecommerceLevel)
-                            )}
-                          </span>
-                        </label>
-                        <input
-                          className="slider"
-                          type="range"
-                          min="1"
-                          max="10"
-                          value={inputs.ecommerceLevel}
-                          onChange={(e) =>
-                            updateInput('ecommerceLevel', parseInt(e.target.value, 10))
-                          }
-                        />
-                        <div className="scale-row">
-                          <span>{t.basic}</span>
-                          <span>{t.advanced}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {inputs.admin && (
-                      <div className="mini-group">
-                        <label className="label">
-                          {t.adminComplexity}
-                          <span className="value">
-                            {formatCurrency(dyn(priceMap.admin.min, priceMap.admin.max, inputs.adminLevel))}
-                          </span>
-                        </label>
-                        <input
-                          className="slider"
-                          type="range"
-                          min="1"
-                          max="10"
-                          value={inputs.adminLevel}
-                          onChange={(e) => updateInput('adminLevel', parseInt(e.target.value, 10))}
-                        />
-                        <div className="scale-row">
-                          <span>{t.basic}</span>
-                          <span>{t.advanced}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {inputs.database && !inputs.ecommerce && (
-                      <div className="mini-group">
-                        <label className="label">
-                          {t.databaseComplexity}
-                          <span className="value">
-                            {formatCurrency(
-                              dyn(priceMap.database.min, priceMap.database.max, inputs.databaseLevel)
-                            )}
-                          </span>
-                        </label>
-                        <input
-                          className="slider"
-                          type="range"
-                          min="1"
-                          max="10"
-                          value={inputs.databaseLevel}
-                          onChange={(e) =>
-                            updateInput('databaseLevel', parseInt(e.target.value, 10))
-                          }
-                        />
-                        <div className="scale-row">
-                          <span>{t.basic}</span>
-                          <span>{t.advanced}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {inputs.gallery && (
-                      <div className="mini-group">
-                        <label className="label">
-                          {t.galleryComplexity}
-                          <span className="value">
-                            {formatCurrency(
-                              dyn(priceMap.gallery.min, priceMap.gallery.max, inputs.galleryLevel)
-                            )}
-                          </span>
-                        </label>
-                        <input
-                          className="slider"
-                          type="range"
-                          min="1"
-                          max="10"
-                          value={inputs.galleryLevel}
-                          onChange={(e) =>
-                            updateInput('galleryLevel', parseInt(e.target.value, 10))
-                          }
-                        />
-                        <div className="scale-row">
-                          <span>{t.basic}</span>
-                          <span>{t.advanced}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {inputs.viewer3D && (
-                      <div className="mini-group">
-                        <label className="label">
-                          {t.viewer3DComplexity}
-                          <span className="value">
-                            {formatCurrency(
-                              dyn(priceMap.viewer3D.min, priceMap.viewer3D.max, inputs.viewer3DLevel)
-                            )}
-                          </span>
-                        </label>
-                        <input
-                          className="slider"
-                          type="range"
-                          min="1"
-                          max="10"
-                          value={inputs.viewer3DLevel}
-                          onChange={(e) =>
-                            updateInput('viewer3DLevel', parseInt(e.target.value, 10))
-                          }
-                        />
-                        <div className="scale-row">
-                          <span>{t.basic}</span>
-                          <span>{t.advanced}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              <ComplexitySettings
+                inputs={{
+                  ecommerce: inputs.ecommerce,
+                  ecommerceLevel: inputs.ecommerceLevel,
+                  admin: inputs.admin,
+                  adminLevel: inputs.adminLevel,
+                  database: inputs.database,
+                  databaseLevel: inputs.databaseLevel,
+                  gallery: inputs.gallery,
+                  galleryLevel: inputs.galleryLevel,
+                  viewer3D: inputs.viewer3D,
+                  viewer3DLevel: inputs.viewer3DLevel
+                }}
+                isOpen={openSections.complexity}
+                onToggle={() => toggleSection('complexity')}
+                onInputChange={(key, value) => updateInput(key, value)}
+                formatCurrency={formatCurrency}
+                dyn={dyn}
+                priceMap={priceMap}
+              />
 
               <p className="disclaimer">???? {t.priceDisclaimer}</p>
             </div>

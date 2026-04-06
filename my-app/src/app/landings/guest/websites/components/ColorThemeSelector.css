@@ -1,0 +1,112 @@
+/* Color Theme Selector Styles */
+.color-theme-group {
+  margin-bottom: 2rem;
+}
+
+.color-theme-group .dropbtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+  border: none;
+  padding: 0.75rem 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.color-theme-group .dropbtn:hover {
+  opacity: 0.85;
+}
+
+.color-theme-group .dropbtn .label {
+  margin-bottom: 0;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.color-theme-group .dropbtn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--muted);
+  transition: transform 0.25s ease, color 0.25s ease;
+}
+
+.color-theme-group .dropbtn.open .dropbtn-icon {
+  transform: rotate(180deg);
+  color: var(--text);
+}
+
+.color-theme-group .dropdown-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.color-theme-group .dropdown-content.open {
+  max-height: 500px;
+}
+
+.color-theme-group .theme-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.color-theme-group .theme-card {
+  background: white;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: left;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+}
+
+.color-theme-group .theme-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(124, 58, 237, 0.18);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.color-theme-group .theme-card.active {
+  border-color: rgba(124, 58, 237, 0.26);
+  background: linear-gradient(180deg, rgba(124, 58, 237, 0.08), rgba(124, 58, 237, 0.03));
+  box-shadow: 0 14px 30px rgba(59, 3, 155, 0.08);
+}
+
+.color-theme-group .theme-card-top {
+  margin-bottom: 0.75rem;
+}
+
+.color-theme-group .theme-card h4 {
+  margin: 0 0 0.25rem 0;
+  font-weight: 700;
+  color: var(--text);
+  font-size: 0.875rem;
+}
+
+.color-theme-group .theme-card p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-soft);
+  line-height: 1.4;
+}
+
+.color-theme-group .theme-palette {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.color-theme-group .theme-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+}

@@ -66,7 +66,7 @@ export default function SignupPage() {
         email,
         password,
         displayName,
-        accountType === 'business',
+        accountType || undefined,
         businessName || undefined
       )
 
