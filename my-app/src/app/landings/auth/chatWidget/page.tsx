@@ -1,38 +1,75 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
-import {
-  FiDollarSign,
-  FiSliders,
-  FiRefreshCw,
-  FiMessageCircle,
-  FiCheckCircle,
-  FiChevronDown,
-  FiChevronUp,
-  FiCheck,
-  FiX,
-  FiLogIn,
-} from 'react-icons/fi'
-import { FaInfinity } from 'react-icons/fa'
+import { FiRefreshCw, FiSliders, FiSave } from 'react-icons/fi'
 import './ChatWidget.css'
 import Header from '@/components/header'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
+import { updateChatWidgetConfig } from '@/lib/auth.service'
+
+// Import components
+import PlanSelector from '@/app/landings/auth/chatWidget/components/PlanSelector'
+import StyleSelector from '@/app/landings/auth/chatWidget/components/StyleSelector'
+import WidgetPreview from '@/app/landings/auth/chatWidget/components/WidgetPreview'
+import PricingPanel from '@/app/landings/auth/chatWidget/components/PricingPanel'
 
 type Plan = 'free' | 'pro' | 'business'
 type BillingCycle = 'monthly' | 'yearly'
-type BubbleStyle = 'rounded' | 'soft' | 'sharp'
-type HeaderStyle = 'minimal' | 'gradient' | 'dark'
-type BodyStyle = 'clean' | 'cards' | 'airy'
-type FooterStyle = 'simple' | 'glass' | 'bordered'
+type ColorTheme = 'modern' | 'chilling' | 'corporate' | 'luxury'
+type Position = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
 
 type InputsState = {
   plan: Plan
   billingCycle: BillingCycle
-  bubbleStyle: BubbleStyle
-  headerStyle: HeaderStyle
-  bodyStyle: BodyStyle
-  footerStyle: FooterStyle
+  colorTheme: ColorTheme
+  position: Position
+  
+  // Design options
+  bubbleStyle: {
+    showStatus: boolean
+    showCloseButton: boolean
+    borderType: 'none' | 'solid' | 'rounded' | 'shadow'
+    shadowType: 'none' | 'light' | 'medium' | 'heavy'
+    animationType: 'none' | 'bounce' | 'fade' | 'slide'
+    sizeType: 'small' | 'medium' | 'large'
+  }
+  
+  headerStyle: {
+    showStatus: boolean
+    showCloseButton: boolean
+    borderType: 'none' | 'solid' | 'rounded' | 'shadow'
+    shadowType: 'none' | 'light' | 'medium' | 'heavy'
+    showAvatar: boolean
+    showTitle: boolean
+  }
+  
+  bodyStyle: {
+    borderType: 'none' | 'solid' | 'rounded' | 'shadow'
+    shadowType: 'none' | 'light' | 'medium' | 'heavy'
+    messageStyle: 'bubble' | 'flat' | 'card'
+    showTimestamps: boolean
+    showReadReceipts: boolean
+  }
+  
+  footerStyle: {
+    showSendButton: boolean
+    borderType: 'none' | 'solid' | 'rounded' | 'shadow'
+    shadowType: 'none' | 'light' | 'medium' | 'heavy'
+    inputStyle: 'flat' | 'rounded' | 'outlined'
+    showPlaceholder: boolean
+  }
+  
+  // Custom branding and settings
+  customBranding: {
+    title?: string
+    description?: string
+    logo?: string
+  }
+  settings: {
+    autoOpen: boolean
+    delayMs: number
+  }
 }
 
 const planPrices: Record<Plan, { monthly: number; yearly: number }> = {
@@ -41,58 +78,60 @@ const planPrices: Record<Plan, { monthly: number; yearly: number }> = {
   business: { monthly: 59, yearly: 59 * 12 },
 }
 
-const planFeatures: Record<
-  Plan,
-  Array<{ label: string; status: 'included' | 'excluded' | 'highlight' }>
-> = {
-  free: [
-    { label: '100 conversations/month', status: 'included' },
-    { label: '1 team member', status: 'included' },
-    { label: 'Basic AI responses', status: 'included' },
-    { label: 'Remove branding', status: 'excluded' },
-    { label: 'Email support', status: 'excluded' },
-    { label: 'Extended design options', status: 'excluded' },
-  ],
-  pro: [
-    { label: 'Unlimited conversations', status: 'highlight' },
-    { label: '5 team members', status: 'included' },
-    { label: 'Advanced AI responses', status: 'included' },
-    { label: 'Remove branding', status: 'included' },
-    { label: 'Email support', status: 'included' },
-    { label: 'Extended design options', status: 'included' },
-  ],
-  business: [
-    { label: 'Everything in Pro', status: 'included' },
-    { label: 'Unlimited team members', status: 'highlight' },
-    { label: 'API access', status: 'included' },
-    { label: 'SLA guarantee', status: 'included' },
-  ],
-}
-
 export default function ChatWidgetBuilder() {
-  const { isAuthenticated, dbUser, loading } = useAuth()
   const router = useRouter()
-
-  /* ================= AUTH ================= */
-
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push('/auth/login')
-    }
-  }, [isAuthenticated, loading, router])
-
-  if (loading) return null
-  if (!isAuthenticated) return null
-
-  /* ================= STATE ================= */
-
+  const { isAuthenticated, dbUser, loading, business } = useAuth()
+  
   const [inputs, setInputs] = useState<InputsState>({
     plan: 'pro',
     billingCycle: 'monthly',
-    bubbleStyle: 'soft',
-    headerStyle: 'gradient',
-    bodyStyle: 'cards',
-    footerStyle: 'glass',
+    colorTheme: 'modern',
+    position: 'bottom-right',
+    
+    // Design options with defaults
+    bubbleStyle: {
+      showStatus: true,
+      showCloseButton: true,
+      borderType: 'rounded',
+      shadowType: 'medium',
+      animationType: 'bounce',
+      sizeType: 'medium',
+    },
+    
+    headerStyle: {
+      showStatus: true,
+      showCloseButton: true,
+      borderType: 'solid',
+      shadowType: 'light',
+      showAvatar: true,
+      showTitle: true,
+    },
+    
+    bodyStyle: {
+      borderType: 'none',
+      shadowType: 'none',
+      messageStyle: 'bubble',
+      showTimestamps: true,
+      showReadReceipts: false,
+    },
+    
+    footerStyle: {
+      showSendButton: true,
+      borderType: 'solid',
+      shadowType: 'light',
+      inputStyle: 'rounded',
+      showPlaceholder: true,
+    },
+    
+    // Custom branding and settings
+    customBranding: {
+      title: 'Support Chat',
+      description: 'We are here to help you!',
+    },
+    settings: {
+      autoOpen: false,
+      delayMs: 3000,
+    },
   })
 
   const [openSections, setOpenSections] = useState({
@@ -101,63 +140,191 @@ export default function ChatWidgetBuilder() {
     header: false,
     body: false,
     footer: false,
+    colorTheme: false,
+    position: false,
+    branding: false,
+    advanced: false,
   })
 
   const [showBreakdown, setShowBreakdown] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
-  const [isChatOpen, setIsChatOpen] = useState(false)
-  const [messages, setMessages] = useState([
-    { text: 'Hey! Welcome to our website. How can we help you today?', isBot: true },
-  ])
-  const [inputValue, setInputValue] = useState('')
+  const total = useMemo(() => planPrices[inputs.plan][inputs.billingCycle], [inputs.plan, inputs.billingCycle])
 
-  /* ================= LOGIC ================= */
+  // Save configuration to database
+  const saveConfig = async () => {
+    if (!dbUser?.businessId) return
 
-  const toggleSection = (section: keyof typeof openSections) => {
-    setOpenSections((prev) => ({
-      ...prev,
-      [section]: !prev[section],
-    }))
-  }
+    setIsSaving(true)
+    setSaveStatus('idle')
 
-  const handleSend = () => {
-    if (inputValue.trim()) {
-      setMessages((prev) => [...prev, { text: inputValue.trim(), isBot: false }])
-      setInputValue('')
+    try {
+      const result = await updateChatWidgetConfig(dbUser.businessId, {
+        plan: inputs.plan,
+        billingCycle: inputs.billingCycle,
+        colorTheme: inputs.colorTheme,
+        position: inputs.position,
+        bubbleStyle: inputs.bubbleStyle,
+        headerStyle: inputs.headerStyle,
+        bodyStyle: inputs.bodyStyle,
+        footerStyle: inputs.footerStyle,
+        customBranding: inputs.customBranding,
+        settings: inputs.settings,
+      })
+      
+      if (result.success) {
+        setSaveStatus('success')
+        setTimeout(() => setSaveStatus('idle'), 2000)
+      } else {
+        setSaveStatus('error')
+      }
+    } catch (error) {
+      console.error('Failed to save widget config:', error)
+      setSaveStatus('error')
+    } finally {
+      setIsSaving(false)
     }
   }
 
-  const total = useMemo(
-    () => planPrices[inputs.plan][inputs.billingCycle],
-    [inputs.plan, inputs.billingCycle]
-  )
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.push('/auth/login')
+    }
+  }, [isAuthenticated, loading, router])
+
+  // Load existing config from DB if available
+  useEffect(() => {
+    if (business?.chatWidgetConfig) {
+      const config = business.chatWidgetConfig
+      setInputs({
+        plan: config.plan || 'pro',
+        billingCycle: config.billingCycle || 'monthly',
+        colorTheme: config.colorTheme || 'modern',
+        position: config.position || 'bottom-right',
+        bubbleStyle: config.bubbleStyle || {
+          showStatus: true,
+          showCloseButton: true,
+          borderType: 'rounded',
+          shadowType: 'medium',
+          animationType: 'bounce',
+          sizeType: 'medium',
+        },
+        headerStyle: config.headerStyle || {
+          showStatus: true,
+          showCloseButton: true,
+          borderType: 'solid',
+          shadowType: 'light',
+          showAvatar: true,
+          showTitle: true,
+        },
+        bodyStyle: config.bodyStyle || {
+          borderType: 'none',
+          shadowType: 'none',
+          messageStyle: 'bubble',
+          showTimestamps: true,
+          showReadReceipts: false,
+        },
+        footerStyle: config.footerStyle || {
+          showSendButton: true,
+          borderType: 'solid',
+          shadowType: 'light',
+          inputStyle: 'rounded',
+          showPlaceholder: true,
+        },
+        customBranding: config.customBranding || {
+          title: 'Support Chat',
+          description: 'We are here to help you!',
+        },
+        settings: config.settings || {
+          autoOpen: false,
+          delayMs: 3000,
+        },
+      })
+    }
+  }, [business])
+
+  if (loading) return null
+  if (!isAuthenticated) return null
 
   const updateInput = <K extends keyof InputsState>(key: K, value: InputsState[K]) => {
     setInputs((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const toggleSection = (section: keyof typeof openSections) => {
+    setOpenSections((prev) => {
+      // Close all sections first
+      const allClosed = Object.keys(prev).reduce((acc, key) => ({
+        ...acc,
+        [key]: false
+      }), {} as typeof openSections)
+      
+      // Only open the clicked section
+      return {
+        ...allClosed,
+        [section]: !prev[section]
+      }
+    })
   }
 
   const resetBuilder = () => {
     setInputs({
       plan: 'pro',
       billingCycle: 'monthly',
-      bubbleStyle: 'soft',
-      headerStyle: 'gradient',
-      bodyStyle: 'cards',
-      footerStyle: 'glass',
+      colorTheme: 'modern',
+      position: 'bottom-right',
+      
+      // Design options with defaults
+      bubbleStyle: {
+        showStatus: true,
+        showCloseButton: true,
+        borderType: 'rounded',
+        shadowType: 'medium',
+        animationType: 'bounce',
+        sizeType: 'medium',
+      },
+      
+      headerStyle: {
+        showStatus: true,
+        showCloseButton: true,
+        borderType: 'solid',
+        shadowType: 'light',
+        showAvatar: true,
+        showTitle: true,
+      },
+      
+      bodyStyle: {
+        borderType: 'none',
+        shadowType: 'none',
+        messageStyle: 'bubble',
+        showTimestamps: true,
+        showReadReceipts: false,
+      },
+      
+      footerStyle: {
+        showSendButton: true,
+        borderType: 'solid',
+        shadowType: 'light',
+        inputStyle: 'rounded',
+        showPlaceholder: true,
+      },
+      
+      // Custom branding and settings
+      customBranding: {
+        title: 'Support Chat',
+        description: 'We are here to help you!',
+      },
+      settings: {
+        autoOpen: false,
+        delayMs: 3000,
+      },
     })
   }
-
-  const bubbleClass = `bubble-${inputs.bubbleStyle}`
-  const headerClass = `header-${inputs.headerStyle}`
-  const bodyClass = `body-${inputs.bodyStyle}`
-  const footerClass = `footer-${inputs.footerStyle}`
-
-  /* ================= UI ================= */
 
   return (
     <div className="chatbuilder-page">
       <Header />
-
       <main className="chatbuilder-content">
         <section className="chatbuilder-hero">
           <h1>Chat Widget Builder</h1>
@@ -175,215 +342,97 @@ export default function ChatWidgetBuilder() {
         </section>
 
         <div className="chatbuilder-grid">
-          {/* ================= BUILDER ================= */}
           <div className="builder-panel glass">
-                      <h2 className="section-title">
-                        <FiSliders /> Configure widget
-                      </h2>
-          
-                      <div className="group">
-                        <button
-                          type="button"
-                          className={`dropbtn ${openSections.plan ? 'open' : ''}`}
-                          onClick={() => toggleSection('plan')}
-                        >
-                          <span className="label">Subscription</span>
-                          <span className="dropbtn-icon">
-                            {openSections.plan ? <FiChevronUp /> : <FiChevronDown />}
-                          </span>
-                        </button>
-          
-                        <div className={`option-grid option-grid-3 dropdown-content ${openSections.plan ? 'open' : ''}`}>
-                          {([
-                            ['free', 'Free', '$0 / month', 'Basic widget access'],
-                            ['pro', 'Pro', '$29 / month', 'Better styling and business use'],
-                            ['business', 'Enterprise', '$59 / month', 'Premium widget setup'],
-                          ] as const).map(([value, title, price, desc]) => (
-                            <label
-                              key={value}
-                              className={`option-card ${inputs.plan === value ? 'checked' : ''}`}
-                            >
-                              <input
-                                type="radio"
-                                name="plan"
-                                checked={inputs.plan === value}
-                                onChange={() => updateInput('plan', value)}
-                              />
-          
-                              <div className="option-main">
-                                <span className="option-title">{title}</span>
-                                <span className="option-price">{price}</span>
-                                <span className="option-desc">{desc}</span>
-                              </div>
-          
-                              <ul className="option-feature-list">
-                                {planFeatures[value].map((feature) => (
-                                  <li key={feature.label} className={`feature-item ${feature.status}`}>
-                                    <span className="feature-dot" />
-                                    <span className="feature-label">{feature.label}</span>
-                                    {feature.status === 'included' && <FiCheck className="feature-icon" />}
-                                    {feature.status === 'excluded' && <FiX className="feature-icon" />}
-                                    {feature.status === 'highlight' && <FaInfinity className="feature-icon highlight" />}
-                                  </li>
-                                ))}
-                              </ul>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-          
-                      
-          
-                      <div className="group">
-                        <button
-                          type="button"
-                          className={`dropbtn ${openSections.bubble ? 'open' : ''}`}
-                          onClick={() => toggleSection('bubble')}
-                        >
-                          <span className="label">Chat bubble style</span>
-                          <span className="dropbtn-icon">
-                            {openSections.bubble ? <FiChevronUp /> : <FiChevronDown />}
-                          </span>
-                        </button>
-          
-                        <div className={`option-grid dropdown-content ${openSections.bubble ? 'open' : ''}`}>
-                          {(['rounded', 'soft', 'sharp'] as BubbleStyle[]).map((style) => (
-                            <label
-                              key={style}
-                              className={`option-card ${inputs.bubbleStyle === style ? 'checked' : ''}`}
-                            >
-                              <input
-                                type="radio"
-                                name="bubbleStyle"
-                                checked={inputs.bubbleStyle === style}
-                                onChange={() => updateInput('bubbleStyle', style)}
-                              />
-                              <span className="option-title">{style}</span>
-                              <span className="option-desc">Controls the message bubble appearance.</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-          
-                      <div className="group">
-                        <button
-                          type="button"
-                          className={`dropbtn ${openSections.header ? 'open' : ''}`}
-                          onClick={() => toggleSection('header')}
-                        >
-                          <span className="label">Header design</span>
-                          <span className="dropbtn-icon">
-                            {openSections.header ? <FiChevronUp /> : <FiChevronDown />}
-                          </span>
-                        </button>
-          
-                        <div className={`option-grid dropdown-content ${openSections.header ? 'open' : ''}`}>
-                          {(['minimal', 'gradient', 'dark'] as HeaderStyle[]).map((style) => (
-                            <label
-                              key={style}
-                              className={`option-card ${inputs.headerStyle === style ? 'checked' : ''}`}
-                            >
-                              <input
-                                type="radio"
-                                name="headerStyle"
-                                checked={inputs.headerStyle === style}
-                                onChange={() => updateInput('headerStyle', style)}
-                              />
-                              <span className="option-title">{style}</span>
-                              <span className="option-desc">Changes the top area of the widget.</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-          
-                      <div className="group">
-                        <button
-                          type="button"
-                          className={`dropbtn ${openSections.body ? 'open' : ''}`}
-                          onClick={() => toggleSection('body')}
-                        >
-                          <span className="label">Chat body design</span>
-                          <span className="dropbtn-icon">
-                            {openSections.body ? <FiChevronUp /> : <FiChevronDown />}
-                          </span>
-                        </button>
-          
-                        <div className={`option-grid dropdown-content ${openSections.body ? 'open' : ''}`}>
-                          {(['clean', 'cards', 'airy'] as BodyStyle[]).map((style) => (
-                            <label
-                              key={style}
-                              className={`option-card ${inputs.bodyStyle === style ? 'checked' : ''}`}
-                            >
-                              <input
-                                type="radio"
-                                name="bodyStyle"
-                                checked={inputs.bodyStyle === style}
-                                onChange={() => updateInput('bodyStyle', style)}
-                              />
-                              <span className="option-title">{style}</span>
-                              <span className="option-desc">Changes spacing and message area styling.</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-          
-                      <div className="group">
-                        <button
-                          type="button"
-                          className={`dropbtn ${openSections.footer ? 'open' : ''}`}
-                          onClick={() => toggleSection('footer')}
-                        >
-                          <span className="label">Footer design</span>
-                          <span className="dropbtn-icon">
-                            {openSections.footer ? <FiChevronUp /> : <FiChevronDown />}
-                          </span>
-                        </button>
-          
-                        <div className={`option-grid dropdown-content ${openSections.footer ? 'open' : ''}`}>
-                          {(['simple', 'glass', 'bordered'] as FooterStyle[]).map((style) => (
-                            <label
-                              key={style}
-                              className={`option-card ${inputs.footerStyle === style ? 'checked' : ''}`}
-                            >
-                              <input
-                                type="radio"
-                                name="footerStyle"
-                                checked={inputs.footerStyle === style}
-                                onChange={() => updateInput('footerStyle', style)}
-                              />
-                              <span className="option-title">{style}</span>
-                              <span className="option-desc">Changes the input area at the bottom.</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-          
-                      <button className="reset-btn" onClick={resetBuilder} type="button">
-                        <FiRefreshCw /> Reset
-                      </button>
-                    </div>
-
-          {/* ================= PREVIEW + PRICE ================= */}
-          <div className="preview-panel">
-            <div className="price-panel glass sticky">
+            <div className="panel-header">
               <h2 className="section-title">
-                <FiDollarSign /> Total
+                <FiSliders /> Configure widget
               </h2>
-
-              <h3>${total}</h3>
-
-              <button
-                className="continue-btn"
-                disabled={!dbUser}
-                onClick={() => {
-                  if (!dbUser) return router.push('/auth/login')
-                  router.push('/dashboard')
-                }}
-              >
-                <FiLogIn />
-                {!dbUser ? 'Login required' : 'Go to dashboard'}
-              </button>
+              <div className="panel-actions">
+                <div className="auto-save-indicator">
+                  {isSaving && (
+                    <span className="saving-status">
+                      <FiRefreshCw className="spinning" /> Saving...
+                    </span>
+                  )}
+                  {saveStatus === 'success' && (
+                    <span className="saved-status">
+                      <FiSave /> Saved
+                    </span>
+                  )}
+                </div>
+                <button 
+                  className="save-btn"
+                  onClick={saveConfig}
+                  disabled={isSaving}
+                >
+                  <FiSave />
+                  {isSaving ? 'Saving...' : saveStatus === 'success' ? 'Saved!' : 'Save Configuration'}
+                </button>
+                <button className="reset-btn" onClick={resetBuilder} type="button">
+                  <FiRefreshCw /> Reset
+                </button>
+              </div>
             </div>
+
+            {/* Plan Selector Component */}
+            <PlanSelector
+              plan={inputs.plan}
+              billingCycle={inputs.billingCycle}
+              onPlanChange={(plan) => updateInput('plan', plan)}
+              onBillingCycleChange={(cycle) => updateInput('billingCycle', cycle)}
+              isOpen={openSections.plan}
+              onToggle={() => toggleSection('plan')}
+            />
+
+            {/* Style Selector Component */}
+            <StyleSelector
+              bubbleStyle={inputs.bubbleStyle}
+              headerStyle={inputs.headerStyle}
+              bodyStyle={inputs.bodyStyle}
+              footerStyle={inputs.footerStyle}
+              onBubbleStyleChange={(style) => updateInput('bubbleStyle', style)}
+              onHeaderStyleChange={(style) => updateInput('headerStyle', style)}
+              onBodyStyleChange={(style) => updateInput('bodyStyle', style)}
+              onFooterStyleChange={(style) => updateInput('footerStyle', style)}
+              
+              // Advanced configs
+              colorTheme={inputs.colorTheme}
+              position={inputs.position}
+              customBranding={inputs.customBranding}
+              settings={inputs.settings}
+              onColorThemeChange={(theme) => updateInput('colorTheme', theme)}
+              onPositionChange={(pos) => updateInput('position', pos)}
+              onCustomBrandingChange={(branding) => updateInput('customBranding', branding)}
+              onSettingsChange={(settings) => updateInput('settings', settings)}
+              
+              openSections={openSections}
+              onToggleSection={toggleSection}
+            />
+          </div>
+
+          <div className="preview-panel">
+            {/* Widget Preview Component */}
+            <WidgetPreview
+              bubbleStyle={inputs.bubbleStyle}
+              headerStyle={inputs.headerStyle}
+              bodyStyle={inputs.bodyStyle}
+              footerStyle={inputs.footerStyle}
+              position={inputs.position}
+              colorTheme={inputs.colorTheme}
+            />
+
+            {/* Pricing Panel Component */}
+            <PricingPanel
+              total={total}
+              billingCycle={inputs.billingCycle}
+              plan={inputs.plan}
+              bubbleStyle={inputs.bubbleStyle}
+              headerStyle={inputs.headerStyle}
+              bodyStyle={inputs.bodyStyle}
+              footerStyle={inputs.footerStyle}
+              showBreakdown={showBreakdown}
+              onToggleBreakdown={() => setShowBreakdown(!showBreakdown)}
+            />
           </div>
         </div>
       </main>

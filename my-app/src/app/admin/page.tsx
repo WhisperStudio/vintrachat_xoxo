@@ -54,7 +54,7 @@ export default function AdminPage() {
           </button>
 
           <button
-            onClick={() => setActiveTab('widgets')}
+            onClick={() => router.push('/admin/widget')}
             className={activeTab === 'widgets' ? 'sideActive' : ''}
           >
             Chat Widgets

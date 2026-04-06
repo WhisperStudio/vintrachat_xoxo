@@ -1,0 +1,110 @@
+/* Design Level Selector Styles */
+.design-level-group {
+  margin-bottom: 2rem;
+}
+
+.design-level-group .dropbtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+  border: none;
+  padding: 0.75rem 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.design-level-group .dropbtn:hover {
+  opacity: 0.85;
+}
+
+.design-level-group .dropbtn .label {
+  margin-bottom: 0;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.design-level-group .dropbtn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--muted);
+  transition: transform 0.25s ease, color 0.25s ease;
+}
+
+.design-level-group .dropbtn.open .dropbtn-icon {
+  transform: rotate(180deg);
+  color: var(--text);
+}
+
+.design-level-group .dropdown-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.design-level-group .dropdown-content.open {
+  max-height: 500px;
+}
+
+.design-level-group .toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.design-level-group .toggle-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.design-level-group .toggle {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  padding: 1.25rem;
+  cursor: pointer;
+  display: block;
+  transition: all 0.25s ease;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+}
+
+.design-level-group .toggle input {
+  display: none;
+}
+
+.design-level-group .toggle:hover {
+  transform: translateY(-2px);
+  border-color: rgba(124, 58, 237, 0.18);
+  background: white;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.design-level-group .toggle.checked {
+  background: linear-gradient(180deg, rgba(124, 58, 237, 0.08), rgba(124, 58, 237, 0.03));
+  border-color: rgba(124, 58, 237, 0.26);
+  box-shadow: 0 14px 30px rgba(59, 3, 155, 0.08);
+}
+
+.design-level-group .toggle-title {
+  font-weight: 700;
+  color: var(--text);
+  text-transform: capitalize;
+}
+
+.design-level-group .design-level-title {
+  margin-bottom: 0.25rem;
+}
+
+.design-level-group .toggle-desc {
+  font-size: 0.875rem;
+  color: var(--text-soft);
+  line-height: 1.5;
+}

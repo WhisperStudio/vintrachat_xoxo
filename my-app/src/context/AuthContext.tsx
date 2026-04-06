@@ -10,11 +10,11 @@ import {
   signOut,
 } from "@/lib/auth.service";
 
-import { User as DBUser, Business } from "@/types/database";
+import { BusinessUser, Business } from "@/types/database";
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
-  dbUser: DBUser | null;
+  dbUser: BusinessUser | null;
   business: Business | null;
   loading: boolean;
   error: string | null;
@@ -26,7 +26,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  const [dbUser, setDbUser] = useState<DBUser | null>(null);
+  const [dbUser, setDbUser] = useState<BusinessUser | null>(null);
   const [business, setBusiness] = useState<Business | null>(null);
 
   const [loading, setLoading] = useState(true);

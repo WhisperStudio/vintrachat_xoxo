@@ -5,14 +5,19 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { verifyEmail } from '@/lib/auth.service'
+import { auth } from '@/lib/firebase'
+import { signInWithEmailAndPassword as firebaseSignIn } from 'firebase/auth'
 
 export default function VerifyEmailPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const token = searchParams.get('token')
+  const email = searchParams.get('email')
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
+  const [userEmail, setUserEmail] = useState('')
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
 
   useEffect(() => {
     if (!token) {
@@ -26,6 +31,14 @@ export default function VerifyEmailPage() {
       if (result.success) {
         setStatus('success')
         setMessage(result.message)
+        
+        // For business users, redirect til admin etter 2 sekunder
+        if (result.businessId) {
+          setIsLoggingIn(true)
+          setTimeout(() => {
+            router.push('/admin')
+          }, 2000)
+        }
       } else {
         setStatus('error')
         setMessage(result.message)
@@ -51,11 +64,21 @@ export default function VerifyEmailPage() {
             <>
               <h1>✅ Email verifisert!</h1>
               <p>{message}</p>
-              <Link href="/auth/login">
-                <button className="primaryBtn fullWidth" style={{ marginTop: '20px' }}>
-                  Gå til innlogging
-                </button>
-              </Link>
+              
+              {isLoggingIn && (
+                <div style={{ marginTop: '20px', textAlign: 'center' }}>
+                  <p>Logger deg inn automatisk...</p>
+                  <div className="loading-spinner" />
+                </div>
+              )}
+              
+              {!isLoggingIn && (
+                <Link href="/auth/login">
+                  <button className="primaryBtn fullWidth" style={{ marginTop: '20px' }}>
+                    Gå til innlogging
+                  </button>
+                </Link>
+              )}
             </>
           )}
 

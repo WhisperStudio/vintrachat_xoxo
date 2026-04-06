@@ -671,3 +671,425 @@ position: relative;
     width: 100%;
   }
 }
+
+/* Design Option Classes */
+
+/* Selected option styling */
+.option-card.checked {
+  border: 2px solid #7c3aed !important;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(124, 58, 237, 0.05)) !important;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15) !important;
+}
+
+.option-card:hover {
+  border-color: #7c3aed !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.1);
+}
+
+/* Better dropdown styling */
+.dropbtn {
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9) !important;
+  border: 2px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  padding: 12px 16px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.dropbtn:hover {
+  background: linear-gradient(135deg, #f1f5f9, #e0e7ff) !important;
+  border-color: #7c3aed !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
+}
+
+.dropbtn.open {
+  background: linear-gradient(135deg, #7c3aed, #5b21b6) !important;
+  border-color: #5b21b6 !important;
+  color: white !important;
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.25);
+}
+
+/* Improved option grid */
+.option-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Enhanced option cards */
+.option-card {
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.option-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #7c3aed, #5b21b6);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.option-card.checked::before {
+  transform: scaleX(1);
+}
+
+/* Better radio buttons */
+.option-card input[type="radio"],
+.option-card input[type="checkbox"] {
+  margin-right: 12px;
+  width: 18px;
+  height: 18px;
+  accent-color: #7c3aed;
+}
+
+/* Option titles and descriptions */
+.option-title {
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.option-desc {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Select dropdowns styling */
+select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  font-size: 14px;
+  margin-top: 8px;
+  transition: all 0.3s ease;
+}
+
+select:focus {
+  outline: none;
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+/* Group sections styling */
+.group {
+  margin-bottom: 24px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid #e2e8f0;
+}
+
+/* Label styling */
+.label {
+  font-weight: 600;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Icon styling */
+.dropbtn-icon {
+  transition: transform 0.3s ease;
+}
+
+.dropbtn.open .dropbtn-icon {
+  transform: rotate(180deg);
+}
+
+/* Border Types */
+.border-none {
+  border: none !important;
+}
+
+.border-solid {
+  border: 2px solid var(--border-strong) !important;
+}
+
+.border-rounded {
+  border: 2px solid var(--border-strong) !important;
+  border-radius: 12px !important;
+}
+
+.border-shadow {
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Shadow Types */
+.shadow-none {
+  box-shadow: none !important;
+}
+
+.shadow-light {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+.shadow-medium {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+}
+
+.shadow-heavy {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16) !important;
+}
+
+/* Animation Types */
+.animation-none {
+  animation: none !important;
+}
+
+.animation-bounce {
+  animation: bounce 2s infinite !important;
+}
+
+.animation-fade {
+  animation: fadeIn 0.3s ease-in-out !important;
+}
+
+.animation-slide {
+  animation: slideIn 0.3s ease-out !important;
+}
+
+/* Size Types */
+.size-small {
+  transform: scale(0.8) !important;
+}
+
+.size-medium {
+  transform: scale(1) !important;
+}
+
+.size-large {
+  transform: scale(1.2) !important;
+}
+
+/* Message Styles */
+.messages-bubble .message {
+  border-radius: 18px !important;
+  padding: 8px 12px !important;
+  background: #f1f5f9 !important;
+}
+
+.messages-flat .message {
+  border-radius: 4px !important;
+  padding: 10px !important;
+  background: #f8fafc !important;
+}
+
+.messages-card .message {
+  border-radius: 8px !important;
+  padding: 12px !important;
+  background: white !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+/* Input Styles */
+.input-flat input {
+  border-radius: 0 !important;
+  border: none !important;
+  border-bottom: 2px solid var(--border-strong) !important;
+}
+
+.input-rounded input {
+  border-radius: 20px !important;
+  border: 2px solid var(--border-strong) !important;
+}
+
+.input-outlined input {
+  border-radius: 8px !important;
+  border: 2px solid var(--border-strong) !important;
+}
+
+/* Animations */
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { 
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to { 
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Status dot for bubble */
+.status-dot {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  background: #10b981;
+  border-radius: 50%;
+  border: 2px solid white;
+}
+
+/* Close button styling */
+.close-btn {
+  background: rgba(0, 0, 0, 0.1);
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Timestamp and read receipts */
+.timestamp {
+  font-size: 11px;
+  color: #999;
+  margin-left: 8px;
+}
+
+.read-receipt {
+  font-size: 12px;
+  color: #10b981;
+  margin-left: 4px;
+}
+
+/* Position Classes */
+.position-bottom-right .floating-chat-preview {
+  bottom: 2rem;
+  right: 2rem;
+  left: auto;
+  top: auto;
+}
+
+.position-bottom-left .floating-chat-preview {
+  bottom: 2rem;
+  left: 2rem;
+  right: auto;
+  top: auto;
+}
+
+.position-top-right .floating-chat-preview {
+  top: 2rem;
+  right: 2rem;
+  left: auto;
+  bottom: auto;
+}
+
+.position-top-left .floating-chat-preview {
+  top: 2rem;
+  left: 2rem;
+  right: auto;
+  bottom: auto;
+}
+
+/* Color Theme Classes */
+.theme-modern {
+  --chat-primary: #3b82f6;
+  --chat-secondary: #1e40af;
+  --chat-bg: #ffffff;
+  --chat-text: #1f2937;
+  --chat-border: #e5e7eb;
+}
+
+.theme-chilling {
+  --chat-primary: #10b981;
+  --chat-secondary: #047857;
+  --chat-bg: #f0fdf4;
+  --chat-text: #064e3b;
+  --chat-border: #bbf7d0;
+}
+
+.theme-corporate {
+  --chat-primary: #6b7280;
+  --chat-secondary: #374151;
+  --chat-bg: #f9fafb;
+  --chat-text: #111827;
+  --chat-border: #d1d5db;
+}
+
+.theme-luxury {
+  --chat-primary: #7c3aed;
+  --chat-secondary: #5b21b6;
+  --chat-bg: #faf5ff;
+  --chat-text: #4c1d95;
+  --chat-border: #e9d5ff;
+}
+
+/* Apply color theme to widget elements */
+.chat-widget {
+  background-color: var(--chat-bg);
+  color: var(--chat-text);
+  border-color: var(--chat-border);
+}
+
+.chat-header {
+  background-color: var(--chat-primary);
+  color: white;
+}
+
+.chat-footer input {
+  background-color: var(--chat-bg);
+  color: var(--chat-text);
+  border-color: var(--chat-border);
+}
+
+.message.message-bot {
+  background-color: var(--chat-primary);
+  color: white;
+}
+
+.message.message-user {
+  background-color: var(--chat-secondary);
+  color: white;
+}
+
+.widget-icon {
+  background-color: var(--chat-primary);
+  color: white;
+}

@@ -2,6 +2,7 @@
 
 import {
   collection,
+  addDoc,
   getDocs,
   query,
   where,
@@ -15,6 +16,41 @@ import {
 
 import { db } from "@/lib/firebase";
 import { UserRole } from "@/types/database";
+
+// ----------------------
+// CREATE INVITE
+// ----------------------
+export async function createInvitation(
+  businessId: string,
+  inviteEmail: string,
+  role: UserRole,
+  createdBy: string
+) {
+  try {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    const ref = await addDoc(
+      collection(db, `businesses/${businessId}/invitations`),
+      {
+        email: inviteEmail,
+        role,
+        createdBy,
+        status: "pending",
+        expiresAt,
+        createdAt: serverTimestamp(),
+      }
+    );
+
+    return {
+      success: true,
+      invitationId: ref.id,
+    };
+  } catch (err) {
+    console.error(err);
+    return { success: false };
+  }
+}
 
 // ----------------------
 // ACCEPT INVITE
@@ -95,4 +131,22 @@ export async function getBusinessInvitations(businessId: string) {
     id: d.id,
     ...d.data(),
   }));
+}
+
+// ----------------------
+// DELETE INVITE
+// ----------------------
+export async function deleteInvitation(
+  businessId: string,
+  invitationId: string
+) {
+  try {
+    await deleteDoc(
+      doc(db, `businesses/${businessId}/invitations/${invitationId}`)
+    );
+    return { success: true };
+  } catch (err) {
+    console.error(err);
+    return { success: false };
+  }
 }
