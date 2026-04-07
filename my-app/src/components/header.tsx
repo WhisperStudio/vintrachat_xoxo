@@ -95,6 +95,10 @@ const UserText = styled.span`
 `
 
 export default function Header() {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
   const { isAuthenticated, dbUser, logout } = useAuth()
   const router = useRouter()
 
