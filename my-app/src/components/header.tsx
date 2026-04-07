@@ -4,7 +4,6 @@ import React from 'react'
 import Link from 'next/link'
 import styled from 'styled-components'
 import { useAuth } from '@/context/AuthContext'
-
 import { useRouter } from 'next/navigation'
 
 const StyledHeader = styled.header`
@@ -95,10 +94,6 @@ const UserText = styled.span`
 `
 
 export default function Header() {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
   const { isAuthenticated, dbUser, logout } = useAuth()
   const router = useRouter()
 
@@ -135,20 +130,21 @@ export default function Header() {
         {!isAuthenticated ? (
           <>
             <Link href="/auth/login">
-              <GhostButton>Log In</GhostButton>
+              <GhostButton type="button">Log In</GhostButton>
             </Link>
             <Link href="/auth/signup">
-              <PrimaryButton>Sign Up</PrimaryButton>
+              <PrimaryButton type="button">Sign Up</PrimaryButton>
             </Link>
           </>
         ) : (
           <>
             <UserText>Hei, {dbUser?.displayName || dbUser?.email}</UserText>
-            <GhostButton onClick={handleLogout}>Log Out</GhostButton>
+            <GhostButton type="button" onClick={handleLogout}>
+              Log Out
+            </GhostButton>
           </>
         )}
       </Right>
     </StyledHeader>
   )
 }
-

@@ -23,7 +23,7 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 
-import { AuthResponse, UserRole, BusinessUser, ChatWidgetConfig } from "@/types/database";
+import { AuthResponse, UserRole, BusinessUser, ChatWidgetConfig, Business } from "@/types/database";
 
 // ----------------------
 // Google Auth
@@ -226,19 +226,56 @@ export async function createBusiness(
   const businessId = businessRef.id;
 
   // Default chat widget config
-  const defaultWidgetConfig = {
-    designLevel: 'standard' as const,
-    colorTheme: 'modern' as const,
-    position: 'bottom-right' as const,
-    customBranding: {
-      title: businessName,
-      description: 'Vi er her for å hjelpe deg!',
-    },
-    settings: {
-      autoOpen: false,
-      delayMs: 3000,
-    },
-  };
+  const defaultWidgetConfig: ChatWidgetConfig = {
+  plan: "free",
+  billingCycle: "monthly",
+  colorTheme: "modern",
+  position: "bottom-right",
+
+  bubbleStyle: {
+    showStatus: true,
+    showCloseButton: true,
+    borderType: "rounded",
+    shadowType: "medium",
+    animationType: "fade",
+    sizeType: "medium",
+  },
+
+  headerStyle: {
+    showStatus: true,
+    showCloseButton: true,
+    borderType: "rounded",
+    shadowType: "light",
+    showAvatar: true,
+    showTitle: true,
+  },
+
+  bodyStyle: {
+    borderType: "none",
+    shadowType: "none",
+    messageStyle: "bubble",
+    showTimestamps: true,
+    showReadReceipts: false,
+  },
+
+  footerStyle: {
+    showSendButton: true,
+    borderType: "none",
+    shadowType: "none",
+    inputStyle: "rounded",
+    showPlaceholder: true,
+  },
+
+  customBranding: {
+    title: businessName,
+    description: "Vi er her for å hjelpe deg!",
+  },
+
+  settings: {
+    autoOpen: false,
+    delayMs: 3000,
+  },
+};
 
   // business root
   await setDoc(businessRef, {
@@ -389,7 +426,7 @@ export async function getCurrentUser(firebaseUser: FirebaseUser) {
       const userData = userDoc.data();
       return {
         id: firebaseUser.uid,
-        email: userData.email || firebaseUser.email,
+        email: userData.email || firebaseUser.email || "",
         displayName: userData.displayName,
         businessId: businessDoc.id,
         role: userData.role,
@@ -413,7 +450,7 @@ export async function getCurrentUser(firebaseUser: FirebaseUser) {
       const userData = userDoc.data();
       return {
         id: firebaseUser.uid,
-        email: userData.email || firebaseUser.email,
+        email: userData.email || firebaseUser.email || "",
         displayName: userData.displayName,
         businessId: businessDoc.id,
         role: userData.role,
@@ -431,10 +468,12 @@ export async function getCurrentUser(firebaseUser: FirebaseUser) {
 // ----------------------
 // GET BUSINESS INFO
 // ----------------------
-export async function getBusinessInfo(businessId: string) {
+export async function getBusinessInfo(
+  businessId: string
+): Promise<Business | null> {
   const businessRef = doc(db, "businesses", businessId);
   const snap = await getDoc(businessRef);
-  
+
   if (snap.exists()) {
     const data = snap.data();
     return {
@@ -448,7 +487,7 @@ export async function getBusinessInfo(businessId: string) {
       chatWidgetConfig: data.chatWidgetConfig,
     };
   }
-  
+
   return null;
 }
 
