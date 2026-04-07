@@ -5,28 +5,31 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Link from 'next/link'
 import { signUpWithEmail } from '@/lib/auth.service'
+import './signup.css'
+import { FiEye, FiEyeOff } from 'react-icons/fi'
 
 export default function SignupPage() {
   const router = useRouter()
-  
+
   const [step, setStep] = useState<'choice' | 'form'>('choice')
-  const [accountType, setAccountType] = useState<'business' | 'user' | null>(null)
+  const [accountType, setAccountType] = useState<'business' | 'user'>('business')
   const [businessName, setBusinessName] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleContinue = () => {
     if (!accountType) {
-      setError('Velg hva slags konto du vil opprette')
+      setError('Please select an account type to continue')
       return
     }
 
     if (accountType === 'business' && !businessName.trim()) {
-      setError('Bedriftsnavn er påkrevd')
+      setError('Business name is required')
       return
     }
 
@@ -38,24 +41,23 @@ export default function SignupPage() {
     e.preventDefault()
     setError('')
 
-    // Validation
     if (!displayName.trim()) {
-      setError('Navn er påkrevd')
+      setError('Full name is required')
       return
     }
 
     if (!email.trim()) {
-      setError('Email er påkrevd')
+      setError('Email is required')
       return
     }
 
     if (password.length < 6) {
-      setError('Passord må være minst 6 tegn')
+      setError('Password must be at least 6 characters')
       return
     }
 
     if (password !== confirmPassword) {
-      setError('Passordene stemmer ikke overens')
+      setError('Passwords do not match')
       return
     }
 
@@ -71,13 +73,12 @@ export default function SignupPage() {
       )
 
       if (result.success) {
-        // Redirect to verification sent page
         router.push(`/auth/verify-email-sent?email=${encodeURIComponent(email)}`)
       } else {
         setError(result.message)
       }
     } catch (err: any) {
-      setError(err.message || 'Registrering feilet')
+      setError(err.message || 'Something went wrong during signup')
     } finally {
       setLoading(false)
     }
@@ -88,58 +89,85 @@ export default function SignupPage() {
       <Header />
       <main className="authPage">
         <div className="authCard">
+
+          {/* STEP 1: ACCOUNT TYPE */}
           {step === 'choice' && (
             <>
-              <h1>Opprett Konto</h1>
-              <p>Velg hva slags konto du vil opprette</p>
+              <h1>Create your account</h1>
+              <p style={{ marginBottom: '20px' }}>
+                Choose how you want to use the platform
+              </p>
 
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', marginBottom: '15px', cursor: 'pointer' }}>
-                  <input
-                    type="radio"
-                    name="accountType"
-                    value="business"
-                    checked={accountType === 'business'}
-                    onChange={(e) => {
-                      setAccountType('business')
-                      setError('')
-                    }}
-                    style={{ marginRight: '10px' }}
-                  />
-                  <span>
-                    <strong>Bedriftsadmin</strong>
-                    <p style={{ margin: 0, fontSize: '0.9em', color: '#666' }}>Jeg oppretter bedriftskonto og blir admin</p>
-                  </span>
-                </label>
+              <div className="accountTypeGrid">
 
-                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                  <input
-                    type="radio"
-                    name="accountType"
-                    value="user"
-                    checked={accountType === 'user'}
-                    onChange={(e) => {
-                      setAccountType('user')
-                      setError('')
-                    }}
-                    style={{ marginRight: '10px' }}
-                  />
-                  <span>
-                    <strong>Bruker</strong>
-                    <p style={{ margin: 0, fontSize: '0.9em', color: '#666' }}>Jeg venter på invitasjon fra bedrift</p>
-                  </span>
-                </label>
+                {/* BUSINESS */}
+                <div
+                  className={`accountCard ${accountType === 'business' ? 'active' : ''}`}
+                  onClick={() => {
+                    setAccountType('business')
+                    setError('')
+                  }}
+                >
+                  <div className="cardHeader">
+                    <div className={`radioDot ${accountType === 'business' ? 'active' : ''}`} />
+                    <h3>Business Account</h3>
+                  </div>
+
+                  <p className="desc">
+                    Create and manage a company workspace.
+                  </p>
+
+                  {accountType === 'business' && (
+                    <ul className="featuresList">
+                      <li>✔ Create a company</li>
+                      <li>✔ Invite team members</li>
+                      <li>✔ Manage users</li>
+                    </ul>
+                  )}
+
+                  <small className="hint">
+                    Choose this if you are setting up a company.
+                  </small>
+                </div>
+
+                {/* USER */}
+                <div
+                  className={`accountCard ${accountType === 'user' ? 'active' : ''}`}
+                  onClick={() => {
+                    setAccountType('user')
+                    setError('')
+                  }}
+                >
+                  <div className="cardHeader">
+                    <div className={`radioDot ${accountType === 'user' ? 'active' : ''}`} />
+                    <h3>Personal User</h3>
+                  </div>
+
+                  <p className="desc">
+                    Join an existing company.
+                  </p>
+
+                  {accountType === 'user' && (
+                    <ul className="featuresList">
+                      <li>✔ Join via invitation</li>
+                      <li>✔ Access assigned workspace</li>
+                    </ul>
+                  )}
+
+                  <small className="hint">
+                    Choose this if your company invited you.
+                  </small>
+                </div>
               </div>
 
               {accountType === 'business' && (
                 <label>
-                  <span>Bedriftsnavn</span>
+                  <span>Company name</span>
                   <input
                     type="text"
-                    placeholder="F.eks. Acme AS"
+                    placeholder="e.g. Acme Inc."
                     value={businessName}
                     onChange={(e) => setBusinessName(e.target.value)}
-                    required
                   />
                 </label>
               )}
@@ -148,95 +176,109 @@ export default function SignupPage() {
 
               <button
                 className="primaryBtn fullWidth"
-                type="button"
                 onClick={handleContinue}
-                disabled={!accountType}
               >
-                Neste
+                Continue
               </button>
 
-              <p className="authSwitch" style={{ marginTop: '20px' }}>
-                Har du allerede bruker? <Link href="/auth/login">Logg inn</Link>
+              <p className="authSwitch">
+                Already have an account? <Link href="/auth/login">Log in</Link>
               </p>
             </>
           )}
 
+          {/* STEP 2: FORM */}
           {step === 'form' && (
             <>
-              <h1>Opprett Konto</h1>
-              <p>Fyll inn dine opplysninger</p>
+              <h1>Create your account</h1>
+              <p>Enter your details below</p>
 
               <form onSubmit={handleSignup}>
                 <label>
-                  <span>Navn</span>
+                  <span>Full name</span>
                   <input
                     type="text"
-                    placeholder="Ditt navn"
+                    autoComplete="name"
+                    placeholder="John Doe"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    required
                   />
                 </label>
 
                 <label>
-                  <span>Email</span>
+                  <span>Email address</span>
                   <input
                     type="email"
-                    placeholder="din@email.com"
+                    name="email"
+                    autoComplete="email"
+                    placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    required
                   />
                 </label>
 
                 <label>
-                  <span>Passord</span>
-                  <input
-                    type="password"
-                    placeholder="Minst 6 tegn"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
+                  <span>Password</span>
+                  <div className="inputWrapper">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      autoComplete="new-password"
+                      placeholder="Minimum 6 characters"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="togglePassword"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <FiEyeOff /> : <FiEye />}
+                    </button>
+                  </div>
                 </label>
 
                 <label>
-                  <span>Bekreft Passord</span>
-                  <input
-                    type="password"
-                    placeholder="Gjenta passordet"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                  />
+                  <span>Confirm password</span>
+                  <div className="inputWrapper">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="confirmPassword"
+                      autoComplete="new-password"
+                      placeholder="Repeat your password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="togglePassword"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <FiEyeOff /> : <FiEye />}
+                    </button>
+                  </div>
                 </label>
 
                 {error && <div className="errorBox">{error}</div>}
 
-                <button className="primaryBtn fullWidth" type="submit" disabled={loading}>
-                  {loading ? 'Oppretter...' : 'Opprett Konto'}
+                <button className="primaryBtn fullWidth" disabled={loading}>
+                  {loading ? 'Creating account...' : 'Create account'}
                 </button>
 
                 <button
-                  className="secondaryBtn fullWidth"
                   type="button"
+                  className="backBtn"
                   onClick={() => {
                     setStep('choice')
                     setError('')
-                    setDisplayName('')
-                    setEmail('')
-                    setPassword('')
-                    setConfirmPassword('')
                   }}
-                  disabled={loading}
-                  style={{ marginTop: '10px', background: '#f0f0f0', color: '#333' }}
                 >
-                  Tilbake
+                  Back
                 </button>
               </form>
 
-              <p className="authSwitch" style={{ marginTop: '20px' }}>
-                Har du allerede bruker? <Link href="/auth/login">Logg inn</Link>
+              <p className="authSwitch">
+                Already have an account? <Link href="/auth/login">Log in</Link>
               </p>
             </>
           )}

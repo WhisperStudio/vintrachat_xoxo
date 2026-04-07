@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { WebsiteShowcaseModal } from './website-showcases'
+import Header from '@/components/header'
 
 // ─── Minimal inline SVG icons ───────────────────────────────────────────────
 
@@ -349,17 +350,7 @@ export default function MainLanding() {
       `}</style>
 
       {/* ── HEADER ─────────────────────────────────────── */}
-      <header style={{ borderBottom: '1px solid #F0F0F0', background: '#fff', position: 'sticky', top: 0, zIndex: 100, backdropFilter: 'blur(10px)' }}>
-        <div className="page" style={{ display: 'flex', alignItems: 'center', height: 60, gap: 32 }}>
-          <span style={{ fontWeight: 900, fontSize: 22, letterSpacing: -0.5 }}>vintra</span>
-          <nav style={{ display: 'flex', gap: 28, marginLeft: 'auto' }}>
-            <a href="#websites" style={{ fontSize: 14, color: '#555', textDecoration: 'none' }}>Websites</a>
-            <a href="#chatbot" style={{ fontSize: 14, color: '#555', textDecoration: 'none' }}>Chatbot</a>
-            <a href="#pricing" style={{ fontSize: 14, color: '#555', textDecoration: 'none' }}>Pricing</a>
-          </nav>
-          <Link href="/login" style={{ fontSize: 14, fontWeight: 600, color: '#111', textDecoration: 'none', border: '1.5px solid #E0E0E0', borderRadius: 999, padding: '6px 16px' }}>Log in</Link>
-        </div>
-      </header>
+      <Header/>
 
       <main>
         {/* ── HERO ───────────────────────────────────────── */}

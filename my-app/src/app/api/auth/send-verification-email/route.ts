@@ -19,12 +19,12 @@ export async function POST(req: NextRequest) {
     await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL!,
       to: email,
-      subject: "Verifiser email adressen din",
+      subject: "Verify your email address",
       html: `
         <div>
-          <h2>Hei ${displayName || ""}</h2>
-          <p>Klikk under for å verifisere:</p>
-          <a href="${link}">Verifiser email</a>
+          <h2>Hi ${displayName || ""} and welcome to VintraSolutions</h2>
+          <p>Click the link below to verify your email:</p>
+          <a href="${link}">Verify Email</a>
         </div>
       `,
     });
