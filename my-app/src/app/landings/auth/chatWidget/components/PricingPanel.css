@@ -1,0 +1,143 @@
+/* PricingPanel Component Styles */
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.total-box {
+  margin-bottom: 1rem;
+  padding: 1rem 1rem 1.4rem;
+  text-align: center;
+  border: 1px solid rgba(124, 58, 237, 0.12);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(124, 58, 237, 0.06), rgba(59, 130, 246, 0.04));
+}
+
+.total-label {
+  margin: 0 0 0.6rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.total-price {
+  margin: 0;
+  font-size: 3rem;
+  line-height: 1;
+  font-weight: 900;
+  background: var(--brand-grad);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.total-price span {
+  margin-left: 0.2rem;
+  font-size: 1rem;
+}
+
+.summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.summary-list.compact {
+  gap: 0.4rem;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  color: var(--text-soft);
+}
+
+.summary-row strong {
+  color: var(--text);
+  text-transform: capitalize;
+}
+
+.breakdown-section {
+  margin: 1rem 0;
+}
+
+.breakdown-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.breakdown-toggle .dropbtn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  transform: rotate(0deg);
+  transition: transform var(--transition), color var(--transition);
+}
+
+.breakdown-toggle.open .dropbtn-icon {
+  color: var(--text);
+  transform: rotate(180deg);
+}
+
+.breakdown-content {
+  margin-top: 0.8rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.continue-btn {
+  width: 100%;
+  margin-top: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.95rem 1rem;
+  border: none;
+  border-radius: 14px;
+  background: #111827;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.continue-btn:hover {
+  background: #1f2937;
+}
+
+.continue-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.sticky {
+  position: sticky;
+  top: 100px;
+}
+
+/* Responsive for PricingPanel */
+@media (max-width: 1080px) {
+  .sticky {
+    position: static;
+  }
+}

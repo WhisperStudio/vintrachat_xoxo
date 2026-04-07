@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { FiCheckCircle, FiMessageCircle, FiSend } from 'react-icons/fi'
+import './WidgetPreview.css'
 
 interface WidgetPreviewProps {
   bubbleStyle: {

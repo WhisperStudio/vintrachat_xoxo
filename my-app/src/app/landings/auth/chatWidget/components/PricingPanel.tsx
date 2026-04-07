@@ -1,6 +1,7 @@
 'use client'
 
 import { FiChevronDown, FiDollarSign, FiLogIn, FiSave } from 'react-icons/fi'
+import './PricingPanel.css'
 
 interface PricingPanelProps {
   total: number

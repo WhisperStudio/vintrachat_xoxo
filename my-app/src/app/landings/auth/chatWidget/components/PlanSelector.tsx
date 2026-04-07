@@ -2,6 +2,7 @@
 
 import { FiCheck, FiChevronDown, FiX } from 'react-icons/fi'
 import { FaInfinity } from 'react-icons/fa'
+import './PlanSelector.css'
 
 type Plan = 'free' | 'pro' | 'business'
 type BillingCycle = 'monthly' | 'yearly'
@@ -90,28 +91,28 @@ export default function PlanSelector({
             </ul>
           </label>
         ))}
-      </div>
 
-      <div className="billing-cycle-toggle">
-        <label className={`billing-option ${billingCycle === 'monthly' ? 'active' : ''}`}>
-          <input
-            type="radio"
-            name="billingCycle"
-            checked={billingCycle === 'monthly'}
-            onChange={() => onBillingCycleChange('monthly')}
-          />
-          <span>Monthly</span>
-        </label>
+        <div className="billing-cycle-toggle">
+          <label className={`billing-option ${billingCycle === 'monthly' ? 'active' : ''}`}>
+            <input
+              type="radio"
+              name="billingCycle"
+              checked={billingCycle === 'monthly'}
+              onChange={() => onBillingCycleChange('monthly')}
+            />
+            <span>Monthly</span>
+          </label>
 
-        <label className={`billing-option ${billingCycle === 'yearly' ? 'active' : ''}`}>
-          <input
-            type="radio"
-            name="billingCycle"
-            checked={billingCycle === 'yearly'}
-            onChange={() => onBillingCycleChange('yearly')}
-          />
-          <span>Yearly</span>
-        </label>
+          <label className={`billing-option ${billingCycle === 'yearly' ? 'active' : ''}`}>
+            <input
+              type="radio"
+              name="billingCycle"
+              checked={billingCycle === 'yearly'}
+              onChange={() => onBillingCycleChange('yearly')}
+            />
+            <span>Yearly</span>
+          </label>
+        </div>
       </div>
     </div>
   )

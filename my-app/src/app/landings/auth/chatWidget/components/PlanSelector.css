@@ -1,0 +1,202 @@
+/* PlanSelector Component Styles */
+
+.group {
+  margin-bottom: 1.5rem;
+}
+
+.label {
+  display: block;
+  margin-bottom: 0.8rem;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+
+.dropbtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 1.2rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.dropbtn:hover {
+  opacity: 0.85;
+}
+
+.dropbtn .label {
+  margin-bottom: 0;
+}
+
+.dropbtn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  transform: rotate(0deg);
+  transition: transform var(--transition), color var(--transition);
+}
+
+.dropbtn.open .dropbtn-icon {
+  color: var(--text);
+  transform: rotate(180deg);
+}
+
+.dropdown-content {
+  display: none;
+}
+
+.dropdown-content.open {
+  display: block;
+}
+
+.option-grid {
+  gap: 1rem;
+  grid-template-columns: repeat(2, 1fr);
+  border-left: 1px solid rgb(178, 178, 178);
+  border-right: 1px solid rgb(178, 178, 178);
+}
+
+.option-grid.dropdown-content.open {
+  display: grid;
+}
+
+.option-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.option-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 5px 0;
+  padding: 1rem;
+  border-top: 1px solid #fff;
+  border-bottom: 1px solid #fff;
+  background: #fff;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.option-card input {
+  display: none;
+}
+
+.option-card:hover {
+  border-color: #cacacab3;
+}
+
+.option-card.checked {
+  border-color: rgba(124, 58, 237, 0.28);
+  background: linear-gradient(180deg, rgba(124, 58, 237, 0.08), rgba(124, 58, 237, 0.03));
+}
+
+.option-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.option-title {
+  font-weight: 800;
+  color: var(--text);
+  text-transform: capitalize;
+}
+
+.option-price {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--brand);
+}
+
+.option-desc {
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.option-feature-list {
+  min-width: 180px;
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feature-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text-soft);
+}
+
+.feature-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.8;
+}
+
+.feature-icon {
+  font-size: 0.95rem;
+}
+
+.feature-icon.highlight {
+  color: #7c3aed;
+}
+
+.billing-cycle-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 0 1rem 1rem;
+}
+
+.billing-option {
+  flex: 1;
+  min-width: 140px;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--text-soft);
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.billing-option.active {
+  border-color: rgba(124, 58, 237, 0.28);
+  background: linear-gradient(180deg, rgba(124, 58, 237, 0.08), rgba(124, 58, 237, 0.03));
+  color: var(--text);
+}
+
+.billing-option input {
+  accent-color: #7c3aed;
+}
+
+/* Responsive for PlanSelector */
+@media (max-width: 768px) {
+  .option-grid,
+  .option-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}

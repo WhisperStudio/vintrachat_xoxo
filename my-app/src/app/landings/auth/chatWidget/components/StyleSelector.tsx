@@ -1,6 +1,7 @@
 'use client'
 
 import { FiChevronDown } from 'react-icons/fi'
+import './StyleSelector.css'
 
 type ColorTheme = 'modern' | 'chilling' | 'corporate' | 'luxury'
 type Position = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
