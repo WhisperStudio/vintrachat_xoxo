@@ -226,12 +226,11 @@ export async function createBusiness(
   const businessId = businessRef.id;
 
   // Default chat widget config
-  const defaultWidgetConfig: ChatWidgetConfig = {
+const defaultWidgetConfig: ChatWidgetConfig = {
   plan: "free",
   billingCycle: "monthly",
   colorTheme: "modern",
   position: "bottom-right",
-
   bubbleStyle: {
     showStatus: true,
     showCloseButton: true,
@@ -240,7 +239,6 @@ export async function createBusiness(
     animationType: "fade",
     sizeType: "medium",
   },
-
   headerStyle: {
     showStatus: true,
     showCloseButton: true,
@@ -249,7 +247,6 @@ export async function createBusiness(
     showAvatar: true,
     showTitle: true,
   },
-
   bodyStyle: {
     borderType: "none",
     shadowType: "none",
@@ -257,7 +254,6 @@ export async function createBusiness(
     showTimestamps: true,
     showReadReceipts: false,
   },
-
   footerStyle: {
     showSendButton: true,
     borderType: "none",
@@ -265,12 +261,10 @@ export async function createBusiness(
     inputStyle: "rounded",
     showPlaceholder: true,
   },
-
   customBranding: {
     title: businessName,
     description: "Vi er her for å hjelpe deg!",
   },
-
   settings: {
     autoOpen: false,
     delayMs: 3000,
@@ -409,7 +403,7 @@ export async function resetPassword(token: string, newPassword: string) {
 // ----------------------
 // GET CURRENT USER (fra business)
 // ----------------------
-export async function getCurrentUser(firebaseUser: FirebaseUser) {
+export async function getCurrentUser(firebaseUser: FirebaseUser): Promise<BusinessUser | null> {
   // Sjekk om user er admin/owner først
   const businessesRef = collection(db, "businesses");
   const ownerQuery = query(businessesRef, where("ownerId", "==", firebaseUser.uid));
