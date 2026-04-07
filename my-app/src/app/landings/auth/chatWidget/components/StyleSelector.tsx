@@ -1,12 +1,9 @@
 'use client'
 
-import { FiChevronDown, FiChevronUp } from 'react-icons/fi'
+import { FiChevronDown } from 'react-icons/fi'
 
-// Advanced config types
 type ColorTheme = 'modern' | 'chilling' | 'corporate' | 'luxury'
 type Position = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
-
-// Design option types
 type BorderType = 'none' | 'solid' | 'rounded' | 'shadow'
 type ShadowType = 'none' | 'light' | 'medium' | 'heavy'
 type AnimationType = 'none' | 'bounce' | 'fade' | 'slide'
@@ -15,7 +12,6 @@ type MessageStyle = 'bubble' | 'flat' | 'card'
 type InputStyle = 'flat' | 'rounded' | 'outlined'
 
 interface StyleSelectorProps {
-  // Design options with object types
   bubbleStyle: {
     showStatus: boolean
     showCloseButton: boolean
@@ -46,14 +42,10 @@ interface StyleSelectorProps {
     inputStyle: InputStyle
     showPlaceholder: boolean
   }
-  
-  // Change handlers with object types
   onBubbleStyleChange: (style: StyleSelectorProps['bubbleStyle']) => void
   onHeaderStyleChange: (style: StyleSelectorProps['headerStyle']) => void
   onBodyStyleChange: (style: StyleSelectorProps['bodyStyle']) => void
   onFooterStyleChange: (style: StyleSelectorProps['footerStyle']) => void
-  
-  // Advanced configs
   colorTheme: ColorTheme
   position: Position
   customBranding: {
@@ -69,7 +61,6 @@ interface StyleSelectorProps {
   onPositionChange: (position: Position) => void
   onCustomBrandingChange: (branding: any) => void
   onSettingsChange: (settings: any) => void
-  
   openSections: {
     bubble: boolean
     header: boolean
@@ -80,14 +71,16 @@ interface StyleSelectorProps {
     branding: boolean
     advanced: boolean
   }
-  onToggleSection: (section: 'bubble' | 'header' | 'body' | 'footer' | 'colorTheme' | 'position' | 'branding' | 'advanced') => void
+  onToggleSection: (
+    section: 'bubble' | 'header' | 'body' | 'footer' | 'colorTheme' | 'position' | 'branding' | 'advanced'
+  ) => void
 }
 
-const colorThemeInfo: Record<ColorTheme, { label: string; description: string; preview: string }> = {
-  modern: { label: 'Modern', description: 'Clean and contemporary', preview: '#3B82F6' },
-  chilling: { label: 'Chilling', description: 'Relaxed and friendly', preview: '#10B981' },
-  corporate: { label: 'Corporate', description: 'Professional and serious', preview: '#6B7280' },
-  luxury: { label: 'Luxury', description: 'Exclusive and elegant', preview: '#7C3AED' },
+const colorThemeInfo: Record<ColorTheme, { label: string; description: string }> = {
+  modern: { label: 'Modern', description: 'Clean and contemporary' },
+  chilling: { label: 'Chilling', description: 'Relaxed and friendly' },
+  corporate: { label: 'Corporate', description: 'Professional and serious' },
+  luxury: { label: 'Luxury', description: 'Exclusive and elegant' },
 }
 
 export default function StyleSelector({
@@ -99,8 +92,6 @@ export default function StyleSelector({
   onHeaderStyleChange,
   onBodyStyleChange,
   onFooterStyleChange,
-  
-  // Advanced configs
   colorTheme,
   position,
   customBranding,
@@ -109,22 +100,16 @@ export default function StyleSelector({
   onPositionChange,
   onCustomBrandingChange,
   onSettingsChange,
-  
   openSections,
-  onToggleSection
+  onToggleSection,
 }: StyleSelectorProps) {
   return (
     <>
-      {/* Chat Bubble Style */}
       <div className="group">
-        <button
-          type="button"
-          className={`dropbtn ${openSections.bubble ? 'open' : ''}`}
-          onClick={() => onToggleSection('bubble')}
-        >
+        <button type="button" className={`dropbtn ${openSections.bubble ? 'open' : ''}`} onClick={() => onToggleSection('bubble')}>
           <span className="label">🫧 Chat bubble design</span>
           <span className="dropbtn-icon">
-            {openSections.bubble ? <FiChevronUp /> : <FiChevronDown />}
+            <FiChevronDown />
           </span>
         </button>
 
@@ -135,78 +120,66 @@ export default function StyleSelector({
               checked={bubbleStyle.showStatus}
               onChange={(e) => onBubbleStyleChange({ ...bubbleStyle, showStatus: e.target.checked })}
             />
-            <span className="option-title">💬 Vis status prikk</span>
-            <span className="option-desc">Vis online/status prikk på boble</span>
+            <span className="option-title">Show status dot</span>
+            <span className="option-desc">Show online/status dot on widget bubble</span>
           </label>
+
           <label className="option-card">
             <input
               type="checkbox"
               checked={bubbleStyle.showCloseButton}
               onChange={(e) => onBubbleStyleChange({ ...bubbleStyle, showCloseButton: e.target.checked })}
             />
-            <span className="option-title">❌ Vis lukk-knapp</span>
-            <span className="option-desc">Vis lukk-knapp på boble</span>
+            <span className="option-title">Show close button</span>
+            <span className="option-desc">Show close action on widget bubble</span>
           </label>
+
           <label className="option-card">
-            <span className="option-title">🎨 Kant-type</span>
-            <select 
-              value={bubbleStyle.borderType}
-              onChange={(e) => onBubbleStyleChange({ ...bubbleStyle, borderType: e.target.value as BorderType })}
-            >
-              <option value="none">Ingen kant</option>
-              <option value="solid">Solid kant</option>
-              <option value="rounded">Avrundet kant</option>
-              <option value="shadow">Skygge-kant</option>
+            <span className="option-title">Border type</span>
+            <select value={bubbleStyle.borderType} onChange={(e) => onBubbleStyleChange({ ...bubbleStyle, borderType: e.target.value as BorderType })}>
+              <option value="none">None</option>
+              <option value="solid">Solid</option>
+              <option value="rounded">Rounded</option>
+              <option value="shadow">Shadow</option>
             </select>
           </label>
+
           <label className="option-card">
-            <span className="option-title">🌟 Skygge-type</span>
-            <select 
-              value={bubbleStyle.shadowType}
-              onChange={(e) => onBubbleStyleChange({ ...bubbleStyle, shadowType: e.target.value as ShadowType })}
-            >
-              <option value="none">Ingen skygge</option>
-              <option value="light">Lys skygge</option>
-              <option value="medium">Medium skygge</option>
-              <option value="heavy">Mørk skygge</option>
-            </select>
-          </label>
-          <label className="option-card">
-            <span className="option-title">✨ Animasjon-type</span>
-            <select 
-              value={bubbleStyle.animationType}
-              onChange={(e) => onBubbleStyleChange({ ...bubbleStyle, animationType: e.target.value as AnimationType })}
-            >
-              <option value="none">Ingen animasjon</option>
-              <option value="bounce">Sprettop animasjon</option>
-              <option value="fade">Fade inn animasjon</option>
-              <option value="slide">Skyld animasjon</option>
-            </select>
-          </label>
-          <label className="option-card">
-            <span className="option-title">📏 Størrelse</span>
-            <select 
-              value={bubbleStyle.sizeType}
-              onChange={(e) => onBubbleStyleChange({ ...bubbleStyle, sizeType: e.target.value as SizeType })}
-            >
-              <option value="small">Liten</option>
+            <span className="option-title">Shadow type</span>
+            <select value={bubbleStyle.shadowType} onChange={(e) => onBubbleStyleChange({ ...bubbleStyle, shadowType: e.target.value as ShadowType })}>
+              <option value="none">None</option>
+              <option value="light">Light</option>
               <option value="medium">Medium</option>
-              <option value="large">Stor</option>
+              <option value="heavy">Heavy</option>
+            </select>
+          </label>
+
+          <label className="option-card">
+            <span className="option-title">Animation</span>
+            <select value={bubbleStyle.animationType} onChange={(e) => onBubbleStyleChange({ ...bubbleStyle, animationType: e.target.value as AnimationType })}>
+              <option value="none">None</option>
+              <option value="bounce">Bounce</option>
+              <option value="fade">Fade</option>
+              <option value="slide">Slide</option>
+            </select>
+          </label>
+
+          <label className="option-card">
+            <span className="option-title">Size</span>
+            <select value={bubbleStyle.sizeType} onChange={(e) => onBubbleStyleChange({ ...bubbleStyle, sizeType: e.target.value as SizeType })}>
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
             </select>
           </label>
         </div>
       </div>
 
-      {/* Header Design */}
       <div className="group">
-        <button
-          type="button"
-          className={`dropbtn ${openSections.header ? 'open' : ''}`}
-          onClick={() => onToggleSection('header')}
-        >
+        <button type="button" className={`dropbtn ${openSections.header ? 'open' : ''}`} onClick={() => onToggleSection('header')}>
           <span className="label">🎩 Header design</span>
           <span className="dropbtn-icon">
-            {openSections.header ? <FiChevronUp /> : <FiChevronDown />}
+            <FiChevronDown />
           </span>
         </button>
 
@@ -217,143 +190,127 @@ export default function StyleSelector({
               checked={headerStyle.showStatus}
               onChange={(e) => onHeaderStyleChange({ ...headerStyle, showStatus: e.target.checked })}
             />
-            <span className="option-title">💬 Vis status</span>
-            <span className="option-desc">Vis online/status i header</span>
+            <span className="option-title">Show status</span>
+            <span className="option-desc">Show online indicator in header</span>
           </label>
+
           <label className="option-card">
             <input
               type="checkbox"
               checked={headerStyle.showCloseButton}
               onChange={(e) => onHeaderStyleChange({ ...headerStyle, showCloseButton: e.target.checked })}
             />
-            <span className="option-title">❌ Vis lukk-knapp</span>
-            <span className="option-desc">Vis lukk-knapp i header</span>
+            <span className="option-title">Show close button</span>
+            <span className="option-desc">Show close button in header</span>
           </label>
+
           <label className="option-card">
             <input
               type="checkbox"
               checked={headerStyle.showAvatar}
               onChange={(e) => onHeaderStyleChange({ ...headerStyle, showAvatar: e.target.checked })}
             />
-            <span className="option-title">👤 Vis avatar</span>
-            <span className="option-desc">Vis profilbilde i header</span>
+            <span className="option-title">Show avatar</span>
+            <span className="option-desc">Show avatar in header</span>
           </label>
+
           <label className="option-card">
             <input
               type="checkbox"
               checked={headerStyle.showTitle}
               onChange={(e) => onHeaderStyleChange({ ...headerStyle, showTitle: e.target.checked })}
             />
-            <span className="option-title">📝 Vis tittel</span>
-            <span className="option-desc">Vis tittel i header</span>
+            <span className="option-title">Show title</span>
+            <span className="option-desc">Show widget title in header</span>
           </label>
+
           <label className="option-card">
-            <span className="option-title">🎨 Kant-type</span>
-            <select 
-              value={headerStyle.borderType}
-              onChange={(e) => onHeaderStyleChange({ ...headerStyle, borderType: e.target.value as BorderType })}
-            >
-              <option value="none">Ingen kant</option>
-              <option value="solid">Solid kant</option>
-              <option value="rounded">Avrundet kant</option>
-              <option value="shadow">Skygge-kant</option>
+            <span className="option-title">Border type</span>
+            <select value={headerStyle.borderType} onChange={(e) => onHeaderStyleChange({ ...headerStyle, borderType: e.target.value as BorderType })}>
+              <option value="none">None</option>
+              <option value="solid">Solid</option>
+              <option value="rounded">Rounded</option>
+              <option value="shadow">Shadow</option>
             </select>
           </label>
+
           <label className="option-card">
-            <span className="option-title">🌟 Skygge-type</span>
-            <select 
-              value={headerStyle.shadowType}
-              onChange={(e) => onHeaderStyleChange({ ...headerStyle, shadowType: e.target.value as ShadowType })}
-            >
-              <option value="none">Ingen skygge</option>
-              <option value="light">Lys skygge</option>
-              <option value="medium">Medium skygge</option>
-              <option value="heavy">Mørk skygge</option>
+            <span className="option-title">Shadow type</span>
+            <select value={headerStyle.shadowType} onChange={(e) => onHeaderStyleChange({ ...headerStyle, shadowType: e.target.value as ShadowType })}>
+              <option value="none">None</option>
+              <option value="light">Light</option>
+              <option value="medium">Medium</option>
+              <option value="heavy">Heavy</option>
             </select>
           </label>
         </div>
       </div>
 
-      {/* Chat Body Design */}
       <div className="group">
-        <button
-          type="button"
-          className={`dropbtn ${openSections.body ? 'open' : ''}`}
-          onClick={() => onToggleSection('body')}
-        >
+        <button type="button" className={`dropbtn ${openSections.body ? 'open' : ''}`} onClick={() => onToggleSection('body')}>
           <span className="label">💬 Chat body design</span>
           <span className="dropbtn-icon">
-            {openSections.body ? <FiChevronUp /> : <FiChevronDown />}
+            <FiChevronDown />
           </span>
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.body ? 'open' : ''}`}>
           <label className="option-card">
-            <span className="option-title">🎨 Kant-type</span>
-            <select 
-              value={bodyStyle.borderType}
-              onChange={(e) => onBodyStyleChange({ ...bodyStyle, borderType: e.target.value as BorderType })}
-            >
-              <option value="none">Ingen kant</option>
-              <option value="solid">Solid kant</option>
-              <option value="rounded">Avrundet kant</option>
-              <option value="shadow">Skygge-kant</option>
+            <span className="option-title">Border type</span>
+            <select value={bodyStyle.borderType} onChange={(e) => onBodyStyleChange({ ...bodyStyle, borderType: e.target.value as BorderType })}>
+              <option value="none">None</option>
+              <option value="solid">Solid</option>
+              <option value="rounded">Rounded</option>
+              <option value="shadow">Shadow</option>
             </select>
           </label>
+
           <label className="option-card">
-            <span className="option-title">🌟 Skygge-type</span>
-            <select 
-              value={bodyStyle.shadowType}
-              onChange={(e) => onBodyStyleChange({ ...bodyStyle, shadowType: e.target.value as ShadowType })}
-            >
-              <option value="none">Ingen skygge</option>
-              <option value="light">Lys skygge</option>
-              <option value="medium">Medium skygge</option>
-              <option value="heavy">Mørk skygge</option>
+            <span className="option-title">Shadow type</span>
+            <select value={bodyStyle.shadowType} onChange={(e) => onBodyStyleChange({ ...bodyStyle, shadowType: e.target.value as ShadowType })}>
+              <option value="none">None</option>
+              <option value="light">Light</option>
+              <option value="medium">Medium</option>
+              <option value="heavy">Heavy</option>
             </select>
           </label>
+
           <label className="option-card">
-            <span className="option-title">💭 Melding-style</span>
-            <select 
-              value={bodyStyle.messageStyle}
-              onChange={(e) => onBodyStyleChange({ ...bodyStyle, messageStyle: e.target.value as MessageStyle })}
-            >
-              <option value="bubble">Boble-stil</option>
-              <option value="flat">Flat stil</option>
-              <option value="card">Kort-stil</option>
+            <span className="option-title">Message style</span>
+            <select value={bodyStyle.messageStyle} onChange={(e) => onBodyStyleChange({ ...bodyStyle, messageStyle: e.target.value as MessageStyle })}>
+              <option value="bubble">Bubble</option>
+              <option value="flat">Flat</option>
+              <option value="card">Card</option>
             </select>
           </label>
+
           <label className="option-card">
             <input
               type="checkbox"
               checked={bodyStyle.showTimestamps}
               onChange={(e) => onBodyStyleChange({ ...bodyStyle, showTimestamps: e.target.checked })}
             />
-            <span className="option-title">⏰ Vis tidsstempel</span>
-            <span className="option-desc">Vis tidspunkt for meldinger</span>
+            <span className="option-title">Show timestamps</span>
+            <span className="option-desc">Show message timestamps</span>
           </label>
+
           <label className="option-card">
             <input
               type="checkbox"
               checked={bodyStyle.showReadReceipts}
               onChange={(e) => onBodyStyleChange({ ...bodyStyle, showReadReceipts: e.target.checked })}
             />
-            <span className="option-title">✅ Vis lesekvittering</span>
-            <span className="option-desc">Vis lesekvittering for meldinger</span>
+            <span className="option-title">Show read receipts</span>
+            <span className="option-desc">Show read receipts on messages</span>
           </label>
         </div>
       </div>
 
-      {/* Footer Design */}
       <div className="group">
-        <button
-          type="button"
-          className={`dropbtn ${openSections.footer ? 'open' : ''}`}
-          onClick={() => onToggleSection('footer')}
-        >
+        <button type="button" className={`dropbtn ${openSections.footer ? 'open' : ''}`} onClick={() => onToggleSection('footer')}>
           <span className="label">⌨️ Footer design</span>
           <span className="dropbtn-icon">
-            {openSections.footer ? <FiChevronUp /> : <FiChevronDown />}
+            <FiChevronDown />
           </span>
         </button>
 
@@ -364,81 +321,63 @@ export default function StyleSelector({
               checked={footerStyle.showSendButton}
               onChange={(e) => onFooterStyleChange({ ...footerStyle, showSendButton: e.target.checked })}
             />
-            <span className="option-title">📤 Vis send-knapp</span>
-            <span className="option-desc">Vis send-knapp i footer</span>
+            <span className="option-title">Show send button</span>
+            <span className="option-desc">Show send button in footer</span>
           </label>
+
           <label className="option-card">
-            <span className="option-title">🎨 Kant-type</span>
-            <select 
-              value={footerStyle.borderType}
-              onChange={(e) => onFooterStyleChange({ ...footerStyle, borderType: e.target.value as BorderType })}
-            >
-              <option value="none">Ingen kant</option>
-              <option value="solid">Solid kant</option>
-              <option value="rounded">Avrundet kant</option>
-              <option value="shadow">Skygge-kant</option>
+            <span className="option-title">Border type</span>
+            <select value={footerStyle.borderType} onChange={(e) => onFooterStyleChange({ ...footerStyle, borderType: e.target.value as BorderType })}>
+              <option value="none">None</option>
+              <option value="solid">Solid</option>
+              <option value="rounded">Rounded</option>
+              <option value="shadow">Shadow</option>
             </select>
           </label>
+
           <label className="option-card">
-            <span className="option-title">🌟 Skygge-type</span>
-            <select 
-              value={footerStyle.shadowType}
-              onChange={(e) => onFooterStyleChange({ ...footerStyle, shadowType: e.target.value as ShadowType })}
-            >
-              <option value="none">Ingen skygge</option>
-              <option value="light">Lys skygge</option>
-              <option value="medium">Medium skygge</option>
-              <option value="heavy">Mørk skygge</option>
+            <span className="option-title">Shadow type</span>
+            <select value={footerStyle.shadowType} onChange={(e) => onFooterStyleChange({ ...footerStyle, shadowType: e.target.value as ShadowType })}>
+              <option value="none">None</option>
+              <option value="light">Light</option>
+              <option value="medium">Medium</option>
+              <option value="heavy">Heavy</option>
             </select>
           </label>
+
           <label className="option-card">
-            <span className="option-title">📝 Input-style</span>
-            <select 
-              value={footerStyle.inputStyle}
-              onChange={(e) => onFooterStyleChange({ ...footerStyle, inputStyle: e.target.value as InputStyle })}
-            >
-              <option value="flat">Flat stil</option>
-              <option value="rounded">Avrundet stil</option>
-              <option value="outlined">Kant-stil</option>
+            <span className="option-title">Input style</span>
+            <select value={footerStyle.inputStyle} onChange={(e) => onFooterStyleChange({ ...footerStyle, inputStyle: e.target.value as InputStyle })}>
+              <option value="flat">Flat</option>
+              <option value="rounded">Rounded</option>
+              <option value="outlined">Outlined</option>
             </select>
           </label>
+
           <label className="option-card">
             <input
               type="checkbox"
               checked={footerStyle.showPlaceholder}
               onChange={(e) => onFooterStyleChange({ ...footerStyle, showPlaceholder: e.target.checked })}
             />
-            <span className="option-title">📝 Vis plassholder</span>
-            <span className="option-desc">Vis plassholdertekst i input</span>
+            <span className="option-title">Show placeholder</span>
+            <span className="option-desc">Show placeholder text in input</span>
           </label>
         </div>
       </div>
 
-      {/* Color Theme */}
       <div className="group">
-        <button
-          type="button"
-          className={`dropbtn ${openSections.colorTheme ? 'open' : ''}`}
-          onClick={() => onToggleSection('colorTheme')}
-        >
-          <span className="label">🎨 Farge-tema</span>
+        <button type="button" className={`dropbtn ${openSections.colorTheme ? 'open' : ''}`} onClick={() => onToggleSection('colorTheme')}>
+          <span className="label">🎨 Color theme</span>
           <span className="dropbtn-icon">
-            {openSections.colorTheme ? <FiChevronUp /> : <FiChevronDown />}
+            <FiChevronDown />
           </span>
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.colorTheme ? 'open' : ''}`}>
           {Object.entries(colorThemeInfo).map(([theme, info]) => (
-            <label
-              key={theme}
-              className={`option-card ${colorTheme === theme ? 'checked' : ''}`}
-            >
-              <input
-                type="radio"
-                name="colorTheme"
-                checked={colorTheme === theme}
-                onChange={() => onColorThemeChange(theme as ColorTheme)}
-              />
+            <label key={theme} className={`option-card ${colorTheme === theme ? 'checked' : ''}`}>
+              <input type="radio" name="colorTheme" checked={colorTheme === theme} onChange={() => onColorThemeChange(theme as ColorTheme)} />
               <span className="option-title">{info.label}</span>
               <span className="option-desc">{info.description}</span>
             </label>
@@ -446,36 +385,23 @@ export default function StyleSelector({
         </div>
       </div>
 
-      {/* Position */}
       <div className="group">
-        <button
-          type="button"
-          className={`dropbtn ${openSections.position ? 'open' : ''}`}
-          onClick={() => onToggleSection('position')}
-        >
-          <span className="label">📍 Widget-posisjon</span>
+        <button type="button" className={`dropbtn ${openSections.position ? 'open' : ''}`} onClick={() => onToggleSection('position')}>
+          <span className="label">📍 Widget position</span>
           <span className="dropbtn-icon">
-            {openSections.position ? <FiChevronUp /> : <FiChevronDown />}
+            <FiChevronDown />
           </span>
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.position ? 'open' : ''}`}>
           {[
-            { value: 'bottom-right', label: 'Nede høyre', desc: 'Nede til høyre på skjermen' },
-            { value: 'bottom-left', label: 'Nede venstre', desc: 'Nede til venstre på skjermen' },
-            { value: 'top-right', label: 'Oppe høyre', desc: 'Oppe til høyre på skjermen' },
-            { value: 'top-left', label: 'Oppe venstre', desc: 'Oppe til venstre på skjermen' }
+            { value: 'bottom-right', label: 'Bottom right', desc: 'Bottom right of the screen' },
+            { value: 'bottom-left', label: 'Bottom left', desc: 'Bottom left of the screen' },
+            { value: 'top-right', label: 'Top right', desc: 'Top right of the screen' },
+            { value: 'top-left', label: 'Top left', desc: 'Top left of the screen' },
           ].map((pos) => (
-            <label
-              key={pos.value}
-              className={`option-card ${position === pos.value ? 'checked' : ''}`}
-            >
-              <input
-                type="radio"
-                name="position"
-                checked={position === pos.value}
-                onChange={() => onPositionChange(pos.value as Position)}
-              />
+            <label key={pos.value} className={`option-card ${position === pos.value ? 'checked' : ''}`}>
+              <input type="radio" name="position" checked={position === pos.value} onChange={() => onPositionChange(pos.value as Position)} />
               <span className="option-title">{pos.label}</span>
               <span className="option-desc">{pos.desc}</span>
             </label>
@@ -483,22 +409,17 @@ export default function StyleSelector({
         </div>
       </div>
 
-      {/* Custom Branding */}
       <div className="group">
-        <button
-          type="button"
-          className={`dropbtn ${openSections.branding ? 'open' : ''}`}
-          onClick={() => onToggleSection('branding')}
-        >
-          <span className="label">Custom Branding</span>
+        <button type="button" className={`dropbtn ${openSections.branding ? 'open' : ''}`} onClick={() => onToggleSection('branding')}>
+          <span className="label">Custom branding</span>
           <span className="dropbtn-icon">
-            {openSections.branding ? <FiChevronUp /> : <FiChevronDown />}
+            <FiChevronDown />
           </span>
         </button>
 
         <div className={`branding-content dropdown-content ${openSections.branding ? 'open' : ''}`}>
           <div className="branding-field">
-            <label>Widget Title</label>
+            <label>Widget title</label>
             <input
               type="text"
               value={customBranding.title || ''}
@@ -506,8 +427,9 @@ export default function StyleSelector({
               placeholder="Support Chat"
             />
           </div>
+
           <div className="branding-field">
-            <label>Widget Description</label>
+            <label>Widget description</label>
             <input
               type="text"
               value={customBranding.description || ''}
@@ -515,6 +437,7 @@ export default function StyleSelector({
               placeholder="We are here to help you!"
             />
           </div>
+
           <div className="branding-field">
             <label>Logo URL (optional)</label>
             <input
@@ -527,16 +450,11 @@ export default function StyleSelector({
         </div>
       </div>
 
-      {/* Advanced Settings */}
       <div className="group">
-        <button
-          type="button"
-          className={`dropbtn ${openSections.advanced ? 'open' : ''}`}
-          onClick={() => onToggleSection('advanced')}
-        >
-          <span className="label">Advanced Settings</span>
+        <button type="button" className={`dropbtn ${openSections.advanced ? 'open' : ''}`} onClick={() => onToggleSection('advanced')}>
+          <span className="label">Advanced settings</span>
           <span className="dropbtn-icon">
-            {openSections.advanced ? <FiChevronUp /> : <FiChevronDown />}
+            <FiChevronDown />
           </span>
         </button>
 
@@ -551,12 +469,13 @@ export default function StyleSelector({
               Auto-open widget
             </label>
           </div>
+
           <div className="advanced-field">
             <label>Delay before auto-open (milliseconds)</label>
             <input
               type="number"
               value={settings.delayMs || 3000}
-              onChange={(e) => onSettingsChange({ ...settings, delayMs: parseInt(e.target.value) })}
+              onChange={(e) => onSettingsChange({ ...settings, delayMs: parseInt(e.target.value || '0', 10) })}
               min="0"
               max="10000"
               step="500"

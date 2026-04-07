@@ -1,6 +1,6 @@
 'use client'
 
-import { FiDollarSign, FiChevronDown, FiChevronUp, FiLogIn } from 'react-icons/fi'
+import { FiChevronDown, FiDollarSign, FiLogIn, FiSave } from 'react-icons/fi'
 
 interface PricingPanelProps {
   total: number
@@ -38,6 +38,10 @@ interface PricingPanelProps {
   }
   showBreakdown: boolean
   onToggleBreakdown: () => void
+  isAuthenticated: boolean
+  onContinue: () => void
+  onSave: () => void
+  isSaving: boolean
 }
 
 export default function PricingPanel({
@@ -49,7 +53,11 @@ export default function PricingPanel({
   bodyStyle,
   footerStyle,
   showBreakdown,
-  onToggleBreakdown
+  onToggleBreakdown,
+  isAuthenticated,
+  onContinue,
+  onSave,
+  isSaving,
 }: PricingPanelProps) {
   return (
     <div className="price-panel glass sticky">
@@ -66,14 +74,39 @@ export default function PricingPanel({
       </div>
 
       <div className="breakdown-section">
-        <button 
-          type="button"
-          className="breakdown-toggle"
-          onClick={onToggleBreakdown}
-        >
+        <button type="button" className={`breakdown-toggle ${showBreakdown ? 'open' : ''}`} onClick={onToggleBreakdown}>
           <span>Plan breakdown</span>
-          {showBreakdown ? <FiChevronUp /> : <FiChevronDown />}
+          <span className="dropbtn-icon">
+            <FiChevronDown />
+          </span>
         </button>
+
+        {showBreakdown && (
+          <div className="breakdown-content">
+            <h4>{plan.charAt(0).toUpperCase() + plan.slice(1)} plan</h4>
+
+            <div className="summary-list compact">
+              <div className="summary-row">
+                <span>Bubble</span>
+                <strong>
+                  {bubbleStyle.sizeType}, {bubbleStyle.animationType}
+                </strong>
+              </div>
+              <div className="summary-row">
+                <span>Header</span>
+                <strong>{headerStyle.showAvatar ? 'avatar' : 'minimal'}</strong>
+              </div>
+              <div className="summary-row">
+                <span>Body</span>
+                <strong>{bodyStyle.messageStyle}</strong>
+              </div>
+              <div className="summary-row">
+                <span>Footer</span>
+                <strong>{footerStyle.inputStyle}</strong>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="summary-list">
@@ -87,25 +120,31 @@ export default function PricingPanel({
         </div>
         <div className="summary-row">
           <span>Bubble style</span>
-          <strong>Custom Design</strong>
+          <strong>{bubbleStyle.borderType}</strong>
         </div>
         <div className="summary-row">
           <span>Header style</span>
-          <strong>Custom Design</strong>
+          <strong>{headerStyle.borderType}</strong>
         </div>
         <div className="summary-row">
           <span>Body style</span>
-          <strong>Custom Design</strong>
+          <strong>{bodyStyle.messageStyle}</strong>
         </div>
         <div className="summary-row">
           <span>Footer style</span>
-          <strong>Custom Design</strong>
+          <strong>{footerStyle.inputStyle}</strong>
         </div>
       </div>
 
-      <button className="continue-btn" type="button">
-        <FiLogIn /> Continue to login
-      </button>
+      {isAuthenticated ? (
+        <button className="continue-btn" type="button" onClick={onSave} disabled={isSaving}>
+          <FiSave /> {isSaving ? 'Saving...' : 'Save configuration'}
+        </button>
+      ) : (
+        <button className="continue-btn" type="button" onClick={onContinue}>
+          <FiLogIn /> Continue to login
+        </button>
+      )}
     </div>
   )
 }

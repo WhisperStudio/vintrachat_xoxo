@@ -358,16 +358,7 @@ export default function MainLanding() {
           <div className="hero-grid" style={{ display: 'flex', gap: 48, alignItems: 'center' }}>
             {/* left text */}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                background: '#EEF4FF', borderRadius: 999, padding: '6px 14px',
-                fontSize: 13, fontWeight: 600, color: '#1A6BFF', marginBottom: 24,
-                opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateY(10px)',
-                transition: 'all 0.5s ease',
-              }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#1A6BFF', display: 'inline-block' }} />
-                No account needed to try
-              </div>
+              
 
               <h1 style={{
                 fontSize: 'clamp(36px, 5vw, 60px)',

@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { FiMessageCircle, FiCheckCircle, FiSend } from 'react-icons/fi'
-import '@/app/landings/auth/chatWidget/ChatWidget.css'
+import { FiCheckCircle, FiMessageCircle, FiSend } from 'react-icons/fi'
 
 interface WidgetPreviewProps {
   bubbleStyle: {
@@ -37,6 +36,11 @@ interface WidgetPreviewProps {
   }
   position: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
   colorTheme: 'modern' | 'chilling' | 'corporate' | 'luxury'
+  customBranding: {
+    title?: string
+    description?: string
+    logo?: string
+  }
 }
 
 interface Message {
@@ -50,7 +54,8 @@ export default function WidgetPreview({
   bodyStyle,
   footerStyle,
   position,
-  colorTheme
+  colorTheme,
+  customBranding,
 }: WidgetPreviewProps) {
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [messages] = useState<Message[]>([
@@ -60,43 +65,33 @@ export default function WidgetPreview({
 
   const handleSend = () => {
     if (inputValue.trim()) {
-      // In preview, just clear input
       setInputValue('')
     }
   }
 
-  // Generate dynamic classes based on design options
-  const getBubbleClasses = () => {
-    const classes = ['chat-bubble']
-    classes.push(`border-${bubbleStyle.borderType}`)
-    classes.push(`shadow-${bubbleStyle.shadowType}`)
-    classes.push(`animation-${bubbleStyle.animationType}`)
-    classes.push(`size-${bubbleStyle.sizeType}`)
-    return classes.join(' ')
-  }
+  const bubbleClasses = [
+    `border-${bubbleStyle.borderType}`,
+    `shadow-${bubbleStyle.shadowType}`,
+    `animation-${bubbleStyle.animationType}`,
+    `size-${bubbleStyle.sizeType}`,
+  ].join(' ')
 
-  const getHeaderClasses = () => {
-    const classes = ['chat-header']
-    classes.push(`border-${headerStyle.borderType}`)
-    classes.push(`shadow-${headerStyle.shadowType}`)
-    return classes.join(' ')
-  }
+  const bodyClasses = [
+    'chat-body',
+    `border-${bodyStyle.borderType}`,
+    `shadow-${bodyStyle.shadowType}`,
+    `messages-${bodyStyle.messageStyle}`,
+  ].join(' ')
 
-  const getBodyClasses = () => {
-    const classes = ['chat-body']
-    classes.push(`border-${bodyStyle.borderType}`)
-    classes.push(`shadow-${bodyStyle.shadowType}`)
-    classes.push(`messages-${bodyStyle.messageStyle}`)
-    return classes.join(' ')
-  }
+  const footerClasses = [
+    'chat-footer',
+    `border-${footerStyle.borderType}`,
+    `shadow-${footerStyle.shadowType}`,
+    `input-${footerStyle.inputStyle}`,
+  ].join(' ')
 
-  const getFooterClasses = () => {
-    const classes = ['chat-footer']
-    classes.push(`border-${footerStyle.borderType}`)
-    classes.push(`shadow-${footerStyle.shadowType}`)
-    classes.push(`input-${footerStyle.inputStyle}`)
-    return classes.join(' ')
-  }
+  const title = customBranding.title || 'Support Chat'
+  const description = customBranding.description || 'Usually replies in a few minutes'
 
   return (
     <div className="widget-preview-shell glass">
@@ -104,74 +99,80 @@ export default function WidgetPreview({
 
       <div className={`widget-viewport position-${position}`}>
         <div className={`floating-chat-preview theme-${colorTheme}`}>
-          <div className="widgetcontainer">                  
-          <div className={`chat-widget ${isChatOpen ? 'open' : ''}`}>
-            <div className={getHeaderClasses()}>
-              <div className="chat-header-left">
-                {headerStyle.showAvatar && (
-                  <div className="avatar">
-                    <FiMessageCircle />
+          <div className="widgetcontainer">
+            <div className={`chat-widget ${isChatOpen ? 'open' : ''}`}>
+              <div className="chat-header">
+                <div className="chat-header-left">
+                  {headerStyle.showAvatar && (
+                    <div className="avatar">
+                      {customBranding.logo ? <img src={customBranding.logo} alt="logo" className="avatar-image" /> : <FiMessageCircle />}
+                    </div>
+                  )}
+
+                  <div>
+                    {headerStyle.showTitle && <h3>{title}</h3>}
+                    <p>{description}</p>
                   </div>
-                )}
-                <div>
-                  {headerStyle.showTitle && <h3>Support Chat</h3>}
-                  <p>Usually replies in a few minutes</p>
+                </div>
+
+                <div className="chat-header-actions">
+                  {headerStyle.showStatus && (
+                    <span className="status-pill">
+                      <FiCheckCircle /> Online
+                    </span>
+                  )}
+
+                  {headerStyle.showCloseButton && isChatOpen && (
+                    <button type="button" className="close-btn" onClick={() => setIsChatOpen(false)}>
+                      ×
+                    </button>
+                  )}
                 </div>
               </div>
-              {headerStyle.showStatus && (
-                <span className="status-pill">
-                  <FiCheckCircle /> Online
-                </span>
-              )}
-              {headerStyle.showCloseButton && (
-                <button className="close-btn" onClick={() => setIsChatOpen(false)}>
-                  ×
-                </button>
-              )}
-            </div>
 
-            <div className={getBodyClasses()}>
-              {messages.map((msg, index) => (
-                <div key={index} className={`message ${msg.isBot ? 'message-bot' : 'message-user'} ${getBubbleClasses()}`}>
-                  {msg.text}
-                  {bodyStyle.showTimestamps && <span className="timestamp">{new Date().toLocaleTimeString()}</span>}
-                  {bodyStyle.showReadReceipts && msg.isBot && <span className="read-receipt">✓✓</span>}
-                </div>
-              ))}
-            </div>
+              <div className={bodyClasses}>
+                {messages.map((msg, index) => (
+                  <div key={index} className={`message ${msg.isBot ? 'message-bot' : 'message-user'} ${bubbleClasses}`}>
+                    {msg.text}
+                    {bodyStyle.showTimestamps && <span className="timestamp">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+                    {bodyStyle.showReadReceipts && !msg.isBot && <span className="read-receipt">✓✓</span>}
+                  </div>
+                ))}
+              </div>
 
-            <div className={getFooterClasses()}>
-              {footerStyle.showPlaceholder && (
+              <div className={footerClasses}>
                 <input
                   type="text"
-                  placeholder="Write a message..."
+                  placeholder={footerStyle.showPlaceholder ? 'Write a message...' : ''}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 />
-              )}
-              {footerStyle.showSendButton && (
-                <button type="button" onClick={handleSend}>
-                  <FiSend />
-                </button>
+
+                {footerStyle.showSendButton && (
+                  <button type="button" onClick={handleSend}>
+                    <FiSend />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className={`widget-icon ${bubbleClasses}`} onClick={() => setIsChatOpen((prev) => !prev)} role="button" tabIndex={0}>
+              <FiMessageCircle />
+              {bubbleStyle.showStatus && <span className="status-dot" />}
+              {bubbleStyle.showCloseButton && isChatOpen && (
+                <span
+                  className="close-btn close-btn-floating"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setIsChatOpen(false)
+                  }}
+                >
+                  ×
+                </span>
               )}
             </div>
           </div>
-          <button 
-            className={`widget-icon ${getBubbleClasses()}`} 
-            onClick={() => setIsChatOpen(!isChatOpen)}
-          >
-            <FiMessageCircle />
-            {bubbleStyle.showStatus && (
-              <span className="status-dot"></span>
-            )}
-            {bubbleStyle.showCloseButton && isChatOpen && (
-              <button className="close-btn" onClick={() => setIsChatOpen(false)}>
-                ×
-              </button>
-            )}
-          </button>
-        </div>
         </div>
       </div>
     </div>

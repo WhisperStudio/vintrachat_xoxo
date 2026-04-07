@@ -113,7 +113,7 @@ export default function Header() {
           {!isAuthenticated ? (
             <>
               <NavLink href="/landings/guest/websites">Websites</NavLink>
-              <NavLink href="/landings/guest/chatWidget">Chat Widget</NavLink>
+              <NavLink href="/landings/auth/chatWidget">Chat Widget</NavLink>
             </>
           ) : (
             <>
