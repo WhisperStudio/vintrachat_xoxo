@@ -16,7 +16,7 @@ import PricingPanel from './components/PricingPanel'
 type Plan = 'free' | 'pro' | 'business'
 type BillingCycle = 'monthly' | 'yearly'
 type ColorTheme = 'modern' | 'chilling' | 'corporate' | 'luxury'
-type Position = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
+type Position = 'bottom-right' | 'bottom-left'
 
 type InputsState = {
   plan: Plan
@@ -25,7 +25,7 @@ type InputsState = {
   position: Position
   bubbleStyle: {
     showStatus: boolean
-    showCloseButton: boolean
+    iconChoice: 'chat' | 'phone' | 'cpu' | 'message' | 'support'
     borderType: 'none' | 'solid' | 'rounded' | 'shadow'
     shadowType: 'none' | 'light' | 'medium' | 'heavy'
     animationType: 'none' | 'bounce' | 'fade' | 'slide'
@@ -71,7 +71,7 @@ const defaultInputs: InputsState = {
   position: 'bottom-right',
   bubbleStyle: {
     showStatus: true,
-    showCloseButton: true,
+    iconChoice: 'chat',
     borderType: 'rounded',
     shadowType: 'medium',
     animationType: 'bounce',
@@ -325,6 +325,8 @@ export default function ChatWidgetBuilderPage() {
               position={inputs.position}
               colorTheme={inputs.colorTheme}
               customBranding={inputs.customBranding}
+              enablePreviewChat={true}
+              previewReply="hi, this is only a test"
             />
 
             <PricingPanel

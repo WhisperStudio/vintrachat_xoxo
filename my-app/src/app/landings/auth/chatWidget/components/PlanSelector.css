@@ -59,26 +59,26 @@
 }
 
 .option-grid {
-  gap: 1rem;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
+  flex-direction: column;
   border-left: 1px solid rgb(178, 178, 178);
   border-right: 1px solid rgb(178, 178, 178);
 }
 
 .option-grid.dropdown-content.open {
-  display: grid;
+  display: flex;
 }
 
 .option-grid-3 {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
 }
 
 .option-card {
   display: flex;
   align-items: flex-start;
+  flex-direction: row;
   justify-content: space-between;
-  gap: 1rem;
-  margin: 5px 0;
   padding: 1rem;
   border-top: 1px solid #fff;
   border-bottom: 1px solid #fff;
@@ -92,7 +92,7 @@
 }
 
 .option-card:hover {
-  border-color: #cacacab3;
+  background: #efefef
 }
 
 .option-card.checked {
@@ -114,9 +114,12 @@
 }
 
 .option-price {
+  display: flex;
+  align-items: center;
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--brand);
+  
 }
 
 .option-desc {
@@ -154,14 +157,19 @@
 .feature-icon {
   font-size: 0.95rem;
 }
-
+.feature-icon.included {
+  color: #16a34a;
+}
+.feature-icon.excluded {
+  color: #dc2626;
+}
 .feature-icon.highlight {
   color: #7c3aed;
 }
 
 .billing-cycle-toggle {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: row;
   gap: 1rem;
   margin-top: 1.5rem;
   padding: 0 1rem 1rem;
@@ -183,6 +191,10 @@
   transition: var(--transition);
 }
 
+.billing-option:hover {
+  background: #efefef;
+}
+
 .billing-option.active {
   border-color: rgba(124, 58, 237, 0.28);
   background: linear-gradient(180deg, rgba(124, 58, 237, 0.08), rgba(124, 58, 237, 0.03));
@@ -193,10 +205,31 @@
   accent-color: #7c3aed;
 }
 
+/* Money icons styling */
+.money-icon {
+  color: #16a34a;
+  margin-right: -0.4rem;
+  font-size: 1.2em;
+}
+
+.price-text {
+  font-weight: 600;
+  margin-left: 0.5rem;
+}
+
 /* Responsive for PlanSelector */
 @media (max-width: 768px) {
   .option-grid,
   .option-grid-3 {
-    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .billing-cycle-toggle {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .billing-option {
+    min-width: auto;
   }
 }

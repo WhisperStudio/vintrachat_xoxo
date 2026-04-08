@@ -4,7 +4,7 @@ import { FiChevronDown } from 'react-icons/fi'
 import './StyleSelector.css'
 
 type ColorTheme = 'modern' | 'chilling' | 'corporate' | 'luxury'
-type Position = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
+type Position = 'bottom-right' | 'bottom-left' 
 type BorderType = 'none' | 'solid' | 'rounded' | 'shadow'
 type ShadowType = 'none' | 'light' | 'medium' | 'heavy'
 type AnimationType = 'none' | 'bounce' | 'fade' | 'slide'
@@ -15,7 +15,7 @@ type InputStyle = 'flat' | 'rounded' | 'outlined'
 interface StyleSelectorProps {
   bubbleStyle: {
     showStatus: boolean
-    showCloseButton: boolean
+    iconChoice: 'chat' | 'phone' | 'cpu' | 'message' | 'support'
     borderType: BorderType
     shadowType: ShadowType
     animationType: AnimationType
@@ -115,7 +115,7 @@ export default function StyleSelector({
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.bubble ? 'open' : ''}`}>
-          <label className="option-card">
+          <label className={`option-card ${bubbleStyle.showStatus ? 'checked' : ''}`}>
             <input
               type="checkbox"
               checked={bubbleStyle.showStatus}
@@ -125,53 +125,174 @@ export default function StyleSelector({
             <span className="option-desc">Show online/status dot on widget bubble</span>
           </label>
 
-          <label className="option-card">
-            <input
-              type="checkbox"
-              checked={bubbleStyle.showCloseButton}
-              onChange={(e) => onBubbleStyleChange({ ...bubbleStyle, showCloseButton: e.target.checked })}
-            />
-            <span className="option-title">Show close button</span>
-            <span className="option-desc">Show close action on widget bubble</span>
+          <label className={`option-card ${bubbleStyle.iconChoice !== 'chat' ? 'checked' : ''}`}>
+            <span className="option-title">Icon choice</span>
+            <select value={bubbleStyle.iconChoice} onChange={(e) => onBubbleStyleChange({ ...bubbleStyle, iconChoice: e.target.value as 'chat' | 'phone' | 'cpu' | 'message' | 'support' })}>
+              <option value="chat">Chat bubble</option>
+              <option value="phone">Phone</option>
+              <option value="cpu">Robot/CPU</option>
+              <option value="message">Message</option>
+              <option value="support">Support</option>
+            </select>
           </label>
 
           <label className="option-card">
             <span className="option-title">Border type</span>
-            <select value={bubbleStyle.borderType} onChange={(e) => onBubbleStyleChange({ ...bubbleStyle, borderType: e.target.value as BorderType })}>
-              <option value="none">None</option>
-              <option value="solid">Solid</option>
-              <option value="rounded">Rounded</option>
-              <option value="shadow">Shadow</option>
-            </select>
+            <div className="option-row">
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="bubble-border-type"
+                  checked={bubbleStyle.borderType === 'none'}
+                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, borderType: 'none' })}
+                />
+                <span>None</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="bubble-border-type"
+                  checked={bubbleStyle.borderType === 'solid'}
+                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, borderType: 'solid' })}
+                />
+                <span>Solid</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="bubble-border-type"
+                  checked={bubbleStyle.borderType === 'rounded'}
+                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, borderType: 'rounded' })}
+                />
+                <span>Rounded</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="bubble-border-type"
+                  checked={bubbleStyle.borderType === 'shadow'}
+                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, borderType: 'shadow' })}
+                />
+                <span>Shadow</span>
+              </label>
+            </div>
           </label>
 
           <label className="option-card">
             <span className="option-title">Shadow type</span>
-            <select value={bubbleStyle.shadowType} onChange={(e) => onBubbleStyleChange({ ...bubbleStyle, shadowType: e.target.value as ShadowType })}>
-              <option value="none">None</option>
-              <option value="light">Light</option>
-              <option value="medium">Medium</option>
-              <option value="heavy">Heavy</option>
-            </select>
+            <div className="option-row">
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="bubble-shadow-type"
+                  checked={bubbleStyle.shadowType === 'none'}
+                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, shadowType: 'none' })}
+                />
+                <span>None</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="bubble-shadow-type"
+                  checked={bubbleStyle.shadowType === 'light'}
+                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, shadowType: 'light' })}
+                />
+                <span>Light</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="bubble-shadow-type"
+                  checked={bubbleStyle.shadowType === 'medium'}
+                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, shadowType: 'medium' })}
+                />
+                <span>Medium</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="bubble-shadow-type"
+                  checked={bubbleStyle.shadowType === 'heavy'}
+                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, shadowType: 'heavy' })}
+                />
+                <span>Heavy</span>
+              </label>
+            </div>
           </label>
 
           <label className="option-card">
             <span className="option-title">Animation</span>
-            <select value={bubbleStyle.animationType} onChange={(e) => onBubbleStyleChange({ ...bubbleStyle, animationType: e.target.value as AnimationType })}>
-              <option value="none">None</option>
-              <option value="bounce">Bounce</option>
-              <option value="fade">Fade</option>
-              <option value="slide">Slide</option>
-            </select>
+            <div className="option-row">
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="bubble-animation-type"
+                  checked={bubbleStyle.animationType === 'none'}
+                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, animationType: 'none' })}
+                />
+                <span>None</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="bubble-animation-type"
+                  checked={bubbleStyle.animationType === 'bounce'}
+                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, animationType: 'bounce' })}
+                />
+                <span>Bounce</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="bubble-animation-type"
+                  checked={bubbleStyle.animationType === 'fade'}
+                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, animationType: 'fade' })}
+                />
+                <span>Fade</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="bubble-animation-type"
+                  checked={bubbleStyle.animationType === 'slide'}
+                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, animationType: 'slide' })}
+                />
+                <span>Slide</span>
+              </label>
+            </div>
           </label>
 
           <label className="option-card">
             <span className="option-title">Size</span>
-            <select value={bubbleStyle.sizeType} onChange={(e) => onBubbleStyleChange({ ...bubbleStyle, sizeType: e.target.value as SizeType })}>
-              <option value="small">Small</option>
-              <option value="medium">Medium</option>
-              <option value="large">Large</option>
-            </select>
+            <div className="option-row">
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="bubble-size-type"
+                  checked={bubbleStyle.sizeType === 'small'}
+                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, sizeType: 'small' })}
+                />
+                <span>Small</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="bubble-size-type"
+                  checked={bubbleStyle.sizeType === 'medium'}
+                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, sizeType: 'medium' })}
+                />
+                <span>Medium</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="bubble-size-type"
+                  checked={bubbleStyle.sizeType === 'large'}
+                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, sizeType: 'large' })}
+                />
+                <span>Large</span>
+              </label>
+            </div>
           </label>
         </div>
       </div>
@@ -185,7 +306,7 @@ export default function StyleSelector({
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.header ? 'open' : ''}`}>
-          <label className="option-card">
+          <label className={`option-card ${headerStyle.showStatus ? 'checked' : ''}`}>
             <input
               type="checkbox"
               checked={headerStyle.showStatus}
@@ -195,7 +316,7 @@ export default function StyleSelector({
             <span className="option-desc">Show online indicator in header</span>
           </label>
 
-          <label className="option-card">
+          <label className={`option-card ${headerStyle.showCloseButton ? 'checked' : ''}`}>
             <input
               type="checkbox"
               checked={headerStyle.showCloseButton}
@@ -205,7 +326,7 @@ export default function StyleSelector({
             <span className="option-desc">Show close button in header</span>
           </label>
 
-          <label className="option-card">
+          <label className={`option-card ${headerStyle.showAvatar ? 'checked' : ''}`}>
             <input
               type="checkbox"
               checked={headerStyle.showAvatar}
@@ -215,7 +336,7 @@ export default function StyleSelector({
             <span className="option-desc">Show avatar in header</span>
           </label>
 
-          <label className="option-card">
+          <label className={`option-card ${headerStyle.showTitle ? 'checked' : ''}`}>
             <input
               type="checkbox"
               checked={headerStyle.showTitle}
@@ -227,22 +348,86 @@ export default function StyleSelector({
 
           <label className="option-card">
             <span className="option-title">Border type</span>
-            <select value={headerStyle.borderType} onChange={(e) => onHeaderStyleChange({ ...headerStyle, borderType: e.target.value as BorderType })}>
-              <option value="none">None</option>
-              <option value="solid">Solid</option>
-              <option value="rounded">Rounded</option>
-              <option value="shadow">Shadow</option>
-            </select>
+            <div className="option-row">
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="header-border-type"
+                  checked={headerStyle.borderType === 'none'}
+                  onChange={() => onHeaderStyleChange({ ...headerStyle, borderType: 'none' })}
+                />
+                <span>None</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="header-border-type"
+                  checked={headerStyle.borderType === 'solid'}
+                  onChange={() => onHeaderStyleChange({ ...headerStyle, borderType: 'solid' })}
+                />
+                <span>Solid</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="header-border-type"
+                  checked={headerStyle.borderType === 'rounded'}
+                  onChange={() => onHeaderStyleChange({ ...headerStyle, borderType: 'rounded' })}
+                />
+                <span>Rounded</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="header-border-type"
+                  checked={headerStyle.borderType === 'shadow'}
+                  onChange={() => onHeaderStyleChange({ ...headerStyle, borderType: 'shadow' })}
+                />
+                <span>Shadow</span>
+              </label>
+            </div>
           </label>
 
           <label className="option-card">
             <span className="option-title">Shadow type</span>
-            <select value={headerStyle.shadowType} onChange={(e) => onHeaderStyleChange({ ...headerStyle, shadowType: e.target.value as ShadowType })}>
-              <option value="none">None</option>
-              <option value="light">Light</option>
-              <option value="medium">Medium</option>
-              <option value="heavy">Heavy</option>
-            </select>
+            <div className="option-row">
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="header-shadow-type"
+                  checked={headerStyle.shadowType === 'none'}
+                  onChange={() => onHeaderStyleChange({ ...headerStyle, shadowType: 'none' })}
+                />
+                <span>None</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="header-shadow-type"
+                  checked={headerStyle.shadowType === 'light'}
+                  onChange={() => onHeaderStyleChange({ ...headerStyle, shadowType: 'light' })}
+                />
+                <span>Light</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="header-shadow-type"
+                  checked={headerStyle.shadowType === 'medium'}
+                  onChange={() => onHeaderStyleChange({ ...headerStyle, shadowType: 'medium' })}
+                />
+                <span>Medium</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="header-shadow-type"
+                  checked={headerStyle.shadowType === 'heavy'}
+                  onChange={() => onHeaderStyleChange({ ...headerStyle, shadowType: 'heavy' })}
+                />
+                <span>Heavy</span>
+              </label>
+            </div>
           </label>
         </div>
       </div>
@@ -258,34 +443,122 @@ export default function StyleSelector({
         <div className={`option-grid dropdown-content ${openSections.body ? 'open' : ''}`}>
           <label className="option-card">
             <span className="option-title">Border type</span>
-            <select value={bodyStyle.borderType} onChange={(e) => onBodyStyleChange({ ...bodyStyle, borderType: e.target.value as BorderType })}>
-              <option value="none">None</option>
-              <option value="solid">Solid</option>
-              <option value="rounded">Rounded</option>
-              <option value="shadow">Shadow</option>
-            </select>
+            <div className="option-row">
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="body-border-type"
+                  checked={bodyStyle.borderType === 'none'}
+                  onChange={() => onBodyStyleChange({ ...bodyStyle, borderType: 'none' })}
+                />
+                <span>None</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="body-border-type"
+                  checked={bodyStyle.borderType === 'solid'}
+                  onChange={() => onBodyStyleChange({ ...bodyStyle, borderType: 'solid' })}
+                />
+                <span>Solid</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="body-border-type"
+                  checked={bodyStyle.borderType === 'rounded'}
+                  onChange={() => onBodyStyleChange({ ...bodyStyle, borderType: 'rounded' })}
+                />
+                <span>Rounded</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="body-border-type"
+                  checked={bodyStyle.borderType === 'shadow'}
+                  onChange={() => onBodyStyleChange({ ...bodyStyle, borderType: 'shadow' })}
+                />
+                <span>Shadow</span>
+              </label>
+            </div>
           </label>
 
           <label className="option-card">
             <span className="option-title">Shadow type</span>
-            <select value={bodyStyle.shadowType} onChange={(e) => onBodyStyleChange({ ...bodyStyle, shadowType: e.target.value as ShadowType })}>
-              <option value="none">None</option>
-              <option value="light">Light</option>
-              <option value="medium">Medium</option>
-              <option value="heavy">Heavy</option>
-            </select>
+            <div className="option-row">
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="body-shadow-type"
+                  checked={bodyStyle.shadowType === 'none'}
+                  onChange={() => onBodyStyleChange({ ...bodyStyle, shadowType: 'none' })}
+                />
+                <span>None</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="body-shadow-type"
+                  checked={bodyStyle.shadowType === 'light'}
+                  onChange={() => onBodyStyleChange({ ...bodyStyle, shadowType: 'light' })}
+                />
+                <span>Light</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="body-shadow-type"
+                  checked={bodyStyle.shadowType === 'medium'}
+                  onChange={() => onBodyStyleChange({ ...bodyStyle, shadowType: 'medium' })}
+                />
+                <span>Medium</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="body-shadow-type"
+                  checked={bodyStyle.shadowType === 'heavy'}
+                  onChange={() => onBodyStyleChange({ ...bodyStyle, shadowType: 'heavy' })}
+                />
+                <span>Heavy</span>
+              </label>
+            </div>
           </label>
 
           <label className="option-card">
             <span className="option-title">Message style</span>
-            <select value={bodyStyle.messageStyle} onChange={(e) => onBodyStyleChange({ ...bodyStyle, messageStyle: e.target.value as MessageStyle })}>
-              <option value="bubble">Bubble</option>
-              <option value="flat">Flat</option>
-              <option value="card">Card</option>
-            </select>
+            <div className="option-row">
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="body-message-style"
+                  checked={bodyStyle.messageStyle === 'bubble'}
+                  onChange={() => onBodyStyleChange({ ...bodyStyle, messageStyle: 'bubble' })}
+                />
+                <span>Bubble</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="body-message-style"
+                  checked={bodyStyle.messageStyle === 'flat'}
+                  onChange={() => onBodyStyleChange({ ...bodyStyle, messageStyle: 'flat' })}
+                />
+                <span>Flat</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="body-message-style"
+                  checked={bodyStyle.messageStyle === 'card'}
+                  onChange={() => onBodyStyleChange({ ...bodyStyle, messageStyle: 'card' })}
+                />
+                <span>Card</span>
+              </label>
+            </div>
           </label>
 
-          <label className="option-card">
+          <label className={`option-card ${bodyStyle.showTimestamps ? 'checked' : ''}`}>
             <input
               type="checkbox"
               checked={bodyStyle.showTimestamps}
@@ -295,7 +568,7 @@ export default function StyleSelector({
             <span className="option-desc">Show message timestamps</span>
           </label>
 
-          <label className="option-card">
+          <label className={`option-card ${bodyStyle.showReadReceipts ? 'checked' : ''}`}>
             <input
               type="checkbox"
               checked={bodyStyle.showReadReceipts}
@@ -316,7 +589,7 @@ export default function StyleSelector({
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.footer ? 'open' : ''}`}>
-          <label className="option-card">
+          <label className={`option-card ${footerStyle.showSendButton ? 'checked' : ''}`}>
             <input
               type="checkbox"
               checked={footerStyle.showSendButton}
@@ -328,41 +601,129 @@ export default function StyleSelector({
 
           <label className="option-card">
             <span className="option-title">Border type</span>
-            <select value={footerStyle.borderType} onChange={(e) => onFooterStyleChange({ ...footerStyle, borderType: e.target.value as BorderType })}>
-              <option value="none">None</option>
-              <option value="solid">Solid</option>
-              <option value="rounded">Rounded</option>
-              <option value="shadow">Shadow</option>
-            </select>
+            <div className="option-row">
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="footer-border-type"
+                  checked={footerStyle.borderType === 'none'}
+                  onChange={() => onFooterStyleChange({ ...footerStyle, borderType: 'none' })}
+                />
+                <span>None</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="footer-border-type"
+                  checked={footerStyle.borderType === 'solid'}
+                  onChange={() => onFooterStyleChange({ ...footerStyle, borderType: 'solid' })}
+                />
+                <span>Solid</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="footer-border-type"
+                  checked={footerStyle.borderType === 'rounded'}
+                  onChange={() => onFooterStyleChange({ ...footerStyle, borderType: 'rounded' })}
+                />
+                <span>Rounded</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="footer-border-type"
+                  checked={footerStyle.borderType === 'shadow'}
+                  onChange={() => onFooterStyleChange({ ...footerStyle, borderType: 'shadow' })}
+                />
+                <span>Shadow</span>
+              </label>
+            </div>
           </label>
 
           <label className="option-card">
             <span className="option-title">Shadow type</span>
-            <select value={footerStyle.shadowType} onChange={(e) => onFooterStyleChange({ ...footerStyle, shadowType: e.target.value as ShadowType })}>
-              <option value="none">None</option>
-              <option value="light">Light</option>
-              <option value="medium">Medium</option>
-              <option value="heavy">Heavy</option>
-            </select>
+            <div className="option-row">
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="footer-shadow-type"
+                  checked={footerStyle.shadowType === 'none'}
+                  onChange={() => onFooterStyleChange({ ...footerStyle, shadowType: 'none' })}
+                />
+                <span>None</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="footer-shadow-type"
+                  checked={footerStyle.shadowType === 'light'}
+                  onChange={() => onFooterStyleChange({ ...footerStyle, shadowType: 'light' })}
+                />
+                <span>Light</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="footer-shadow-type"
+                  checked={footerStyle.shadowType === 'medium'}
+                  onChange={() => onFooterStyleChange({ ...footerStyle, shadowType: 'medium' })}
+                />
+                <span>Medium</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="footer-shadow-type"
+                  checked={footerStyle.shadowType === 'heavy'}
+                  onChange={() => onFooterStyleChange({ ...footerStyle, shadowType: 'heavy' })}
+                />
+                <span>Heavy</span>
+              </label>
+            </div>
           </label>
 
           <label className="option-card">
             <span className="option-title">Input style</span>
-            <select value={footerStyle.inputStyle} onChange={(e) => onFooterStyleChange({ ...footerStyle, inputStyle: e.target.value as InputStyle })}>
-              <option value="flat">Flat</option>
-              <option value="rounded">Rounded</option>
-              <option value="outlined">Outlined</option>
-            </select>
+            <div className="option-row">
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="footer-input-style"
+                  checked={footerStyle.inputStyle === 'flat'}
+                  onChange={() => onFooterStyleChange({ ...footerStyle, inputStyle: 'flat' })}
+                />
+                <span>Flat</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="footer-input-style"
+                  checked={footerStyle.inputStyle === 'rounded'}
+                  onChange={() => onFooterStyleChange({ ...footerStyle, inputStyle: 'rounded' })}
+                />
+                <span>Rounded</span>
+              </label>
+              <label className="radio-option">
+                <input
+                  type="radio"
+                  name="footer-input-style"
+                  checked={footerStyle.inputStyle === 'outlined'}
+                  onChange={() => onFooterStyleChange({ ...footerStyle, inputStyle: 'outlined' })}
+                />
+                <span>Outlined</span>
+              </label>
+            </div>
           </label>
 
-          <label className="option-card">
+          <label className={`option-card ${footerStyle.showPlaceholder ? 'checked' : ''}`}>
             <input
               type="checkbox"
               checked={footerStyle.showPlaceholder}
               onChange={(e) => onFooterStyleChange({ ...footerStyle, showPlaceholder: e.target.checked })}
             />
             <span className="option-title">Show placeholder</span>
-            <span className="option-desc">Show placeholder text in input</span>
+            <span className="option-desc">Show placeholder text in input field</span>
           </label>
         </div>
       </div>
@@ -398,8 +759,6 @@ export default function StyleSelector({
           {[
             { value: 'bottom-right', label: 'Bottom right', desc: 'Bottom right of the screen' },
             { value: 'bottom-left', label: 'Bottom left', desc: 'Bottom left of the screen' },
-            { value: 'top-right', label: 'Top right', desc: 'Top right of the screen' },
-            { value: 'top-left', label: 'Top left', desc: 'Top left of the screen' },
           ].map((pos) => (
             <label key={pos.value} className={`option-card ${position === pos.value ? 'checked' : ''}`}>
               <input type="radio" name="position" checked={position === pos.value} onChange={() => onPositionChange(pos.value as Position)} />

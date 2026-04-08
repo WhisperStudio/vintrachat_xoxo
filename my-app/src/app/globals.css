@@ -297,6 +297,129 @@ input {
   color: #374151;
 }
 
+.adminDataCard {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.adminStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.adminStatCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.adminStatCard strong {
+  font-size: 1.4rem;
+}
+
+.adminStatCard span {
+  color: #6b7280;
+}
+
+.adminChatsLayout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 18px;
+  min-height: 520px;
+}
+
+.adminChatList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.adminChatListItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 16px;
+  text-align: left;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  cursor: pointer;
+}
+
+.adminChatListItemActive {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+}
+
+.adminChatListItem span {
+  color: #6b7280;
+  font-size: 0.92rem;
+}
+
+.adminChatTranscript {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.adminChatMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.adminChatMeta span {
+  color: #6b7280;
+}
+
+.adminChatMessages {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.adminTranscriptBubble {
+  max-width: 85%;
+  padding: 14px 16px;
+  border-radius: 18px;
+}
+
+.adminTranscriptBubble strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.adminTranscriptBubble p {
+  margin: 0;
+}
+
+.adminTranscriptBubbleUser {
+  align-self: flex-end;
+  background: #111827;
+  color: #fff;
+}
+
+.adminTranscriptBubbleUser p {
+  color: #fff;
+}
+
+.adminTranscriptBubbleAssistant {
+  align-self: flex-start;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+}
+
 @media (max-width: 900px) {
   .cardGrid,
   .miniGrid,
@@ -310,5 +433,10 @@ input {
 
   .hero h1 {
     font-size: 2.2rem;
+  }
+
+  .adminStatsGrid,
+  .adminChatsLayout {
+    grid-template-columns: 1fr;
   }
 }

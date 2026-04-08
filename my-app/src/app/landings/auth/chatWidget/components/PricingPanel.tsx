@@ -1,6 +1,8 @@
 'use client'
 
 import { FiChevronDown, FiDollarSign, FiLogIn, FiSave } from 'react-icons/fi'
+import { FaMoneyBillWave } from "react-icons/fa";
+import { MdMoneyOff, MdAttachMoney } from "react-icons/md";
 import './PricingPanel.css'
 
 interface PricingPanelProps {
@@ -9,7 +11,7 @@ interface PricingPanelProps {
   plan: 'free' | 'pro' | 'business'
   bubbleStyle: {
     showStatus: boolean
-    showCloseButton: boolean
+    iconChoice: 'chat' | 'phone' | 'cpu' | 'message' | 'support'
     borderType: 'none' | 'solid' | 'rounded' | 'shadow'
     shadowType: 'none' | 'light' | 'medium' | 'heavy'
     animationType: 'none' | 'bounce' | 'fade' | 'slide'
@@ -63,11 +65,14 @@ export default function PricingPanel({
   return (
     <div className="price-panel glass sticky">
       <h2 className="section-title">
-        <FiDollarSign /> Total
+        {plan === 'free' && <MdMoneyOff />}
+        {plan === 'pro' && <><MdAttachMoney /><MdAttachMoney /></>}
+        {plan === 'business' && <><MdAttachMoney /><MdAttachMoney /><MdAttachMoney /></>}
+        Total
       </h2>
 
       <div className="total-box">
-        <p className="total-label">Subscription total</p>
+        <p className="total-label"><FaMoneyBillWave/>Subscription total</p>
         <h3 className="total-price">
           ${total}
           <span>/{billingCycle === 'monthly' ? 'month' : 'year'}</span>

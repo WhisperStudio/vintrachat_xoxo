@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { FiCheckCircle, FiMessageCircle, FiSend } from 'react-icons/fi'
+import { FiCheckCircle, FiCpu, FiMessageCircle, FiPhone, FiSend } from 'react-icons/fi'
 import './WidgetPreview.css'
 
 interface WidgetPreviewProps {
   bubbleStyle: {
     showStatus: boolean
-    showCloseButton: boolean
+    iconChoice: 'chat' | 'phone' | 'cpu' | 'message' | 'support'
     borderType: 'none' | 'solid' | 'rounded' | 'shadow'
     shadowType: 'none' | 'light' | 'medium' | 'heavy'
     animationType: 'none' | 'bounce' | 'fade' | 'slide'
@@ -35,16 +35,21 @@ interface WidgetPreviewProps {
     inputStyle: 'flat' | 'rounded' | 'outlined'
     showPlaceholder: boolean
   }
-  position: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
+  position: 'bottom-right' | 'bottom-left'
   colorTheme: 'modern' | 'chilling' | 'corporate' | 'luxury'
   customBranding: {
     title?: string
     description?: string
     logo?: string
   }
+  initialOpen?: boolean
+  variant?: 'default' | 'embedded'
+  enablePreviewChat?: boolean
+  previewReply?: string
 }
 
 interface Message {
+  id: string
   text: string
   isBot: boolean
 }
@@ -57,15 +62,41 @@ export default function WidgetPreview({
   position,
   colorTheme,
   customBranding,
+  initialOpen = false,
+  variant = 'default',
+  enablePreviewChat = false,
+  previewReply = 'hi, this is only a test',
 }: WidgetPreviewProps) {
-  const [isChatOpen, setIsChatOpen] = useState(false)
-  const [messages] = useState<Message[]>([
-    { text: 'Hey! Welcome to our website. How can we help you today?', isBot: true },
+  const [isChatOpen, setIsChatOpen] = useState(initialOpen)
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: crypto.randomUUID(),
+      text: 'Hey! Welcome to our website. How can we help you today?',
+      isBot: true,
+    },
   ])
   const [inputValue, setInputValue] = useState('')
 
   const handleSend = () => {
     if (inputValue.trim()) {
+      const nextText = inputValue.trim()
+
+      if (enablePreviewChat) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            text: nextText,
+            isBot: false,
+          },
+          {
+            id: crypto.randomUUID(),
+            text: previewReply,
+            isBot: true,
+          },
+        ])
+      }
+
       setInputValue('')
     }
   }
@@ -94,88 +125,111 @@ export default function WidgetPreview({
   const title = customBranding.title || 'Support Chat'
   const description = customBranding.description || 'Usually replies in a few minutes'
 
-  return (
-    <div className="widget-preview-shell glass">
-      <div className="viewport-label">Widget preview</div>
-
-      <div className={`widget-viewport position-${position}`}>
-        <div className={`floating-chat-preview theme-${colorTheme}`}>
-          <div className="widgetcontainer">
-            <div className={`chat-widget ${isChatOpen ? 'open' : ''}`}>
-              <div className="chat-header">
-                <div className="chat-header-left">
-                  {headerStyle.showAvatar && (
-                    <div className="avatar">
-                      {customBranding.logo ? <img src={customBranding.logo} alt="logo" className="avatar-image" /> : <FiMessageCircle />}
-                    </div>
-                  )}
-
-                  <div>
-                    {headerStyle.showTitle && <h3>{title}</h3>}
-                    <p>{description}</p>
+  const previewContent = (
+    <div
+      className={`widget-viewport ${variant === 'embedded' ? 'widget-viewport-embedded' : ''} position-${position}`}
+    >
+      <div className={`floating-chat-preview theme-${colorTheme}`}>
+        <div className="widgetcontainer">
+          <div className={`chat-widget ${isChatOpen ? 'open' : ''}`}>
+            <div className="chat-header">
+              <div className="chat-header-left">
+                {headerStyle.showAvatar && (
+                  <div className="avatar">
+                    {customBranding.logo ? (
+                      <img src={customBranding.logo} alt="logo" className="avatar-image" />
+                    ) : (
+                      <FiMessageCircle />
+                    )}
                   </div>
-                </div>
+                )}
 
-                <div className="chat-header-actions">
-                  {headerStyle.showStatus && (
-                    <span className="status-pill">
-                      <FiCheckCircle /> Online
-                    </span>
-                  )}
-
-                  {headerStyle.showCloseButton && isChatOpen && (
-                    <button type="button" className="close-btn" onClick={() => setIsChatOpen(false)}>
-                      ×
-                    </button>
-                  )}
+                <div>
+                  {headerStyle.showTitle && <h3>{title}</h3>}
+                  <p>{description}</p>
                 </div>
               </div>
 
-              <div className={bodyClasses}>
-                {messages.map((msg, index) => (
-                  <div key={index} className={`message ${msg.isBot ? 'message-bot' : 'message-user'} ${bubbleClasses}`}>
-                    {msg.text}
-                    {bodyStyle.showTimestamps && <span className="timestamp">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
-                    {bodyStyle.showReadReceipts && !msg.isBot && <span className="read-receipt">✓✓</span>}
-                  </div>
-                ))}
-              </div>
+              <div className="chat-header-actions">
+                {headerStyle.showStatus && (
+                  <span className="status-pill">
+                    <FiCheckCircle /> Online
+                  </span>
+                )}
 
-              <div className={footerClasses}>
-                <input
-                  type="text"
-                  placeholder={footerStyle.showPlaceholder ? 'Write a message...' : ''}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                />
-
-                {footerStyle.showSendButton && (
-                  <button type="button" onClick={handleSend}>
-                    <FiSend />
+                {headerStyle.showCloseButton && isChatOpen && (
+                  <button type="button" className="close-btn" onClick={() => setIsChatOpen(false)}>
+                    x
                   </button>
                 )}
               </div>
             </div>
 
-            <div className={`widget-icon ${bubbleClasses}`} onClick={() => setIsChatOpen((prev) => !prev)} role="button" tabIndex={0}>
-              <FiMessageCircle />
-              {bubbleStyle.showStatus && <span className="status-dot" />}
-              {bubbleStyle.showCloseButton && isChatOpen && (
-                <span
-                  className="close-btn close-btn-floating"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setIsChatOpen(false)
-                  }}
+              <div className={bodyClasses}>
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`message ${msg.isBot ? 'message-bot' : 'message-user'}`}
                 >
-                  ×
-                </span>
+                  {msg.text}
+                  {bodyStyle.showTimestamps && (
+                    <span className="timestamp">
+                      {new Date().toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  )}
+                  {bodyStyle.showReadReceipts && !msg.isBot && (
+                    <span className="read-receipt">Read</span>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className={footerClasses}>
+              <input
+                type="text"
+                placeholder={footerStyle.showPlaceholder ? 'Write a message...' : ''}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              />
+
+              {footerStyle.showSendButton && (
+                <button type="button" onClick={handleSend}>
+                  <FiSend />
+                </button>
               )}
             </div>
           </div>
+
+          <div
+            className={`widget-icon ${bubbleClasses}`}
+            onClick={() => setIsChatOpen((prev) => !prev)}
+            role="button"
+            tabIndex={0}
+          >
+            {bubbleStyle.iconChoice === 'chat' && <FiMessageCircle />}
+            {bubbleStyle.iconChoice === 'phone' && <FiPhone />}
+            {bubbleStyle.iconChoice === 'cpu' && <FiCpu />}
+            {bubbleStyle.iconChoice === 'message' && <FiMessageCircle />}
+            {bubbleStyle.iconChoice === 'support' && <FiMessageCircle />}
+            {bubbleStyle.showStatus && <span className="status-dot" />}
+          </div>
         </div>
       </div>
+    </div>
+  )
+
+  if (variant === 'embedded') {
+    return previewContent
+  }
+
+  return (
+    <div className="widget-preview-shell glass">
+      <div className="viewport-label">Widget preview</div>
+      {previewContent}
     </div>
   )
 }

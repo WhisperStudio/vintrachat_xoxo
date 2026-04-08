@@ -23,7 +23,15 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 
-import { AuthResponse, UserRole, BusinessUser, ChatWidgetConfig, Business } from "@/types/database";
+import {
+  AuthResponse,
+  UserRole,
+  BusinessUser,
+  ChatWidgetConfig,
+  Business,
+  ChatAssistantConfig,
+  ChatAnalytics,
+} from "@/types/database";
 
 // ----------------------
 // Google Auth
@@ -233,7 +241,7 @@ const defaultWidgetConfig: ChatWidgetConfig = {
   position: "bottom-right",
   bubbleStyle: {
     showStatus: true,
-    showCloseButton: true,
+    iconChoice: "chat",
     borderType: "rounded",
     shadowType: "medium",
     animationType: "fade",
@@ -271,6 +279,38 @@ const defaultWidgetConfig: ChatWidgetConfig = {
   },
 };
 
+const defaultAssistantConfig: ChatAssistantConfig = {
+  enabled: true,
+  provider: "gemini",
+  model: "gemini-2.0-flash",
+  strictContextOnly: true,
+  systemPrompt:
+    "You are the company's website assistant. Be helpful, concise, and honest. If the answer is not supported by the provided business context, say so clearly and ask the visitor to contact support.",
+  businessContext: "",
+  restrictions:
+    "Do not invent policies, prices, opening hours, or legal guarantees. Only answer from the provided business context when possible.",
+  supportTriggerKeywords: [
+    "support",
+    "human",
+    "person",
+    "agent",
+    "contact",
+    "call me",
+    "ring me",
+    "email me",
+  ],
+  handoffMessage:
+    "I can help with that. I will flag this conversation for human follow-up so the team can contact you.",
+};
+
+const defaultChatAnalytics: ChatAnalytics = {
+  totalSessions: 0,
+  totalMessages: 0,
+  aiOnlySessions: 0,
+  supportRequests: 0,
+  savedSupportChats: 0,
+};
+
   // business root
   await setDoc(businessRef, {
     name: businessName,
@@ -278,6 +318,8 @@ const defaultWidgetConfig: ChatWidgetConfig = {
     ownerId: userId,
     chatWidgetKey: generateChatWidgetKey(),
     chatWidgetConfig: defaultWidgetConfig,
+    chatAssistantConfig: defaultAssistantConfig,
+    chatAnalytics: defaultChatAnalytics,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -479,6 +521,13 @@ export async function getBusinessInfo(
       createdAt: data.createdAt?.toDate() || new Date(),
       updatedAt: data.updatedAt?.toDate() || new Date(),
       chatWidgetConfig: data.chatWidgetConfig,
+      chatAssistantConfig: data.chatAssistantConfig,
+      chatAnalytics: data.chatAnalytics
+        ? {
+            ...data.chatAnalytics,
+            lastChatAt: data.chatAnalytics.lastChatAt?.toDate?.() || undefined,
+          }
+        : undefined,
     };
   }
 
@@ -501,6 +550,24 @@ export async function updateChatWidgetConfig(
     });
     
     return { success: true, message: "Widget config oppdatert" };
+  } catch (err: any) {
+    return { success: false, message: err.message };
+  }
+}
+
+export async function updateChatAssistantConfig(
+  businessId: string,
+  config: Partial<ChatAssistantConfig>
+) {
+  try {
+    const businessRef = doc(db, "businesses", businessId);
+
+    await updateDoc(businessRef, {
+      chatAssistantConfig: config,
+      updatedAt: serverTimestamp(),
+    });
+
+    return { success: true, message: "AI config oppdatert" };
   } catch (err: any) {
     return { success: false, message: err.message };
   }

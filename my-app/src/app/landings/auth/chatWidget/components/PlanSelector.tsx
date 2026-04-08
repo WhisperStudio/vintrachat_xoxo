@@ -1,7 +1,8 @@
 'use client'
 
 import { FiCheck, FiChevronDown, FiX } from 'react-icons/fi'
-import { FaInfinity } from 'react-icons/fa'
+import { FaInfinity, FaMoneyBillWave  } from 'react-icons/fa'
+import { MdMoneyOff, MdAttachMoney } from "react-icons/md";
 import './PlanSelector.css'
 
 type Plan = 'free' | 'pro' | 'business'
@@ -65,16 +66,21 @@ export default function PlanSelector({
 
       <div className={`option-grid option-grid-3 dropdown-content ${isOpen ? 'open' : ''}`}>
         {([
-          ['free', 'Free', '$0 / month', 'Basic widget access'],
-          ['pro', 'Pro', '$29 / month', 'Better styling and business use'],
-          ['business', 'Enterprise', '$59 / month', 'Premium widget setup'],
+          ['free', 'Free', billingCycle === 'monthly' ? '$0 / month' : '$0 / year', 'Basic widget access'],
+          ['pro', 'Pro', billingCycle === 'monthly' ? '$29 / month' : '$348 / year', 'Better styling and business use'],
+          ['business', 'Enterprise', billingCycle === 'monthly' ? '$59 / month' : '$708 / year', 'Premium widget setup'],
         ] as const).map(([value, title, price, desc]) => (
           <label key={value} className={`option-card ${plan === value ? 'checked' : ''}`}>
             <input type="radio" name="plan" checked={plan === value} onChange={() => onPlanChange(value)} />
 
             <div className="option-main">
               <span className="option-title">{title}</span>
-              <span className="option-price">{price}</span>
+              <span className="option-price">
+                {value === 'free' && <MdMoneyOff className="money-icon" />}
+                {value === 'pro' && <><MdAttachMoney className="money-icon" /><MdAttachMoney className="money-icon" /></>}
+                {value === 'business' && <><MdAttachMoney className="money-icon" /><MdAttachMoney className="money-icon" /><MdAttachMoney className="money-icon" /></>}
+                <span className="price-text">{price}</span>
+              </span>
               <span className="option-desc">{desc}</span>
             </div>
 
@@ -83,8 +89,8 @@ export default function PlanSelector({
                 <li key={feature.label} className={`feature-item ${feature.status}`}>
                   <span className="feature-dot" />
                   <span className="feature-label">{feature.label}</span>
-                  {feature.status === 'included' && <FiCheck className="feature-icon" />}
-                  {feature.status === 'excluded' && <FiX className="feature-icon" />}
+                  {feature.status === 'included' && <FiCheck className="feature-icon included" />}
+                  {feature.status === 'excluded' && <FiX className="feature-icon excluded" />}
                   {feature.status === 'highlight' && <FaInfinity className="feature-icon highlight" />}
                 </li>
               ))}

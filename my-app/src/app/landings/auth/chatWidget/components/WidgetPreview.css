@@ -24,6 +24,14 @@
     radial-gradient(circle at bottom right, rgba(124, 58, 237, 0.08), transparent 30%);
 }
 
+.widget-viewport-embedded {
+  min-height: 580px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
 .floating-chat-preview {
   position: absolute;
   width: min(390px, calc(100% - 3rem));
@@ -60,7 +68,7 @@
 
 .chat-widget.open {
   opacity: 1;
-  transform: translateY(0) scale(var(--widget-scale));
+  transform: translateY(-70px) scale(var(--widget-scale));
 }
 
 .chat-header {
@@ -143,13 +151,11 @@
 .message-bot {
   align-self: flex-start;
   background: #eef2ff;
-  color: #1e293b;
 }
 
 .message-user {
   align-self: flex-end;
   background: linear-gradient(135deg, #3b82f6, #7c3aed);
-  color: #fff;
 }
 
 .chat-footer {
@@ -178,8 +184,8 @@
 
 .widget-icon {
   position: absolute;
-  right: 1.5rem;
-  bottom: 1.5rem;
+  right: 0rem;
+  bottom: 0rem;
   width: 58px;
   height: 58px;
   display: flex;
@@ -299,6 +305,9 @@
 
 .footer-simple .chat-footer {
   border-top: 1px solid rgba(15, 23, 42, 0.08);
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
   border-radius: 0 0 24px 24px;
   background: #fff;
 }
@@ -314,6 +323,9 @@
 
 .footer-glass .chat-footer {
   border-top: 1px solid rgba(255, 255, 255, 0.5);
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
   border-radius: 0 0 24px 24px;
   background: rgba(255, 255, 255, 0.74);
   backdrop-filter: blur(10px);
@@ -331,6 +343,9 @@
 
 .footer-bordered .chat-footer {
   border-top: 1px solid rgba(15, 23, 42, 0.08);
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
   border-radius: 0 0 24px 24px;
   background: #fff;
 }
@@ -356,14 +371,37 @@
   border: 2px solid var(--border-strong) !important;
 }
 
+.footer-border-solid .chat-footer {
+  border-top: 2px solid var(--border-strong) !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+}
+
 .border-rounded {
   border: 2px solid var(--border-strong) !important;
   border-radius: 12px !important;
 }
 
+.footer-border-rounded .chat-footer {
+  border-top: 2px solid var(--border-strong) !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+  border-radius: 0 0 12px 12px !important;
+}
+
 .border-shadow {
   border: none !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.footer-border-shadow .chat-footer {
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1) !important;
 }
 
 .shadow-none {
@@ -374,12 +412,24 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
 }
 
+.footer-shadow-light .chat-footer {
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
 .shadow-medium {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
 }
 
+.footer-shadow-medium .chat-footer {
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.12) !important;
+}
+
 .shadow-heavy {
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16) !important;
+}
+
+.footer-shadow-heavy .chat-footer {
+  box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.16) !important;
 }
 
 /* Animation classes should not override transform */
@@ -463,19 +513,19 @@
   left: 2rem;
 }
 
-.position-top-right .floating-chat-preview {
-  top: 2rem;
-  right: 2rem;
-  bottom: auto;
+.position-bottom-left .widget-icon {
+  right: auto;
+  left: 0rem;
+}
+.position-bottom-left .chat-widget {
+  right: auto;
+  left: 3rem;
+}
+.position-bottom-right .chat-widget {
+  right: 3rem;
   left: auto;
 }
 
-.position-top-left .floating-chat-preview {
-  top: 2rem;
-  right: auto;
-  bottom: auto;
-  left: 2rem;
-}
 
 /* ========= THEMES ========= */
 
@@ -542,7 +592,7 @@
 .theme-corporate .message.message-bot,
 .theme-luxury .message.message-bot {
   background-color: var(--chat-primary);
-  color: #fff;
+  color: #292929;
 }
 
 .theme-modern .message.message-user,
@@ -550,7 +600,7 @@
 .theme-corporate .message.message-user,
 .theme-luxury .message.message-user {
   background-color: var(--chat-secondary);
-  color: #fff;
+  color: #292929;
 }
 
 .theme-modern .widget-icon,

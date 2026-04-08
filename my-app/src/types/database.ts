@@ -13,6 +13,53 @@ export interface Business {
   
   // Chat Widget spesifikt
   chatWidgetConfig?: ChatWidgetConfig;
+  chatAssistantConfig?: ChatAssistantConfig;
+  chatAnalytics?: ChatAnalytics;
+}
+
+export interface ChatAssistantConfig {
+  enabled: boolean;
+  provider: 'gemini';
+  model: string;
+  strictContextOnly: boolean;
+  systemPrompt: string;
+  businessContext: string;
+  restrictions: string;
+  supportTriggerKeywords: string[];
+  handoffMessage: string;
+}
+
+export interface ChatAnalytics {
+  totalSessions: number;
+  totalMessages: number;
+  aiOnlySessions: number;
+  supportRequests: number;
+  savedSupportChats: number;
+  lastChatAt?: Date;
+}
+
+export interface SupportChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  createdAt: Date;
+}
+
+export interface SupportChatSession {
+  id: string;
+  businessId: string;
+  widgetKey: string;
+  sessionId: string;
+  status: 'needs-human' | 'open' | 'closed';
+  source: 'widget';
+  preview: string;
+  pageTitle?: string;
+  pageUrl?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  supportRequestedAt?: Date;
+  messageCount: number;
+  messages: SupportChatMessage[];
 }
 
 // Chat Widget config
@@ -25,12 +72,12 @@ export interface ChatWidgetConfig {
   colorTheme: 'modern' | 'chilling' | 'corporate' | 'luxury';
   
   // Position (affects widget placement)
-  position: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+  position: 'bottom-right' | 'bottom-left';
   
   // Design options (affects shapes, shadows, borders, elements)
   bubbleStyle: {
     showStatus: boolean;
-    showCloseButton: boolean;
+    iconChoice: 'chat' | 'phone' | 'cpu' | 'message' | 'support';
     borderType: 'none' | 'solid' | 'rounded' | 'shadow';
     shadowType: 'none' | 'light' | 'medium' | 'heavy';
     animationType: 'none' | 'bounce' | 'fade' | 'slide';
