@@ -255,6 +255,12 @@
   color: #10b981;
 }
 
+.widget-inline-error {
+  padding: 0 1rem 1rem;
+  color: #b91c1c;
+  font-size: 0.84rem;
+}
+
 /* ========= LEGACY VISUAL OPTIONS ========= */
 
 .bubble-rounded {

@@ -420,6 +420,36 @@ input {
   border: 1px solid #e5e7eb;
 }
 
+.adminExportMeta {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.adminExportMetaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.adminExportMetaItem code {
+  word-break: break-all;
+  color: #0f172a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.adminExportFrame {
+  width: 100%;
+  min-height: 760px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
 @media (max-width: 900px) {
   .cardGrid,
   .miniGrid,

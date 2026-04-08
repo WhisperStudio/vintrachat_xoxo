@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import AdminAnalyticsPanel from './components/AdminAnalyticsPanel'
 import AdminChatsPanel from './components/AdminChatsPanel'
+import AdminExportTestPanel from './components/AdminExportTestPanel'
 import WidgetAdminPanel from './widget/page'
 
 type AdminTab =
@@ -15,6 +16,7 @@ type AdminTab =
   | 'users'
   | 'websites'
   | 'widgets'
+  | 'export-test'
   | 'settings'
 
 export default function AdminPage() {
@@ -75,6 +77,13 @@ export default function AdminPage() {
             Chat Widgets
           </button>
 
+          <button
+            onClick={() => setActiveTab('export-test')}
+            className={activeTab === 'export-test' ? 'sideActive' : ''}
+          >
+            Export Test
+          </button>
+
           <div className="sidebarBottom">
             <button
               onClick={() => setActiveTab('settings')}
@@ -122,6 +131,8 @@ export default function AdminPage() {
           )}
 
           {activeTab === 'widgets' && <WidgetAdminPanel />}
+
+          {activeTab === 'export-test' && <AdminExportTestPanel />}
 
           {activeTab === 'settings' && (
             <div className="infoCard">

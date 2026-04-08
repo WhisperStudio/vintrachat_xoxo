@@ -29,6 +29,7 @@ export default function WidgetAdminPanel() {
   const [assistantConfig, setAssistantConfig] =
     useState<ChatAssistantConfig>(defaultAssistantConfig)
   const [copied, setCopied] = useState(false)
+  const [embedBaseUrl, setEmbedBaseUrl] = useState(process.env.NEXT_PUBLIC_APP_URL || '')
   const [assistantSaving, setAssistantSaving] = useState(false)
   const [assistantStatus, setAssistantStatus] = useState<'idle' | 'saved' | 'error'>('idle')
 
@@ -44,11 +45,17 @@ export default function WidgetAdminPanel() {
     }
   }, [business])
 
+  useEffect(() => {
+    if (!embedBaseUrl && typeof window !== 'undefined') {
+      setEmbedBaseUrl(window.location.origin)
+    }
+  }, [embedBaseUrl])
+
   const handleCopy = async () => {
     if (!business?.chatWidgetKey) return
 
     const code = `<!-- Chat Widget -->
-<script src="${process.env.NEXT_PUBLIC_APP_URL}/widget/${business.chatWidgetKey}.js"></script>
+<script src="${embedBaseUrl}/widget/${business.chatWidgetKey}.js"></script>
 <!-- End Chat Widget -->`
 
     await navigator.clipboard.writeText(code)
@@ -100,7 +107,7 @@ export default function WidgetAdminPanel() {
   }
 
   const embedCode = `<!-- Chat Widget -->
-<script src="${process.env.NEXT_PUBLIC_APP_URL}/widget/${business.chatWidgetKey}.js"></script>
+<script src="${embedBaseUrl}/widget/${business.chatWidgetKey}.js"></script>
 <!-- End Chat Widget -->`
 
   return (

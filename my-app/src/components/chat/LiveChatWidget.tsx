@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { FiCheckCircle, FiMessageCircle, FiSend, FiX } from 'react-icons/fi'
-import '@/app/landings/auth/chatWidget/components/WidgetPreview.css'
+import { useEffect, useState } from 'react'
+import WidgetPreview from '@/app/landings/auth/chatWidget/components/WidgetPreview'
 import './LiveChatWidget.css'
 import type { ChatWidgetConfig } from '@/types/database'
 
@@ -31,13 +30,27 @@ function messageId() {
 }
 
 export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
+  const forceOpen =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('open') === '1'
   const [configResponse, setConfigResponse] = useState<WidgetConfigResponse | null>(null)
   const [messages, setMessages] = useState<WidgetMessage[]>(emptyMessages)
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(forceOpen)
   const [inputValue, setInputValue] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    window.parent.postMessage(
+      {
+        type: 'vintra-widget-debug',
+        widgetKey,
+        status: 'frame mounted',
+      },
+      '*'
+    )
+  }, [widgetKey])
 
   useEffect(() => {
     let active = true
@@ -48,12 +61,21 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         const data = await response.json()
 
         if (!response.ok) {
-          throw new Error(data.error || 'Failed to load widget config')
+          throw new Error(data.details || data.error || 'Failed to load widget config')
         }
 
         if (!active) return
 
         setConfigResponse(data)
+        window.parent.postMessage(
+          {
+            type: 'vintra-widget-debug',
+            widgetKey,
+            status: 'config loaded',
+            details: `assistantEnabled=${String(data.assistantEnabled)}`,
+          },
+          '*'
+        )
 
         const shouldAutoOpen = data.widgetConfig?.settings?.autoOpen
         const delayMs = Number(data.widgetConfig?.settings?.delayMs || 0)
@@ -65,6 +87,15 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         if (!active) return
         console.error(err)
         setError('Could not load the chat widget.')
+        window.parent.postMessage(
+          {
+            type: 'vintra-widget-debug',
+            widgetKey,
+            status: 'config failed',
+            details: err instanceof Error ? err.message : 'unknown config error',
+          },
+          '*'
+        )
       }
     }
 
@@ -86,8 +117,8 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     if (!configResponse) return
 
     const position = configResponse.widgetConfig.position
-    const openWidth = 420
-    const openHeight = 720
+    const openWidth = 460
+    const openHeight = 760
     const closedWidth = 84
     const closedHeight = 84
 
@@ -101,12 +132,18 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       },
       '*'
     )
+    window.parent.postMessage(
+      {
+        type: 'vintra-widget-debug',
+        widgetKey,
+        status: 'layout posted',
+        details: `${position} ${isOpen ? 'open' : 'closed'}`,
+      },
+      '*'
+    )
   }, [configResponse, isOpen, widgetKey])
 
   const config = configResponse?.widgetConfig
-  const themeClass = useMemo(() => {
-    return config ? `theme-${config.colorTheme}` : 'theme-modern'
-  }, [config])
 
   const handleToggle = () => {
     setIsOpen((prev) => !prev)
@@ -186,80 +223,45 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   const description =
     config.customBranding?.description || 'Ask a question and we will help you.'
 
+  const widgetMessages = messages.length
+    ? messages.map((message) => ({
+        id: message.id,
+        text: message.text,
+        isBot: message.role === 'assistant',
+      }))
+    : [
+        {
+          id: 'initial-runtime-message',
+          text: `Ask a question to start chatting with ${configResponse?.businessName || 'us'}.`,
+          isBot: true,
+        },
+      ]
+
   return (
     <div className="widget-frame-shell">
-      <div className={`widget-frame-root ${themeClass} position-${config.position}`}>
-        <div className="floating-chat-preview widget-frame-preview">
-          <div className="widgetcontainer">
-            <div className={`chat-widget ${isOpen ? 'open' : ''}`}>
-              <div className="chat-header">
-                <div className="chat-header-left">
-                  <div className="avatar">
-                    {config.customBranding?.logo ? (
-                      <img src={config.customBranding.logo} alt="logo" className="avatar-image" />
-                    ) : (
-                      <FiMessageCircle />
-                    )}
-                  </div>
-
-                  <div>
-                    <h3>{title}</h3>
-                    <p>{description}</p>
-                  </div>
-                </div>
-
-                <div className="chat-header-actions">
-                  <span className="status-pill">
-                    <FiCheckCircle /> {configResponse?.assistantEnabled ? 'AI live' : 'AI off'}
-                  </span>
-                  <button type="button" className="close-btn" onClick={() => setIsOpen(false)}>
-                    <FiX />
-                  </button>
-                </div>
-              </div>
-
-              <div className="chat-body">
-                {messages.length === 0 && (
-                  <div className="message message-bot">
-                    Ask a question to start chatting with {configResponse?.businessName || 'us'}.
-                  </div>
-                )}
-
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`message ${
-                      message.role === 'assistant' ? 'message-bot' : 'message-user'
-                    }`}
-                  >
-                    {message.text}
-                  </div>
-                ))}
-
-                {error && <div className="widget-inline-error">{error}</div>}
-              </div>
-
-              <div className="chat-footer">
-                <input
-                  type="text"
-                  placeholder="Write a message..."
-                  value={inputValue}
-                  onChange={(event) => setInputValue(event.target.value)}
-                  onKeyDown={(event) => event.key === 'Enter' && handleSend()}
-                  disabled={isSending}
-                />
-                <button type="button" onClick={handleSend} disabled={isSending}>
-                  <FiSend />
-                </button>
-              </div>
-            </div>
-
-            <button type="button" className="widget-icon" onClick={handleToggle}>
-              <FiMessageCircle />
-            </button>
-          </div>
-        </div>
-      </div>
+      <WidgetPreview
+        bubbleStyle={config.bubbleStyle}
+        headerStyle={config.headerStyle}
+        bodyStyle={config.bodyStyle}
+        footerStyle={config.footerStyle}
+        position={config.position}
+        colorTheme={config.colorTheme}
+        customBranding={{
+          title,
+          description,
+          logo: config.customBranding?.logo,
+        }}
+        variant="embedded"
+        messagesOverride={widgetMessages}
+        inputValueOverride={inputValue}
+        onInputValueChange={setInputValue}
+        onSendMessage={handleSend}
+        openOverride={isOpen}
+        onToggleOpen={handleToggle}
+        errorMessage={error}
+        statusText={configResponse?.assistantEnabled ? 'AI live' : 'AI off'}
+        disableInput={isSending}
+      />
     </div>
   )
 }

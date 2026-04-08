@@ -23,6 +23,14 @@ export async function GET(req: NextRequest) {
     })
   } catch (error) {
     console.error('Widget config error:', error)
-    return NextResponse.json({ error: 'Failed to load widget config' }, { status: 500 })
+    const details =
+      process.env.NODE_ENV !== 'production' && error instanceof Error
+        ? error.message
+        : undefined
+
+    return NextResponse.json(
+      { error: 'Failed to load widget config', details },
+      { status: 500 }
+    )
   }
 }

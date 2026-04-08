@@ -46,6 +46,15 @@ interface WidgetPreviewProps {
   variant?: 'default' | 'embedded'
   enablePreviewChat?: boolean
   previewReply?: string
+  messagesOverride?: Message[]
+  inputValueOverride?: string
+  onInputValueChange?: (value: string) => void
+  onSendMessage?: () => void
+  openOverride?: boolean
+  onToggleOpen?: () => void
+  errorMessage?: string | null
+  statusText?: string
+  disableInput?: boolean
 }
 
 interface Message {
@@ -66,39 +75,75 @@ export default function WidgetPreview({
   variant = 'default',
   enablePreviewChat = false,
   previewReply = 'hi, this is only a test',
+  messagesOverride,
+  inputValueOverride,
+  onInputValueChange,
+  onSendMessage,
+  openOverride,
+  onToggleOpen,
+  errorMessage = null,
+  statusText = 'Online',
+  disableInput = false,
 }: WidgetPreviewProps) {
-  const [isChatOpen, setIsChatOpen] = useState(initialOpen)
-  const [messages, setMessages] = useState<Message[]>([
+  const [internalIsChatOpen, setInternalIsChatOpen] = useState(initialOpen)
+  const [internalMessages, setInternalMessages] = useState<Message[]>([
     {
       id: crypto.randomUUID(),
       text: 'Hey! Welcome to our website. How can we help you today?',
       isBot: true,
     },
   ])
-  const [inputValue, setInputValue] = useState('')
+  const [internalInputValue, setInternalInputValue] = useState('')
+
+  const isChatOpen = openOverride ?? internalIsChatOpen
+  const messages = messagesOverride ?? internalMessages
+  const inputValue = inputValueOverride ?? internalInputValue
+
+  const setIsChatOpen = (value: boolean | ((prev: boolean) => boolean)) => {
+    if (onToggleOpen) {
+      onToggleOpen()
+      return
+    }
+
+    setInternalIsChatOpen(value)
+  }
+
+  const setInputValue = (value: string) => {
+    if (onInputValueChange) {
+      onInputValueChange(value)
+      return
+    }
+
+    setInternalInputValue(value)
+  }
 
   const handleSend = () => {
-    if (inputValue.trim()) {
-      const nextText = inputValue.trim()
+    if (!inputValue.trim()) return
 
-      if (enablePreviewChat) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            text: nextText,
-            isBot: false,
-          },
-          {
-            id: crypto.randomUUID(),
-            text: previewReply,
-            isBot: true,
-          },
-        ])
-      }
-
-      setInputValue('')
+    if (onSendMessage) {
+      onSendMessage()
+      return
     }
+
+    const nextText = inputValue.trim()
+
+    if (enablePreviewChat) {
+      setInternalMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          text: nextText,
+          isBot: false,
+        },
+        {
+          id: crypto.randomUUID(),
+          text: previewReply,
+          isBot: true,
+        },
+      ])
+    }
+
+    setInputValue('')
   }
 
   const bubbleClasses = [
@@ -153,7 +198,7 @@ export default function WidgetPreview({
               <div className="chat-header-actions">
                 {headerStyle.showStatus && (
                   <span className="status-pill">
-                    <FiCheckCircle /> Online
+                    <FiCheckCircle /> {statusText}
                   </span>
                 )}
 
@@ -194,14 +239,17 @@ export default function WidgetPreview({
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                disabled={disableInput}
               />
 
               {footerStyle.showSendButton && (
-                <button type="button" onClick={handleSend}>
+                <button type="button" onClick={handleSend} disabled={disableInput}>
                   <FiSend />
                 </button>
               )}
             </div>
+
+            {errorMessage && <div className="widget-inline-error">{errorMessage}</div>}
           </div>
 
           <div
