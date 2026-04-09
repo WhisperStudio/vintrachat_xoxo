@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import {
   acceptSupportChat,
@@ -10,6 +10,7 @@ import {
   sendSupportReply,
 } from '@/lib/chat.service'
 import type { SupportChatMessage, SupportChatSession } from '@/types/database'
+import './admin-components.css'
 
 function speakerLabel(role: SupportChatMessage['role']) {
   switch (role) {
@@ -31,6 +32,7 @@ export default function AdminChatsPanel() {
   const [loading, setLoading] = useState(true)
   const [replyText, setReplyText] = useState('')
   const [actionBusy, setActionBusy] = useState(false)
+  const messagesRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -63,6 +65,12 @@ export default function AdminChatsPanel() {
     () => chats.find((chat) => chat.id === selectedChatId) || chats[0] || null,
     [chats, selectedChatId]
   )
+
+  useLayoutEffect(() => {
+    const el = messagesRef.current
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+  }, [selectedChat?.id, selectedChat?.messages.length, selectedChat?.status])
 
   const refreshChats = async () => {
     if (!dbUser?.businessId) return
@@ -139,35 +147,34 @@ export default function AdminChatsPanel() {
 
   return (
     <div className="infoCard adminDataCard">
-      <h1>Chats</h1>
-      <p>These are the conversations that requested human support or contact.</p>
-
       <div className="adminChatsLayout">
-        <div className="adminChatList">
-          {chats.map((chat) => (
-            <button
-              key={chat.id}
-              type="button"
-              className={`adminChatListItem ${
-                chat.id === selectedChat.id ? 'adminChatListItemActive ' : ''
-              }${chat.status === 'needs-human'
-                ? 'adminChatListItemWaiting '
-                : chat.status === 'open'
-                  ? 'adminChatListItemOpen '
-                  : chat.status === 'ai-active'
-                    ? 'adminChatListItemAi '
-                    : ''
-              }`}
-              onClick={() => setSelectedChatId(chat.id)}
-            >
-              <strong>{chat.preview || 'Support request'}</strong>
-              <span>{new Date(chat.updatedAt).toLocaleString()}</span>
-              <span>{chat.messageCount} messages</span>
-              <span>Status: {chat.status}</span>
-            </button>
-          ))}
-        </div>
-
+        <div>
+          <h1>Chats</h1>
+          <div className="adminChatList">
+            {chats.map((chat) => (
+              <button
+                key={chat.id}
+                type="button"
+                className={`adminChatListItem ${
+                  chat.id === selectedChat.id ? 'adminChatListItemActive ' : ''
+                }${chat.status === 'needs-human'
+                  ? 'adminChatListItemWaiting '
+                  : chat.status === 'open'
+                    ? 'adminChatListItemOpen '
+                    : chat.status === 'ai-active'
+                      ? 'adminChatListItemAi '
+                      : ''
+                }`}
+                onClick={() => setSelectedChatId(chat.id)}
+              >
+                <strong>{chat.preview || 'Support request'}</strong>
+                <span>{new Date(chat.updatedAt).toLocaleString()}</span>
+                <span>{chat.messageCount} messages</span>
+                <span>Status: {chat.status}</span>
+              </button>
+            ))}
+          </div>
+          </div>
         <div className="adminChatTranscript">
           <div className="adminChatMeta">
             <strong>{selectedChat.pageTitle || 'Website visitor'}</strong>
@@ -209,7 +216,7 @@ export default function AdminChatsPanel() {
           </div>
 
           <div className={`adminChatTranscriptStack ${awaitingAcceptance ? 'adminChatTranscriptLocked' : ''}`}>
-            <div className="adminChatMessages">
+            <div className="adminChatMessages" ref={messagesRef}>
               {selectedChat.messages.map((message) => (
                 <div
                   key={message.id}

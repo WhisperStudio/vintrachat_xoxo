@@ -3,11 +3,12 @@
 import Header from '@/components/header'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import AdminAnalyticsPanel from './components/AdminAnalyticsPanel'
 import AdminChatsPanel from './components/AdminChatsPanel'
 import AdminExportTestPanel from './components/AdminExportTestPanel'
 import WidgetAdminPanel from './widget/page'
+import './page.css'
 
 type AdminTab =
   | 'overview'
@@ -23,10 +24,53 @@ export default function AdminPage() {
   const { isAuthenticated, dbUser, loading } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
+  const sidebarRef = useRef<HTMLElement | null>(null)
+  const tabButtonRefs = useRef<Partial<Record<AdminTab, HTMLButtonElement | null>>>({})
+  const [indicatorStyle, setIndicatorStyle] = useState<{ top: number; height: number } | null>(
+    null
+  )
+
+  const supportItems: Array<{ tab: AdminTab; label: string }> = [
+    { tab: 'chats', label: 'Chats' },
+    
+    { tab: 'export-test', label: 'Export Test' },
+  ]
+
+  const adminItems: Array<{ tab: AdminTab; label: string }> = [
+    { tab: 'analytics', label: 'Analytics' },
+    { tab: 'users', label: 'User Management' },
+    { tab: 'widgets', label: 'Chat Widgets' },
+    { tab: 'websites', label: 'Websites' },
+    { tab: 'settings', label: 'Settings' },
+  ]
 
   useEffect(() => {
     if (!loading && !isAuthenticated) router.push('/auth/login')
   }, [isAuthenticated, loading, router])
+
+  useLayoutEffect(() => {
+    const updateIndicator = () => {
+      const sidebarEl = sidebarRef.current
+      const activeButton = tabButtonRefs.current[activeTab]
+
+      if (!sidebarEl || !activeButton) {
+        setIndicatorStyle(null)
+        return
+      }
+
+      const sidebarRect = sidebarEl.getBoundingClientRect()
+      const buttonRect = activeButton.getBoundingClientRect()
+
+      setIndicatorStyle({
+        top: buttonRect.top - sidebarRect.top + sidebarEl.scrollTop,
+        height: buttonRect.height,
+      })
+    }
+
+    updateIndicator()
+    window.addEventListener('resize', updateIndicator)
+    return () => window.removeEventListener('resize', updateIndicator)
+  }, [activeTab])
 
   if (loading) return <div>Loading...</div>
   if (!isAuthenticated || !dbUser) return null
@@ -35,62 +79,62 @@ export default function AdminPage() {
     <>
       <Header />
       <main className="adminPage">
-        <aside className="adminSidebar">
-          <h2>Admin Panel</h2>
-
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={activeTab === 'overview' ? 'sideActive' : ''}
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => setActiveTab('analytics')}
-            className={activeTab === 'analytics' ? 'sideActive' : ''}
-          >
-            Analytics
-          </button>
-          <button
-            onClick={() => setActiveTab('chats')}
-            className={activeTab === 'chats' ? 'sideActive' : ''}
-          >
-            Chats
-          </button>
-          <button
-            onClick={() => setActiveTab('users')}
-            className={activeTab === 'users' ? 'sideActive' : ''}
-          >
-            User Management
-          </button>
-
-          <button
-            onClick={() => setActiveTab('websites')}
-            className={activeTab === 'websites' ? 'sideActive' : ''}
-          >
-            Websites
-          </button>
-
-          <button
-            onClick={() => setActiveTab('widgets')}
-            className={activeTab === 'widgets' ? 'sideActive' : ''}
-          >
-            Chat Widgets
-          </button>
-
-          <button
-            onClick={() => setActiveTab('export-test')}
-            className={activeTab === 'export-test' ? 'sideActive' : ''}
-          >
-            Export Test
-          </button>
-
-          <div className="sidebarBottom">
+        <aside className="adminSidebar" ref={sidebarRef}>
+          {indicatorStyle ? (
+            <span
+              className="adminSidebarIndicator"
+              style={{
+                top: `${indicatorStyle.top}px`,
+                height: `${indicatorStyle.height}px`,
+              }}
+            />
+          ) : null}
+          <div className="adminSidebarHeader">
+            <span className="adminSidebarEyebrow">Control Center</span>
+            <h2>Admin Panel</h2>
+          </div>
+          <div className="adminSidebarGroup">
+            <div className="adminSidebarGroupLabel">General</div>
             <button
-              onClick={() => setActiveTab('settings')}
-              className={activeTab === 'settings' ? 'sideActive' : ''}
+              ref={(node) => {
+                tabButtonRefs.current.overview = node
+              }}
+              onClick={() => setActiveTab('overview')}
+              className={activeTab === 'overview' ? 'sideActive' : ''}
             >
-              Settings
+              Overview
             </button>
+          </div>
+          <div className="adminSidebarGroup">
+            <div className="adminSidebarGroupLabel">Support</div>
+            {supportItems.map((item) => (
+              <button
+                key={item.tab}
+                ref={(node) => {
+                  tabButtonRefs.current[item.tab] = node
+                }}
+                onClick={() => setActiveTab(item.tab)}
+                className={activeTab === item.tab ? 'sideActive' : ''}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="adminSidebarGroup">
+            <div className="adminSidebarGroupLabel">Administrative</div>
+            {adminItems.map((item) => (
+              <button
+                key={item.tab}
+                ref={(node) => {
+                  tabButtonRefs.current[item.tab] = node
+                }}
+                onClick={() => setActiveTab(item.tab)}
+                className={activeTab === item.tab ? 'sideActive' : ''}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
         </aside>
 

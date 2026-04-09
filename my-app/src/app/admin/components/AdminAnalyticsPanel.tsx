@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { getBusinessChatAnalytics } from '@/lib/chat.service'
 import type { ChatAnalytics } from '@/types/database'
+import './admin-components.css'
 
 const emptyAnalytics: ChatAnalytics = {
   totalSessions: 0,

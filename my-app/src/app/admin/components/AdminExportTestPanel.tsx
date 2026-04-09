@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
+import './admin-components.css'
 
 function normalizeBaseUrl(url: string) {
   if (!url) return ''
