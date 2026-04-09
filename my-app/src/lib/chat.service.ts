@@ -1,10 +1,15 @@
 import {
+  arrayUnion,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
+  increment,
   orderBy,
   query,
+  serverTimestamp,
+  updateDoc,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type {
@@ -23,9 +28,26 @@ function toDate(value: any): Date {
 function mapSupportMessage(message: any): SupportChatMessage {
   return {
     id: message.id || crypto.randomUUID(),
-    role: message.role === 'assistant' ? 'assistant' : 'user',
+    role:
+      message.role === 'assistant' ||
+      message.role === 'support' ||
+      message.role === 'system'
+        ? message.role
+        : 'user',
     text: message.text || '',
     createdAt: toDate(message.createdAt),
+  }
+}
+
+function createSupportMessage(
+  role: SupportChatMessage['role'],
+  text: string
+): Omit<SupportChatMessage, 'createdAt'> & { createdAt: Date } {
+  return {
+    id: crypto.randomUUID(),
+    role,
+    text,
+    createdAt: new Date(),
   }
 }
 
@@ -77,4 +99,55 @@ export async function getBusinessChatAnalytics(
     ...analytics,
     lastChatAt: analytics.lastChatAt ? toDate(analytics.lastChatAt) : undefined,
   }
+}
+
+export async function acceptSupportChat(businessId: string, chatId: string) {
+  const chatRef = doc(db, `businesses/${businessId}/supportChats/${chatId}`)
+  const systemMessage = createSupportMessage('system', 'The chat has been handed over to human support.')
+
+  await updateDoc(chatRef, {
+    status: 'open',
+    updatedAt: serverTimestamp(),
+    messageCount: increment(1),
+    messages: arrayUnion(systemMessage),
+  })
+}
+
+export async function returnSupportChatToAi(businessId: string, chatId: string) {
+  const chatRef = doc(db, `businesses/${businessId}/supportChats/${chatId}`)
+  const systemMessage = createSupportMessage(
+    'system',
+    'The chat has been returned to the AI assistant.'
+  )
+
+  await updateDoc(chatRef, {
+    status: 'ai-active',
+    updatedAt: serverTimestamp(),
+    messageCount: increment(1),
+    messages: arrayUnion(systemMessage),
+  })
+}
+
+export async function sendSupportReply(
+  businessId: string,
+  chatId: string,
+  text: string
+) {
+  const trimmed = text.trim()
+  if (!trimmed) return
+
+  const chatRef = doc(db, `businesses/${businessId}/supportChats/${chatId}`)
+  const supportMessage = createSupportMessage('support', trimmed)
+
+  await updateDoc(chatRef, {
+    status: 'open',
+    updatedAt: serverTimestamp(),
+    messages: arrayUnion(supportMessage),
+    messageCount: increment(1),
+  })
+}
+
+export async function closeSupportChat(businessId: string, chatId: string) {
+  const chatRef = doc(db, `businesses/${businessId}/supportChats/${chatId}`)
+  await deleteDoc(chatRef)
 }

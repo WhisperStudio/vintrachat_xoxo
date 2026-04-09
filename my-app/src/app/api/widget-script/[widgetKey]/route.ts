@@ -39,6 +39,7 @@ const widgetStyles = `
 
 .chat-widget {
   --widget-scale: 1;
+  position: relative;
   width: 100%;
   overflow: hidden;
   border: 1px solid rgba(15, 23, 42, 0.08);
@@ -171,6 +172,68 @@ const widgetStyles = `
   background: var(--chat-bg, #ffffff);
 }
 
+.chat-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-widget-locked .chat-content {
+  filter: blur(5px) grayscale(1);
+  opacity: 0.48;
+  pointer-events: none;
+  user-select: none;
+}
+
+.chat-lock-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+}
+
+.chat-lock-card {
+  display: grid;
+  gap: 0.75rem;
+  place-items: center;
+  min-width: min(260px, 100%);
+  padding: 1.2rem 1.4rem;
+  border: 1px solid rgba(34, 197, 94, 0.18);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.14);
+}
+
+.chat-lock-card p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.92rem;
+  text-align: center;
+}
+
+.accept-chat-btn {
+  padding: 0.85rem 1.2rem;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 22px rgba(22, 163, 74, 0.28);
+}
+
+.accept-chat-btn:hover {
+  transform: translateY(-1px);
+}
+
+.accept-chat-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .message {
   max-width: 82%;
   padding: 0.85rem 1rem;
@@ -192,6 +255,49 @@ const widgetStyles = `
   align-self: flex-end;
   background: linear-gradient(135deg, #3b82f6, #7c3aed);
   color: #fff;
+}
+
+.message-support {
+  align-self: flex-start;
+  background: #dcfce7;
+  color: #14532d;
+}
+
+.message-system {
+  align-self: center;
+  max-width: 100%;
+  padding: 0.2rem 0.4rem;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.8rem;
+  text-align: center;
+ }
+
+.message-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  opacity: 0.78;
+}
+
+.chat-status-line {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 100%;
+  color: #64748b;
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.chat-status-line::before,
+.chat-status-line::after {
+  content: '';
+  width: 42px;
+  height: 1px;
+  background: rgba(100, 116, 139, 0.28);
 }
 
 .message-time {
@@ -465,6 +571,22 @@ const widgetStyles = `
   color: var(--chat-text);
 }
 
+.theme-modern .message.message-support,
+.theme-chilling .message.message-support,
+.theme-corporate .message.message-support,
+.theme-luxury .message.message-support {
+  background: #dcfce7;
+  color: #14532d;
+}
+
+.theme-modern .message.message-system,
+.theme-chilling .message.message-system,
+.theme-corporate .message.message-system,
+.theme-luxury .message.message-system {
+  background: transparent;
+  color: #64748b;
+}
+
 .theme-modern .message.message-user,
 .theme-chilling .message.message-user,
 .theme-corporate .message.message-user,
@@ -581,6 +703,7 @@ export async function GET(
   var DEBUG_MODE = ${debugMode ? 'true' : 'false'};
   var FORCE_OPEN = ${forceOpen ? 'true' : 'false'};
   var GLOBAL_KEY = '__vintraWidgetLoaded__' + WIDGET_KEY;
+  var SESSION_STORAGE_KEY = '__vintraWidgetSession__' + WIDGET_KEY;
 
   if (window[GLOBAL_KEY]) return;
   window[GLOBAL_KEY] = true;
@@ -611,16 +734,39 @@ export async function GET(
 
   setDebug('Script loaded');
 
+  function readStoredSessionId() {
+    try {
+      return window.localStorage.getItem(SESSION_STORAGE_KEY) || '';
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function writeStoredSessionId(value) {
+    try {
+      if (value) {
+        window.localStorage.setItem(SESSION_STORAGE_KEY, value);
+      } else {
+        window.localStorage.removeItem(SESSION_STORAGE_KEY);
+      }
+    } catch (error) {}
+  }
+
   var state = {
     open: FORCE_OPEN,
-    sessionId: '',
+    sessionId: readStoredSessionId(),
     sending: false,
     inputValue: '',
     error: '',
     assistantEnabled: true,
     config: null,
     configLoaded: false,
-    messages: []
+    messages: [],
+    supportStatus: '',
+    supportPolling: false,
+    supportAcknowledged: false,
+    hasOpenedOnce: FORCE_OPEN,
+    hasUnreadWhileClosed: false
   };
 
   var icons = {
@@ -654,6 +800,51 @@ export async function GET(
     return parts.filter(Boolean).join(' ');
   }
 
+  function normalizeRole(role) {
+    if (role === 'assistant' || role === 'support' || role === 'system') {
+      return role;
+    }
+    return 'user';
+  }
+
+  function isIncomingRole(role) {
+    return role === 'assistant' || role === 'support' || role === 'system';
+  }
+
+  function mapMessage(message) {
+    return {
+      id: message && message.id ? String(message.id) : 'message-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+      role: normalizeRole(message && message.role),
+      text: String((message && message.text) || ''),
+      createdAt: message && message.createdAt ? String(message.createdAt) : new Date().toISOString()
+    };
+  }
+
+  function updateMessages(nextMessages) {
+    var normalized = Array.isArray(nextMessages) ? nextMessages.map(mapMessage) : [];
+    var previousLast = state.messages.length ? state.messages[state.messages.length - 1] : null;
+    var nextLast = normalized.length ? normalized[normalized.length - 1] : null;
+
+    state.messages = normalized;
+
+    if (
+      nextLast &&
+      isIncomingRole(nextLast.role) &&
+      (!previousLast ||
+        previousLast.id !== nextLast.id ||
+        previousLast.text !== nextLast.text ||
+        previousLast.role !== nextLast.role) &&
+      !state.open &&
+      state.hasOpenedOnce
+    ) {
+      state.hasUnreadWhileClosed = true;
+    }
+
+    if (state.open) {
+      state.hasUnreadWhileClosed = false;
+    }
+  }
+
   function getThemeName(config) {
     return config && config.colorTheme ? config.colorTheme : 'modern';
   }
@@ -676,20 +867,120 @@ export async function GET(
     return config && config.position === 'bottom-left' ? 'bottom-left' : 'bottom-right';
   }
 
+  function getStatusLabel() {
+    if (state.supportStatus === 'needs-human') return 'Waiting for support';
+    if (state.supportStatus === 'open') return 'Human support live';
+    if (state.supportStatus === 'ai-active') return 'AI resumed';
+    return state.assistantEnabled ? 'AI live' : 'Offline';
+  }
+
+  function shouldShowSupportGate() {
+    return state.supportStatus === 'needs-human' || (state.supportStatus === 'open' && !state.supportAcknowledged);
+  }
+
   function getMessagesMarkup(config) {
     var bodyStyle = (config && config.bodyStyle) || {};
+    var waitingLine = state.supportStatus === 'needs-human'
+      ? '<div class="chat-status-line">Waiting for a support assistant</div>'
+      : '';
+
     if (!state.messages.length) {
-      return '<div class="message message-bot">Chat is ready. Send a message to start.</div>';
+      return waitingLine + '<div class="message message-bot">Chat is ready. Send a message to start.</div>';
     }
-    return state.messages.map(function (msg) {
+
+    return waitingLine + state.messages.map(function (msg) {
+      var roleClass = msg.role === 'assistant'
+        ? 'message-bot'
+        : msg.role === 'support'
+          ? 'message-support'
+          : msg.role === 'system'
+            ? 'message-system'
+            : 'message-user';
+      var label = msg.role === 'assistant'
+        ? 'AI assistant'
+        : msg.role === 'support'
+          ? 'Human support'
+          : msg.role === 'system'
+            ? 'System'
+            : 'You';
+
+      if (msg.role === 'system') {
+        return (
+          '<div class="' + classes(['message', roleClass]) + '">' +
+            escapeHtml(msg.text) +
+          '</div>'
+        );
+      }
+
       return (
-        '<div class="' + classes(['message', msg.isBot ? 'message-bot' : 'message-user']) + '">' +
+        '<div class="' + classes(['message', roleClass]) + '">' +
+          '<span class="message-label">' + escapeHtml(label) + '</span>' +
           escapeHtml(msg.text) +
           (bodyStyle.showTimestamps ? '<span class="message-time">' + escapeHtml(formatTime(msg.createdAt)) + '</span>' : '') +
-          (bodyStyle.showReadReceipts && !msg.isBot ? '<span class="message-read">Read</span>' : '') +
+          (bodyStyle.showReadReceipts && msg.role === 'user' ? '<span class="message-read">Read</span>' : '') +
         '</div>'
       );
     }).join('');
+  }
+
+  var supportPollTimer = null;
+
+  function clearSupportState() {
+    state.supportStatus = '';
+    state.sessionId = '';
+    state.supportAcknowledged = false;
+    writeStoredSessionId('');
+  }
+
+  function stopSupportPolling() {
+    state.supportPolling = false;
+    if (supportPollTimer) {
+      window.clearInterval(supportPollTimer);
+      supportPollTimer = null;
+    }
+  }
+
+  async function syncSupportChat() {
+    if (!state.sessionId) return;
+
+    try {
+      var response = await fetch(
+        ORIGIN + '/api/widget/support?key=' + encodeURIComponent(WIDGET_KEY) + '&sessionId=' + encodeURIComponent(state.sessionId),
+        { mode: 'cors' }
+      );
+
+      if (response.status === 404) {
+        stopSupportPolling();
+        clearSupportState();
+        render();
+        return;
+      }
+
+      var json = await response.json();
+
+      if (!response.ok) {
+        throw new Error(json && json.error ? json.error : 'Failed to sync support chat');
+      }
+
+      state.supportStatus = json.status || state.supportStatus || 'needs-human';
+      updateMessages(Array.isArray(json.messages) ? json.messages : []);
+
+      if (state.supportStatus !== 'needs-human' && state.supportStatus !== 'open') {
+        state.supportAcknowledged = true;
+        stopSupportPolling();
+      }
+
+      render();
+    } catch (error) {
+      setDebug('Support sync failed\\n' + (error && error.message ? error.message : String(error)));
+    }
+  }
+
+  function startSupportPolling() {
+    if (!state.sessionId) return;
+    if (supportPollTimer) return;
+    state.supportPolling = true;
+    supportPollTimer = window.setInterval(syncSupportChat, 3000);
   }
 
   function render() {
@@ -702,6 +993,10 @@ export async function GET(
     var position = getPosition(config);
     var iconChoice = bubbleStyle.iconChoice || 'chat';
     var bubbleIcon = icons[iconChoice] || icons.chat;
+    var shouldAnimateBubble =
+      bubbleStyle.animationType &&
+      bubbleStyle.animationType !== 'none' &&
+      (!state.hasOpenedOnce || (!state.open && state.hasUnreadWhileClosed));
     var headerAvatar = getLogo(config)
       ? '<img src="' + escapeHtml(getLogo(config)) + '" alt="logo" />'
       : icons.message;
@@ -713,10 +1008,12 @@ export async function GET(
         '<div class="' + classes([
           'chat-widget',
           shouldShowWidget ? 'open' : '',
+          shouldShowSupportGate() ? 'chat-widget-locked' : '',
           'border-' + (headerStyle.borderType || 'none'),
           'shadow-' + (headerStyle.shadowType || 'none'),
           'messages-' + (bodyStyle.messageStyle || 'bubble')
         ]) + '">' +
+          '<div class="chat-content">' +
           '<div class="chat-header">' +
             '<div class="chat-header-left">' +
               (headerStyle.showAvatar !== false ? '<div class="avatar">' + headerAvatar + '</div>' : '') +
@@ -726,7 +1023,7 @@ export async function GET(
               '</div>' +
             '</div>' +
             '<div class="chat-header-actions">' +
-              (headerStyle.showStatus ? '<span class="status-pill">' + icons.check + ' ' + (state.assistantEnabled ? 'AI live' : 'Offline') + '</span>' : '') +
+              (headerStyle.showStatus ? '<span class="status-pill">' + icons.check + ' ' + escapeHtml(getStatusLabel()) + '</span>' : '') +
               (headerStyle.showCloseButton && state.open ? '<button type="button" class="close-btn" aria-label="Close chat">×</button>' : '') +
             '</div>' +
           '</div>' +
@@ -746,12 +1043,21 @@ export async function GET(
             (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + (state.sending ? 'disabled' : '') + '>' + icons.send + '</button>') +
           '</div>' +
           (state.error ? '<div class="widget-inline-error">' + escapeHtml(state.error) + '</div>' : '') +
+          '</div>' +
+          (shouldShowSupportGate() ? (
+            '<div class="chat-lock-overlay">' +
+              '<div class="chat-lock-card">' +
+                '<p>' + escapeHtml(state.supportStatus === 'needs-human' ? 'Waiting for a human assistant' : 'Human assistant ready') + '</p>' +
+                '<button type="button" class="accept-chat-btn" ' + (state.supportStatus === 'needs-human' ? 'disabled' : '') + '>Accept chat</button>' +
+              '</div>' +
+            '</div>'
+          ) : '') +
         '</div>' +
         '<button type="button" class="' + classes([
           'widget-icon',
           'border-' + (bubbleStyle.borderType || 'none'),
           'shadow-' + (bubbleStyle.shadowType || 'none'),
-          'animation-' + (bubbleStyle.animationType || 'none'),
+          shouldAnimateBubble ? 'animation-' + bubbleStyle.animationType : 'animation-none',
           'size-' + (bubbleStyle.sizeType || 'medium')
         ]) + '" aria-label="Open chat">' +
           bubbleIcon +
@@ -763,6 +1069,7 @@ export async function GET(
     var closeButton = mount.querySelector('.close-btn');
     var input = mount.querySelector('input');
     var sendButton = mount.querySelector('.send-btn');
+    var acceptButton = mount.querySelector('.accept-chat-btn');
     var body = mount.querySelector('.chat-body');
 
     if (body) {
@@ -772,6 +1079,10 @@ export async function GET(
     if (bubbleButton) {
       bubbleButton.addEventListener('click', function () {
         state.open = !state.open;
+        if (state.open) {
+          state.hasOpenedOnce = true;
+          state.hasUnreadWhileClosed = false;
+        }
         render();
       });
     }
@@ -802,12 +1113,25 @@ export async function GET(
       });
     }
 
+    if (acceptButton) {
+      acceptButton.addEventListener('click', function () {
+        if (state.supportStatus === 'open') {
+          state.supportAcknowledged = true;
+          render();
+          return;
+        }
+
+        void syncSupportChat();
+      });
+    }
+
     setDebug(
       'Script loaded\\n' +
       'shadow root mounted\\n' +
       'config ' + (state.config ? 'loaded' : 'pending') + '\\n' +
       'position: ' + position + '\\n' +
-      'state: ' + (state.open ? 'open' : 'closed')
+      'state: ' + (state.open ? 'open' : 'closed') + '\\n' +
+      'support: ' + (state.supportStatus || 'none')
     );
   }
 
@@ -828,6 +1152,13 @@ export async function GET(
 
       if (FORCE_OPEN || (state.config && state.config.settings && state.config.settings.autoOpen)) {
         state.open = true;
+        state.hasOpenedOnce = true;
+        state.hasUnreadWhileClosed = false;
+      }
+
+      if (state.sessionId) {
+        startSupportPolling();
+        void syncSupportChat();
       }
 
       render();
@@ -842,41 +1173,55 @@ export async function GET(
     var text = String(state.inputValue || '').trim();
     if (!text || state.sending) return;
 
-    state.messages = state.messages.concat([
+    var inHumanSupportMode = state.supportStatus === 'needs-human' || state.supportStatus === 'open';
+    if (state.sessionId && inHumanSupportMode) {
+      await syncSupportChat();
+      inHumanSupportMode = state.supportStatus === 'needs-human' || state.supportStatus === 'open';
+    }
+
+    updateMessages(state.messages.concat([
       {
         id: 'user-' + Date.now(),
+        role: 'user',
         text: text,
-        isBot: false,
         createdAt: new Date().toISOString()
       }
-    ]);
+    ]));
     state.inputValue = '';
     state.error = '';
     state.sending = true;
     render();
 
     try {
-      var response = await fetch(ORIGIN + '/api/widget/chat', {
+      var response = await fetch(ORIGIN + (inHumanSupportMode ? '/api/widget/support' : '/api/widget/chat'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         mode: 'cors',
-        body: JSON.stringify({
-          widgetKey: WIDGET_KEY,
-          sessionId: state.sessionId || undefined,
-          message: text,
-          history: state.messages.map(function (msg) {
-            return {
-              id: msg.id,
-              role: msg.isBot ? 'assistant' : 'user',
-              text: msg.text,
-              createdAt: msg.createdAt
-            };
-          }),
-          pageTitle: document.title,
-          pageUrl: window.location.href
-        })
+        body: JSON.stringify(
+          inHumanSupportMode
+            ? {
+                widgetKey: WIDGET_KEY,
+                sessionId: state.sessionId || undefined,
+                message: text
+              }
+            : {
+                widgetKey: WIDGET_KEY,
+                sessionId: state.sessionId || undefined,
+                message: text,
+                history: state.messages.map(function (msg) {
+                  return {
+                    id: msg.id,
+                    role: msg.role,
+                    text: msg.text,
+                    createdAt: msg.createdAt
+                  };
+                }),
+                pageTitle: document.title,
+                pageUrl: window.location.href
+              }
+        )
       });
 
       var json = await response.json();
@@ -886,14 +1231,32 @@ export async function GET(
       }
 
       state.sessionId = json.sessionId || state.sessionId;
-      state.messages = state.messages.concat([
-        {
-          id: 'assistant-' + Date.now(),
-          text: String(json.reply || 'I could not generate a reply.'),
-          isBot: true,
-          createdAt: new Date().toISOString()
+      writeStoredSessionId(state.sessionId);
+
+      if (inHumanSupportMode) {
+        state.supportStatus = json.status || state.supportStatus || 'needs-human';
+        updateMessages(Array.isArray(json.messages) ? json.messages : state.messages);
+        startSupportPolling();
+      } else {
+        updateMessages(
+          state.messages.concat([
+            {
+              id: 'assistant-' + Date.now(),
+              role: 'assistant',
+              text: String(json.reply || 'I could not generate a reply.'),
+              createdAt: new Date().toISOString()
+            }
+          ])
+        );
+
+        if (json.supportRequested) {
+          state.supportStatus = 'needs-human';
+          startSupportPolling();
+          void syncSupportChat();
+        } else if (state.supportStatus === 'ai-active') {
+          stopSupportPolling();
         }
-      ]);
+      }
     } catch (error) {
       state.error = error instanceof Error ? error.message : 'Failed to process chat';
     } finally {

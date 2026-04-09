@@ -254,7 +254,7 @@ export async function POST(req: NextRequest) {
       restrictions: '',
       supportTriggerKeywords: fallbackSupportKeywords,
       handoffMessage:
-        'I will flag this conversation for human follow-up so the team can contact you.',
+        'I understand. I am putting you through to a human assistant now. Please hold on while I connect you with someone available.',
     }
 
     const supportKeywords =
@@ -325,6 +325,7 @@ export async function POST(req: NextRequest) {
     const businessRef = adminDb.collection('businesses').doc(business.id)
     const supportChatRef = businessRef.collection('supportChats').doc(sessionId)
     const supportChatSnap = await supportChatRef.get()
+    const existingSupportChat = supportChatSnap.exists ? supportChatSnap.data() || {} : null
     const isNewSupportChat = needsHumanSupport && !supportChatSnap.exists
 
     const analyticsUpdates: Record<string, unknown> = {
@@ -367,6 +368,29 @@ export async function POST(req: NextRequest) {
           createdAt: supportChatSnap.exists
             ? supportChatSnap.data()?.createdAt || FieldValue.serverTimestamp()
             : FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      )
+    } else if (existingSupportChat) {
+      await supportChatRef.set(
+        {
+          sessionId,
+          widgetKey,
+          businessId: business.id,
+          status:
+            existingSupportChat.status === 'ai-active'
+              ? 'ai-active'
+              : existingSupportChat.status || 'ai-active',
+          source: 'widget',
+          preview: message,
+          pageTitle: pageTitle || existingSupportChat.pageTitle || null,
+          pageUrl: pageUrl || existingSupportChat.pageUrl || null,
+          messageCount: messageTimeline.length,
+          messages: messageTimeline,
+          supportRequestedAt:
+            existingSupportChat.supportRequestedAt || FieldValue.serverTimestamp(),
+          createdAt: existingSupportChat.createdAt || FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true }

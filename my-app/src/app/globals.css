@@ -123,6 +123,16 @@ input {
   border: none;
 }
 
+.dangerBtn {
+  background: #dc2626;
+  color: #fff;
+  border: none;
+}
+
+.dangerBtn:hover {
+  background: #b91c1c;
+}
+
 .primaryBtn:hover {
   background: #1f2937;
 }
@@ -358,6 +368,21 @@ input {
   background: #eef2ff;
 }
 
+.adminChatListItemWaiting {
+  border-color: #fdba74;
+  box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.14), inset 0 0 18px rgba(249, 115, 22, 0.14);
+}
+
+.adminChatListItemOpen {
+  border-color: #86efac;
+  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.16), inset 0 0 18px rgba(34, 197, 94, 0.16);
+}
+
+.adminChatListItemAi {
+  border-color: #c4b5fd;
+  box-shadow: inset 0 0 0 1px rgba(168, 85, 247, 0.14), inset 0 0 18px rgba(168, 85, 247, 0.14);
+}
+
 .adminChatListItem span {
   color: #6b7280;
   font-size: 0.92rem;
@@ -383,10 +408,74 @@ input {
   color: #6b7280;
 }
 
+.adminChatActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .adminChatMessages {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 260px;
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.adminChatTranscriptStack {
+  position: relative;
+}
+
+.adminChatTranscriptLocked .adminChatMessages {
+  filter: blur(5px) grayscale(1);
+  opacity: 0.45;
+  pointer-events: none;
+  user-select: none;
+}
+
+.adminChatGate {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  pointer-events: none;
+}
+
+.adminChatGateCard {
+  display: grid;
+  gap: 12px;
+  place-items: center;
+  min-width: min(280px, 100%);
+  padding: 18px 20px;
+  border: 1px solid rgba(34, 197, 94, 0.18);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+  pointer-events: auto;
+}
+
+.adminChatGateCard p {
+  margin: 0;
+  color: #475569;
+  text-align: center;
+}
+
+.adminChatGateButton {
+  padding: 0.85rem 1.15rem;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 22px rgba(22, 163, 74, 0.28);
+}
+
+.adminChatGateButton:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
 }
 
 .adminTranscriptBubble {
@@ -418,6 +507,49 @@ input {
   align-self: flex-start;
   background: #ffffff;
   border: 1px solid #e5e7eb;
+}
+
+.adminTranscriptBubbleSupport {
+  align-self: flex-start;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+}
+
+.adminTranscriptBubbleSystem {
+  align-self: center;
+  max-width: 100%;
+  background: transparent;
+  color: #475569;
+  text-align: center;
+  padding: 6px 12px;
+}
+
+.adminTranscriptBubbleSystem strong {
+  margin-bottom: 2px;
+}
+
+.adminChatReplyBox {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.adminChatReplyBox textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 14px;
+  resize: vertical;
+  min-height: 110px;
+  background: #fff;
+}
+
+.adminChatReplyBox textarea:disabled {
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: not-allowed;
 }
 
 .adminExportMeta {

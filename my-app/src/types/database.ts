@@ -40,7 +40,7 @@ export interface ChatAnalytics {
 
 export interface SupportChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'support' | 'system';
   text: string;
   createdAt: Date;
 }
@@ -50,7 +50,7 @@ export interface SupportChatSession {
   businessId: string;
   widgetKey: string;
   sessionId: string;
-  status: 'needs-human' | 'open' | 'closed';
+  status: 'needs-human' | 'open' | 'ai-active' | 'closed';
   source: 'widget';
   preview: string;
   pageTitle?: string;
