@@ -166,7 +166,7 @@ const widgetStyles = `
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  height: 300px;
+  height: 360px;
   overflow-y: auto;
   padding: 1rem;
   background: var(--chat-bg, #ffffff);
@@ -211,27 +211,6 @@ const widgetStyles = `
   color: #475569;
   font-size: 0.92rem;
   text-align: center;
-}
-
-.accept-chat-btn {
-  padding: 0.85rem 1.2rem;
-  border: none;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #22c55e, #16a34a);
-  color: #fff;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 10px 22px rgba(22, 163, 74, 0.28);
-}
-
-.accept-chat-btn:hover {
-  transform: translateY(-1px);
-}
-
-.accept-chat-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none;
 }
 
 .message {
@@ -764,7 +743,7 @@ export async function GET(
     messages: [],
     supportStatus: '',
     supportPolling: false,
-    supportAcknowledged: false,
+    supportSnapshot: '',
     hasOpenedOnce: FORCE_OPEN,
     hasUnreadWhileClosed: false
   };
@@ -875,7 +854,7 @@ export async function GET(
   }
 
   function shouldShowSupportGate() {
-    return state.supportStatus === 'needs-human' || (state.supportStatus === 'open' && !state.supportAcknowledged);
+    return state.supportStatus === 'needs-human';
   }
 
   function getMessagesMarkup(config) {
@@ -928,7 +907,7 @@ export async function GET(
   function clearSupportState() {
     state.supportStatus = '';
     state.sessionId = '';
-    state.supportAcknowledged = false;
+    state.supportSnapshot = '';
     writeStoredSessionId('');
   }
 
@@ -962,11 +941,31 @@ export async function GET(
         throw new Error(json && json.error ? json.error : 'Failed to sync support chat');
       }
 
-      state.supportStatus = json.status || state.supportStatus || 'needs-human';
-      updateMessages(Array.isArray(json.messages) ? json.messages : []);
+      var nextStatus = json.status || state.supportStatus || 'needs-human';
+      var nextMessages = Array.isArray(json.messages) ? json.messages.map(mapMessage) : [];
+      var nextSnapshot = JSON.stringify({
+        status: nextStatus,
+        messageCount: Number(json.messageCount || nextMessages.length || 0),
+        messages: nextMessages.map(function (msg) {
+          return {
+            id: msg.id,
+            role: msg.role,
+            text: msg.text,
+            createdAt: msg.createdAt,
+          };
+        }),
+      });
+
+      if (nextSnapshot === state.supportSnapshot) {
+        state.supportStatus = nextStatus;
+        return;
+      }
+
+      state.supportSnapshot = nextSnapshot;
+      state.supportStatus = nextStatus;
+      updateMessages(nextMessages);
 
       if (state.supportStatus !== 'needs-human' && state.supportStatus !== 'open') {
-        state.supportAcknowledged = true;
         stopSupportPolling();
       }
 
@@ -1037,18 +1036,17 @@ export async function GET(
             'input-' + (footerStyle.inputStyle || 'flat')
           ]) + '">' +
             '<input type="text" ' +
-              (state.sending ? 'disabled ' : '') +
+              ((state.sending || state.supportStatus === 'needs-human') ? 'disabled ' : '') +
               'value="' + escapeHtml(state.inputValue) + '" ' +
-              'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : 'Write a message...') + '" />' +
-            (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + (state.sending ? 'disabled' : '') + '>' + icons.send + '</button>') +
+              'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : (state.supportStatus === 'needs-human' ? 'Waiting for human support...' : 'Write a message...')) + '" />' +
+            (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + ((state.sending || state.supportStatus === 'needs-human') ? 'disabled' : '') + '>' + icons.send + '</button>') +
           '</div>' +
           (state.error ? '<div class="widget-inline-error">' + escapeHtml(state.error) + '</div>' : '') +
           '</div>' +
           (shouldShowSupportGate() ? (
             '<div class="chat-lock-overlay">' +
               '<div class="chat-lock-card">' +
-                '<p>' + escapeHtml(state.supportStatus === 'needs-human' ? 'Waiting for a human assistant' : 'Human assistant ready') + '</p>' +
-                '<button type="button" class="accept-chat-btn" ' + (state.supportStatus === 'needs-human' ? 'disabled' : '') + '>Accept chat</button>' +
+                '<p>Waiting for human support</p>' +
               '</div>' +
             '</div>'
           ) : '') +
@@ -1069,7 +1067,6 @@ export async function GET(
     var closeButton = mount.querySelector('.close-btn');
     var input = mount.querySelector('input');
     var sendButton = mount.querySelector('.send-btn');
-    var acceptButton = mount.querySelector('.accept-chat-btn');
     var body = mount.querySelector('.chat-body');
 
     if (body) {
@@ -1110,18 +1107,6 @@ export async function GET(
     if (sendButton) {
       sendButton.addEventListener('click', function () {
         sendMessage();
-      });
-    }
-
-    if (acceptButton) {
-      acceptButton.addEventListener('click', function () {
-        if (state.supportStatus === 'open') {
-          state.supportAcknowledged = true;
-          render();
-          return;
-        }
-
-        void syncSupportChat();
       });
     }
 
@@ -1172,6 +1157,7 @@ export async function GET(
   async function sendMessage() {
     var text = String(state.inputValue || '').trim();
     if (!text || state.sending) return;
+    if (state.supportStatus === 'needs-human') return;
 
     var inHumanSupportMode = state.supportStatus === 'needs-human' || state.supportStatus === 'open';
     if (state.sessionId && inHumanSupportMode) {
