@@ -175,6 +175,43 @@
   overflow: hidden;
 }
 
+/* Sørg for at tema-farger ikke blir overskrevet i admin preview */
+.widget-preview-stage .chat-header h3 {
+  color: inherit !important;
+}
+
+.widget-preview-stage .chat-header p {
+  color: inherit !important;
+}
+
+/* Fikser SVG-ikonstørrelser i admin preview */
+.widget-preview-stage .avatar {
+  font-size: 1.1rem !important;
+  width: 42px !important;
+  height: 42px !important;
+}
+
+.widget-preview-stage .widget-icon {
+  font-size: 2rem !important;
+  width: 56px !important;
+  height: 56px !important;
+}
+
+.widget-preview-stage .chat-header svg {
+  width: 1.1rem !important;
+  height: 1.1rem !important;
+}
+
+.widget-preview-stage .chat-footer svg {
+  width: 1rem !important;
+  height: 1rem !important;
+}
+
+.widget-preview-stage .status-pill svg {
+  width: 12px !important;
+  height: 12px !important;
+}
+
 .widget-preview-inner {
   position: relative;
   width: 100%;

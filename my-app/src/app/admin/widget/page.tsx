@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { FiCopy, FiCode, FiLayout, FiCreditCard, FiMapPin } from 'react-icons/fi'
 import WidgetPreview from '@/app/landings/auth/chatWidget/components/WidgetPreview'
+import '@/app/landings/auth/chatWidget/ChatWidget.css'
 import './WidgetAdmin.css'
 import { useAuth } from '@/context/AuthContext'
 import { updateChatAssistantConfig } from '@/lib/auth.service'
@@ -11,7 +12,7 @@ import type { ChatAssistantConfig, ChatWidgetConfig } from '@/types/database'
 const defaultAssistantConfig: ChatAssistantConfig = {
   enabled: true,
   provider: 'gemini',
-  model: 'gemini-2.0-flash',
+  model: 'gemma-3-4b-it',
   strictContextOnly: true,
   systemPrompt:
     'You are the company website assistant. Be helpful, concise, and honest.',
@@ -24,26 +25,77 @@ const defaultAssistantConfig: ChatAssistantConfig = {
 }
 
 export default function WidgetAdminPanel() {
-  const { business, dbUser, loading } = useAuth()
+  const { business, dbUser, loading, refreshBusiness } = useAuth()
   const [config, setConfig] = useState<ChatWidgetConfig | null>(null)
-  const [assistantConfig, setAssistantConfig] =
-    useState<ChatAssistantConfig>(defaultAssistantConfig)
+  const [assistantConfig, setAssistantConfig] = useState<ChatAssistantConfig>(defaultAssistantConfig)
   const [copied, setCopied] = useState(false)
+  const [lastConfigUpdate, setLastConfigUpdate] = useState<string | null>(null)
   const [embedBaseUrl, setEmbedBaseUrl] = useState(process.env.NEXT_PUBLIC_APP_URL || '')
   const [assistantSaving, setAssistantSaving] = useState(false)
   const [assistantStatus, setAssistantStatus] = useState<'idle' | 'saved' | 'error'>('idle')
 
   useEffect(() => {
     if (business?.chatWidgetConfig) {
+      const serializedConfig = JSON.stringify(business.chatWidgetConfig)
       setConfig(business.chatWidgetConfig as ChatWidgetConfig)
+      setLastConfigUpdate(serializedConfig)
     }
+
     if (business?.chatAssistantConfig) {
       setAssistantConfig({
         ...defaultAssistantConfig,
-        ...business.chatAssistantConfig,
+        ...(business.chatAssistantConfig as ChatAssistantConfig),
       })
     }
   }, [business])
+
+  useEffect(() => {
+    if (!dbUser?.businessId) return
+
+    const applyConfigUpdate = (serializedConfig: string | null) => {
+      if (!serializedConfig || serializedConfig === lastConfigUpdate) return
+
+      try {
+        const nextConfig = JSON.parse(serializedConfig) as ChatWidgetConfig
+        setConfig(nextConfig)
+        setLastConfigUpdate(serializedConfig)
+      } catch (error) {
+        console.error('Failed to parse widget config update:', error)
+      }
+    }
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key !== `widget-config-${dbUser.businessId}`) return
+      applyConfigUpdate(event.newValue)
+    }
+
+    const handleCustomConfigUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        businessId?: string
+        serializedConfig?: string
+      }>).detail
+
+      if (detail?.businessId !== dbUser.businessId) return
+      applyConfigUpdate(detail.serializedConfig || null)
+    }
+
+    const handleWindowFocus = () => {
+      void refreshBusiness()
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    window.addEventListener('vintra-widget-config-updated', handleCustomConfigUpdate as EventListener)
+    window.addEventListener('focus', handleWindowFocus)
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener(
+        'vintra-widget-config-updated',
+        handleCustomConfigUpdate as EventListener
+      )
+      window.removeEventListener('focus', handleWindowFocus)
+    }
+  }, [dbUser?.businessId, lastConfigUpdate, refreshBusiness])
 
   useEffect(() => {
     if (!embedBaseUrl && typeof window !== 'undefined') {
@@ -75,6 +127,7 @@ export default function WidgetAdminPanel() {
     setAssistantStatus(result.success ? 'saved' : 'error')
 
     if (result.success) {
+      void refreshBusiness()
       setTimeout(() => setAssistantStatus('idle'), 2000)
     }
   }
@@ -182,7 +235,7 @@ export default function WidgetAdminPanel() {
             <span className="widget-preview-tag">Interactive</span>
           </div>
 
-          <div className="widget-preview-stage">
+          <div className={`widget-preview-stage theme-${config.colorTheme}`}>
             <WidgetPreview
               bubbleStyle={config.bubbleStyle}
               headerStyle={config.headerStyle}
@@ -309,7 +362,7 @@ export default function WidgetAdminPanel() {
                     model: event.target.value,
                   }))
                 }
-                placeholder="gemini-2.0-flash"
+                placeholder="gemma-3-4b-it"
               />
             </label>
 

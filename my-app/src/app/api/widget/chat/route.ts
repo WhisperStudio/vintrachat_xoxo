@@ -15,6 +15,16 @@ type GeminiResult = {
   needsHumanSupport: boolean
 }
 
+class GeminiApiError extends Error {
+  status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'GeminiApiError'
+    this.status = status
+  }
+}
+
 const fallbackSupportKeywords = [
   'support',
   'human',
@@ -49,6 +59,40 @@ function trimHistory(history: unknown[]): IncomingMessage[] {
 function didUserRequestHumanSupport(message: string, keywords: string[]) {
   const normalized = message.toLowerCase()
   return keywords.some((keyword) => normalized.includes(keyword.toLowerCase()))
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function supportsNativeJsonMode(model: string) {
+  return !model.toLowerCase().startsWith('gemma-')
+}
+
+function extractGeminiResult(rawText: string): GeminiResult {
+  try {
+    const parsed = JSON.parse(rawText)
+
+    return {
+      reply: typeof parsed.reply === 'string' ? parsed.reply : 'I could not generate a reply.',
+      needsHumanSupport: Boolean(parsed.needsHumanSupport),
+    }
+  } catch {
+    const replyMatch = rawText.match(/"reply"\s*:\s*"([\s\S]*?)"/)
+    const supportMatch = rawText.match(/"needsHumanSupport"\s*:\s*(true|false)/i)
+
+    const reply = replyMatch?.[1]
+      ? replyMatch[1]
+          .replace(/\\"/g, '"')
+          .replace(/\\n/g, '\n')
+          .trim()
+      : rawText.trim()
+
+    return {
+      reply: reply || 'I could not generate a reply.',
+      needsHumanSupport: supportMatch?.[1]?.toLowerCase() === 'true',
+    }
+  }
 }
 
 function buildPrompt(args: {
@@ -93,60 +137,71 @@ async function generateGeminiReply(prompt: string, model: string): Promise<Gemin
     }
   }
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: prompt }],
-          },
-        ],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          responseJsonSchema: {
-            type: 'object',
-            properties: {
-              reply: {
-                type: 'string',
-                description: 'The assistant reply shown to the visitor.',
-              },
-              needsHumanSupport: {
-                type: 'boolean',
-                description:
-                  'True only when the visitor explicitly asks for human support or contact.',
-              },
-            },
-            required: ['reply', 'needsHumanSupport'],
-          },
+  const retryDelays = [800, 1600, 3000]
+  const useNativeJsonMode = supportsNativeJsonMode(model)
+
+  for (let attempt = 0; attempt <= retryDelays.length; attempt += 1) {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
         },
-      }),
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: prompt }],
+            },
+          ],
+          generationConfig: useNativeJsonMode
+            ? {
+                responseMimeType: 'application/json',
+                responseJsonSchema: {
+                  type: 'object',
+                  properties: {
+                    reply: {
+                      type: 'string',
+                      description: 'The assistant reply shown to the visitor.',
+                    },
+                    needsHumanSupport: {
+                      type: 'boolean',
+                      description:
+                        'True only when the visitor explicitly asks for human support or contact.',
+                    },
+                  },
+                  required: ['reply', 'needsHumanSupport'],
+                },
+              }
+            : undefined,
+        }),
+      }
+    )
+
+    if (response.ok) {
+      const json = await response.json()
+      const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text
+
+      if (!rawText) {
+        throw new Error('Gemini returned no text')
+      }
+
+      return extractGeminiResult(rawText)
     }
-  )
 
-  if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Gemini request failed: ${response.status} ${errorText}`)
+    const retryable = response.status === 429 || response.status === 503
+
+    if (retryable && attempt < retryDelays.length) {
+      await sleep(retryDelays[attempt])
+      continue
+    }
+
+    throw new GeminiApiError(response.status, `Gemini request failed: ${response.status} ${errorText}`)
   }
 
-  const json = await response.json()
-  const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text
-
-  if (!rawText) {
-    throw new Error('Gemini returned no text')
-  }
-
-  const parsed = JSON.parse(rawText)
-
-  return {
-    reply: typeof parsed.reply === 'string' ? parsed.reply : 'I could not generate a reply.',
-    needsHumanSupport: Boolean(parsed.needsHumanSupport),
-  }
+  throw new Error('Gemini request failed after retries')
 }
 
 export async function POST(req: NextRequest) {
@@ -172,7 +227,7 @@ export async function POST(req: NextRequest) {
     const assistantConfig = business.chatAssistantConfig || {
       enabled: true,
       provider: 'gemini' as const,
-      model: 'gemini-2.0-flash',
+      model: 'gemma-3-4b-it',
       strictContextOnly: true,
       systemPrompt: '',
       businessContext: '',
@@ -204,13 +259,24 @@ export async function POST(req: NextRequest) {
         message,
       })
 
-      const result = await generateGeminiReply(
-        prompt,
-        assistantConfig.model || process.env.GEMINI_MODEL || 'gemini-2.0-flash'
-      )
+      try {
+        const result = await generateGeminiReply(
+          prompt,
+          assistantConfig.model || process.env.GEMINI_MODEL || 'gemma-3-4b-it'
+        )
 
-      aiReply = result.reply
-      aiWantsHumanSupport = result.needsHumanSupport
+        aiReply = result.reply
+        aiWantsHumanSupport = result.needsHumanSupport
+      } catch (error) {
+        if (error instanceof GeminiApiError && (error.status === 429 || error.status === 503)) {
+          console.warn('Gemini temporarily unavailable:', error.message)
+          aiReply =
+            'AI assistant is temporarily unavailable right now. Please try again in a little while.'
+          aiWantsHumanSupport = false
+        } else {
+          throw error
+        }
+      }
     }
 
     const needsHumanSupport = heuristicsTriggered || aiWantsHumanSupport

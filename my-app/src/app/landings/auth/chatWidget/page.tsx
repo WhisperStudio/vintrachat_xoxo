@@ -117,7 +117,7 @@ const planPrices: Record<Plan, { monthly: number; yearly: number }> = {
 
 export default function ChatWidgetBuilderPage() {
   const router = useRouter()
-  const { isAuthenticated, dbUser, business, loading } = useAuth()
+  const { isAuthenticated, dbUser, business, loading, refreshBusiness } = useAuth()
 
   const [inputs, setInputs] = useState<InputsState>(defaultInputs)
   const [hasLoadedDbConfig, setHasLoadedDbConfig] = useState(false)
@@ -197,7 +197,7 @@ export default function ChatWidgetBuilderPage() {
     setSaveStatus('idle')
 
     try {
-      const result = await updateChatWidgetConfig(dbUser.businessId, {
+      const newConfig = {
         plan: inputs.plan,
         billingCycle: inputs.billingCycle,
         colorTheme: inputs.colorTheme,
@@ -208,9 +208,30 @@ export default function ChatWidgetBuilderPage() {
         footerStyle: inputs.footerStyle,
         customBranding: inputs.customBranding,
         settings: inputs.settings,
-      })
+      }
+
+      const result = await updateChatWidgetConfig(dbUser.businessId, newConfig)
 
       if (result.success) {
+        await refreshBusiness()
+
+        // Send localStorage event for real-time updates in admin panel
+        if (typeof window !== 'undefined') {
+          const storageKey = `widget-config-${dbUser.businessId}`
+          const payload = JSON.stringify(newConfig)
+          localStorage.setItem(storageKey, payload)
+
+          window.dispatchEvent(
+            new CustomEvent('vintra-widget-config-updated', {
+              detail: {
+                businessId: dbUser.businessId,
+                config: newConfig,
+                serializedConfig: payload,
+              },
+            })
+          )
+        }
+
         setSaveStatus('success')
         setTimeout(() => setSaveStatus('idle'), 2000)
       } else {

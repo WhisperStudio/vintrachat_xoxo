@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import WidgetPreview from '@/app/landings/auth/chatWidget/components/WidgetPreview'
+import '@/app/landings/auth/chatWidget/ChatWidget.css'
 import './LiveChatWidget.css'
 import type { ChatWidgetConfig } from '@/types/database'
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { User as FirebaseUser } from "firebase/auth";
 
 import {
@@ -20,6 +20,7 @@ interface AuthContextType {
   error: string | null;
   isAuthenticated: boolean;
   logout: () => Promise<void>;
+  refreshBusiness: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,6 +32,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const [loading, setLoading] = useState(true);
   const [error] = useState<string | null>(null);
+
+  const refreshBusiness = useCallback(async () => {
+    if (!dbUser?.businessId) return;
+
+    try {
+      const biz = await getBusinessInfo(dbUser.businessId);
+      setBusiness(biz);
+    } catch (err) {
+      console.error("Business refresh error:", err);
+    }
+  }, [dbUser?.businessId]);
 
   useEffect(() => {
     const unsub = setupAuthListener(async (authUser) => {
@@ -76,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         error,
         isAuthenticated: !!firebaseUser && !!dbUser,
         logout,
+        refreshBusiness,
       }}
     >
       {children}
