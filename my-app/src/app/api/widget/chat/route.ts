@@ -3,6 +3,15 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/firebase-admin'
 import { getBusinessByWidgetKey } from '@/lib/widget.server'
 
+function corsHeaders(origin?: string | null) {
+  return {
+    'Access-Control-Allow-Origin': origin || '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    Vary: 'Origin',
+  }
+}
+
 type IncomingMessage = {
   id?: string
   role: 'user' | 'assistant'
@@ -204,8 +213,16 @@ async function generateGeminiReply(prompt: string, model: string): Promise<Gemin
   throw new Error('Gemini request failed after retries')
 }
 
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: corsHeaders(req.headers.get('origin')),
+  })
+}
+
 export async function POST(req: NextRequest) {
   try {
+    const headers = corsHeaders(req.headers.get('origin'))
     const body = await req.json()
     const widgetKey = String(body.widgetKey || '')
     const message = String(body.message || '').trim()
@@ -215,13 +232,16 @@ export async function POST(req: NextRequest) {
     const history = trimHistory(Array.isArray(body.history) ? body.history : [])
 
     if (!widgetKey || !message) {
-      return NextResponse.json({ error: 'Missing widget key or message' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Missing widget key or message' },
+        { status: 400, headers }
+      )
     }
 
     const business = await getBusinessByWidgetKey(widgetKey)
 
     if (!business?.chatWidgetConfig) {
-      return NextResponse.json({ error: 'Widget not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Widget not found' }, { status: 404, headers })
     }
 
     const assistantConfig = business.chatAssistantConfig || {
@@ -359,9 +379,12 @@ export async function POST(req: NextRequest) {
       sessionId,
       reply: finalReply,
       supportRequested: needsHumanSupport,
-    })
+    }, { headers })
   } catch (error) {
     console.error('Widget chat error:', error)
-    return NextResponse.json({ error: 'Failed to process chat' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to process chat' },
+      { status: 500, headers: corsHeaders(req.headers.get('origin')) }
+    )
   }
 }

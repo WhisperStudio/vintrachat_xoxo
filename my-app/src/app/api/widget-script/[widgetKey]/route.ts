@@ -619,14 +619,8 @@ export async function GET(
     error: '',
     assistantEnabled: true,
     config: null,
-    messages: [
-      {
-        id: 'welcome',
-        text: 'Hey! Welcome to our website. How can we help you today?',
-        isBot: true,
-        createdAt: new Date().toISOString()
-      }
-    ]
+    configLoaded: false,
+    messages: []
   };
 
   var icons = {
@@ -684,6 +678,9 @@ export async function GET(
 
   function getMessagesMarkup(config) {
     var bodyStyle = (config && config.bodyStyle) || {};
+    if (!state.messages.length) {
+      return '<div class="message message-bot">Chat is ready. Send a message to start.</div>';
+    }
     return state.messages.map(function (msg) {
       return (
         '<div class="' + classes(['message', msg.isBot ? 'message-bot' : 'message-user']) + '">' +
@@ -710,11 +707,12 @@ export async function GET(
       : icons.message;
 
     mount.className = 'vintra-root position-' + position;
+    var shouldShowWidget = state.configLoaded && state.open;
     mount.innerHTML =
       '<div class="vintra-stack theme-' + theme + '">' +
         '<div class="' + classes([
           'chat-widget',
-          state.open ? 'open' : '',
+          shouldShowWidget ? 'open' : '',
           'border-' + (headerStyle.borderType || 'none'),
           'shadow-' + (headerStyle.shadowType || 'none'),
           'messages-' + (bodyStyle.messageStyle || 'bubble')
@@ -816,7 +814,7 @@ export async function GET(
   async function loadConfig() {
     try {
       var response = await fetch(ORIGIN + '/api/widget/config?key=' + encodeURIComponent(WIDGET_KEY), {
-        credentials: 'same-origin'
+        mode: 'cors'
       });
       var json = await response.json();
 
@@ -826,6 +824,7 @@ export async function GET(
 
       state.config = json.widgetConfig || null;
       state.assistantEnabled = json.assistantEnabled !== false;
+      state.configLoaded = true;
 
       if (FORCE_OPEN || (state.config && state.config.settings && state.config.settings.autoOpen)) {
         state.open = true;
@@ -862,7 +861,7 @@ export async function GET(
         headers: {
           'Content-Type': 'application/json'
         },
-        credentials: 'same-origin',
+        mode: 'cors',
         body: JSON.stringify({
           widgetKey: WIDGET_KEY,
           sessionId: state.sessionId || undefined,
