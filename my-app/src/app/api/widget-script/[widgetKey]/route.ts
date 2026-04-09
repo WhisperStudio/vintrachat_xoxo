@@ -342,6 +342,13 @@ const widgetStyles = `
   font-size: 0.84rem;
 }
 
+.name-request-hint {
+  padding: 0 1rem 0.75rem;
+  color: #475569;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
 .widget-icon {
   position: relative;
   width: 58px;
@@ -744,6 +751,8 @@ export async function GET(
     supportStatus: '',
     supportPolling: false,
     supportSnapshot: '',
+    awaitingVisitorName: false,
+    pendingHumanSupportText: '',
     hasOpenedOnce: FORCE_OPEN,
     hasUnreadWhileClosed: false
   };
@@ -1036,11 +1045,12 @@ export async function GET(
             'input-' + (footerStyle.inputStyle || 'flat')
           ]) + '">' +
             '<input type="text" ' +
-              ((state.sending || state.supportStatus === 'needs-human') ? 'disabled ' : '') +
+              ((state.sending || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled ' : '') +
               'value="' + escapeHtml(state.inputValue) + '" ' +
-              'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : (state.supportStatus === 'needs-human' ? 'Waiting for human support...' : 'Write a message...')) + '" />' +
-            (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + ((state.sending || state.supportStatus === 'needs-human') ? 'disabled' : '') + '>' + icons.send + '</button>') +
+              'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : (state.awaitingVisitorName ? 'Write your name to contact human support...' : (state.supportStatus === 'needs-human' ? 'Waiting for human support...' : 'Write a message...'))) + '" />' +
+            (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + ((state.sending || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled' : '') + '>' + icons.send + '</button>') +
           '</div>' +
+          (state.awaitingVisitorName ? '<div class="name-request-hint">Please write your name to connect with human support.</div>' : '') +
           (state.error ? '<div class="widget-inline-error">' + escapeHtml(state.error) + '</div>' : '') +
           '</div>' +
           (shouldShowSupportGate() ? (
@@ -1157,6 +1167,64 @@ export async function GET(
   async function sendMessage() {
     var text = String(state.inputValue || '').trim();
     if (!text || state.sending) return;
+
+    if (state.awaitingVisitorName) {
+      state.sending = true;
+      state.error = '';
+      render();
+
+      try {
+        var humanSupportResponse = await fetch(ORIGIN + '/api/widget/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          mode: 'cors',
+          body: JSON.stringify({
+            widgetKey: WIDGET_KEY,
+            sessionId: state.sessionId || undefined,
+            requestHumanSupport: true,
+            visitorName: text,
+            supportRequestText: state.pendingHumanSupportText,
+            pageTitle: document.title,
+            pageUrl: window.location.href
+          })
+        });
+
+        var humanSupportJson = await humanSupportResponse.json();
+
+        if (!humanSupportResponse.ok) {
+          throw new Error(humanSupportJson && humanSupportJson.error ? humanSupportJson.error : 'Failed to process chat');
+        }
+
+        state.sessionId = humanSupportJson.sessionId || state.sessionId;
+        writeStoredSessionId(state.sessionId);
+        state.awaitingVisitorName = false;
+        state.pendingHumanSupportText = '';
+        state.inputValue = '';
+        state.supportStatus = 'needs-human';
+
+        updateMessages(state.messages.concat([
+          {
+            id: 'assistant-' + Date.now(),
+            role: 'assistant',
+            text: String(humanSupportJson.reply || 'The chat has been handed over to human support.'),
+            createdAt: new Date().toISOString()
+          }
+        ]));
+
+        startSupportPolling();
+        void syncSupportChat();
+      } catch (error) {
+        state.error = error instanceof Error ? error.message : 'Failed to process chat';
+      } finally {
+        state.sending = false;
+        render();
+      }
+
+      return;
+    }
+
     if (state.supportStatus === 'needs-human') return;
 
     var inHumanSupportMode = state.supportStatus === 'needs-human' || state.supportStatus === 'open';
@@ -1234,6 +1302,11 @@ export async function GET(
             }
           ])
         );
+
+        if (json.visitorNameRequired) {
+          state.awaitingVisitorName = true;
+          state.pendingHumanSupportText = text;
+        }
 
         if (json.supportRequested) {
           state.supportStatus = 'needs-human';

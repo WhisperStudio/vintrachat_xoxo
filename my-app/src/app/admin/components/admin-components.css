@@ -156,6 +156,7 @@
   min-height: calc(100vh - 220px);
   height: calc(100vh - 220px);
   min-width: 0;
+  overflow: hidden;
 }
 
 .adminChatMeta {
@@ -363,6 +364,95 @@
     inset 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
+.adminChatTools {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px 0 6px;
+}
+
+.adminChatToolsRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.adminToolBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border-radius: 999px;
+}
+
+.adminToolBtn svg {
+  font-size: 0.95rem;
+}
+
+.adminTaskComposer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(99, 102, 241, 0.14);
+  background:
+    radial-gradient(circle at top right, rgba(99, 102, 241, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.92));
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.06);
+}
+
+.adminTaskComposerGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.adminTaskField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.adminTaskField span {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.adminTaskField input,
+.adminTaskField textarea,
+.adminTaskField select {
+  width: 100%;
+  padding: 0.82rem 0.95rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+  outline: none;
+}
+
+.adminTaskField textarea {
+  resize: vertical;
+  min-height: 92px;
+}
+
+.adminTaskField input:focus,
+.adminTaskField textarea:focus,
+.adminTaskField select:focus {
+  border-color: rgba(99, 102, 241, 0.34);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.08);
+}
+
+.adminTaskFieldFull {
+  grid-column: 1 / -1;
+}
+
+.adminTaskComposerActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .adminExportMeta {
   display: grid;
   grid-template-columns: 1fr;
@@ -420,10 +510,37 @@
 .primaryBtn {
   border-radius: 999px;
   box-shadow: 0 10px 18px rgba(15, 23, 42, 0.14);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
 }
 
 .primaryBtn:hover {
   box-shadow: 0 14px 24px rgba(15, 23, 42, 0.18);
+}
+
+.adminSendButton {
+  justify-content: space-between;
+}
+
+.adminSendButton svg {
+  opacity: 0;
+  transform: translateX(-6px) scale(0.96);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.adminSendButton:hover svg,
+.adminSendButton:focus-visible svg {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+}
+
+.adminSendButton:disabled svg {
+  opacity: 0.25;
+  transform: translateX(0) scale(1);
 }
 
 .adminChatMessages::-webkit-scrollbar,
@@ -449,6 +566,664 @@
   background: linear-gradient(180deg, rgba(100, 116, 139, 0.82), rgba(71, 85, 105, 0.88));
 }
 
+.adminSectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.adminSectionHeader.compact h2,
+.adminSectionHeader h1 {
+  margin: 0;
+}
+
+.adminSectionHeader p {
+  margin: 0.4rem 0 0;
+  color: #64748b;
+}
+
+.adminCategoryAddRow {
+  display: flex;
+  gap: 10px;
+}
+
+.adminCategoryAddRow input {
+  flex: 1;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.adminCategoryAddRow input:focus {
+  outline: none;
+  border-color: rgba(99, 102, 241, 0.34);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.08);
+}
+
+.adminCategoryPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.adminCategoryPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  min-width: 220px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.04);
+}
+
+.adminCategoryPill strong {
+  display: block;
+  color: #0f172a;
+}
+
+.adminCategoryPill span {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.ghostBtn {
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 999px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.ghostBtn:hover {
+  background: rgba(148, 163, 184, 0.08);
+  color: #0f172a;
+}
+
+.adminTaskList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.adminTaskCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 24%),
+    linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.05);
+}
+
+.adminTaskCardTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.adminTaskCardTop h3 {
+  margin: 0 0 0.35rem;
+}
+
+.adminTaskCardTop p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.adminTaskMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.taskPriority,
+.taskStatus {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.taskPriority-low {
+  background: #ecfeff;
+  color: #0e7490;
+}
+
+.taskPriority-medium {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.taskPriority-high {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.taskPriority-critical {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.taskStatus-open {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.taskStatus-in-progress {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.taskStatus-blocked {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.taskStatus-done {
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+.adminTaskMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.adminTaskInlineControls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.adminTaskInlineControls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.adminTaskInlineControls span {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.adminTaskInlineControls select {
+  width: 100%;
+  padding: 0.72rem 0.9rem;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.adminTaskInlineControls select:focus {
+  outline: none;
+  border-color: rgba(99, 102, 241, 0.34);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.08);
+}
+
+.adminTaskList > p {
+  margin: 0;
+  color: #64748b;
+}
+
+.adminTasksPanel {
+  gap: 16px;
+}
+
+.adminTasksHeader {
+  align-items: center;
+}
+
+.adminTasksHeaderActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.adminTaskFilterBar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background:
+    radial-gradient(circle at top right, rgba(99, 102, 241, 0.08), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.04);
+}
+
+.adminTaskFilter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.adminTaskFilter span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #475569;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.adminTaskFilter select {
+  width: 100%;
+  padding: 0.82rem 0.92rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.98);
+  color: #0f172a;
+}
+
+.adminTaskFilter select:focus {
+  outline: none;
+  border-color: rgba(99, 102, 241, 0.34);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.08);
+}
+
+.adminCategoryPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.04);
+}
+
+.adminTasksWorkspace {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+  min-height: 680px;
+}
+
+.adminTasksPanel .adminTaskList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100vh - 280px);
+  overflow: auto;
+  padding-right: 8px;
+}
+
+.adminTasksPanel .adminTaskList > p {
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px dashed rgba(148, 163, 184, 0.28);
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.adminTaskCardButton {
+  appearance: none;
+  text-align: left;
+  width: 100%;
+}
+
+.adminTaskCard {
+  position: relative;
+  overflow: hidden;
+}
+
+.adminTaskCard::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0.38rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #cbd5e1, #94a3b8);
+}
+
+.adminTaskCardStatus-open::before {
+  background: linear-gradient(180deg, #34d399, #10b981);
+}
+
+.adminTaskCardStatus-in-progress::before {
+  background: linear-gradient(180deg, #60a5fa, #2563eb);
+}
+
+.adminTaskCardStatus-blocked::before {
+  background: linear-gradient(180deg, #fb923c, #f97316);
+}
+
+.adminTaskCardStatus-done::before {
+  background: linear-gradient(180deg, #c084fc, #8b5cf6);
+}
+
+.adminTaskCardPriority-critical {
+  box-shadow:
+    inset 0 0 0 1px rgba(239, 68, 68, 0.12),
+    inset 0 0 24px rgba(239, 68, 68, 0.05),
+    0 14px 28px rgba(15, 23, 42, 0.05);
+}
+
+.adminTaskCardPriority-high {
+  box-shadow:
+    inset 0 0 0 1px rgba(249, 115, 22, 0.12),
+    inset 0 0 24px rgba(249, 115, 22, 0.05),
+    0 14px 28px rgba(15, 23, 42, 0.05);
+}
+
+.adminTaskCardPriority-medium {
+  box-shadow:
+    inset 0 0 0 1px rgba(59, 130, 246, 0.1),
+    inset 0 0 24px rgba(59, 130, 246, 0.04),
+    0 14px 28px rgba(15, 23, 42, 0.05);
+}
+
+.adminTaskCardPriority-low {
+  box-shadow:
+    inset 0 0 0 1px rgba(16, 185, 129, 0.1),
+    inset 0 0 24px rgba(16, 185, 129, 0.04),
+    0 14px 28px rgba(15, 23, 42, 0.05);
+}
+
+.adminTaskCardActive {
+  transform: translateX(2px);
+  border-color: rgba(99, 102, 241, 0.26);
+  box-shadow:
+    0 18px 36px rgba(99, 102, 241, 0.12),
+    inset 0 0 0 1px rgba(99, 102, 241, 0.08);
+}
+
+.adminTaskCardButton:hover {
+  transform: translateX(4px);
+}
+
+.adminTaskCardTop h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+}
+
+.adminTaskCardTop p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.92rem;
+}
+
+.adminTaskMeta {
+  align-items: flex-end;
+}
+
+.adminTaskMetaRow {
+  gap: 8px;
+}
+
+.adminTaskMetaRow span {
+  padding: 0.38rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.adminTaskCardPreview {
+  margin: 0;
+  color: #475569;
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.adminTaskDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: calc(100vh - 280px);
+  height: calc(100vh - 280px);
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background:
+    radial-gradient(circle at top right, rgba(96, 165, 250, 0.08), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+  box-shadow:
+    0 18px 36px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  overflow: hidden;
+}
+
+.adminTaskDetailStatus-open {
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.adminTaskDetailStatus-in-progress {
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.adminTaskDetailStatus-blocked {
+  border-color: rgba(249, 115, 22, 0.2);
+}
+
+.adminTaskDetailStatus-done {
+  border-color: rgba(139, 92, 246, 0.2);
+}
+
+.adminTaskDetailHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.adminTaskDetailHeader h2 {
+  margin: 0 0 0.4rem;
+}
+
+.adminTaskDetailHeader p {
+  margin: 0;
+  color: #64748b;
+  max-width: 68ch;
+  line-height: 1.6;
+}
+
+.adminTaskDetailBadges {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.adminTaskDetailMeta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.adminTaskDetailMeta > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 14px 15px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.adminTaskDetailMeta span {
+  color: #64748b;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.adminTaskDetailMeta strong {
+  color: #0f172a;
+}
+
+.adminTaskDetailControls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.adminTaskHistoryCard,
+.adminTaskCommentsCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  flex: 1 1 0;
+  padding: 15px;
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.adminTaskHistoryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.adminTaskHistoryHeader h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.adminTaskHistoryHeader span {
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.adminTaskHistoryList,
+.adminTaskCommentsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.adminTaskHistoryItem,
+.adminTaskCommentItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 13px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.adminTaskHistoryItem strong,
+.adminTaskCommentItem strong {
+  font-size: 0.92rem;
+}
+
+.adminTaskHistoryItem p,
+.adminTaskCommentItem p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.55;
+}
+
+.adminTaskHistoryItem span,
+.adminTaskCommentItem span {
+  color: #94a3b8;
+  font-size: 0.82rem;
+}
+
+.adminTaskHistoryItem-user {
+  border-color: rgba(100, 116, 139, 0.16);
+  background: linear-gradient(180deg, #0f172a, #111827);
+}
+
+.adminTaskHistoryItem-user strong,
+.adminTaskHistoryItem-user p,
+.adminTaskHistoryItem-user span {
+  color: #fff;
+}
+
+.adminTaskHistoryItem-assistant {
+  border-color: rgba(99, 102, 241, 0.18);
+  box-shadow: inset 0 0 18px rgba(99, 102, 241, 0.06);
+}
+
+.adminTaskHistoryItem-support {
+  border-color: rgba(16, 185, 129, 0.2);
+  box-shadow: inset 0 0 18px rgba(16, 185, 129, 0.08);
+  background: linear-gradient(180deg, #ecfdf5, #f0fdf4);
+}
+
+.adminTaskHistoryItem-system {
+  align-self: center;
+  text-align: center;
+  background: transparent;
+  border-style: dashed;
+  color: #64748b;
+}
+
+.adminTaskCommentItem {
+  border-color: rgba(99, 102, 241, 0.14);
+}
+
+.adminTaskCommentItem > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.adminTaskCommentComposer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.adminTaskCommentComposer textarea {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 16px;
+  resize: vertical;
+  min-height: 84px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.adminTaskCommentComposer textarea:focus {
+  outline: none;
+  border-color: rgba(99, 102, 241, 0.34);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.08);
+}
+
+.adminTaskEmptyState {
+  margin: 0;
+  color: #64748b;
+}
+
+.adminTaskDetailEmpty {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
 @media (max-width: 900px) {
   .adminStatsGrid,
   .adminChatsLayout {
@@ -462,5 +1237,38 @@
 
   .adminChatList {
     max-height: none;
+  }
+
+  .adminTaskComposerGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .adminTaskList,
+  .adminTaskInlineControls {
+    grid-template-columns: 1fr;
+  }
+
+  .adminTaskFilterBar,
+  .adminTasksWorkspace,
+  .adminTaskDetailMeta,
+  .adminTaskDetailControls {
+    grid-template-columns: 1fr;
+  }
+
+  .adminSectionHeader {
+    flex-direction: column;
+  }
+
+  .adminTasksWorkspace {
+    min-height: 0;
+  }
+
+  .adminTasksPanel .adminTaskList {
+    max-height: none;
+  }
+
+  .adminTaskDetail {
+    height: auto;
+    min-height: 0;
   }
 }

@@ -1,15 +1,24 @@
 'use client'
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { FiSend, FiPlus } from 'react-icons/fi'
 import { useAuth } from '@/context/AuthContext'
 import {
   acceptSupportChat,
+  createSupportTask,
   closeSupportChat,
   getSupportChats,
+  getSupportTaskCategories,
   returnSupportChatToAi,
   sendSupportReply,
 } from '@/lib/chat.service'
-import type { SupportChatMessage, SupportChatSession } from '@/types/database'
+import type {
+  SupportChatMessage,
+  SupportChatSession,
+  SupportTaskCategory,
+  SupportTaskPriority,
+  SupportTaskStatus,
+} from '@/types/database'
 import './admin-components.css'
 
 function speakerLabel(role: SupportChatMessage['role']) {
@@ -26,12 +35,28 @@ function speakerLabel(role: SupportChatMessage['role']) {
 }
 
 export default function AdminChatsPanel() {
-  const { dbUser } = useAuth()
+  const { dbUser, business } = useAuth()
   const [chats, setChats] = useState<SupportChatSession[]>([])
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [replyText, setReplyText] = useState('')
   const [actionBusy, setActionBusy] = useState(false)
+  const [taskComposerOpen, setTaskComposerOpen] = useState(false)
+  const [taskSaving, setTaskSaving] = useState(false)
+  const [taskCategories, setTaskCategories] = useState<SupportTaskCategory[]>([])
+  const [taskDraft, setTaskDraft] = useState<{
+    title: string
+    description: string
+    categoryId: string
+    priority: SupportTaskPriority
+    status: SupportTaskStatus
+  }>({
+    title: '',
+    description: '',
+    categoryId: 'general',
+    priority: 'medium',
+    status: 'open',
+  })
   const messagesRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -61,6 +86,33 @@ export default function AdminChatsPanel() {
     }
   }, [dbUser?.businessId])
 
+  useEffect(() => {
+    let mounted = true
+
+    async function loadCategories() {
+      if (!dbUser?.businessId) return
+
+      const categories =
+        business?.supportTaskCategories?.length
+          ? business.supportTaskCategories
+          : await getSupportTaskCategories(dbUser.businessId)
+
+      if (!mounted) return
+
+      setTaskCategories(categories)
+      setTaskDraft((prev) => ({
+        ...prev,
+        categoryId: prev.categoryId || categories[0]?.id || 'general',
+      }))
+    }
+
+    void loadCategories()
+
+    return () => {
+      mounted = false
+    }
+  }, [business?.supportTaskCategories, dbUser?.businessId])
+
   const selectedChat = useMemo(
     () => chats.find((chat) => chat.id === selectedChatId) || chats[0] || null,
     [chats, selectedChatId]
@@ -71,6 +123,10 @@ export default function AdminChatsPanel() {
     if (!el) return
     el.scrollTop = el.scrollHeight
   }, [selectedChat?.id, selectedChat?.messages.length, selectedChat?.status])
+
+  useEffect(() => {
+    setTaskComposerOpen(false)
+  }, [selectedChat?.id])
 
   const refreshChats = async () => {
     if (!dbUser?.businessId) return
@@ -145,6 +201,61 @@ export default function AdminChatsPanel() {
     await runChatAction(() => sendSupportReply(dbUser.businessId, selectedChat.id, text))
   }
 
+  const openTaskComposer = (quick = false) => {
+    if (!selectedChat || !dbUser?.businessId) return
+
+    const firstUserMessage = selectedChat.messages.find((message) => message.role === 'user')
+    const fallbackCategory = taskCategories[0]?.id || 'general'
+
+    setTaskDraft({
+      title: quick
+        ? selectedChat.preview || firstUserMessage?.text || 'Support follow-up'
+        : selectedChat.preview || '',
+      description: quick
+        ? firstUserMessage?.text || selectedChat.preview || ''
+        : selectedChat.preview || '',
+      categoryId: fallbackCategory,
+      priority: 'medium',
+      status: 'open',
+    })
+    setTaskComposerOpen(true)
+  }
+
+  const handleSaveTask = async () => {
+    if (!dbUser?.businessId || !selectedChat) return
+    if (!taskDraft.title.trim() || !taskDraft.description.trim()) return
+
+    const category = taskCategories.find((item) => item.id === taskDraft.categoryId) || taskCategories[0]
+
+    if (!category) return
+
+    setTaskSaving(true)
+    try {
+      await createSupportTask(dbUser.businessId, {
+        chatId: selectedChat.id,
+        sessionId: selectedChat.sessionId,
+        visitorName: selectedChat.visitorName,
+        title: taskDraft.title.trim(),
+        description: taskDraft.description.trim(),
+        categoryId: category.id,
+        categoryName: category.name,
+        priority: taskDraft.priority,
+        status: taskDraft.status,
+        createdBy: dbUser.id,
+      })
+      setTaskComposerOpen(false)
+      setTaskDraft({
+        title: '',
+        description: '',
+        categoryId: taskCategories[0]?.id || 'general',
+        priority: 'medium',
+        status: 'open',
+      })
+    } finally {
+      setTaskSaving(false)
+    }
+  }
+
   return (
     <div className="infoCard adminDataCard">
       <div className="adminChatsLayout">
@@ -179,6 +290,7 @@ export default function AdminChatsPanel() {
           <div className="adminChatMeta">
             <strong>{selectedChat.pageTitle || 'Website visitor'}</strong>
             <span>{selectedChat.pageUrl || 'Unknown page'}</span>
+            <span>{selectedChat.visitorName ? `Visitor: ${selectedChat.visitorName}` : 'Visitor: unnamed'}</span>
             <span>Status: {selectedChat.status}</span>
           </div>
 
@@ -248,6 +360,135 @@ export default function AdminChatsPanel() {
             ) : null}
           </div>
 
+          <div className="adminChatTools">
+            <div className="adminChatToolsRow">
+              <button
+                type="button"
+                className="secondaryBtn adminToolBtn"
+                onClick={() => openTaskComposer(false)}
+                disabled={actionBusy || taskSaving}
+              >
+                <FiPlus />
+                Create task
+              </button>
+              <button
+                type="button"
+                className="secondaryBtn adminToolBtn"
+                onClick={() => openTaskComposer(true)}
+                disabled={actionBusy || taskSaving}
+              >
+                <FiPlus />
+                Quick task
+              </button>
+            </div>
+
+            {taskComposerOpen ? (
+              <div className="adminTaskComposer">
+                <div className="adminTaskComposerGrid">
+                  <label className="adminTaskField adminTaskFieldFull">
+                    <span>Task title</span>
+                    <input
+                      type="text"
+                      value={taskDraft.title}
+                      onChange={(event) =>
+                        setTaskDraft((prev) => ({ ...prev, title: event.target.value }))
+                      }
+                      placeholder="e.g. Refund follow-up"
+                    />
+                  </label>
+
+                  <label className="adminTaskField adminTaskFieldFull">
+                    <span>Description</span>
+                    <textarea
+                      value={taskDraft.description}
+                      onChange={(event) =>
+                        setTaskDraft((prev) => ({ ...prev, description: event.target.value }))
+                      }
+                      rows={4}
+                      placeholder="Describe the issue, context, and what needs to happen next."
+                    />
+                  </label>
+
+                  <label className="adminTaskField">
+                    <span>Category</span>
+                    <select
+                      value={taskDraft.categoryId}
+                      onChange={(event) =>
+                        setTaskDraft((prev) => ({ ...prev, categoryId: event.target.value }))
+                      }
+                    >
+                      {taskCategories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}{category.default ? ' (default)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="adminTaskField">
+                    <span>Priority</span>
+                    <select
+                      value={taskDraft.priority}
+                      onChange={(event) =>
+                        setTaskDraft((prev) => ({
+                          ...prev,
+                          priority: event.target.value as SupportTaskPriority,
+                        }))
+                      }
+                    >
+                      <option value="low">Low priority</option>
+                      <option value="medium">Medium priority</option>
+                      <option value="high">High priority</option>
+                      <option value="critical">Critical priority</option>
+                    </select>
+                  </label>
+
+                  <label className="adminTaskField">
+                    <span>Status</span>
+                    <select
+                      value={taskDraft.status}
+                      onChange={(event) =>
+                        setTaskDraft((prev) => ({
+                          ...prev,
+                          status: event.target.value as SupportTaskStatus,
+                        }))
+                      }
+                    >
+                      <option value="open">Open</option>
+                      <option value="in-progress">In progress</option>
+                      <option value="blocked">Blocked</option>
+                      <option value="done">Done</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div className="adminTaskComposerActions">
+                  <button
+                    type="button"
+                    className="secondaryBtn"
+                    onClick={() => setTaskComposerOpen(false)}
+                    disabled={taskSaving}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="primaryBtn"
+                    onClick={handleSaveTask}
+                    disabled={
+                      taskSaving ||
+                      actionBusy ||
+                      !taskDraft.title.trim() ||
+                      !taskDraft.description.trim()
+                    }
+                  >
+                    {taskSaving ? 'Saving...' : 'Save task'}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
           <div className="adminChatReplyBox">
             <textarea
               value={replyText}
@@ -262,11 +503,12 @@ export default function AdminChatsPanel() {
             />
             <button
               type="button"
-              className="primaryBtn"
+              className="primaryBtn adminSendButton"
               onClick={handleSendReply}
               disabled={actionBusy || !canHumanReply || !replyText.trim()}
             >
-              Send human reply
+              <span>Send human reply</span>
+              <FiSend />
             </button>
           </div>
         </div>

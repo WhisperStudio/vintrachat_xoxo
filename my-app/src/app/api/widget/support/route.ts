@@ -67,6 +67,7 @@ export async function GET(req: NextRequest) {
         sessionId,
         status: data.status || 'needs-human',
         messageCount: Number(data.messageCount || 0),
+        visitorName: data.visitorName,
         messages: Array.isArray(data.messages) ? data.messages.map(mapMessage) : [],
       },
       { headers }
@@ -128,6 +129,7 @@ export async function POST(req: NextRequest) {
         sessionId,
         status: nextData.status || data.status || 'needs-human',
         messageCount: Number(nextData.messageCount || 0),
+        visitorName: nextData.visitorName || data.visitorName,
         messages: Array.isArray(nextData.messages) ? nextData.messages.map(mapMessage) : [],
       },
       { headers }

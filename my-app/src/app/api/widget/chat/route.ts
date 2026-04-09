@@ -135,6 +135,10 @@ function buildPrompt(args: {
   ].join('\n\n')
 }
 
+function buildNameRequestReply() {
+  return 'To contact human support, please write your name first. Is there anything else I can help you with?'
+}
+
 async function generateGeminiReply(prompt: string, model: string): Promise<GeminiResult> {
   const apiKey = process.env.GEMINI_API_KEY
 
@@ -229,9 +233,12 @@ export async function POST(req: NextRequest) {
     const sessionId = String(body.sessionId || crypto.randomUUID())
     const pageTitle = body.pageTitle ? String(body.pageTitle) : undefined
     const pageUrl = body.pageUrl ? String(body.pageUrl) : undefined
+    const visitorName = body.visitorName ? String(body.visitorName).trim() : ''
+    const requestHumanSupport = Boolean(body.requestHumanSupport)
+    const supportRequestText = body.supportRequestText ? String(body.supportRequestText).trim() : ''
     const history = trimHistory(Array.isArray(body.history) ? body.history : [])
 
-    if (!widgetKey || !message) {
+    if (!widgetKey || (!message && !requestHumanSupport)) {
       return NextResponse.json(
         { error: 'Missing widget key or message' },
         { status: 400, headers }
@@ -255,6 +262,89 @@ export async function POST(req: NextRequest) {
       supportTriggerKeywords: fallbackSupportKeywords,
       handoffMessage:
         'I understand. I am putting you through to a human assistant now. Please hold on while I connect you with someone available.',
+    }
+
+    if (requestHumanSupport) {
+      if (!visitorName) {
+        return NextResponse.json(
+          {
+            sessionId,
+            reply: buildNameRequestReply(),
+            supportRequested: false,
+            visitorNameRequired: true,
+          },
+          { headers }
+        )
+      }
+
+      if (!supportRequestText) {
+        return NextResponse.json(
+          { error: 'Missing support request text' },
+          { status: 400, headers }
+        )
+      }
+
+      const now = new Date()
+      const userSupportMessage = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        text: supportRequestText,
+        createdAt: now.toISOString(),
+      }
+      const assistantSupportMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        text: assistantConfig.handoffMessage || buildNameRequestReply(),
+        createdAt: now.toISOString(),
+      }
+      const supportMessages = [userSupportMessage, assistantSupportMessage]
+      const businessRef = adminDb.collection('businesses').doc(business.id)
+      const supportChatRef = businessRef.collection('supportChats').doc(sessionId)
+      const supportChatSnap = await supportChatRef.get()
+      const isNewSupportChat = !supportChatSnap.exists
+
+      await supportChatRef.set(
+        {
+          sessionId,
+          widgetKey,
+          businessId: business.id,
+          status: 'needs-human',
+          source: 'widget',
+          preview: supportRequestText,
+          visitorName,
+          pageTitle: pageTitle || null,
+          pageUrl: pageUrl || null,
+          messageCount: supportMessages.length,
+          messages: supportMessages,
+          supportRequestedAt: supportChatSnap.exists
+            ? supportChatSnap.data()?.supportRequestedAt || FieldValue.serverTimestamp()
+            : FieldValue.serverTimestamp(),
+          createdAt: supportChatSnap.exists
+            ? supportChatSnap.data()?.createdAt || FieldValue.serverTimestamp()
+            : FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      )
+
+      const analyticsUpdates: Record<string, unknown> = {
+        updatedAt: FieldValue.serverTimestamp(),
+        'chatAnalytics.totalMessages': FieldValue.increment(1),
+        'chatAnalytics.lastChatAt': FieldValue.serverTimestamp(),
+        'chatAnalytics.supportRequests': FieldValue.increment(isNewSupportChat ? 1 : 0),
+        'chatAnalytics.savedSupportChats': FieldValue.increment(isNewSupportChat ? 1 : 0),
+      }
+
+      await businessRef.update(analyticsUpdates)
+
+      return NextResponse.json(
+        {
+          sessionId,
+          reply: assistantConfig.handoffMessage || 'The chat has been handed over to human support.',
+          supportRequested: true,
+        },
+        { headers }
+      )
     }
 
     const supportKeywords =
@@ -300,8 +390,11 @@ export async function POST(req: NextRequest) {
     }
 
     const needsHumanSupport = heuristicsTriggered || aiWantsHumanSupport
+    const requiresName = needsHumanSupport && !visitorName
     const finalReply =
-      needsHumanSupport && assistantConfig.handoffMessage
+      requiresName
+      ? buildNameRequestReply()
+        : needsHumanSupport && assistantConfig.handoffMessage
         ? `${aiReply}\n\n${assistantConfig.handoffMessage}`.trim()
         : aiReply
 
@@ -326,7 +419,7 @@ export async function POST(req: NextRequest) {
     const supportChatRef = businessRef.collection('supportChats').doc(sessionId)
     const supportChatSnap = await supportChatRef.get()
     const existingSupportChat = supportChatSnap.exists ? supportChatSnap.data() || {} : null
-    const isNewSupportChat = needsHumanSupport && !supportChatSnap.exists
+    const isNewSupportChat = needsHumanSupport && !requiresName && !supportChatSnap.exists
 
     const analyticsUpdates: Record<string, unknown> = {
       updatedAt: FieldValue.serverTimestamp(),
@@ -339,7 +432,7 @@ export async function POST(req: NextRequest) {
       analyticsUpdates['chatAnalytics.aiOnlySessions'] = FieldValue.increment(1)
     }
 
-    if (needsHumanSupport) {
+    if (needsHumanSupport && !requiresName) {
       analyticsUpdates['chatAnalytics.supportRequests'] = FieldValue.increment(
         isNewSupportChat ? 1 : 0
       )
@@ -358,6 +451,7 @@ export async function POST(req: NextRequest) {
           status: 'needs-human',
           source: 'widget',
           preview: message,
+          visitorName: visitorName || null,
           pageTitle: pageTitle || null,
           pageUrl: pageUrl || null,
           messageCount: messageTimeline.length,
@@ -384,6 +478,7 @@ export async function POST(req: NextRequest) {
               : existingSupportChat.status || 'ai-active',
           source: 'widget',
           preview: message,
+          visitorName: visitorName || existingSupportChat.visitorName || null,
           pageTitle: pageTitle || existingSupportChat.pageTitle || null,
           pageUrl: pageUrl || existingSupportChat.pageUrl || null,
           messageCount: messageTimeline.length,
@@ -402,7 +497,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       sessionId,
       reply: finalReply,
-      supportRequested: needsHumanSupport,
+      supportRequested: needsHumanSupport && !requiresName,
+      visitorNameRequired: requiresName,
     }, { headers })
   } catch (error) {
     console.error('Widget chat error:', error)

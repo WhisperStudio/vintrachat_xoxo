@@ -31,6 +31,7 @@ import {
   Business,
   ChatAssistantConfig,
   ChatAnalytics,
+  SupportTaskCategory,
 } from "@/types/database";
 
 // ----------------------
@@ -117,6 +118,20 @@ function generateToken(length: number = 30) {
 export function generateChatWidgetKey() {
   return generateToken(24);
 }
+
+const defaultSupportTaskCategories: SupportTaskCategory[] = [
+  'general',
+  'security',
+  'system',
+  'billing',
+  'account',
+].map((name) => ({
+  id: name,
+  name: name.charAt(0).toUpperCase() + name.slice(1),
+  default: true,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+}));
 
 // ----------------------
 // SIGN UP (INGEN DB SAVE)
@@ -320,6 +335,7 @@ const defaultChatAnalytics: ChatAnalytics = {
     chatWidgetConfig: defaultWidgetConfig,
     chatAssistantConfig: defaultAssistantConfig,
     chatAnalytics: defaultChatAnalytics,
+    supportTaskCategories: defaultSupportTaskCategories,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -528,6 +544,15 @@ export async function getBusinessInfo(
             lastChatAt: data.chatAnalytics.lastChatAt?.toDate?.() || undefined,
           }
         : undefined,
+      supportTaskCategories: Array.isArray(data.supportTaskCategories)
+        ? data.supportTaskCategories.map((category: any) => ({
+            id: category.id,
+            name: category.name,
+            default: Boolean(category.default),
+            createdAt: category.createdAt?.toDate?.() || new Date(),
+            updatedAt: category.updatedAt?.toDate?.() || new Date(),
+          }))
+        : [],
     };
   }
 

@@ -7,6 +7,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import AdminAnalyticsPanel from './components/AdminAnalyticsPanel'
 import AdminChatsPanel from './components/AdminChatsPanel'
 import AdminExportTestPanel from './components/AdminExportTestPanel'
+import AdminTasksPanel from './components/AdminTasksPanel'
 import WidgetAdminPanel from './widget/page'
 import './page.css'
 
@@ -14,6 +15,7 @@ type AdminTab =
   | 'overview'
   | 'analytics'
   | 'chats'
+  | 'tasks'
   | 'users'
   | 'websites'
   | 'widgets'
@@ -32,7 +34,7 @@ export default function AdminPage() {
 
   const supportItems: Array<{ tab: AdminTab; label: string }> = [
     { tab: 'chats', label: 'Chats' },
-    
+    { tab: 'tasks', label: 'Tasks' },
     { tab: 'export-test', label: 'Export Test' },
   ]
 
@@ -159,6 +161,8 @@ export default function AdminPage() {
           {activeTab === 'analytics' && <AdminAnalyticsPanel />}
 
           {activeTab === 'chats' && <AdminChatsPanel />}
+
+          {activeTab === 'tasks' && <AdminTasksPanel />}
 
           {activeTab === 'users' && (
             <div className="infoCard">

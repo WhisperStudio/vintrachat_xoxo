@@ -15,6 +15,7 @@ export interface Business {
   chatWidgetConfig?: ChatWidgetConfig;
   chatAssistantConfig?: ChatAssistantConfig;
   chatAnalytics?: ChatAnalytics;
+  supportTaskCategories?: SupportTaskCategory[];
 }
 
 export interface ChatAssistantConfig {
@@ -55,11 +56,49 @@ export interface SupportChatSession {
   preview: string;
   pageTitle?: string;
   pageUrl?: string;
+  visitorName?: string;
   createdAt: Date;
   updatedAt: Date;
   supportRequestedAt?: Date;
   messageCount: number;
   messages: SupportChatMessage[];
+}
+
+export type SupportTaskPriority = 'low' | 'medium' | 'high' | 'critical';
+export type SupportTaskStatus = 'open' | 'in-progress' | 'blocked' | 'done';
+
+export interface SupportTaskComment {
+  id: string;
+  text: string;
+  createdAt: Date;
+  createdBy: string;
+  createdByName?: string;
+}
+
+export interface SupportTaskCategory {
+  id: string;
+  name: string;
+  default: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SupportTask {
+  id: string;
+  businessId: string;
+  chatId?: string;
+  sessionId?: string;
+  visitorName?: string;
+  title: string;
+  description: string;
+  categoryId: string;
+  categoryName: string;
+  priority: SupportTaskPriority;
+  status: SupportTaskStatus;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string;
+  comments?: SupportTaskComment[];
 }
 
 // Chat Widget config
