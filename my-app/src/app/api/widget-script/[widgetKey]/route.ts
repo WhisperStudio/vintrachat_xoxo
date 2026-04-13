@@ -753,6 +753,7 @@ export async function GET(
     supportSnapshot: '',
     awaitingVisitorName: false,
     pendingHumanSupportText: '',
+    countryCode: '',
     hasOpenedOnce: FORCE_OPEN,
     hasUnreadWhileClosed: false
   };
@@ -951,6 +952,9 @@ export async function GET(
       }
 
       var nextStatus = json.status || state.supportStatus || 'needs-human';
+      if (json.countryCode) {
+        state.countryCode = String(json.countryCode).toUpperCase();
+      }
       var nextMessages = Array.isArray(json.messages) ? json.messages.map(mapMessage) : [];
       var nextSnapshot = JSON.stringify({
         status: nextStatus,
@@ -1186,6 +1190,7 @@ export async function GET(
             requestHumanSupport: true,
             visitorName: text,
             supportRequestText: state.pendingHumanSupportText,
+            countryCode: state.countryCode || undefined,
             pageTitle: document.title,
             pageUrl: window.location.href
           })
@@ -1199,6 +1204,7 @@ export async function GET(
 
         state.sessionId = humanSupportJson.sessionId || state.sessionId;
         writeStoredSessionId(state.sessionId);
+        state.countryCode = String(humanSupportJson.countryCode || state.countryCode || '').toUpperCase();
         state.awaitingVisitorName = false;
         state.pendingHumanSupportText = '';
         state.inputValue = '';
@@ -1264,6 +1270,7 @@ export async function GET(
                 widgetKey: WIDGET_KEY,
                 sessionId: state.sessionId || undefined,
                 message: text,
+                countryCode: state.countryCode || undefined,
                 history: state.messages.map(function (msg) {
                   return {
                     id: msg.id,
@@ -1286,6 +1293,7 @@ export async function GET(
 
       state.sessionId = json.sessionId || state.sessionId;
       writeStoredSessionId(state.sessionId);
+      state.countryCode = String(json.countryCode || state.countryCode || '').toUpperCase();
 
       if (inHumanSupportMode) {
         state.supportStatus = json.status || state.supportStatus || 'needs-human';

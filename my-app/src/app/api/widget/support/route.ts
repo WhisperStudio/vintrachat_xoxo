@@ -29,6 +29,16 @@ function mapMessage(message: any) {
   }
 }
 
+function getRequestCountryCode(req: NextRequest) {
+  const headerCountry =
+    req.headers.get('x-vercel-ip-country') ||
+    req.headers.get('x-country-code') ||
+    (req as any).geo?.country
+
+  const country = String(headerCountry || 'XX').trim().toUpperCase()
+  return /^[A-Z]{2}$/.test(country) ? country : 'XX'
+}
+
 export async function OPTIONS(req: NextRequest) {
   return new NextResponse(null, {
     status: 204,
@@ -68,6 +78,7 @@ export async function GET(req: NextRequest) {
         status: data.status || 'needs-human',
         messageCount: Number(data.messageCount || 0),
         visitorName: data.visitorName,
+        countryCode: data.countryCode,
         messages: Array.isArray(data.messages) ? data.messages.map(mapMessage) : [],
       },
       { headers }
@@ -86,6 +97,7 @@ export async function POST(req: NextRequest) {
     const widgetKey = String(body.widgetKey || '')
     const sessionId = String(body.sessionId || '')
     const message = String(body.message || '').trim()
+    const countryCode = String(body.countryCode || getRequestCountryCode(req) || 'XX').toUpperCase()
 
     if (!widgetKey || !sessionId || !message) {
       return NextResponse.json(
@@ -108,16 +120,32 @@ export async function POST(req: NextRequest) {
     }
 
     const data = snap.data() || {}
+    const businessRef = adminDb.collection('businesses').doc(business.id)
 
     await chatRef.update({
       preview: message,
       updatedAt: FieldValue.serverTimestamp(),
       messageCount: FieldValue.increment(1),
+      countryCode: countryCode || data.countryCode || null,
       messages: FieldValue.arrayUnion({
         id: crypto.randomUUID(),
         role: 'user',
         text: message,
         createdAt: new Date().toISOString(),
+      }),
+    })
+
+    await businessRef.update({
+      updatedAt: FieldValue.serverTimestamp(),
+      'chatAnalytics.totalMessages': FieldValue.increment(1),
+      'chatAnalytics.lastChatAt': FieldValue.serverTimestamp(),
+      [`chatAnalytics.countryCounts.${countryCode}`]: FieldValue.increment(1),
+      'chatAnalytics.timeline': FieldValue.arrayUnion({
+        id: crypto.randomUUID(),
+        kind: 'visitor-message',
+        sessionId,
+        countryCode,
+        createdAt: new Date(),
       }),
     })
 
@@ -130,6 +158,7 @@ export async function POST(req: NextRequest) {
         status: nextData.status || data.status || 'needs-human',
         messageCount: Number(nextData.messageCount || 0),
         visitorName: nextData.visitorName || data.visitorName,
+        countryCode: nextData.countryCode || data.countryCode || countryCode,
         messages: Array.isArray(nextData.messages) ? nextData.messages.map(mapMessage) : [],
       },
       { headers }

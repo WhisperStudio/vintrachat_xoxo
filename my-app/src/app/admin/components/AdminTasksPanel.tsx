@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { FiFilter, FiMessageSquare, FiPlus, FiSettings } from 'react-icons/fi'
+import { FiClock, FiFilter, FiMessageSquare, FiPlus, FiSettings, FiTag, FiUser } from 'react-icons/fi'
 import { useAuth } from '@/context/AuthContext'
 import {
   addSupportTaskComment,
@@ -56,6 +56,14 @@ function formatDate(value?: Date) {
   return new Date(value).toLocaleString()
 }
 
+function formatMessageTime(value?: Date) {
+  if (!value) return ''
+  return new Intl.DateTimeFormat(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
 export default function AdminTasksPanel() {
   const { dbUser, business } = useAuth()
   const [loading, setLoading] = useState(true)
@@ -74,10 +82,12 @@ export default function AdminTasksPanel() {
     status: SupportTaskStatus | 'all'
     priority: SupportTaskPriority | 'all'
     categoryId: string | 'all'
+    sortBy: 'newest' | 'oldest'
   }>({
     status: 'all',
     priority: 'all',
     categoryId: 'all',
+    sortBy: 'newest',
   })
   const [creatorDraft, setCreatorDraft] = useState({
     title: '',
@@ -108,14 +118,24 @@ export default function AdminTasksPanel() {
     )
   }, [chats, selectedTask])
 
+  const taskChatMessages = selectedTask?.chatMessages?.length
+    ? selectedTask.chatMessages
+    : selectedChat?.messages || []
+
   const filteredTasks = useMemo(() => {
-    return tasks.filter((task) => {
+    const nextTasks = tasks.filter((task) => {
       if (filters.status !== 'all' && task.status !== filters.status) return false
       if (filters.priority !== 'all' && task.priority !== filters.priority) return false
       if (filters.categoryId !== 'all' && task.categoryId !== filters.categoryId) return false
       return true
     })
-  }, [filters.categoryId, filters.priority, filters.status, tasks])
+
+    return nextTasks.sort((a, b) => {
+      const aTime = new Date(a.createdAt).getTime()
+      const bTime = new Date(b.createdAt).getTime()
+      return filters.sortBy === 'newest' ? bTime - aTime : aTime - bTime
+    })
+  }, [filters.categoryId, filters.priority, filters.sortBy, filters.status, tasks])
 
   useEffect(() => {
     let mounted = true
@@ -422,6 +442,24 @@ export default function AdminTasksPanel() {
           </select>
         </label>
 
+        <label className="adminTaskFilter">
+          <span>
+            <FiClock /> Sort by
+          </span>
+          <select
+            value={filters.sortBy}
+            onChange={(event) =>
+              setFilters((prev) => ({
+                ...prev,
+                sortBy: event.target.value as 'newest' | 'oldest',
+              }))
+            }
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
+        </label>
+
         <button
           type="button"
           className="secondaryBtn"
@@ -430,6 +468,7 @@ export default function AdminTasksPanel() {
               status: 'all',
               priority: 'all',
               categoryId: 'all',
+              sortBy: 'newest',
             })
           }
         >
@@ -605,25 +644,22 @@ export default function AdminTasksPanel() {
                   <div className="adminTaskCardTop">
                     <div>
                       <h3>{task.title}</h3>
-                      <p>{task.visitorName || 'Unnamed visitor'}</p>
+                      <p className="adminTaskCardMetaLine">
+                        <FiUser />
+                        <span>{task.visitorName || 'Unnamed visitor'}</span>
+                      </p>
                     </div>
                     <div className="adminTaskMeta">
                       <span className={`taskPriority taskPriority-${task.priority}`}>
                         {taskPriorityLabels[task.priority]} priority
                       </span>
-                      <span className={`taskStatus taskStatus-${task.status}`}>
-                        {taskStatusLabels[task.status]}
-                      </span>
                     </div>
                   </div>
 
-                  <div className="adminTaskMetaRow">
-                    <span>{task.categoryName}</span>
-                    <span>{task.comments?.length || 0} comments</span>
-                    <span>{task.chatId ? 'Linked chat' : 'Manual task'}</span>
-                  </div>
-
                   <p className="adminTaskCardPreview">{task.description}</p>
+                  <div className="adminTaskCardFooter">
+                    <span>{formatDate(task.createdAt)}</span>
+                  </div>
                 </button>
               )
             })
@@ -638,7 +674,7 @@ export default function AdminTasksPanel() {
             <div className="adminTaskDetailHeader">
               <div>
                 <h2>{selectedTask.title}</h2>
-                <p>{selectedTask.description}</p>
+                <p className="adminTaskDetailNote">{selectedTask.description}</p>
               </div>
               <div className="adminTaskDetailBadges">
                 <span className={`taskPriority taskPriority-${selectedTask.priority}`}>
@@ -650,18 +686,24 @@ export default function AdminTasksPanel() {
               </div>
             </div>
 
-            <div className="adminTaskDetailMeta">
+              <div className="adminTaskDetailMeta">
               <div>
-                <span>Visitor</span>
+                <span>
+                  <FiClock /> Created
+                </span>
+                <strong>{formatDate(selectedTask.createdAt)}</strong>
+              </div>
+              <div>
+                <span>
+                  <FiUser /> Visitor
+                </span>
                 <strong>{selectedTask.visitorName || 'Unnamed visitor'}</strong>
               </div>
               <div>
-                <span>Category</span>
+                <span>
+                  <FiTag /> Category
+                </span>
                 <strong>{selectedTask.categoryName}</strong>
-              </div>
-              <div>
-                <span>Updated</span>
-                <strong>{formatDate(selectedTask.updatedAt)}</strong>
               </div>
             </div>
 
@@ -721,39 +763,40 @@ export default function AdminTasksPanel() {
               </label>
             </div>
 
-            <div className="adminTaskHistoryCard">
-              <div className="adminTaskHistoryHeader">
-                <h3>
+            <details className="adminTaskFold">
+              <summary>
+                <span>
                   <FiMessageSquare /> Linked chat history
-                </h3>
-                <span>{selectedChat ? `${selectedChat.messageCount} messages` : 'No linked chat found'}</span>
-              </div>
-
-              <div className="adminTaskHistoryList" ref={historyScrollRef}>
-                {selectedChat ? (
-                  selectedChat.messages.map((message) => (
-                    <article
-                      key={message.id}
-                      className={`adminTaskHistoryItem adminTaskHistoryItem-${message.role}`}
-                    >
-                      <strong>{speakerLabel(message.role)}</strong>
-                      <p>{message.text}</p>
-                      <span>{new Date(message.createdAt).toLocaleString()}</span>
-                    </article>
-                  ))
+                </span>
+                <span>{taskChatMessages.length ? `${taskChatMessages.length} messages` : 'No saved chat snapshot'}</span>
+              </summary>
+              <div className="adminTaskFoldBody">
+                {taskChatMessages.length ? (
+                  <div className="adminTaskHistoryList" ref={historyScrollRef}>
+                    {taskChatMessages.map((message) => (
+                      <article
+                        key={message.id}
+                        className={`adminTaskHistoryItem adminTaskHistoryItem-${message.role}`}
+                      >
+                        <strong>{speakerLabel(message.role)}</strong>
+                        <p>{message.text}</p>
+                        <span>{formatMessageTime(message.createdAt)}</span>
+                      </article>
+                    ))}
+                  </div>
                 ) : (
-                  <p className="adminTaskEmptyState">This task is not linked to a saved support chat.</p>
+                  <p className="adminTaskEmptyState">This task does not have a saved chat snapshot.</p>
                 )}
               </div>
-            </div>
+            </details>
 
-            <div className="adminTaskCommentsCard">
-              <div className="adminTaskHistoryHeader">
-                <h3>Comments</h3>
+            <details className="adminTaskFold">
+              <summary>
+                <span>Comments</span>
                 <span>{selectedTask.comments?.length || 0} notes</span>
-              </div>
-
-              <div className="adminTaskCommentsList">
+              </summary>
+              <div className="adminTaskFoldBody">
+                <div className="adminTaskCommentsList">
                 {selectedTask.comments?.length ? (
                   selectedTask.comments.map((comment) => (
                     <article key={comment.id} className="adminTaskCommentItem">
@@ -764,29 +807,30 @@ export default function AdminTasksPanel() {
                       <p>{comment.text}</p>
                     </article>
                   ))
-                ) : (
-                  <p className="adminTaskEmptyState">No comments yet.</p>
-                )}
-              </div>
+                  ) : (
+                    <p className="adminTaskEmptyState">No comments yet.</p>
+                  )}
+                </div>
 
-              <div className="adminTaskCommentComposer">
-                <textarea
-                  value={commentText}
-                  onChange={(event) => setCommentText(event.target.value)}
-                  placeholder="Add a follow-up note or internal comment..."
-                  rows={3}
-                />
-                <button
-                  type="button"
-                  className="primaryBtn adminSendButton"
-                  onClick={addComment}
-                  disabled={commentSaving || !commentText.trim()}
-                >
-                  <span>{commentSaving ? 'Saving comment...' : 'Add comment'}</span>
-                  <FiPlus />
-                </button>
+                <div className="adminTaskCommentComposer">
+                  <textarea
+                    value={commentText}
+                    onChange={(event) => setCommentText(event.target.value)}
+                    placeholder="Add a follow-up note or internal comment..."
+                    rows={3}
+                  />
+                  <button
+                    type="button"
+                    className="primaryBtn adminSendButton"
+                    onClick={addComment}
+                    disabled={commentSaving || !commentText.trim()}
+                  >
+                    <span>{commentSaving ? 'Saving comment...' : 'Add comment'}</span>
+                    <FiPlus />
+                  </button>
+                </div>
               </div>
-            </div>
+            </details>
           </section>
         ) : (
           <section className="adminTaskDetail adminTaskDetailEmpty">

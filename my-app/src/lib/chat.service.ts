@@ -16,6 +16,7 @@ import { db } from '@/lib/firebase'
 import type {
   Business,
   ChatAnalytics,
+  ChatAnalyticsEvent,
   SupportChatMessage,
   SupportChatSession,
   SupportTaskComment,
@@ -59,6 +60,16 @@ function mapSupportMessage(message: any): SupportChatMessage {
   }
 }
 
+function mapAnalyticsEvent(event: any): ChatAnalyticsEvent {
+  return {
+    id: String(event.id || crypto.randomUUID()),
+    kind: event.kind || 'visitor-message',
+    sessionId: String(event.sessionId || ''),
+    countryCode: event.countryCode || undefined,
+    createdAt: toDate(event.createdAt),
+  }
+}
+
 function createSupportMessage(
   role: SupportChatMessage['role'],
   text: string
@@ -67,6 +78,20 @@ function createSupportMessage(
     id: crypto.randomUUID(),
     role,
     text,
+    createdAt: new Date(),
+  }
+}
+
+function createAnalyticsEvent(
+  kind: ChatAnalyticsEvent['kind'],
+  sessionId: string,
+  countryCode?: string
+): ChatAnalyticsEvent {
+  return {
+    id: crypto.randomUUID(),
+    kind,
+    sessionId,
+    countryCode,
     createdAt: new Date(),
   }
 }
@@ -90,6 +115,7 @@ export async function getSupportChats(businessId: string): Promise<SupportChatSe
       pageTitle: data.pageTitle,
       pageUrl: data.pageUrl,
       visitorName: data.visitorName,
+      countryCode: data.countryCode,
       createdAt: toDate(data.createdAt),
       updatedAt: toDate(data.updatedAt),
       supportRequestedAt: data.supportRequestedAt ? toDate(data.supportRequestedAt) : undefined,
@@ -118,13 +144,17 @@ export async function getBusinessChatAnalytics(
 
   return {
     ...analytics,
+    countryCounts: analytics.countryCounts || {},
+    timeline: Array.isArray(analytics.timeline) ? analytics.timeline.map(mapAnalyticsEvent) : [],
     lastChatAt: analytics.lastChatAt ? toDate(analytics.lastChatAt) : undefined,
   }
 }
 
 export async function acceptSupportChat(businessId: string, chatId: string) {
   const chatRef = doc(db, `businesses/${businessId}/supportChats/${chatId}`)
+  const businessRef = doc(db, 'businesses', businessId)
   const systemMessage = createSupportMessage('system', 'The chat has been handed over to human support.')
+  const analyticsEvent = createAnalyticsEvent('support-open', chatId)
 
   await updateDoc(chatRef, {
     status: 'open',
@@ -132,14 +162,21 @@ export async function acceptSupportChat(businessId: string, chatId: string) {
     messageCount: increment(1),
     messages: arrayUnion(systemMessage),
   })
+
+  await updateDoc(businessRef, {
+    'chatAnalytics.timeline': arrayUnion(analyticsEvent),
+    updatedAt: serverTimestamp(),
+  })
 }
 
 export async function returnSupportChatToAi(businessId: string, chatId: string) {
   const chatRef = doc(db, `businesses/${businessId}/supportChats/${chatId}`)
+  const businessRef = doc(db, 'businesses', businessId)
   const systemMessage = createSupportMessage(
     'system',
     'The chat has been returned to the AI assistant.'
   )
+  const analyticsEvent = createAnalyticsEvent('support-returned', chatId)
 
   await updateDoc(chatRef, {
     status: 'ai-active',
@@ -147,24 +184,38 @@ export async function returnSupportChatToAi(businessId: string, chatId: string) 
     messageCount: increment(1),
     messages: arrayUnion(systemMessage),
   })
+
+  await updateDoc(businessRef, {
+    'chatAnalytics.timeline': arrayUnion(analyticsEvent),
+    updatedAt: serverTimestamp(),
+  })
 }
 
 export async function sendSupportReply(
   businessId: string,
   chatId: string,
-  text: string
+  text: string,
+  countryCode?: string
 ) {
   const trimmed = text.trim()
   if (!trimmed) return
 
   const chatRef = doc(db, `businesses/${businessId}/supportChats/${chatId}`)
+  const businessRef = doc(db, 'businesses', businessId)
   const supportMessage = createSupportMessage('support', trimmed)
+  const analyticsEvent = createAnalyticsEvent('support-message', chatId, countryCode)
 
   await updateDoc(chatRef, {
     status: 'open',
     updatedAt: serverTimestamp(),
     messages: arrayUnion(supportMessage),
     messageCount: increment(1),
+  })
+
+  await updateDoc(businessRef, {
+    'chatAnalytics.timeline': arrayUnion(analyticsEvent),
+    'chatAnalytics.totalMessages': increment(1),
+    updatedAt: serverTimestamp(),
   })
 }
 
@@ -199,6 +250,11 @@ function mapTask(task: any): SupportTask {
     createdAt: toDate(task.createdAt),
     updatedAt: toDate(task.updatedAt),
     createdBy: task.createdBy || undefined,
+    chatMessages: Array.isArray(task.chatMessages) ? task.chatMessages.map(mapSupportMessage) : [],
+    chatPreview: task.chatPreview || undefined,
+    chatPageTitle: task.chatPageTitle || undefined,
+    chatPageUrl: task.chatPageUrl || undefined,
+    chatCountryCode: task.chatCountryCode || undefined,
     comments: Array.isArray(task.comments)
       ? task.comments.map((comment: any) => ({
           id: String(comment.id || crypto.randomUUID()),
@@ -264,6 +320,11 @@ export async function createSupportTask(
     chatId?: string
     sessionId?: string
     visitorName?: string
+    chatMessages?: SupportChatMessage[]
+    chatPreview?: string
+    chatPageTitle?: string
+    chatPageUrl?: string
+    chatCountryCode?: string
     title: string
     description: string
     categoryId: string
@@ -280,6 +341,11 @@ export async function createSupportTask(
     chatId: params.chatId || params.sessionId || null,
     sessionId: params.sessionId || params.chatId || null,
     visitorName: params.visitorName || null,
+    chatMessages: Array.isArray(params.chatMessages) ? params.chatMessages : [],
+    chatPreview: params.chatPreview || null,
+    chatPageTitle: params.chatPageTitle || null,
+    chatPageUrl: params.chatPageUrl || null,
+    chatCountryCode: params.chatCountryCode || null,
     title: params.title.trim(),
     description: params.description.trim(),
     categoryId: params.categoryId,

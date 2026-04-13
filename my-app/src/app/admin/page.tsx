@@ -3,10 +3,11 @@
 import Header from '@/components/header'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import AdminAnalyticsPanel from './components/AdminAnalyticsPanel'
 import AdminChatsPanel from './components/AdminChatsPanel'
 import AdminExportTestPanel from './components/AdminExportTestPanel'
+import AdminUserManagementPanel from './components/AdminUserManagementPanel'
 import AdminTasksPanel from './components/AdminTasksPanel'
 import WidgetAdminPanel from './widget/page'
 import './page.css'
@@ -31,6 +32,7 @@ export default function AdminPage() {
   const [indicatorStyle, setIndicatorStyle] = useState<{ top: number; height: number } | null>(
     null
   )
+  const normalizedRole = dbUser?.role === 'user' ? 'viewer' : dbUser?.role || 'viewer'
 
   const supportItems: Array<{ tab: AdminTab; label: string }> = [
     { tab: 'chats', label: 'Chats' },
@@ -45,6 +47,19 @@ export default function AdminPage() {
     { tab: 'websites', label: 'Websites' },
     { tab: 'settings', label: 'Settings' },
   ]
+
+  const visibleTabs = useMemo(() => {
+    const roleTabs: Record<string, AdminTab[]> = {
+      admin: ['overview', 'analytics', 'users', 'widgets', 'websites', 'settings', 'chats', 'tasks', 'export-test'],
+      manager: ['overview', 'analytics', 'chats', 'tasks', 'export-test', 'widgets', 'websites'],
+      support: ['overview', 'chats', 'tasks', 'export-test'],
+      viewer: ['overview', 'analytics'],
+    }
+
+    return roleTabs[normalizedRole] || roleTabs.viewer
+  }, [normalizedRole])
+  const visibleSupportItems = supportItems.filter((item) => visibleTabs.includes(item.tab))
+  const visibleAdminItems = adminItems.filter((item) => visibleTabs.includes(item.tab))
 
   useEffect(() => {
     if (!loading && !isAuthenticated) router.push('/auth/login')
@@ -73,6 +88,12 @@ export default function AdminPage() {
     window.addEventListener('resize', updateIndicator)
     return () => window.removeEventListener('resize', updateIndicator)
   }, [activeTab])
+
+  useEffect(() => {
+    if (!visibleTabs.includes(activeTab)) {
+      setActiveTab(visibleTabs[0] || 'overview')
+    }
+  }, [activeTab, visibleTabs])
 
   if (loading) return <div>Loading...</div>
   if (!isAuthenticated || !dbUser) return null
@@ -107,9 +128,10 @@ export default function AdminPage() {
               Overview
             </button>
           </div>
+          {visibleSupportItems.length > 0 ? (
           <div className="adminSidebarGroup">
             <div className="adminSidebarGroupLabel">Support</div>
-            {supportItems.map((item) => (
+            {visibleSupportItems.map((item) => (
               <button
                 key={item.tab}
                 ref={(node) => {
@@ -122,10 +144,12 @@ export default function AdminPage() {
               </button>
             ))}
           </div>
+          ) : null}
 
+          {visibleAdminItems.length > 0 ? (
           <div className="adminSidebarGroup">
             <div className="adminSidebarGroupLabel">Administrative</div>
-            {adminItems.map((item) => (
+            {visibleAdminItems.map((item) => (
               <button
                 key={item.tab}
                 ref={(node) => {
@@ -138,6 +162,7 @@ export default function AdminPage() {
               </button>
             ))}
           </div>
+          ) : null}
         </aside>
 
         <section className="adminContent">
@@ -164,12 +189,7 @@ export default function AdminPage() {
 
           {activeTab === 'tasks' && <AdminTasksPanel />}
 
-          {activeTab === 'users' && (
-            <div className="infoCard">
-              <h1>User Management</h1>
-              <p>Manage roles, access, and team collaboration here.</p>
-            </div>
-          )}
+          {activeTab === 'users' && <AdminUserManagementPanel />}
 
           {activeTab === 'websites' && (
             <div className="infoCard">

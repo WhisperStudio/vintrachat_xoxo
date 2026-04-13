@@ -42,8 +42,9 @@ export default function LoginPage() {
       const result = await signInWithEmail(email, password)
 
       if (result.success) { 
-        // Vent på at AuthContext skal oppdatere og redirect
-        // useEffect vil håndtere redirect
+        if (result.redirectTo) {
+          router.push(result.redirectTo)
+        }
       } else {
         setError(result.message)
       }

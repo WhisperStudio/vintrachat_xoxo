@@ -2,6 +2,7 @@
 
 import {
   collection,
+  collectionGroup,
   addDoc,
   getDocs,
   query,
@@ -15,7 +16,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
-import { UserRole } from "@/types/database";
+import { BusinessInvitation, UserRole } from "@/types/database";
 
 // ----------------------
 // CREATE INVITE
@@ -127,10 +128,49 @@ export async function getBusinessInvitations(businessId: string) {
 
   const snap = await getDocs(q);
 
-  return snap.docs.map((d) => ({
-    id: d.id,
-    ...d.data(),
-  }));
+  return snap.docs.map((d) => {
+    const data = d.data();
+
+    return {
+      id: d.id,
+      businessId,
+      email: data.email,
+      role: data.role,
+      createdBy: data.createdBy,
+      status: data.status,
+      expiresAt: data.expiresAt?.toDate?.() || new Date(data.expiresAt || Date.now()),
+      createdAt: data.createdAt?.toDate?.() || new Date(data.createdAt || Date.now()),
+      usedAt: data.usedAt?.toDate?.() || undefined,
+    };
+  });
+}
+
+// ----------------------
+// GET INVITES FOR EMAIL
+// ----------------------
+export async function getInvitationsForEmail(email: string): Promise<BusinessInvitation[]> {
+  const q = query(collectionGroup(db, "invitations"), where("email", "==", email));
+  const snap = await getDocs(q);
+
+  return snap.docs
+    .map((d) => {
+      const pathParts = d.ref.path.split("/");
+      const businessId = pathParts[1] || '';
+      const data = d.data();
+
+      return {
+        id: d.id,
+        businessId,
+        email: data.email,
+        role: data.role,
+        createdBy: data.createdBy,
+        status: data.status,
+        expiresAt: data.expiresAt?.toDate?.() || new Date(data.expiresAt || Date.now()),
+        createdAt: data.createdAt?.toDate?.() || new Date(data.createdAt || Date.now()),
+        usedAt: data.usedAt?.toDate?.() || undefined,
+      } as BusinessInvitation;
+    })
+    .filter((invite) => invite.status === "pending");
 }
 
 // ----------------------

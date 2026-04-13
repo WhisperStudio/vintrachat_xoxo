@@ -70,6 +70,30 @@ function didUserRequestHumanSupport(message: string, keywords: string[]) {
   return keywords.some((keyword) => normalized.includes(keyword.toLowerCase()))
 }
 
+function getRequestCountryCode(req: NextRequest) {
+  const headerCountry =
+    req.headers.get('x-vercel-ip-country') ||
+    req.headers.get('x-country-code') ||
+    (req as any).geo?.country
+
+  const country = String(headerCountry || 'XX').trim().toUpperCase()
+  return /^[A-Z]{2}$/.test(country) ? country : 'XX'
+}
+
+function createAnalyticsEvent(
+  kind: string,
+  sessionId: string,
+  countryCode?: string
+) {
+  return {
+    id: crypto.randomUUID(),
+    kind,
+    sessionId,
+    countryCode,
+    createdAt: new Date(),
+  }
+}
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -234,6 +258,7 @@ export async function POST(req: NextRequest) {
     const pageTitle = body.pageTitle ? String(body.pageTitle) : undefined
     const pageUrl = body.pageUrl ? String(body.pageUrl) : undefined
     const visitorName = body.visitorName ? String(body.visitorName).trim() : ''
+    const countryCode = getRequestCountryCode(req)
     const requestHumanSupport = Boolean(body.requestHumanSupport)
     const supportRequestText = body.supportRequestText ? String(body.supportRequestText).trim() : ''
     const history = trimHistory(Array.isArray(body.history) ? body.history : [])
@@ -272,6 +297,7 @@ export async function POST(req: NextRequest) {
             reply: buildNameRequestReply(),
             supportRequested: false,
             visitorNameRequired: true,
+            countryCode,
           },
           { headers }
         )
@@ -312,6 +338,7 @@ export async function POST(req: NextRequest) {
           source: 'widget',
           preview: supportRequestText,
           visitorName,
+          countryCode,
           pageTitle: pageTitle || null,
           pageUrl: pageUrl || null,
           messageCount: supportMessages.length,
@@ -333,6 +360,10 @@ export async function POST(req: NextRequest) {
         'chatAnalytics.lastChatAt': FieldValue.serverTimestamp(),
         'chatAnalytics.supportRequests': FieldValue.increment(isNewSupportChat ? 1 : 0),
         'chatAnalytics.savedSupportChats': FieldValue.increment(isNewSupportChat ? 1 : 0),
+        [`chatAnalytics.countryCounts.${countryCode}`]: FieldValue.increment(1),
+        'chatAnalytics.timeline': FieldValue.arrayUnion(
+          createAnalyticsEvent('support-request', sessionId, countryCode)
+        ),
       }
 
       await businessRef.update(analyticsUpdates)
@@ -342,6 +373,7 @@ export async function POST(req: NextRequest) {
           sessionId,
           reply: assistantConfig.handoffMessage || 'The chat has been handed over to human support.',
           supportRequested: true,
+          countryCode,
         },
         { headers }
       )
@@ -421,10 +453,22 @@ export async function POST(req: NextRequest) {
     const existingSupportChat = supportChatSnap.exists ? supportChatSnap.data() || {} : null
     const isNewSupportChat = needsHumanSupport && !requiresName && !supportChatSnap.exists
 
+    const analyticsTimelineEvents = [createAnalyticsEvent('visitor-message', sessionId, countryCode)]
+
+    if (!body.sessionId) {
+      analyticsTimelineEvents.unshift(createAnalyticsEvent('session-start', sessionId, countryCode))
+    }
+
+    if (needsHumanSupport && !requiresName) {
+      analyticsTimelineEvents.push(createAnalyticsEvent('support-request', sessionId, countryCode))
+    }
+
     const analyticsUpdates: Record<string, unknown> = {
       updatedAt: FieldValue.serverTimestamp(),
       'chatAnalytics.totalMessages': FieldValue.increment(1),
       'chatAnalytics.lastChatAt': FieldValue.serverTimestamp(),
+      [`chatAnalytics.countryCounts.${countryCode}`]: FieldValue.increment(1),
+      'chatAnalytics.timeline': FieldValue.arrayUnion(...analyticsTimelineEvents),
     }
 
     if (!body.sessionId) {
@@ -452,6 +496,7 @@ export async function POST(req: NextRequest) {
           source: 'widget',
           preview: message,
           visitorName: visitorName || null,
+          countryCode,
           pageTitle: pageTitle || null,
           pageUrl: pageUrl || null,
           messageCount: messageTimeline.length,
@@ -479,6 +524,7 @@ export async function POST(req: NextRequest) {
           source: 'widget',
           preview: message,
           visitorName: visitorName || existingSupportChat.visitorName || null,
+          countryCode: countryCode || existingSupportChat.countryCode || null,
           pageTitle: pageTitle || existingSupportChat.pageTitle || null,
           pageUrl: pageUrl || existingSupportChat.pageUrl || null,
           messageCount: messageTimeline.length,
@@ -499,6 +545,7 @@ export async function POST(req: NextRequest) {
       reply: finalReply,
       supportRequested: needsHumanSupport && !requiresName,
       visitorNameRequired: requiresName,
+      countryCode,
     }, { headers })
   } catch (error) {
     console.error('Widget chat error:', error)

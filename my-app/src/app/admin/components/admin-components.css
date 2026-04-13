@@ -266,6 +266,13 @@
   margin: 0;
 }
 
+.adminTranscriptTime {
+  margin-top: 2px;
+  color: rgba(71, 85, 105, 0.72);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 .adminTranscriptBubbleUser {
   align-self: flex-end;
   background: linear-gradient(135deg, #111827, #0f172a);
@@ -276,6 +283,10 @@
 
 .adminTranscriptBubbleUser p {
   color: #fff;
+}
+
+.adminTranscriptBubbleUser .adminTranscriptTime {
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .adminTranscriptBubbleAssistant {
@@ -328,6 +339,10 @@
 
 .adminTranscriptBubbleSystem strong {
   color: #475569;
+}
+
+.adminTranscriptBubbleSystem .adminTranscriptTime {
+  color: #94a3b8;
 }
 
 .adminChatReplyBox {
@@ -798,7 +813,7 @@
 
 .adminTaskFilterBar {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
   padding: 14px;
   border-radius: 20px;
@@ -854,7 +869,7 @@
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);
   gap: 16px;
-  align-items: stretch;
+  align-items: start;
   min-height: 680px;
 }
 
@@ -883,59 +898,55 @@
 .adminTaskCard {
   position: relative;
   overflow: hidden;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.04), transparent 24%),
+    linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.04);
 }
 
 .adminTaskCard::before {
   content: '';
   position: absolute;
   inset: 0 auto 0 0;
-  width: 0.38rem;
+  width: 0.32rem;
   border-radius: 999px;
-  background: linear-gradient(180deg, #cbd5e1, #94a3b8);
-}
-
-.adminTaskCardStatus-open::before {
-  background: linear-gradient(180deg, #34d399, #10b981);
-}
-
-.adminTaskCardStatus-in-progress::before {
-  background: linear-gradient(180deg, #60a5fa, #2563eb);
-}
-
-.adminTaskCardStatus-blocked::before {
-  background: linear-gradient(180deg, #fb923c, #f97316);
-}
-
-.adminTaskCardStatus-done::before {
-  background: linear-gradient(180deg, #c084fc, #8b5cf6);
+  background: linear-gradient(180deg, #d1d5db, #cbd5e1);
 }
 
 .adminTaskCardPriority-critical {
+  border-color: rgba(239, 68, 68, 0.18);
   box-shadow:
-    inset 0 0 0 1px rgba(239, 68, 68, 0.12),
-    inset 0 0 24px rgba(239, 68, 68, 0.05),
-    0 14px 28px rgba(15, 23, 42, 0.05);
+    inset 0 0 0 1px rgba(239, 68, 68, 0.08),
+    inset 0 0 34px rgba(239, 68, 68, 0.06),
+    0 14px 28px rgba(15, 23, 42, 0.04);
 }
 
 .adminTaskCardPriority-high {
+  border-color: rgba(249, 115, 22, 0.18);
   box-shadow:
-    inset 0 0 0 1px rgba(249, 115, 22, 0.12),
-    inset 0 0 24px rgba(249, 115, 22, 0.05),
-    0 14px 28px rgba(15, 23, 42, 0.05);
+    inset 0 0 0 1px rgba(249, 115, 22, 0.08),
+    inset 0 0 34px rgba(249, 115, 22, 0.05),
+    0 14px 28px rgba(15, 23, 42, 0.04);
 }
 
 .adminTaskCardPriority-medium {
+  border-color: rgba(59, 130, 246, 0.16);
   box-shadow:
-    inset 0 0 0 1px rgba(59, 130, 246, 0.1),
-    inset 0 0 24px rgba(59, 130, 246, 0.04),
-    0 14px 28px rgba(15, 23, 42, 0.05);
+    inset 0 0 0 1px rgba(59, 130, 246, 0.07),
+    inset 0 0 34px rgba(59, 130, 246, 0.04),
+    0 14px 28px rgba(15, 23, 42, 0.04);
 }
 
 .adminTaskCardPriority-low {
+  border-color: rgba(16, 185, 129, 0.16);
   box-shadow:
-    inset 0 0 0 1px rgba(16, 185, 129, 0.1),
-    inset 0 0 24px rgba(16, 185, 129, 0.04),
-    0 14px 28px rgba(15, 23, 42, 0.05);
+    inset 0 0 0 1px rgba(16, 185, 129, 0.07),
+    inset 0 0 34px rgba(16, 185, 129, 0.04),
+    0 14px 28px rgba(15, 23, 42, 0.04);
 }
 
 .adminTaskCardActive {
@@ -951,14 +962,25 @@
 }
 
 .adminTaskCardTop h3 {
-  margin: 0 0 0.4rem;
-  font-size: 1rem;
+  margin: 0 0 0.35rem;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: #0f172a;
+  letter-spacing: -0.01em;
 }
 
-.adminTaskCardTop p {
+.adminTaskCardMetaLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
   margin: 0;
   color: #64748b;
   font-size: 0.92rem;
+}
+
+.adminTaskCardMetaLine svg {
+  font-size: 0.9rem;
+  color: #94a3b8;
 }
 
 .adminTaskMeta {
@@ -979,11 +1001,19 @@
 .adminTaskCardPreview {
   margin: 0;
   color: #475569;
-  line-height: 1.55;
+  line-height: 1.45;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.adminTaskCardFooter {
+  display: flex;
+  justify-content: flex-end;
+  color: #94a3b8;
+  font-size: 0.8rem;
+  font-weight: 500;
 }
 
 .adminTaskDetail {
@@ -1001,7 +1031,8 @@
   box-shadow:
     0 18px 36px rgba(15, 23, 42, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  overflow: hidden;
+  overflow-y: auto;
+  padding-right: 10px;
 }
 
 .adminTaskDetailStatus-open {
@@ -1029,6 +1060,9 @@
 
 .adminTaskDetailHeader h2 {
   margin: 0 0 0.4rem;
+  color: #0f172a;
+  font-weight: 600;
+  letter-spacing: -0.015em;
 }
 
 .adminTaskDetailHeader p {
@@ -1062,13 +1096,25 @@
 }
 
 .adminTaskDetailMeta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
   color: #64748b;
   font-size: 0.84rem;
   font-weight: 700;
 }
 
+.adminTaskDetailMeta span svg {
+  font-size: 0.88rem;
+  color: #94a3b8;
+}
+
 .adminTaskDetailMeta strong {
   color: #0f172a;
+}
+
+.adminTaskDetailMeta svg {
+  font-size: 0.92rem;
 }
 
 .adminTaskDetailControls {
@@ -1077,37 +1123,43 @@
   gap: 12px;
 }
 
-.adminTaskHistoryCard,
-.adminTaskCommentsCard {
+.adminTaskFold {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  min-height: 0;
-  flex: 1 1 0;
-  padding: 15px;
+  gap: 0.75rem;
+  padding: 16px 18px;
   border-radius: 20px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(255, 255, 255, 0.84);
 }
 
-.adminTaskHistoryHeader {
+.adminTaskFold summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  cursor: pointer;
+  list-style: none;
+  color: #0f172a;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
-.adminTaskHistoryHeader h3 {
+.adminTaskFold summary::-webkit-details-marker {
+  display: none;
+}
+
+.adminTaskFold summary span {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  margin: 0;
-  font-size: 0.98rem;
 }
 
-.adminTaskHistoryHeader span {
-  color: #64748b;
-  font-size: 0.88rem;
+.adminTaskFoldBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
 }
 
 .adminTaskHistoryList,
@@ -1116,7 +1168,7 @@
   flex-direction: column;
   gap: 10px;
   min-height: 0;
-  flex: 1;
+  max-height: 340px;
   overflow: auto;
   padding-right: 6px;
 }
@@ -1135,6 +1187,8 @@
 .adminTaskHistoryItem strong,
 .adminTaskCommentItem strong {
   font-size: 0.92rem;
+  font-weight: 600;
+  color: #0f172a;
 }
 
 .adminTaskHistoryItem p,
@@ -1224,6 +1278,551 @@
   text-align: center;
 }
 
+.adminAnalyticsPanel {
+  gap: 18px;
+}
+
+.adminAnalyticsBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.72rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.88);
+  color: #475569;
+  font-size: 0.9rem;
+  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.04);
+}
+
+.adminAnalyticsCards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.adminAnalyticsStatCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background:
+    radial-gradient(circle at top right, rgba(96, 165, 250, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.05);
+}
+
+.adminAnalyticsStatTop {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #475569;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.adminAnalyticsIcon {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
+  color: #334155;
+}
+
+.adminAnalyticsIcon svg {
+  font-size: 1rem;
+}
+
+.adminAnalyticsTone-green .adminAnalyticsIcon {
+  color: #16a34a;
+  background: rgba(74, 222, 128, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.16);
+}
+
+.adminAnalyticsTone-blue .adminAnalyticsIcon {
+  color: #2563eb;
+  background: rgba(96, 165, 250, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.16);
+}
+
+.adminAnalyticsTone-violet .adminAnalyticsIcon {
+  color: #7c3aed;
+  background: rgba(192, 132, 252, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(192, 132, 252, 0.16);
+}
+
+.adminAnalyticsTone-amber .adminAnalyticsIcon {
+  color: #d97706;
+  background: rgba(251, 191, 36, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.16);
+}
+
+.adminAnalyticsTone-sky .adminAnalyticsIcon {
+  color: #0284c7;
+  background: rgba(125, 211, 252, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.16);
+}
+
+.adminAnalyticsTone-slate .adminAnalyticsIcon {
+  color: #475569;
+  background: rgba(148, 163, 184, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.16);
+}
+
+.adminAnalyticsStatCard span {
+  color: #64748b;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.adminAnalyticsStatCard strong {
+  font-size: 1.8rem;
+  color: #0f172a;
+  line-height: 1;
+}
+
+.adminAnalyticsStatCard p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.adminAnalyticsTone-blue {
+  border-color: rgba(96, 165, 250, 0.18);
+  box-shadow:
+    inset 0 0 22px rgba(96, 165, 250, 0.06),
+    0 14px 28px rgba(15, 23, 42, 0.05);
+}
+
+.adminAnalyticsTone-green {
+  border-color: rgba(16, 185, 129, 0.18);
+  box-shadow:
+    inset 0 0 22px rgba(16, 185, 129, 0.06),
+    0 14px 28px rgba(15, 23, 42, 0.05);
+}
+
+.adminAnalyticsTone-violet {
+  border-color: rgba(124, 58, 237, 0.18);
+  box-shadow:
+    inset 0 0 22px rgba(124, 58, 237, 0.06),
+    0 14px 28px rgba(15, 23, 42, 0.05);
+}
+
+.adminAnalyticsTone-amber {
+  border-color: rgba(245, 158, 11, 0.18);
+  box-shadow:
+    inset 0 0 22px rgba(245, 158, 11, 0.06),
+    0 14px 28px rgba(15, 23, 42, 0.05);
+}
+
+.adminAnalyticsTone-sky {
+  border-color: rgba(59, 130, 246, 0.18);
+  box-shadow:
+    inset 0 0 22px rgba(59, 130, 246, 0.06),
+    0 14px 28px rgba(15, 23, 42, 0.05);
+}
+
+.adminAnalyticsTone-slate {
+  border-color: rgba(100, 116, 139, 0.18);
+  box-shadow:
+    inset 0 0 22px rgba(100, 116, 139, 0.06),
+    0 14px 28px rgba(15, 23, 42, 0.05);
+}
+
+.adminAnalyticsControls {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.04);
+}
+
+.adminAnalyticsViewToggle {
+  display: inline-flex;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(248, 250, 252, 0.96);
+}
+
+.adminAnalyticsViewToggle button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.78rem 1rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.adminAnalyticsViewToggle button.active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(16, 185, 129, 0.12));
+  color: #0f172a;
+  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.18);
+}
+
+.adminAnalyticsViewToggle button svg {
+  font-size: 1rem;
+}
+
+.adminAnalyticsRange {
+  min-width: 220px;
+}
+
+.adminAnalyticsCharts {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 16px;
+}
+
+.adminAnalyticsChartCard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background:
+    radial-gradient(circle at top right, rgba(124, 58, 237, 0.07), transparent 25%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+  box-shadow:
+    0 18px 36px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  min-height: 420px;
+}
+
+.adminAnalyticsChartCardWide {
+  min-height: 420px;
+}
+
+.adminAnalyticsChartHeader h2 {
+  margin: 0;
+}
+
+.adminAnalyticsChartHeader p {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+}
+
+.adminGoogleChart {
+  width: 100%;
+  min-height: 330px;
+  flex: 1;
+}
+
+.adminGoogleChartTall {
+  min-height: 360px;
+}
+
+.adminAnalyticsCountryList,
+.adminAnalyticsEventList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.adminAnalyticsCountryRow,
+.adminAnalyticsEventItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.adminAnalyticsCountryRow strong,
+.adminAnalyticsEventItem strong {
+  color: #0f172a;
+}
+
+.adminAnalyticsCountryRow span,
+.adminAnalyticsEventItem span {
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.adminAnalyticsEventItem {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.adminAnalyticsEventItem div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.adminAnalyticsEventItem p {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.84rem;
+}
+
+.adminUsersPanel {
+  gap: 18px;
+}
+
+.adminUsersHero {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.adminUsersEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adminUsersHero h1 {
+  margin: 0.35rem 0 0;
+}
+
+.adminUsersHero p {
+  margin: 0.45rem 0 0;
+  color: #64748b;
+}
+
+.adminUsersMetaCard {
+  min-width: 180px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(248, 250, 252, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.62);
+  display: grid;
+  gap: 4px;
+}
+
+.adminUsersMetaCard span {
+  color: #64748b;
+}
+
+.adminUsersInviteBar {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) 220px auto;
+  gap: 12px;
+  align-items: end;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.04);
+}
+
+.adminUsersInviteBar label {
+  display: grid;
+  gap: 8px;
+}
+
+.adminUsersInviteBar label span,
+.adminUsersInlineSelect span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #475569;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.adminUsersInviteBar input,
+.adminUsersInviteBar select,
+.adminUsersInlineSelect select {
+  width: 100%;
+  padding: 0.92rem 1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+}
+
+.adminUsersInviteButton {
+  min-height: 50px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.adminUsersGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+  gap: 16px;
+}
+
+.adminUsersSection {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.04);
+}
+
+.adminUsersSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.adminUsersSectionHeader h2 {
+  margin: 0;
+}
+
+.adminUsersSectionHeader span {
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(241, 245, 249, 0.92);
+  color: #475569;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.adminUsersList {
+  display: grid;
+  gap: 12px;
+}
+
+.adminUsersCard {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.68);
+}
+
+.adminUsersCardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.adminUsersCardTop strong {
+  display: block;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.adminUsersCardTop span {
+  color: #64748b;
+}
+
+.adminUsersCardRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.adminUsersCardRow strong {
+  color: #0f172a;
+}
+
+.adminUsersInlineSelect {
+  display: grid;
+  gap: 8px;
+}
+
+.adminUsersInlineSelect select {
+  min-width: 160px;
+}
+
+.adminUsersRole {
+  padding: 0.42rem 0.72rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.adminUsersRole-admin {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+.adminUsersRole-manager {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.adminUsersRole-support {
+  background: rgba(168, 85, 247, 0.12);
+  color: #7c3aed;
+}
+
+.adminUsersRole-viewer {
+  background: rgba(100, 116, 139, 0.12);
+  color: #475569;
+}
+
+.adminUsersCardInvite {
+  border-color: rgba(59, 130, 246, 0.18);
+}
+
+.adminUsersCopyButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.7rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(248, 250, 252, 0.96);
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.adminUsersEmpty {
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px dashed rgba(148, 163, 184, 0.22);
+  color: #64748b;
+  background: rgba(248, 250, 252, 0.8);
+}
+
+.adminUsersStatus {
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: rgba(219, 234, 254, 0.7);
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
 @media (max-width: 900px) {
   .adminStatsGrid,
   .adminChatsLayout {
@@ -1251,7 +1850,9 @@
   .adminTaskFilterBar,
   .adminTasksWorkspace,
   .adminTaskDetailMeta,
-  .adminTaskDetailControls {
+  .adminTaskDetailControls,
+  .adminAnalyticsCards,
+  .adminAnalyticsCharts {
     grid-template-columns: 1fr;
   }
 
@@ -1270,5 +1871,24 @@
   .adminTaskDetail {
     height: auto;
     min-height: 0;
+  }
+
+  .adminAnalyticsChartCard {
+    min-height: 0;
+  }
+
+  .adminAnalyticsControls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .adminAnalyticsViewToggle {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .adminAnalyticsViewToggle button {
+    flex: 1;
+    justify-content: center;
   }
 }

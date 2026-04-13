@@ -1,5 +1,5 @@
 // User role types
-export type UserRole = 'admin' | 'user';
+export type UserRole = 'admin' | 'manager' | 'support' | 'viewer' | 'user';
 
 // Bedrift (Business) - inneholder bedriftsinformasjon og chatWidget config
 export interface Business {
@@ -36,7 +36,24 @@ export interface ChatAnalytics {
   aiOnlySessions: number;
   supportRequests: number;
   savedSupportChats: number;
+  countryCounts?: Record<string, number>;
+  timeline?: ChatAnalyticsEvent[];
   lastChatAt?: Date;
+}
+
+export interface ChatAnalyticsEvent {
+  id: string;
+  kind:
+    | 'session-start'
+    | 'visitor-message'
+    | 'assistant-reply'
+    | 'support-request'
+    | 'support-message'
+    | 'support-open'
+    | 'support-returned';
+  sessionId: string;
+  countryCode?: string;
+  createdAt: Date;
 }
 
 export interface SupportChatMessage {
@@ -57,6 +74,7 @@ export interface SupportChatSession {
   pageTitle?: string;
   pageUrl?: string;
   visitorName?: string;
+  countryCode?: string;
   createdAt: Date;
   updatedAt: Date;
   supportRequestedAt?: Date;
@@ -98,6 +116,11 @@ export interface SupportTask {
   createdAt: Date;
   updatedAt: Date;
   createdBy?: string;
+  chatMessages?: SupportChatMessage[];
+  chatPreview?: string;
+  chatPageTitle?: string;
+  chatPageUrl?: string;
+  chatCountryCode?: string;
   comments?: SupportTaskComment[];
 }
 
@@ -202,6 +225,10 @@ export interface Invitation {
   expiresAt: Date;
   createdAt: Date;
   usedAt?: Date;
+}
+
+export interface BusinessInvitation extends Invitation {
+  businessId: string;
 }
 
 // Pending auth - midlertidig token for email verification

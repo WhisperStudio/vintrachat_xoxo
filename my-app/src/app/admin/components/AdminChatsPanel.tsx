@@ -34,6 +34,13 @@ function speakerLabel(role: SupportChatMessage['role']) {
   }
 }
 
+function formatMessageTime(value: Date) {
+  return new Intl.DateTimeFormat(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
 export default function AdminChatsPanel() {
   const { dbUser, business } = useAuth()
   const [chats, setChats] = useState<SupportChatSession[]>([])
@@ -198,7 +205,9 @@ export default function AdminChatsPanel() {
     const text = replyText.trim()
     setReplyText('')
 
-    await runChatAction(() => sendSupportReply(dbUser.businessId, selectedChat.id, text))
+    await runChatAction(() =>
+      sendSupportReply(dbUser.businessId, selectedChat.id, text, selectedChat.countryCode)
+    )
   }
 
   const openTaskComposer = (quick = false) => {
@@ -235,6 +244,11 @@ export default function AdminChatsPanel() {
         chatId: selectedChat.id,
         sessionId: selectedChat.sessionId,
         visitorName: selectedChat.visitorName,
+        chatMessages: selectedChat.messages,
+        chatPreview: selectedChat.preview,
+        chatPageTitle: selectedChat.pageTitle,
+        chatPageUrl: selectedChat.pageUrl,
+        chatCountryCode: selectedChat.countryCode,
         title: taskDraft.title.trim(),
         description: taskDraft.description.trim(),
         categoryId: category.id,
@@ -344,6 +358,9 @@ export default function AdminChatsPanel() {
                 >
                   <strong>{speakerLabel(message.role)}</strong>
                   <p>{message.text}</p>
+                  <span className="adminTranscriptTime">
+                    {formatMessageTime(message.createdAt)}
+                  </span>
                 </div>
               ))}
             </div>

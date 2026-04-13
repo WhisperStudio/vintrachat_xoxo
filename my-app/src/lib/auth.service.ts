@@ -31,6 +31,7 @@ import {
   Business,
   ChatAssistantConfig,
   ChatAnalytics,
+  ChatAnalyticsEvent,
   SupportTaskCategory,
 } from "@/types/database";
 
@@ -44,14 +45,14 @@ export async function signInWithGoogle(): Promise<AuthResponse> {
     const result = await signInWithPopup(auth, googleProvider);
     const firebaseUser = result.user;
 
-    // Sjekk om user er pending
     const pendingRef = doc(db, "pending_users", firebaseUser.uid);
     const pendingSnap = await getDoc(pendingRef);
 
     if (pendingSnap.exists()) {
       return {
-        success: false,
-        message: "Du må akseptere invitasjon først",
+        success: true,
+        message: "Du har invitasjoner som venter",
+        redirectTo: "/invite",
       };
     }
 
@@ -71,7 +72,13 @@ export async function signInWithGoogle(): Promise<AuthResponse> {
 export async function getBusinessUsers(businessId: string) {
   const ref = collection(db, `businesses/${businessId}/users`);
   const snap = await getDocs(ref);
-  return snap.docs.map((d) => d.data());
+  return snap.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+    createdAt: d.data().createdAt?.toDate?.() || new Date(),
+    updatedAt: d.data().updatedAt?.toDate?.() || new Date(),
+    lastLogin: d.data().lastLogin?.toDate?.() || undefined,
+  }));
 }
 
 // ----------------------
@@ -144,6 +151,10 @@ export async function signUpWithEmail(
   businessName?: string
 ) {
   try {
+    const normalizedAccountType = accountType || 'user';
+    const normalizedBusinessName =
+      normalizedAccountType === 'business' ? businessName?.trim() || undefined : undefined;
+
     const cred = await createUserWithEmailAndPassword(
       auth,
       email,
@@ -160,8 +171,8 @@ export async function signUpWithEmail(
         email,
         token,
         displayName,
-        accountType,
-        businessName,
+        accountType: normalizedAccountType,
+        businessName: normalizedBusinessName,
       }),
     });
 
@@ -170,8 +181,8 @@ export async function signUpWithEmail(
       email,
       displayName,
       token,
-      accountType,
-      businessName,
+      accountType: normalizedAccountType,
+      ...(normalizedBusinessName ? { businessName: normalizedBusinessName } : {}),
       createdAt: serverTimestamp(),
     });
 
@@ -324,6 +335,8 @@ const defaultChatAnalytics: ChatAnalytics = {
   aiOnlySessions: 0,
   supportRequests: 0,
   savedSupportChats: 0,
+  countryCounts: {},
+  timeline: [],
 };
 
   // business root
@@ -362,24 +375,23 @@ export async function signInWithEmail(email: string, password: string) {
   try {
     const cred = await signInWithEmailAndPassword(auth, email, password);
 
-    // Sjekk om user er pending_users (venter på invitasjon)
     const pendingRef = doc(db, "pending_users", cred.user.uid);
     const pendingSnap = await getDoc(pendingRef);
 
     if (pendingSnap.exists()) {
       return {
-        success: false,
-        message: "Du må akseptere invitasjon først. Sjekk emailen din.",
+        success: true,
+        message: "Du har invitasjoner som venter.",
+        redirectTo: "/invite",
       };
     }
 
-    // Sjekk om user eksisterer i business structure
     const userExists = await getCurrentUser(cred.user);
-    
+
     if (!userExists) {
       return {
         success: false,
-        message: "Bruker ikke funnet. Du må verifisere emailen din først.",
+        message: "Bruker ikke funnet. Du m? verifisere emailen din f?rst.",
       };
     }
 
@@ -541,6 +553,16 @@ export async function getBusinessInfo(
       chatAnalytics: data.chatAnalytics
         ? {
             ...data.chatAnalytics,
+            countryCounts: data.chatAnalytics.countryCounts || {},
+            timeline: Array.isArray(data.chatAnalytics.timeline)
+              ? data.chatAnalytics.timeline.map((event: any) => ({
+                  id: event.id || crypto.randomUUID(),
+                  kind: event.kind,
+                  sessionId: event.sessionId || '',
+                  countryCode: event.countryCode || undefined,
+                  createdAt: event.createdAt?.toDate?.() || new Date(event.createdAt || Date.now()),
+                })) as ChatAnalyticsEvent[]
+              : [],
             lastChatAt: data.chatAnalytics.lastChatAt?.toDate?.() || undefined,
           }
         : undefined,
