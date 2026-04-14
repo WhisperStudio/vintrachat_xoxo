@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext'
 import { createInvitation, getBusinessInvitations } from '@/lib/invitation.service'
 import { getBusinessUsers, updateUserRole } from '@/lib/auth.service'
 import type { BusinessInvitation, BusinessUser, UserRole } from '@/types/database'
+import AdminDropdown from './AdminDropdown'
 import './admin-components.css'
 
 const roleOptions: Array<{ value: Exclude<UserRole, 'user'>; label: string; description: string }> = [
@@ -183,13 +184,15 @@ export default function AdminUserManagementPanel() {
           <span>
             <FiShield /> Role
           </span>
-          <select value={inviteRole} onChange={(event) => setInviteRole(event.target.value as Exclude<UserRole, 'user'>)}>
-            {roleOptions.map((role) => (
-              <option key={role.value} value={role.value}>
-                {role.label}
-              </option>
-            ))}
-          </select>
+          <AdminDropdown
+            value={inviteRole}
+            options={roleOptions.map((role) => ({
+              value: role.value,
+              label: role.label,
+              description: role.description,
+            }))}
+            onChange={(nextValue) => setInviteRole(nextValue as Exclude<UserRole, 'user'>)}
+          />
         </label>
 
         <button className="primaryBtn adminUsersInviteButton" type="button" onClick={handleInvite} disabled={savingInvite}>
@@ -229,17 +232,18 @@ export default function AdminUserManagementPanel() {
 
                 <label className="adminUsersInlineSelect">
                   <span>Role</span>
-                  <select
+                  <AdminDropdown
                     value={user.role === 'user' ? 'viewer' : user.role}
                     disabled={updatingUserId === user.id}
-                    onChange={(event) => handleRoleChange(user.id, event.target.value as Exclude<UserRole, 'user'>)}
-                  >
-                    {roleOptions.map((role) => (
-                      <option key={role.value} value={role.value}>
-                        {role.label}
-                      </option>
-                    ))}
-                  </select>
+                    options={roleOptions.map((role) => ({
+                      value: role.value,
+                      label: role.label,
+                      description: role.description,
+                    }))}
+                    onChange={(nextValue) =>
+                      handleRoleChange(user.id, nextValue as Exclude<UserRole, 'user'>)
+                    }
+                  />
                 </label>
               </article>
             ))}

@@ -839,19 +839,215 @@
   font-weight: 700;
 }
 
-.adminTaskFilter select {
+.adminDropdown {
+  position: relative;
   width: 100%;
-  padding: 0.82rem 0.92rem;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.98);
-  color: #0f172a;
 }
 
-.adminTaskFilter select:focus {
+.adminDropdownButton {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.82rem 2.4rem 0.82rem 0.92rem;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(248, 250, 252, 0.96));
+  color: #0f172a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 10px 20px rgba(15, 23, 42, 0.03);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.adminDropdownButton.open {
+  border-radius: 16px 16px 0 0;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 10px 20px rgba(15, 23, 42, 0.03);
+}
+
+.adminDropdownButton:hover {
+  transform: translateY(-1px);
+  border-color: rgba(99, 102, 241, 0.26);
+  box-shadow:
+    0 12px 22px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.adminDropdownButton:focus-visible {
+  outline: none;
+  border-color: rgba(99, 102, 241, 0.34);
+  box-shadow:
+    0 0 0 4px rgba(99, 102, 241, 0.08),
+    0 12px 22px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.adminDropdownButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.adminDropdownButton:active {
+  border-radius: 16px 16px 0 0;
+}
+
+.adminDropdownButtonLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminDropdownChevron {
+  flex: 0 0 auto;
+  color: #94a3b8;
+  transition: transform 0.22s ease, color 0.22s ease;
+}
+
+.adminDropdownChevron.open {
+  transform: rotate(180deg);
+  color: #475569;
+}
+
+.adminDropdownMenu {
+  position: absolute;
+  top: calc(100%);
+  left: 0;
+  width: 100%;
+  z-index: 30;
+  padding: 8px;
+  border-radius: 0 0 18px 18px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background:
+    radial-gradient(circle at top right, rgba(99, 102, 241, 0.08), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  box-shadow:
+    0 18px 36px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+}
+
+.adminDropdownOption {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.82rem 0.92rem;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  color: #0f172a;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.adminDropdownOption:hover {
+  transform: translateX(2px);
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(99, 102, 241, 0.14);
+}
+
+.adminDropdownOption.active {
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.12), rgba(255, 255, 255, 0.92));
+  border-color: rgba(99, 102, 241, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.08);
+}
+
+.adminDropdownOption small {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.adminSelectShell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.adminSelectChevron {
+  position: absolute;
+  right: 0.9rem;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  color: #94a3b8;
+  pointer-events: none;
+  transform: translateY(-50%) rotate(0deg);
+  transition: transform 0.22s ease, color 0.22s ease;
+}
+
+.adminSelectChevron svg {
+  width: 100%;
+  height: 100%;
+}
+
+.adminSelectShell:focus-within .adminSelectChevron {
+  transform: translateY(-50%) rotate(180deg);
+  color: #475569;
+}
+
+.adminTaskFilter select,
+.adminTaskField select,
+.adminUsersInviteBar select,
+.adminUsersInlineSelect select,
+.adminAnalyticsRange select {
+  width: 100%;
+  padding: 0.82rem 0.92rem;
+  padding-right: 2.4rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  color: #0f172a;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 10px 20px rgba(15, 23, 42, 0.03);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.adminTaskFilter select:focus,
+.adminTaskField select:focus,
+.adminUsersInviteBar select:focus,
+.adminUsersInlineSelect select:focus,
+.adminAnalyticsRange select:focus {
   outline: none;
   border-color: rgba(99, 102, 241, 0.34);
   box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.08);
+}
+
+.adminSelectShell:focus-within select {
+  border-color: rgba(99, 102, 241, 0.34);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(244, 247, 255, 0.98));
+  box-shadow:
+    0 0 0 4px rgba(99, 102, 241, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 12px 24px rgba(15, 23, 42, 0.04);
 }
 
 .adminCategoryPanel {
@@ -1447,15 +1643,42 @@
 }
 
 .adminAnalyticsViewToggle {
+  position: relative;
   display: inline-flex;
   gap: 8px;
   padding: 6px;
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.16);
-  background: rgba(248, 250, 252, 0.96);
+  background: rgba(248, 250, 252, 0.72);
+  backdrop-filter: blur(14px);
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 12px 26px rgba(15, 23, 42, 0.04);
+}
+
+.adminAnalyticsViewToggleIndicator {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 0px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(241, 245, 249, 0.78));
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow:
+    0 10px 18px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  transition:
+    transform 0.26s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .adminAnalyticsViewToggle button {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
@@ -1469,9 +1692,9 @@
 }
 
 .adminAnalyticsViewToggle button.active {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(16, 185, 129, 0.12));
+  background: transparent;
   color: #0f172a;
-  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.18);
+  box-shadow: none;
 }
 
 .adminAnalyticsViewToggle button svg {

@@ -1,6 +1,5 @@
 'use client'
 
-import Header from '@/components/header'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
@@ -20,7 +19,6 @@ export default function AuthChatWidget() {
 
   return (
     <>
-      <Header />
       <main className="page narrow">
         <div className="infoCard">
           <h1>Your Chat Widgets</h1>

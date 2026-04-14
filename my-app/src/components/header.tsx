@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import styled, { css, keyframes } from 'styled-components'
 import { useAuth } from '@/context/AuthContext'
@@ -157,6 +157,7 @@ const CenterZone = styled.div`
 `
 
 const DesktopNav = styled.nav`
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -169,21 +170,35 @@ const DesktopNav = styled.nav`
     0 10px 24px rgba(15, 23, 42, 0.05);
 `
 
+const DesktopNavIndicator = styled.span`
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 0px;
+  width: 0;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(241, 245, 249, 0.78));
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow:
+    0 10px 22px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  transition:
+    transform 0.26s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.26s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.22s ease;
+  pointer-events: none;
+  z-index: 0;
+`
+
 const activeNavStyles = css`
   color: #0f172a;
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow:
-    0 12px 26px rgba(15, 23, 42, 0.08),
-    inset 0 0 0 1px rgba(59, 130, 246, 0.14);
 
-  &::after {
-    opacity: 1;
-    transform: scaleX(1);
-  }
 `
 
 const NavLink = styled(Link)<{ $active?: boolean }>`
   position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -198,25 +213,12 @@ const NavLink = styled(Link)<{ $active?: boolean }>`
     background 0.2s ease,
     box-shadow 0.2s ease;
 
-  &::after {
-    content: '';
-    position: absolute;
-    left: 14px;
-    right: 14px;
-    bottom: 6px;
-    height: 2px;
-    border-radius: 999px;
-    background: linear-gradient(90deg, #38bdf8, #2563eb);
-    opacity: 0;
-    transform: scaleX(0.5);
-    transition: opacity 0.2s ease, transform 0.2s ease;
-  }
+ 
 
   ${({ $active }) => $active && activeNavStyles}
 
   &:hover {
     color: #0f172a;
-    background: rgba(255, 255, 255, 0.82);
     transform: translateY(-1px);
   }
 `
@@ -365,6 +367,9 @@ export default function Header() {
   const [pendingInvites, setPendingInvites] = useState<BusinessInvitation[]>([])
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const desktopNavRef = useRef<HTMLElement | null>(null)
+  const navButtonRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
+  const [navIndicator, setNavIndicator] = useState<{ left: number; width: number; opacity: number } | null>(null)
 
   const showInvitationCenter = !!firebaseUser && !dbUser
   const showGuestLinks = !firebaseUser || showInvitationCenter
@@ -438,6 +443,32 @@ export default function Header() {
     return pathname === href || pathname.startsWith(`${href}/`)
   }
 
+  useLayoutEffect(() => {
+    const updateIndicator = () => {
+      const navEl = desktopNavRef.current
+      const activeItem = navItems.find((item) => isActivePath(item.href))
+      const activeButton = activeItem ? navButtonRefs.current[activeItem.href] : null
+
+      if (!navEl || !activeButton) {
+        setNavIndicator(null)
+        return
+      }
+
+      const navRect = navEl.getBoundingClientRect()
+      const buttonRect = activeButton.getBoundingClientRect()
+
+      setNavIndicator({
+        left: buttonRect.left - navRect.left,
+        width: buttonRect.width,
+        opacity: 1,
+      })
+    }
+
+    updateIndicator()
+    window.addEventListener('resize', updateIndicator)
+    return () => window.removeEventListener('resize', updateIndicator)
+  }, [navItems, pathname])
+
   return (
     <StyledHeader $scrolled={isScrolled}>
       <HeaderFrame>
@@ -453,9 +484,25 @@ export default function Header() {
           </LeftSide>
 
           <CenterZone>
-            <DesktopNav aria-label="Primary">
+            <DesktopNav aria-label="Primary" ref={desktopNavRef}>
+              {navIndicator ? (
+                <DesktopNavIndicator
+                  style={{
+                    transform: `translateX(${navIndicator.left}px)`,
+                    width: `${navIndicator.width}px`,
+                    opacity: navIndicator.opacity,
+                  }}
+                />
+              ) : null}
               {navItems.map((item) => (
-                <NavLink key={item.href} href={item.href} $active={isActivePath(item.href)}>
+                <NavLink
+                  key={item.href}
+                  href={item.href}
+                  ref={(node) => {
+                    navButtonRefs.current[item.href] = node
+                  }}
+                  $active={isActivePath(item.href)}
+                >
                   {item.icon}
                   <span>{item.label}</span>
                   {item.badge ? <NavBadge>{item.badge}</NavBadge> : null}

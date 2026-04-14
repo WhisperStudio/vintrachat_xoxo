@@ -1,6 +1,5 @@
 'use client'
 
-import Header from '@/components/header'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -46,7 +45,6 @@ export default function VerifyEmailClient() {
 
   return (
     <>
-      <Header />
       <main className="authPage">
         <div className="authCard">
           {status === 'loading' && (

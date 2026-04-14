@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { FiSend, FiPlus } from 'react-icons/fi'
+import { FiSend, FiPlus, FiClock, FiTag } from 'react-icons/fi'
 import { useAuth } from '@/context/AuthContext'
 import {
   acceptSupportChat,
@@ -19,6 +19,7 @@ import type {
   SupportTaskPriority,
   SupportTaskStatus,
 } from '@/types/database'
+import AdminDropdown from './AdminDropdown'
 import './admin-components.css'
 
 function speakerLabel(role: SupportChatMessage['role']) {
@@ -428,54 +429,55 @@ export default function AdminChatsPanel() {
 
                   <label className="adminTaskField">
                     <span>Category</span>
-                    <select
+                    <AdminDropdown
                       value={taskDraft.categoryId}
-                      onChange={(event) =>
-                        setTaskDraft((prev) => ({ ...prev, categoryId: event.target.value }))
+                      options={taskCategories.map((category) => ({
+                        value: category.id,
+                        label: category.name,
+                        description: category.default ? 'Default category' : 'Custom category',
+                      }))}
+                      onChange={(nextValue) =>
+                        setTaskDraft((prev) => ({ ...prev, categoryId: nextValue }))
                       }
-                    >
-                      {taskCategories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}{category.default ? ' (default)' : ''}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </label>
 
                   <label className="adminTaskField">
                     <span>Priority</span>
-                    <select
+                    <AdminDropdown
                       value={taskDraft.priority}
-                      onChange={(event) =>
+                      options={[
+                        { value: 'low', label: 'Low priority' },
+                        { value: 'medium', label: 'Medium priority' },
+                        { value: 'high', label: 'High priority' },
+                        { value: 'critical', label: 'Critical priority' },
+                      ]}
+                      onChange={(nextValue) =>
                         setTaskDraft((prev) => ({
                           ...prev,
-                          priority: event.target.value as SupportTaskPriority,
+                          priority: nextValue as SupportTaskPriority,
                         }))
                       }
-                    >
-                      <option value="low">Low priority</option>
-                      <option value="medium">Medium priority</option>
-                      <option value="high">High priority</option>
-                      <option value="critical">Critical priority</option>
-                    </select>
+                    />
                   </label>
 
                   <label className="adminTaskField">
                     <span>Status</span>
-                    <select
+                    <AdminDropdown
                       value={taskDraft.status}
-                      onChange={(event) =>
+                      options={[
+                        { value: 'open', label: 'Open' },
+                        { value: 'in-progress', label: 'In progress' },
+                        { value: 'blocked', label: 'Blocked' },
+                        { value: 'done', label: 'Done' },
+                      ]}
+                      onChange={(nextValue) =>
                         setTaskDraft((prev) => ({
                           ...prev,
-                          status: event.target.value as SupportTaskStatus,
+                          status: nextValue as SupportTaskStatus,
                         }))
                       }
-                    >
-                      <option value="open">Open</option>
-                      <option value="in-progress">In progress</option>
-                      <option value="blocked">Blocked</option>
-                      <option value="done">Done</option>
-                    </select>
+                    />
                   </label>
                 </div>
 

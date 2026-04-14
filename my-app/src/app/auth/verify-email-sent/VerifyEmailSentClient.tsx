@@ -1,6 +1,5 @@
 'use client'
 
-import Header from '@/components/header'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
@@ -53,7 +52,6 @@ export default function VerifyEmailSentClient() {
 
   return (
     <>
-      <Header />
       <main className="authPage">
         <div className="authCard">
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>

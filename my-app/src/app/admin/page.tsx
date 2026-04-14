@@ -1,6 +1,5 @@
 'use client'
 
-import Header from '@/components/header'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -95,7 +94,6 @@ export default function AdminPage() {
 
   return (
     <>
-      <Header />
       <main className="adminPage">
         <aside className="adminSidebar" ref={sidebarRef}>
           {indicatorStyle ? (

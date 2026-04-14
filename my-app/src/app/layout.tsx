@@ -1,5 +1,6 @@
 import './globals.css'
 import { AuthProvider } from '@/context/AuthContext'
+import AppShell from '@/components/AppShell'
 
 export const metadata = {
   title: 'V.O.T.E',
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="no">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <AppShell>{children}</AppShell>
+        </AuthProvider>
       </body>
     </html>
   )

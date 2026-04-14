@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   FiActivity,
   FiClock,
@@ -13,6 +13,7 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import { getBusinessChatAnalytics } from '@/lib/chat.service'
 import type { ChatAnalytics, ChatAnalyticsEvent } from '@/types/database'
+import AdminDropdown from './AdminDropdown'
 import './admin-components.css'
 
 declare global {
@@ -124,6 +125,9 @@ export default function AdminAnalyticsPanel() {
   const overviewRef = useRef<HTMLDivElement | null>(null)
   const timelineRef = useRef<HTMLDivElement | null>(null)
   const geographyRef = useRef<HTMLDivElement | null>(null)
+  const viewToggleRef = useRef<HTMLDivElement | null>(null)
+  const viewButtonRefs = useRef<Partial<Record<AnalyticsView, HTMLButtonElement | null>>>({})
+  const [viewIndicator, setViewIndicator] = useState<{ left: number; width: number } | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -349,6 +353,30 @@ export default function AdminAnalyticsPanel() {
 
   const topCountries = countryEntries.slice(0, 6)
 
+  useLayoutEffect(() => {
+    const updateIndicator = () => {
+      const toggleEl = viewToggleRef.current
+      const activeButton = viewButtonRefs.current[view]
+
+      if (!toggleEl || !activeButton) {
+        setViewIndicator(null)
+        return
+      }
+
+      const toggleRect = toggleEl.getBoundingClientRect()
+      const buttonRect = activeButton.getBoundingClientRect()
+
+      setViewIndicator({
+        left: buttonRect.left - toggleRect.left,
+        width: buttonRect.width,
+      })
+    }
+
+    updateIndicator()
+    window.addEventListener('resize', updateIndicator)
+    return () => window.removeEventListener('resize', updateIndicator)
+  }, [view])
+
   if (loading) {
     return (
       <div className="infoCard adminDataCard">
@@ -390,8 +418,20 @@ export default function AdminAnalyticsPanel() {
       </div>
 
       <div className="adminAnalyticsControls">
-        <div className="adminAnalyticsViewToggle">
+        <div className="adminAnalyticsViewToggle" ref={viewToggleRef}>
+          {viewIndicator ? (
+            <span
+              className="adminAnalyticsViewToggleIndicator"
+              style={{
+                transform: `translateX(${viewIndicator.left}px)`,
+                width: `${viewIndicator.width}px`,
+              }}
+            />
+          ) : null}
           <button
+            ref={(node) => {
+              viewButtonRefs.current.overview = node
+            }}
             type="button"
             className={view === 'overview' ? 'active' : ''}
             onClick={() => setView('overview')}
@@ -400,6 +440,9 @@ export default function AdminAnalyticsPanel() {
             Overview
           </button>
           <button
+            ref={(node) => {
+              viewButtonRefs.current.timeline = node
+            }}
             type="button"
             className={view === 'timeline' ? 'active' : ''}
             onClick={() => setView('timeline')}
@@ -408,6 +451,9 @@ export default function AdminAnalyticsPanel() {
             Timeline
           </button>
           <button
+            ref={(node) => {
+              viewButtonRefs.current.geography = node
+            }}
             type="button"
             className={view === 'geography' ? 'active' : ''}
             onClick={() => setView('geography')}
@@ -421,12 +467,16 @@ export default function AdminAnalyticsPanel() {
           <span>
             <FiClock /> Time range
           </span>
-          <select value={range} onChange={(event) => setRange(event.target.value as AnalyticsRange)}>
-            <option value="24h">Last 24 hours</option>
-            <option value="7d">Last 7 days</option>
-            <option value="30d">Last 30 days</option>
-            <option value="all">All time</option>
-          </select>
+          <AdminDropdown
+            value={range}
+            options={[
+              { value: '24h', label: 'Last 24 hours' },
+              { value: '7d', label: 'Last 7 days' },
+              { value: '30d', label: 'Last 30 days' },
+              { value: 'all', label: 'All time' },
+            ]}
+            onChange={(nextValue) => setRange(nextValue as AnalyticsRange)}
+          />
         </label>
       </div>
 

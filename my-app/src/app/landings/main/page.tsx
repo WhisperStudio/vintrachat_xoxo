@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { WebsiteShowcaseModal } from './website-showcases'
-import Header from '@/components/header'
 
 // ─── Minimal inline SVG icons ───────────────────────────────────────────────
 
@@ -348,9 +347,6 @@ export default function MainLanding() {
           .use-case-grid { grid-template-columns: 1fr 1fr !important }
         }
       `}</style>
-
-      {/* ── HEADER ─────────────────────────────────────── */}
-      <Header/>
 
       <main>
         {/* ── HERO ───────────────────────────────────────── */}

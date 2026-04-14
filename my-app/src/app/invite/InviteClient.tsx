@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Header from '@/components/header'
 import { useAuth } from '@/context/AuthContext'
 import { acceptInvitation, deleteInvitation, getInvitationsForEmail } from '@/lib/invitation.service'
 import type { BusinessInvitation } from '@/types/database'
@@ -117,7 +116,6 @@ export default function InviteClient() {
 
   return (
     <>
-      <Header />
       <main className="min-h-[calc(100vh-88px)] bg-gradient-to-b from-slate-50 to-white px-6 py-10">
         <div className="mx-auto w-full max-w-4xl">
           <div className="mb-6 flex flex-wrap items-end justify-between gap-4">

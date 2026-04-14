@@ -1,6 +1,5 @@
 'use client'
 
-import Header from '@/components/header'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
@@ -21,7 +20,6 @@ export default function UserLanding() {
 
   return (
     <>
-      <Header />
       <main className="page">
         <section className="hero">
           <span className="badge success">Logged in</span>

@@ -1,6 +1,5 @@
 'use client'
 
-import Header from '@/components/header'
 import { useSearchParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -66,7 +65,6 @@ export default function ResetPasswordClient() {
   if (!token) {
     return (
       <>
-        <Header />
         <main className="authPage">
           <div className="authCard">
             <h1>❌ Ugyldig Lenke</h1>
@@ -85,7 +83,6 @@ export default function ResetPasswordClient() {
   if (success) {
     return (
       <>
-        <Header />
         <main className="authPage">
           <div className="authCard">
             <h1>✅ Passord Nullstilt!</h1>
@@ -103,7 +100,6 @@ export default function ResetPasswordClient() {
 
   return (
     <>
-      <Header />
       <main className="authPage">
         <div className="authCard">
           <h1>Nullstill Passord</h1>

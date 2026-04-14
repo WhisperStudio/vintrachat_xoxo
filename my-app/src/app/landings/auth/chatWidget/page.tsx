@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FiRefreshCw, FiSave, FiSliders } from 'react-icons/fi'
 import { useRouter } from 'next/navigation'
-import Header from '@/components/header'
 import { useAuth } from '@/context/AuthContext'
 import { updateChatWidgetConfig } from '@/lib/auth.service'
 import './ChatWidget.css'
@@ -249,8 +248,6 @@ export default function ChatWidgetBuilderPage() {
 
   return (
     <div className="chatbuilder-page">
-      <Header />
-
       <main className="chatbuilder-content">
         <section className="chatbuilder-hero">
           <h1>Chat Widget Builder</h1>

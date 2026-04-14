@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { FiClock, FiFilter, FiMessageSquare, FiPlus, FiSettings, FiTag, FiUser } from 'react-icons/fi'
+import AdminDropdown from './AdminDropdown'
 import { useAuth } from '@/context/AuthContext'
 import {
   addSupportTaskComment,
@@ -380,84 +381,90 @@ export default function AdminTasksPanel() {
           <span>
             <FiFilter /> Status
           </span>
-          <select
+          <AdminDropdown
             value={filters.status}
-            onChange={(event) =>
+            placeholder="All statuses"
+            options={[
+              { value: 'all', label: 'All statuses' },
+              ...Object.entries(taskStatusLabels).map(([value, label]) => ({
+                value,
+                label,
+              })),
+            ]}
+            onChange={(nextValue) =>
               setFilters((prev) => ({
                 ...prev,
-                status: event.target.value as SupportTaskStatus | 'all',
+                status: nextValue as SupportTaskStatus | 'all',
               }))
             }
-          >
-            <option value="all">All statuses</option>
-            {Object.entries(taskStatusLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
+          />
         </label>
 
         <label className="adminTaskFilter">
           <span>
             <FiFilter /> Priority
           </span>
-          <select
+          <AdminDropdown
             value={filters.priority}
-            onChange={(event) =>
+            placeholder="All priorities"
+            options={[
+              { value: 'all', label: 'All priorities' },
+              ...taskPriorityOrder.map((value) => ({
+                value,
+                label: taskPriorityLabels[value],
+              })),
+            ]}
+            onChange={(nextValue) =>
               setFilters((prev) => ({
                 ...prev,
-                priority: event.target.value as SupportTaskPriority | 'all',
+                priority: nextValue as SupportTaskPriority | 'all',
               }))
             }
-          >
-            <option value="all">All priorities</option>
-            {taskPriorityOrder.map((value) => (
-              <option key={value} value={value}>
-                {taskPriorityLabels[value]}
-              </option>
-            ))}
-          </select>
+          />
         </label>
 
         <label className="adminTaskFilter">
           <span>
             <FiFilter /> Category
           </span>
-          <select
+          <AdminDropdown
             value={filters.categoryId}
-            onChange={(event) =>
+            placeholder="All categories"
+            options={[
+              { value: 'all', label: 'All categories' },
+              ...categories.map((category) => ({
+                value: category.id,
+                label: category.name,
+                description: category.default ? 'Default category' : 'Custom category',
+              })),
+            ]}
+            onChange={(nextValue) =>
               setFilters((prev) => ({
                 ...prev,
-                categoryId: event.target.value,
+                categoryId: nextValue,
               }))
             }
-          >
-            <option value="all">All categories</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
+          />
         </label>
 
         <label className="adminTaskFilter">
           <span>
             <FiClock /> Sort by
           </span>
-          <select
+          <AdminDropdown
             value={filters.sortBy}
-            onChange={(event) =>
+            placeholder="Newest first"
+            options={[
+              { value: 'newest', label: 'Newest first' },
+              { value: 'oldest', label: 'Oldest first' },
+            ]}
+            onChange={(nextValue) =>
               setFilters((prev) => ({
                 ...prev,
-                sortBy: event.target.value as 'newest' | 'oldest',
+                sortBy: nextValue as 'newest' | 'oldest',
               }))
             }
-          >
-            <option value="newest">Newest first</option>
-            <option value="oldest">Oldest first</option>
-          </select>
+          />
         </label>
 
         <button
@@ -505,56 +512,51 @@ export default function AdminTasksPanel() {
 
             <label className="adminTaskField">
               <span>Category</span>
-              <select
+              <AdminDropdown
                 value={creatorDraft.categoryId}
-                onChange={(event) =>
-                  setCreatorDraft((prev) => ({ ...prev, categoryId: event.target.value }))
+                options={categories.map((category) => ({
+                  value: category.id,
+                  label: category.name,
+                  description: category.default ? 'Default category' : 'Custom category',
+                }))}
+                onChange={(nextValue) =>
+                  setCreatorDraft((prev) => ({ ...prev, categoryId: nextValue }))
                 }
-              >
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
 
             <label className="adminTaskField">
               <span>Priority</span>
-              <select
+              <AdminDropdown
                 value={creatorDraft.priority}
-                onChange={(event) =>
+                options={taskPriorityOrder.map((value) => ({
+                  value,
+                  label: `${taskPriorityLabels[value]} priority`,
+                }))}
+                onChange={(nextValue) =>
                   setCreatorDraft((prev) => ({
                     ...prev,
-                    priority: event.target.value as SupportTaskPriority,
+                    priority: nextValue as SupportTaskPriority,
                   }))
                 }
-              >
-                {taskPriorityOrder.map((value) => (
-                  <option key={value} value={value}>
-                    {taskPriorityLabels[value]} priority
-                  </option>
-                ))}
-              </select>
+              />
             </label>
 
             <label className="adminTaskField">
               <span>Status</span>
-              <select
+              <AdminDropdown
                 value={creatorDraft.status}
-                onChange={(event) =>
+                options={Object.entries(taskStatusLabels).map(([value, label]) => ({
+                  value,
+                  label,
+                }))}
+                onChange={(nextValue) =>
                   setCreatorDraft((prev) => ({
                     ...prev,
-                    status: event.target.value as SupportTaskStatus,
+                    status: nextValue as SupportTaskStatus,
                   }))
                 }
-              >
-                {Object.entries(taskStatusLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
           </div>
 
@@ -710,56 +712,51 @@ export default function AdminTasksPanel() {
             <div className="adminTaskDetailControls">
               <label className="adminTaskFilter">
                 <span>Priority</span>
-                <select
+                <AdminDropdown
                   value={selectedTask.priority}
-                  onChange={(event) =>
+                  options={taskPriorityOrder.map((value) => ({
+                    value,
+                    label: taskPriorityLabels[value],
+                  }))}
+                  onChange={(nextValue) =>
                     void updateTaskField(
                       selectedTask.id,
                       'priority',
-                      event.target.value as SupportTaskPriority
+                      nextValue as SupportTaskPriority
                     )
                   }
-                >
-                  {taskPriorityOrder.map((value) => (
-                    <option key={value} value={value}>
-                      {taskPriorityLabels[value]}
-                    </option>
-                  ))}
-                </select>
+                />
               </label>
 
               <label className="adminTaskFilter">
                 <span>Status</span>
-                <select
+                <AdminDropdown
                   value={selectedTask.status}
-                  onChange={(event) =>
+                  options={Object.entries(taskStatusLabels).map(([value, label]) => ({
+                    value,
+                    label,
+                  }))}
+                  onChange={(nextValue) =>
                     void updateTaskField(
                       selectedTask.id,
                       'status',
-                      event.target.value as SupportTaskStatus
+                      nextValue as SupportTaskStatus
                     )
                   }
-                >
-                  {Object.entries(taskStatusLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
+                />
               </label>
 
               <label className="adminTaskFilter">
                 <span>Category</span>
-                <select
+                <AdminDropdown
                   value={selectedTask.categoryId}
-                  onChange={(event) => void updateTaskField(selectedTask.id, 'categoryId', event.target.value)}
-                >
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
+                  options={categories.map((category) => ({
+                    value: category.id,
+                    label: category.name,
+                    description: category.default ? 'Default category' : 'Custom category',
+                  }))}
+                  onChange={(nextValue) => void updateTaskField(selectedTask.id, 'categoryId', nextValue)}
+                />
               </label>
             </div>
 

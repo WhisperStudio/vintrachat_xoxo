@@ -21,7 +21,6 @@ import {
   FiX,
 } from 'react-icons/fi'
 import { FaCcVisa, FaCcMastercard, FaPaypal } from 'react-icons/fa'
-import Header from '@/components/header'
 import { 
   DesignLevelSelector,
   ColorThemeSelector,
@@ -653,8 +652,6 @@ Configuration:
 
   return (
     <>
-      <Header />
-
       <div className="page-wrapper">
         <main className="content">
           <section className="hero">
