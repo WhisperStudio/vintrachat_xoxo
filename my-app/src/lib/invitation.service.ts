@@ -133,6 +133,7 @@ export async function getBusinessInvitations(businessId: string) {
     return {
       id: d.id,
       businessId,
+      businessName: undefined,
       email: data.email,
       role: data.role,
       createdBy: data.createdBy,
@@ -166,6 +167,7 @@ export async function getInvitationsForEmail(email: string): Promise<BusinessInv
           return {
             id: d.id,
             businessId: businessDoc.id,
+            businessName: businessDoc.data().name || businessDoc.id,
             email: data.email,
             role: data.role,
             createdBy: data.createdBy,

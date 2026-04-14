@@ -229,6 +229,7 @@ export interface Invitation {
 
 export interface BusinessInvitation extends Invitation {
   businessId: string;
+  businessName?: string;
 }
 
 // Pending auth - midlertidig token for email verification

@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
-import { acceptInvitation, deleteInvitation, getInvitationsForEmail } from '@/lib/invitation.service'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Header from '@/components/header'
 import { useAuth } from '@/context/AuthContext'
+import { acceptInvitation, deleteInvitation, getInvitationsForEmail } from '@/lib/invitation.service'
 import type { BusinessInvitation } from '@/types/database'
 
 export default function InviteClient() {
@@ -11,11 +12,11 @@ export default function InviteClient() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [invitations, setInvitations] = useState<BusinessInvitation[]>([])
-  const [acceptingId, setAcceptingId] = useState<string | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
 
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { firebaseUser } = useAuth()
+  const { firebaseUser, refreshCurrentUser } = useAuth()
 
   useEffect(() => {
     const handleInvite = async () => {
@@ -33,10 +34,11 @@ export default function InviteClient() {
           const result = await acceptInvitation(invitationId, businessId, firebaseUser.uid)
 
           if (result.success) {
+            await refreshCurrentUser()
             setMessage('Invitasjon akseptert! Omdirigerer...')
             setTimeout(() => {
               router.push('/admin')
-            }, 2000)
+            }, 1200)
           } else {
             setError(result.message || 'Kunne ikke akseptere invitasjon')
           }
@@ -60,34 +62,37 @@ export default function InviteClient() {
     }
 
     handleInvite()
-  }, [firebaseUser, searchParams, router])
+  }, [firebaseUser, refreshCurrentUser, router, searchParams])
 
-  const handleAcceptFromList = async (invite: BusinessInvitation) => {
+  const handleAccept = async (invite: BusinessInvitation) => {
     if (!firebaseUser) return
 
-    setAcceptingId(invite.id)
+    setBusyId(invite.id)
     setError('')
+    setMessage('')
 
     try {
       const result = await acceptInvitation(invite.id, invite.businessId, firebaseUser.uid)
       if (result.success) {
+        await refreshCurrentUser()
         setMessage('Invitasjon akseptert! Omdirigerer...')
         setTimeout(() => {
           router.push('/admin')
-        }, 2000)
+        }, 1200)
       } else {
         setError(result.message || 'Kunne ikke akseptere invitasjon')
       }
     } finally {
-      setAcceptingId(null)
+      setBusyId(null)
     }
   }
 
-  const handleDeclineFromList = async (invite: BusinessInvitation) => {
+  const handleDecline = async (invite: BusinessInvitation) => {
     if (!firebaseUser) return
 
-    setAcceptingId(invite.id)
+    setBusyId(invite.id)
     setError('')
+    setMessage('')
 
     try {
       await deleteInvitation(invite.businessId, invite.id)
@@ -95,94 +100,92 @@ export default function InviteClient() {
       setInvitations(nextInvitations)
       setMessage(nextInvitations.length === 0 ? 'Invitasjon slettet.' : '')
     } finally {
-      setAcceptingId(null)
+      setBusyId(null)
     }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Behandler invitasjon...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
+          <p className="text-slate-600">Behandler invitasjon...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
-        {message ? (
-          <div className="text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+    <>
+      <Header />
+      <main className="min-h-[calc(100vh-88px)] bg-gradient-to-b from-slate-50 to-white px-6 py-10">
+        <div className="mx-auto w-full max-w-4xl">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Invitations</p>
+              <h1 className="text-3xl font-bold text-slate-900">Your invitations</h1>
+              <p className="mt-2 text-slate-600">Accept or decline pending company invites here.</p>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Suksess!</h2>
-            <p className="text-gray-600">{message}</p>
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Total</div>
+              <div className="text-2xl font-bold text-slate-900">{invitations.length}</div>
+            </div>
           </div>
-        ) : invitations.length > 0 ? (
-          <div className="text-center">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 20h9" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4h9" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 9h16" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 15h16" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Dine invitasjoner</h2>
-            <p className="text-gray-600 mb-6">Velg en invitasjon for å bli med i en bedrift.</p>
 
-            <div style={{ display: 'grid', gap: 12, textAlign: 'left' }}>
-              {invitations.map((invite) => (
-                <div key={invite.id} className="bg-white rounded-lg shadow-md p-4 border border-gray-200">
-                  <div className="flex items-center justify-between gap-4">
+          {message ? (
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+              <h2 className="text-xl font-semibold text-slate-900">Suksess</h2>
+              <p className="mt-2 text-slate-700">{message}</p>
+            </div>
+          ) : null}
+
+          {error ? (
+            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-5 shadow-sm">
+              <h2 className="text-xl font-semibold text-slate-900">Feil</h2>
+              <p className="mt-2 text-slate-700">{error}</p>
+            </div>
+          ) : null}
+
+          <div className="mt-4 grid gap-4">
+            {invitations.length === 0 ? (
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 className="text-xl font-semibold text-slate-900">0 invitations</h2>
+                <p className="mt-2 text-slate-600">No pending invitations yet.</p>
+              </div>
+            ) : (
+              invitations.map((invite) => (
+                <article key={invite.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <h3 className="font-semibold text-gray-900">{invite.businessId}</h3>
-                      <p className="text-sm text-gray-600">Role: {invite.role}</p>
+                      <h3 className="text-lg font-semibold text-slate-900">
+                        {invite.businessName || invite.businessId}
+                      </h3>
+                      <p className="mt-1 text-sm text-slate-600">Role: {invite.role}</p>
+                      <p className="mt-1 text-xs text-slate-500">Invitation for {invite.email}</p>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <div className="flex flex-wrap justify-end gap-2">
                       <button
-                        onClick={() => handleAcceptFromList(invite)}
-                        disabled={acceptingId === invite.id}
-                        className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
+                        onClick={() => handleAccept(invite)}
+                        disabled={busyId === invite.id}
+                        className="rounded-full bg-emerald-600 px-4 py-2 font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-70"
                       >
-                        {acceptingId === invite.id ? 'Accepting...' : 'Accept'}
+                        {busyId === invite.id ? 'Accepting...' : 'Accept'}
                       </button>
                       <button
-                        onClick={() => handleDeclineFromList(invite)}
-                        disabled={acceptingId === invite.id}
-                        className="bg-white text-gray-700 px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50 transition-colors"
+                        onClick={() => handleDecline(invite)}
+                        disabled={busyId === invite.id}
+                        className="rounded-full border border-slate-300 bg-white px-4 py-2 font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-70"
                       >
                         Decline
                       </button>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                </article>
+              ))
+            )}
           </div>
-        ) : (
-          <div className="text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Feil</h2>
-            <p className="text-gray-600 mb-6">{error || 'Ingen invitasjoner funnet'}</p>
-            <button
-              onClick={() => router.push('/auth/signin')}
-              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
-            >
-              Logg inn
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+        </div>
+      </main>
+    </>
   )
 }

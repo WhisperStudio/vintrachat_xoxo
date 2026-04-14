@@ -118,6 +118,7 @@ export default function Header() {
   const router = useRouter()
   const [pendingInvites, setPendingInvites] = useState<BusinessInvitation[]>([])
   const showInvitationCenter = !!firebaseUser && !dbUser
+  const showGuestLinks = !firebaseUser || showInvitationCenter
 
   useEffect(() => {
     let mounted = true
@@ -149,24 +150,23 @@ export default function Header() {
   return (
     <StyledHeader>
       <Left>
-        <Brand href={isAuthenticated ? '/landings/user' : '/landings/main'}>
+        <Brand href="/landings/main">
           V.O.T.E
         </Brand>
 
         <Nav>
-          {!firebaseUser ? (
+          {showGuestLinks ? (
             <>
               <NavLink href="/landings/guest/websites">Websites</NavLink>
               <NavLink href="/landings/auth/chatWidget">Chat Widget</NavLink>
-            </>
-          ) : showInvitationCenter ? (
-            <>
-              <InviteNavWrap>
-                {pendingInvites.length > 0 ? <InviteDot /> : null}
-                <NavLink href="/invite">
-                  Invitations{pendingInvites.length > 0 ? ` (${pendingInvites.length})` : ''}
-                </NavLink>
-              </InviteNavWrap>
+              {showInvitationCenter ? (
+                <InviteNavWrap>
+                  {pendingInvites.length > 0 ? <InviteDot /> : null}
+                  <NavLink href="/invite">
+                    Invitations{pendingInvites.length > 0 ? ` (${pendingInvites.length})` : ''}
+                  </NavLink>
+                </InviteNavWrap>
+              ) : null}
             </>
           ) : (
             <>
@@ -191,7 +191,12 @@ export default function Header() {
           </>
         ) : showInvitationCenter ? (
           <>
-            <UserText>Hei, {firebaseUser.displayName || firebaseUser.email}</UserText>
+            <Link href="/invite">
+              <GhostButton type="button">Join a business</GhostButton>
+            </Link>
+            <Link href="/auth/signup">
+              <PrimaryButton type="button">Make a business account</PrimaryButton>
+            </Link>
             <GhostButton type="button" onClick={handleLogout}>
               Log Out
             </GhostButton>

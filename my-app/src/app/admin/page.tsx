@@ -32,8 +32,6 @@ export default function AdminPage() {
   const [indicatorStyle, setIndicatorStyle] = useState<{ top: number; height: number } | null>(
     null
   )
-  const normalizedRole = dbUser?.role === 'user' ? 'viewer' : dbUser?.role || 'viewer'
-
   const supportItems: Array<{ tab: AdminTab; label: string }> = [
     { tab: 'chats', label: 'Chats' },
     { tab: 'tasks', label: 'Tasks' },
@@ -49,15 +47,12 @@ export default function AdminPage() {
   ]
 
   const visibleTabs = useMemo(() => {
-    const roleTabs: Record<string, AdminTab[]> = {
-      admin: ['overview', 'analytics', 'users', 'widgets', 'websites', 'settings', 'chats', 'tasks', 'export-test'],
-      manager: ['overview', 'analytics', 'chats', 'tasks', 'export-test', 'widgets', 'websites'],
-      support: ['overview', 'chats', 'tasks', 'export-test'],
-      viewer: ['overview', 'analytics'],
+    if (!dbUser) {
+      return ['overview'] as AdminTab[]
     }
 
-    return roleTabs[normalizedRole] || roleTabs.viewer
-  }, [normalizedRole])
+    return ['overview', 'analytics', 'users', 'widgets', 'websites', 'settings', 'chats', 'tasks', 'export-test']
+  }, [dbUser])
   const visibleSupportItems = supportItems.filter((item) => visibleTabs.includes(item.tab))
   const visibleAdminItems = adminItems.filter((item) => visibleTabs.includes(item.tab))
 
@@ -91,7 +86,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!visibleTabs.includes(activeTab)) {
-      setActiveTab(visibleTabs[0] || 'overview')
+      setActiveTab((visibleTabs[0] || 'overview') as AdminTab)
     }
   }, [activeTab, visibleTabs])
 

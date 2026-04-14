@@ -21,6 +21,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   logout: () => Promise<void>;
   refreshBusiness: () => Promise<void>;
+  refreshCurrentUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,6 +44,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Business refresh error:", err);
     }
   }, [dbUser?.businessId]);
+
+  const refreshCurrentUser = useCallback(async () => {
+    if (!firebaseUser) return;
+
+    try {
+      const user = await getCurrentUser(firebaseUser);
+      setDbUser(user);
+
+      if (user?.businessId) {
+        const biz = await getBusinessInfo(user.businessId);
+        setBusiness(biz);
+      }
+    } catch (err) {
+      console.error('Current user refresh error:', err);
+    }
+  }, [firebaseUser]);
 
   useEffect(() => {
     const unsub = setupAuthListener(async (authUser) => {
@@ -89,6 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!firebaseUser && !!dbUser,
         logout,
         refreshBusiness,
+        refreshCurrentUser,
       }}
     >
       {children}
