@@ -2,7 +2,6 @@
 
 import {
   collection,
-  collectionGroup,
   addDoc,
   getDocs,
   query,
@@ -149,28 +148,37 @@ export async function getBusinessInvitations(businessId: string) {
 // GET INVITES FOR EMAIL
 // ----------------------
 export async function getInvitationsForEmail(email: string): Promise<BusinessInvitation[]> {
-  const q = query(collectionGroup(db, "invitations"), where("email", "==", email));
-  const snap = await getDocs(q);
+  const businessesSnap = await getDocs(collection(db, "businesses"));
+  const invitations = await Promise.all(
+    businessesSnap.docs.map(async (businessDoc) => {
+      const invitesSnap = await getDocs(
+        query(
+          collection(db, `businesses/${businessDoc.id}/invitations`),
+          where("email", "==", email)
+        )
+      );
 
-  return snap.docs
-    .map((d) => {
-      const pathParts = d.ref.path.split("/");
-      const businessId = pathParts[1] || '';
-      const data = d.data();
+      return invitesSnap.docs
+        .filter((d) => d.data().status === "pending")
+        .map((d) => {
+          const data = d.data();
 
-      return {
-        id: d.id,
-        businessId,
-        email: data.email,
-        role: data.role,
-        createdBy: data.createdBy,
-        status: data.status,
-        expiresAt: data.expiresAt?.toDate?.() || new Date(data.expiresAt || Date.now()),
-        createdAt: data.createdAt?.toDate?.() || new Date(data.createdAt || Date.now()),
-        usedAt: data.usedAt?.toDate?.() || undefined,
-      } as BusinessInvitation;
+          return {
+            id: d.id,
+            businessId: businessDoc.id,
+            email: data.email,
+            role: data.role,
+            createdBy: data.createdBy,
+            status: data.status,
+            expiresAt: data.expiresAt?.toDate?.() || new Date(data.expiresAt || Date.now()),
+            createdAt: data.createdAt?.toDate?.() || new Date(data.createdAt || Date.now()),
+            usedAt: data.usedAt?.toDate?.() || undefined,
+          } as BusinessInvitation;
+        });
     })
-    .filter((invite) => invite.status === "pending");
+  );
+
+  return invitations.flat();
 }
 
 // ----------------------

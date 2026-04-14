@@ -1,10 +1,12 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import styled from 'styled-components'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
+import { getInvitationsForEmail } from '@/lib/invitation.service'
+import type { BusinessInvitation } from '@/types/database'
 
 const StyledHeader = styled.header`
   width: 100%;
@@ -38,6 +40,24 @@ const Nav = styled.nav`
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+`
+
+const InviteNavWrap = styled.div`
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+`
+
+const InviteDot = styled.span`
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: #ef4444;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
 `
 
 const NavLink = styled(Link)`
@@ -94,8 +114,32 @@ const UserText = styled.span`
 `
 
 export default function Header() {
-  const { isAuthenticated, dbUser, logout } = useAuth()
+  const { isAuthenticated, firebaseUser, dbUser, logout } = useAuth()
   const router = useRouter()
+  const [pendingInvites, setPendingInvites] = useState<BusinessInvitation[]>([])
+  const showInvitationCenter = !!firebaseUser && !dbUser
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadInvites() {
+      if (!showInvitationCenter || !firebaseUser?.email) {
+        setPendingInvites([])
+        return
+      }
+
+      const invites = await getInvitationsForEmail(firebaseUser.email)
+      if (mounted) setPendingInvites(invites)
+    }
+
+    void loadInvites()
+    const interval = window.setInterval(loadInvites, 10000)
+
+    return () => {
+      mounted = false
+      window.clearInterval(interval)
+    }
+  }, [firebaseUser?.email, showInvitationCenter])
 
   const handleLogout = async () => {
     await logout()
@@ -110,10 +154,19 @@ export default function Header() {
         </Brand>
 
         <Nav>
-          {!isAuthenticated ? (
+          {!firebaseUser ? (
             <>
               <NavLink href="/landings/guest/websites">Websites</NavLink>
               <NavLink href="/landings/auth/chatWidget">Chat Widget</NavLink>
+            </>
+          ) : showInvitationCenter ? (
+            <>
+              <InviteNavWrap>
+                {pendingInvites.length > 0 ? <InviteDot /> : null}
+                <NavLink href="/invite">
+                  Invitations{pendingInvites.length > 0 ? ` (${pendingInvites.length})` : ''}
+                </NavLink>
+              </InviteNavWrap>
             </>
           ) : (
             <>
@@ -127,7 +180,7 @@ export default function Header() {
       </Left>
 
       <Right>
-        {!isAuthenticated ? (
+        {!firebaseUser ? (
           <>
             <Link href="/auth/login">
               <GhostButton type="button">Log In</GhostButton>
@@ -135,6 +188,13 @@ export default function Header() {
             <Link href="/auth/signup">
               <PrimaryButton type="button">Sign Up</PrimaryButton>
             </Link>
+          </>
+        ) : showInvitationCenter ? (
+          <>
+            <UserText>Hei, {firebaseUser.displayName || firebaseUser.email}</UserText>
+            <GhostButton type="button" onClick={handleLogout}>
+              Log Out
+            </GhostButton>
           </>
         ) : (
           <>

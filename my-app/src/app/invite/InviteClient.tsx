@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { acceptInvitation, getInvitationsForEmail } from '@/lib/invitation.service'
+import { acceptInvitation, deleteInvitation, getInvitationsForEmail } from '@/lib/invitation.service'
 import { useAuth } from '@/context/AuthContext'
 import type { BusinessInvitation } from '@/types/database'
 
@@ -83,6 +83,22 @@ export default function InviteClient() {
     }
   }
 
+  const handleDeclineFromList = async (invite: BusinessInvitation) => {
+    if (!firebaseUser) return
+
+    setAcceptingId(invite.id)
+    setError('')
+
+    try {
+      await deleteInvitation(invite.businessId, invite.id)
+      const nextInvitations = firebaseUser.email ? await getInvitationsForEmail(firebaseUser.email) : []
+      setInvitations(nextInvitations)
+      setMessage(nextInvitations.length === 0 ? 'Invitasjon slettet.' : '')
+    } finally {
+      setAcceptingId(null)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -128,13 +144,22 @@ export default function InviteClient() {
                       <h3 className="font-semibold text-gray-900">{invite.businessId}</h3>
                       <p className="text-sm text-gray-600">Role: {invite.role}</p>
                     </div>
-                    <button
-                      onClick={() => handleAcceptFromList(invite)}
-                      disabled={acceptingId === invite.id}
-                      className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
-                    >
-                      {acceptingId === invite.id ? 'Accepting...' : 'Accept'}
-                    </button>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={() => handleAcceptFromList(invite)}
+                        disabled={acceptingId === invite.id}
+                        className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
+                      >
+                        {acceptingId === invite.id ? 'Accepting...' : 'Accept'}
+                      </button>
+                      <button
+                        onClick={() => handleDeclineFromList(invite)}
+                        disabled={acceptingId === invite.id}
+                        className="bg-white text-gray-700 px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50 transition-colors"
+                      >
+                        Decline
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
