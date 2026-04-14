@@ -1,22 +1,21 @@
 .adminPage {
   display: grid;
   grid-template-columns: 260px 1fr;
-  min-height: calc(100vh - 70px);
-  background:
-    radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 28%),
-    radial-gradient(circle at bottom right, rgba(124, 58, 237, 0.08), transparent 24%),
-    linear-gradient(180deg, #f8fafc 0%, #f3f6fb 100%);
+  align-items: stretch;
+  min-height: 100vh;
+  margin-top: -150px;
+  padding-top: 0;
+  background: linear-gradient(180deg, #f8fafc 0%, #f3f6fb 100%);
 }
 
 .adminSidebar {
   position: sticky;
-  top: 70px;
-  align-self: start;
-  min-height: calc(100vh - 70px);
+  top: 0;
+  align-self: stretch;
+  min-height: 100%;
   border-right: 1px solid rgba(148, 163, 184, 0.22);
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(16px);
-  padding: 24px 18px;
+  background: rgba(255, 255, 255, 0.94);
+  padding: 40px 18px 24px;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -155,6 +154,7 @@
 
 .adminContent {
   padding: 30px;
+  padding-top: 164px;
 }
 
 .miniGrid {
@@ -199,15 +199,22 @@
 @media (max-width: 900px) {
   .adminPage {
     grid-template-columns: 1fr;
+    margin-top: 0;
+    padding-top: 0;
   }
 
   .adminSidebar {
     position: relative;
     top: 0;
     min-height: auto;
+    padding-top: 24px;
   }
 
   .miniGrid {
     grid-template-columns: 1fr;
+  }
+
+  .adminContent {
+    padding-top: 30px;
   }
 }
