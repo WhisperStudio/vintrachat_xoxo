@@ -8,7 +8,7 @@
   display: block;
   margin-bottom: 0.8rem;
   font-weight: 700;
-  color: var(--text-soft);
+  color: #475569;
 }
 
 .dropbtn {
@@ -17,8 +17,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin: 0 0 0.9rem;
-  padding: 0;
+  margin: 2rem 0 0.4rem;
   border: none;
   background: transparent;
   color: var(--text);
@@ -32,6 +31,44 @@
 
 .dropbtn .label {
   margin-bottom: 0;
+}
+
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-label-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1rem;
+  height: 1rem;
+  color: #8b5cf6;
+  flex: 0 0 auto;
+}
+
+.section-label-icon--neutral {
+  color: #8b5cf6;
+}
+
+.section-label-icon--gray {
+  color: #64748b;
+}
+
+.section-label-icon--green {
+  color: #16a34a;
+}
+
+.section-label-icon--red {
+  color: #ef4444;
+}
+
+.section-label-icon--colorful {
+  color: #d946ef;
+  filter:
+    drop-shadow(0 0 3px rgba(59, 130, 246, 0.22))
+    drop-shadow(0 0 5px rgba(245, 158, 11, 0.18));
 }
 
 .dropbtn-icon {
@@ -58,8 +95,6 @@
 
 .option-grid {
   grid-template-columns: repeat(2, 1fr);
-  border-left: 1px solid rgb(178, 178, 178);
-  border-right: 1px solid rgb(178, 178, 178);
 }
 
 .option-grid.dropdown-content.open {
@@ -67,79 +102,235 @@
 }
 
 .option-card {
+  width: calc(100% - 1rem);
+  margin: 0 0.5rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 1rem;
-  border-top: 1px solid #fff;
-  border-bottom: 1px solid #fff;
-  background: #fff;
+  gap: 0.875rem;
+  text-align: left;
+  padding: 0.875rem 1.15rem;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  color: #475569;
   cursor: pointer;
-  transition: var(--transition);
+  font-size: 0.925rem;
+  font-weight: 500;
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 0 0 1px transparent;
+}
+
+.option-card:has(.iconChoiceGroup) {
+  display: flex;
+  gap: 0.85rem;
+}
+
+.option-card:has(.glassRadioRow) {
+  display: flex;
+  gap: 0.85rem;
+}
+
+.option-card--radio {
+  display: grid;
+  gap: 0.85rem;
+  cursor: default;
 }
 
 .option-card input {
   display: none;
 }
 
-.option-card:hover {
-  border-color: #cacacab3;
+.option-card:not(.option-card--radio, .iconChoiceGroup):hover {
+  background: rgba(99, 102, 241, 0.08);
+  color: #0f172a;
+  transform: translateX(4px);
+  border-color: rgba(99, 102, 241, 0.22);
+  box-shadow:
+    0 8px 24px rgba(99, 102, 241, 0.12),
+    inset 0 0 0 1px rgba(99, 102, 241, 0.12);
+}
+
+.option-card:has(.iconChoiceGroup):hover {
+  background: transparent;
+  color: #475569;
+  transform: none;
+  border-color: transparent;
+  box-shadow: inset 0 0 0 1px transparent;
 }
 
 .option-card.checked {
-  border-color: rgba(124, 58, 237, 0.28);
-  background: linear-gradient(180deg, rgba(124, 58, 237, 0.08), rgba(124, 58, 237, 0.03));
-}
-
-.option-row {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-top: 0.5rem;
-}
-
-.radio-option {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: #fff;
-  cursor: pointer;
-  transition: var(--transition);
-  flex: 1;
-  width: 100%;
-}
-
-.radio-option:hover {
-  background: #f8f9fa;
-  border-color: var(--brand);
-}
-
-.radio-option input[type="radio"] {
-  margin: 0;
-}
-
-.radio-option input[type="radio"]:checked + span {
-  color: var(--brand);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(168, 85, 247, 0.14)) !important;
+  color: #0f172a;
+  border-color: rgba(99, 102, 241, 0.24) !important;
+  box-shadow:
+    0 10px 28px rgba(99, 102, 241, 0.14),
+    inset 0 0 0 1px rgba(99, 102, 241, 0.14);
   font-weight: 600;
 }
 
-.radio-option input[type="radio"]:checked {
-  accent-color: var(--brand);
+.option-card:has(.glassRadioRow):hover {
+  background: transparent;
+  color: #0f172a;
+  transform: translateX(0px);
+  border-color: transparent;
+  box-shadow: none;
 }
 
+.glassRadioRow {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.35rem;
+  border-radius: 18px;
+  border: 1px solid rgba(168, 85, 247, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(248, 250, 252, 0.56));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 14px 30px rgba(15, 23, 42, 0.05);
+  overflow: hidden;
+}
+
+.glassRadioIndicator {
+  position: absolute;
+  top: 0.35rem;
+  bottom: 0.35rem;
+  left: 0;
+  background: rgba(168, 85, 247, 0);
+border-radius: 16px;
+box-shadow: inset 0 0px 5px rgb(99 102 241 / 16%), inset 0 0px 20px rgb(168 85 247 / 14%);
+backdrop-filter: blur(4.3px);
+-webkit-backdrop-filter: blur(4.3px);
+border: 1px solid rgba(168, 85, 247, 0.29);
+  pointer-events: none;
+  will-change: transform, width;
+  transition:
+    transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease;
+}
+
+.glassRadioButton {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 54px;
+  padding: 0.72rem 0.85rem;
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  font: inherit;
+  text-align: center;
+  transition:
+    transform 0.25s ease,
+    color 0.25s ease,
+    box-shadow 0.25s ease,
+    background 0.25s ease,
+    filter 0.25s ease;
+}
+
+
+
+.glassRadioButton:hover{
+  transform: translateY(-1px);
+  color: #1e1b4b;
+}
+
+
+
+.glassRadioButton.active {
+  color: #2e1065;
+}
+
+
+
+
+
+
+
+
+
+.glassRadioButton > span:first-child {
+  font-weight: 600;
+}
+
+.glassRadioSwatches {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  margin-top: 0.35rem;
+}
+
+.glassRadioSwatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 3px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.glassRadioDescription {
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  color: #64748b;
+}
+
+
+
 .option-title {
-  font-weight: 800;
-  color: var(--text);
+  font-weight: 700;
+  color: #475569;
   text-transform: capitalize;
 }
 
 .option-desc {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
   font-size: 0.86rem;
   line-height: 1.5;
   color: var(--muted);
+}
+
+.option-desc-icon {
+  flex: 0 0 auto;
+  width: 0.95rem;
+  height: 0.95rem;
+  margin-top: 0.16rem;
+  color: #d9b800;
+  opacity: 0.9;
+  transition: color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+}
+
+.option-desc-text {
+  min-width: 0;
+}
+
+.option-card:hover .option-desc-icon,
+.option-card.checked .option-desc-icon {
+  color: #8b5cf6;
+  opacity: 1;
 }
 
 .branding-content,
@@ -166,6 +357,95 @@ select,
   background: #fff;
   font-size: 0.95rem;
   transition: var(--transition);
+}
+
+.iconChoiceGroup {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 0.35rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.84),
+    0 12px 24px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+.iconChoiceIndicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.98), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(243, 232, 255, 0.88));
+  border: 1px solid rgba(168, 85, 247, 0.16);
+  box-shadow:
+    0 12px 22px rgba(168, 85, 247, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(12px);
+  transition:
+    transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease;
+  pointer-events: none;
+}
+
+.iconChoiceButton {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 78px;
+  padding: 0.85rem 0.75rem;
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.iconChoiceButton:hover {
+  transform: translateY(-1px);
+  color: #1e1b4b;
+}
+
+.iconChoiceButton.active {
+  color: #111827;
+  transform: translateY(-2px);
+}
+
+.iconChoiceButton.active .iconChoiceIcon {
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    0 10px 18px rgba(168, 85, 247, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.iconChoiceIcon {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.iconChoiceIcon svg {
+  width: 18px;
+  height: 18px;
 }
 
 select:focus,

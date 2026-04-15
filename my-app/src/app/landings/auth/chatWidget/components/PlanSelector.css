@@ -36,6 +36,29 @@
   margin-bottom: 0;
 }
 
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-label-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1rem;
+  height: 1rem;
+  color: #16a34a;
+  flex: 0 0 auto;
+}
+
+.section-label-icon--neutral {
+  color: #16a34a;
+}
+
+.section-label-icon--green {
+  color: #16a34a;
+}
+
 .dropbtn-icon {
   display: inline-flex;
   align-items: center;
@@ -61,8 +84,6 @@
 .option-grid {
   display: flex;
   flex-direction: column;
-  border-left: 1px solid rgb(178, 178, 178);
-  border-right: 1px solid rgb(178, 178, 178);
 }
 
 .option-grid.dropdown-content.open {

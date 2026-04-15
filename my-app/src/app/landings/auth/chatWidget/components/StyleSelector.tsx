@@ -1,6 +1,21 @@
 'use client'
 
-import { FiChevronDown } from 'react-icons/fi'
+import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { FaRegLightbulb } from 'react-icons/fa'
+import {
+  FiChevronDown,
+  FiCpu,
+  FiDroplet,
+  FiImage,
+  FiLayout,
+  FiMapPin,
+  FiMessageCircle,
+  FiMessageSquare,
+  FiPhone,
+  FiSend,
+  FiSliders,
+  FiLifeBuoy,
+} from 'react-icons/fi'
 import './StyleSelector.css'
 
 type ColorTheme = 'modern' | 'chilling' | 'corporate' | 'luxury'
@@ -11,6 +26,13 @@ type AnimationType = 'none' | 'bounce' | 'fade' | 'slide'
 type SizeType = 'small' | 'medium' | 'large'
 type MessageStyle = 'bubble' | 'flat' | 'card'
 type InputStyle = 'flat' | 'rounded' | 'outlined'
+
+type GlassRadioOption<T extends string> = {
+  value: T
+  label: string
+  description?: string
+  swatches?: string[]
+}
 
 interface StyleSelectorProps {
   bubbleStyle: {
@@ -84,6 +106,151 @@ const colorThemeInfo: Record<ColorTheme, { label: string; description: string }>
   luxury: { label: 'Luxury', description: 'Exclusive and elegant' },
 }
 
+const iconChoices: Array<{
+  value: StyleSelectorProps['bubbleStyle']['iconChoice']
+  label: string
+  icon: ReactNode
+}> = [
+  { value: 'chat', label: 'Chat', icon: <FiMessageCircle /> },
+  { value: 'phone', label: 'Phone', icon: <FiPhone /> },
+  { value: 'cpu', label: 'Robot', icon: <FiCpu /> },
+  { value: 'message', label: 'Message', icon: <FiMessageSquare /> },
+  { value: 'support', label: 'Support', icon: <FiLifeBuoy /> },
+]
+
+function OptionDesc({ children }: { children: ReactNode }) {
+  return (
+    <span className="option-desc">
+      <FaRegLightbulb className="option-desc-icon" aria-hidden="true" focusable="false" />
+      <span className="option-desc-text">{children}</span>
+    </span>
+  )
+}
+
+function SectionLabel({
+  icon,
+  tone = 'neutral',
+  children,
+}: {
+  icon: ReactNode
+  tone?: 'neutral' | 'green' | 'gray' | 'colorful' | 'red'
+  children: ReactNode
+}) {
+  return (
+    <span className="label section-label">
+      <span className={`section-label-icon section-label-icon--${tone}`} aria-hidden="true">
+        {icon}
+      </span>
+      <span>{children}</span>
+    </span>
+  )
+}
+
+function GlassRadioRow<T extends string>({
+  name,
+  value,
+  options,
+  onChange,
+}: {
+  name: string
+  value: T
+  options: Array<GlassRadioOption<T>>
+  onChange: (value: T) => void
+}) {
+  const rowRef = useRef<HTMLDivElement | null>(null)
+  const buttonRefs = useRef<Partial<Record<T, HTMLButtonElement | null>>>({})
+  const [indicator, setIndicator] = useState<{ left: number; width: number; opacity: number } | null>(null)
+
+  useLayoutEffect(() => {
+    const cleanup: Array<() => void> = []
+
+    const updateIndicator = () => {
+      const container = rowRef.current
+      const activeButton = buttonRefs.current[value]
+
+      if (!container || !activeButton) {
+        setIndicator(null)
+        return
+      }
+
+      setIndicator({
+        left: activeButton.offsetLeft,
+        width: activeButton.offsetWidth,
+        opacity: 1,
+      })
+    }
+
+    const raf1 = window.requestAnimationFrame(() => {
+      const raf2 = window.requestAnimationFrame(updateIndicator)
+      cleanup.push(() => window.cancelAnimationFrame(raf2))
+    })
+
+    cleanup.push(() => window.cancelAnimationFrame(raf1))
+    const resizeObserver = new ResizeObserver(updateIndicator)
+
+    if (rowRef.current) {
+      resizeObserver.observe(rowRef.current)
+    }
+
+    const activeButton = buttonRefs.current[value]
+    if (activeButton) {
+      resizeObserver.observe(activeButton)
+    }
+
+    window.addEventListener('resize', updateIndicator)
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener('resize', updateIndicator)
+      cleanup.forEach((fn) => fn())
+    }
+  }, [value, options.length])
+
+  return (
+    <div className="glassRadioRow" ref={rowRef} role="radiogroup" aria-label={name}>
+      {indicator ? (
+        <span
+          className="glassRadioIndicator"
+          style={{
+            transform: `translateX(${indicator.left}px)`,
+            width: `${indicator.width}px`,
+            opacity: indicator.opacity,
+          }}
+        />
+      ) : null}
+      {options.map((option) => {
+        const active = option.value === value
+        return (
+          <button
+            key={option.value}
+            ref={(node) => {
+              buttonRefs.current[option.value] = node
+            }}
+            type="button"
+            className={`glassRadioButton ${active ? 'active' : ''}`}
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(option.value)}
+          >
+            <span>{option.label}</span>
+            {option.swatches ? (
+              <span className="glassRadioSwatches" aria-hidden="true">
+                {option.swatches.map((swatch) => (
+                  <span
+                    key={`${option.value}-${swatch}`}
+                    className="glassRadioSwatch"
+                    style={{ backgroundColor: swatch }}
+                  />
+                ))}
+              </span>
+            ) : null}
+            {option.description ? <span className="glassRadioDescription">{option.description}</span> : null}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function StyleSelector({
   bubbleStyle,
   headerStyle,
@@ -104,674 +271,558 @@ export default function StyleSelector({
   openSections,
   onToggleSection,
 }: StyleSelectorProps) {
+  const iconChoiceRef = useRef<HTMLDivElement | null>(null)
+  const iconChoiceButtonRefs = useRef<Partial<Record<StyleSelectorProps['bubbleStyle']['iconChoice'], HTMLButtonElement | null>>>({})
+  const [iconIndicator, setIconIndicator] = useState<{
+    left: number
+    top: number
+    width: number
+    height: number
+    opacity: number
+  } | null>(null)
+
+  const activeIconChoice = useMemo(() => bubbleStyle.iconChoice, [bubbleStyle.iconChoice])
+
+  const handleToggleCardKeyDown = (
+    event: ReactKeyboardEvent<HTMLDivElement>,
+    onToggle: () => void,
+  ) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onToggle()
+    }
+  }
+
+  useLayoutEffect(() => {
+    const updateIndicator = () => {
+      const container = iconChoiceRef.current
+      const activeButton = iconChoiceButtonRefs.current[activeIconChoice]
+
+      if (!container || !activeButton) {
+        setIconIndicator(null)
+        return
+      }
+
+      const containerRect = container.getBoundingClientRect()
+      const buttonRect = activeButton.getBoundingClientRect()
+
+      setIconIndicator({
+        left: buttonRect.left - containerRect.left,
+        top: buttonRect.top - containerRect.top,
+        width: buttonRect.width,
+        height: buttonRect.height,
+        opacity: 1,
+      })
+    }
+
+    updateIndicator()
+    const resizeObserver = new ResizeObserver(updateIndicator)
+
+    if (iconChoiceRef.current) {
+      resizeObserver.observe(iconChoiceRef.current)
+    }
+
+    const activeButton = iconChoiceButtonRefs.current[activeIconChoice]
+    if (activeButton) {
+      resizeObserver.observe(activeButton)
+    }
+
+    window.addEventListener('resize', updateIndicator)
+    return () => {
+      window.removeEventListener('resize', updateIndicator)
+      resizeObserver.disconnect()
+    }
+  }, [activeIconChoice])
+
   return (
     <>
       <div className="group">
         <button type="button" className={`dropbtn ${openSections.bubble ? 'open' : ''}`} onClick={() => onToggleSection('bubble')}>
-          <span className="label">🫧 Chat bubble design</span>
+          <SectionLabel icon={<FiMessageCircle />} tone="gray">Chat button</SectionLabel>
           <span className="dropbtn-icon">
             <FiChevronDown />
           </span>
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.bubble ? 'open' : ''}`}>
-          <label className={`option-card ${bubbleStyle.showStatus ? 'checked' : ''}`}>
-            <input
-              type="checkbox"
-              checked={bubbleStyle.showStatus}
-              onChange={(e) => onBubbleStyleChange({ ...bubbleStyle, showStatus: e.target.checked })}
-            />
+          <div
+            className={`option-card ${bubbleStyle.showStatus ? 'checked' : ''}`}
+            role="button"
+            tabIndex={0}
+            aria-pressed={bubbleStyle.showStatus}
+            onClick={() => onBubbleStyleChange({ ...bubbleStyle, showStatus: !bubbleStyle.showStatus })}
+            onKeyDown={(event) =>
+              handleToggleCardKeyDown(event, () =>
+                onBubbleStyleChange({ ...bubbleStyle, showStatus: !bubbleStyle.showStatus })
+              )
+            }
+          >
             <span className="option-title">Show status dot</span>
-            <span className="option-desc">Show online/status dot on widget bubble</span>
-          </label>
+            <OptionDesc>Show online/status dot on widget bubble</OptionDesc>
+          </div>
 
-          <label className={`option-card ${bubbleStyle.iconChoice !== 'chat' ? 'checked' : ''}`}>
+          <div className="option-card">
             <span className="option-title">Icon choice</span>
-            <select value={bubbleStyle.iconChoice} onChange={(e) => onBubbleStyleChange({ ...bubbleStyle, iconChoice: e.target.value as 'chat' | 'phone' | 'cpu' | 'message' | 'support' })}>
-              <option value="chat">Chat bubble</option>
-              <option value="phone">Phone</option>
-              <option value="cpu">Robot/CPU</option>
-              <option value="message">Message</option>
-              <option value="support">Support</option>
-            </select>
-          </label>
+            <div className="iconChoiceGroup " ref={iconChoiceRef} role="radiogroup" aria-label="Icon choice">
+              {iconIndicator ? (
+                <span
+                  className="iconChoiceIndicator"
+                  style={{
+                    transform: `translate3d(${iconIndicator.left}px, ${iconIndicator.top}px, 0)`,
+                    width: `${iconIndicator.width}px`,
+                    height: `${iconIndicator.height}px`,
+                    opacity: iconIndicator.opacity,
+                  }}
+                />
+              ) : null}
+              {iconChoices.map((choice) => {
+                const active = bubbleStyle.iconChoice === choice.value
+                return (
+                  <button
+                    key={choice.value}
+                    ref={(node) => {
+                      iconChoiceButtonRefs.current[choice.value] = node
+                    }}
+                    type="button"
+                    className={`iconChoiceButton ${active ? 'active' : ''}`}
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() =>
+                      onBubbleStyleChange({ ...bubbleStyle, iconChoice: choice.value })
+                    }
+                  >
+                    <span className="iconChoiceIcon">{choice.icon}</span>
+                    <span>{choice.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
 
-          <label className="option-card">
+          <div className="option-card option-card--radio">
             <span className="option-title">Border type</span>
-            <div className="option-row">
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="bubble-border-type"
-                  checked={bubbleStyle.borderType === 'none'}
-                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, borderType: 'none' })}
-                />
-                <span>None</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="bubble-border-type"
-                  checked={bubbleStyle.borderType === 'solid'}
-                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, borderType: 'solid' })}
-                />
-                <span>Solid</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="bubble-border-type"
-                  checked={bubbleStyle.borderType === 'rounded'}
-                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, borderType: 'rounded' })}
-                />
-                <span>Rounded</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="bubble-border-type"
-                  checked={bubbleStyle.borderType === 'shadow'}
-                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, borderType: 'shadow' })}
-                />
-                <span>Shadow</span>
-              </label>
-            </div>
-          </label>
+            <GlassRadioRow
+              name="bubble-border-type"
+              value={bubbleStyle.borderType}
+              options={[
+                { value: 'none', label: 'None' },
+                { value: 'solid', label: 'Solid' },
+                { value: 'rounded', label: 'Rounded' },
+                { value: 'shadow', label: 'Shadow' },
+              ]}
+              onChange={(nextValue) =>
+                onBubbleStyleChange({ ...bubbleStyle, borderType: nextValue as BorderType })
+              }
+            />
+          </div>
 
-          <label className="option-card">
+          <div className="option-card option-card--radio">
             <span className="option-title">Shadow type</span>
-            <div className="option-row">
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="bubble-shadow-type"
-                  checked={bubbleStyle.shadowType === 'none'}
-                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, shadowType: 'none' })}
-                />
-                <span>None</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="bubble-shadow-type"
-                  checked={bubbleStyle.shadowType === 'light'}
-                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, shadowType: 'light' })}
-                />
-                <span>Light</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="bubble-shadow-type"
-                  checked={bubbleStyle.shadowType === 'medium'}
-                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, shadowType: 'medium' })}
-                />
-                <span>Medium</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="bubble-shadow-type"
-                  checked={bubbleStyle.shadowType === 'heavy'}
-                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, shadowType: 'heavy' })}
-                />
-                <span>Heavy</span>
-              </label>
-            </div>
-          </label>
+            <GlassRadioRow
+              name="bubble-shadow-type"
+              value={bubbleStyle.shadowType}
+              options={[
+                { value: 'none', label: 'None' },
+                { value: 'light', label: 'Light' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'heavy', label: 'Heavy' },
+              ]}
+              onChange={(nextValue) =>
+                onBubbleStyleChange({ ...bubbleStyle, shadowType: nextValue as ShadowType })
+              }
+            />
+          </div>
 
-          <label className="option-card">
+          <div className="option-card option-card--radio">
             <span className="option-title">Animation</span>
-            <div className="option-row">
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="bubble-animation-type"
-                  checked={bubbleStyle.animationType === 'none'}
-                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, animationType: 'none' })}
-                />
-                <span>None</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="bubble-animation-type"
-                  checked={bubbleStyle.animationType === 'bounce'}
-                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, animationType: 'bounce' })}
-                />
-                <span>Bounce</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="bubble-animation-type"
-                  checked={bubbleStyle.animationType === 'fade'}
-                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, animationType: 'fade' })}
-                />
-                <span>Fade</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="bubble-animation-type"
-                  checked={bubbleStyle.animationType === 'slide'}
-                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, animationType: 'slide' })}
-                />
-                <span>Slide</span>
-              </label>
-            </div>
-          </label>
+            <GlassRadioRow
+              name="bubble-animation-type"
+              value={bubbleStyle.animationType}
+              options={[
+                { value: 'none', label: 'None' },
+                { value: 'bounce', label: 'Bounce' },
+                { value: 'fade', label: 'Fade' },
+                { value: 'slide', label: 'Slide' },
+              ]}
+              onChange={(nextValue) =>
+                onBubbleStyleChange({ ...bubbleStyle, animationType: nextValue as AnimationType })
+              }
+            />
+          </div>
 
-          <label className="option-card">
+          <div className="option-card option-card--radio">
             <span className="option-title">Size</span>
-            <div className="option-row">
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="bubble-size-type"
-                  checked={bubbleStyle.sizeType === 'small'}
-                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, sizeType: 'small' })}
-                />
-                <span>Small</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="bubble-size-type"
-                  checked={bubbleStyle.sizeType === 'medium'}
-                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, sizeType: 'medium' })}
-                />
-                <span>Medium</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="bubble-size-type"
-                  checked={bubbleStyle.sizeType === 'large'}
-                  onChange={() => onBubbleStyleChange({ ...bubbleStyle, sizeType: 'large' })}
-                />
-                <span>Large</span>
-              </label>
-            </div>
-          </label>
+            <GlassRadioRow
+              name="bubble-size-type"
+              value={bubbleStyle.sizeType}
+              options={[
+                { value: 'small', label: 'Small' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'large', label: 'Large' },
+              ]}
+              onChange={(nextValue) =>
+                onBubbleStyleChange({ ...bubbleStyle, sizeType: nextValue as SizeType })
+              }
+            />
+          </div>
         </div>
       </div>
 
       <div className="group">
         <button type="button" className={`dropbtn ${openSections.header ? 'open' : ''}`} onClick={() => onToggleSection('header')}>
-          <span className="label">🎩 Header design</span>
+          <SectionLabel icon={<FiLayout />} tone="gray">Chat top bar</SectionLabel>
           <span className="dropbtn-icon">
             <FiChevronDown />
           </span>
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.header ? 'open' : ''}`}>
-          <label className={`option-card ${headerStyle.showStatus ? 'checked' : ''}`}>
-            <input
-              type="checkbox"
-              checked={headerStyle.showStatus}
-              onChange={(e) => onHeaderStyleChange({ ...headerStyle, showStatus: e.target.checked })}
-            />
+          <div
+            className={`option-card ${headerStyle.showStatus ? 'checked' : ''}`}
+            role="button"
+            tabIndex={0}
+            aria-pressed={headerStyle.showStatus}
+            onClick={() => onHeaderStyleChange({ ...headerStyle, showStatus: !headerStyle.showStatus })}
+            onKeyDown={(event) =>
+              handleToggleCardKeyDown(event, () =>
+                onHeaderStyleChange({ ...headerStyle, showStatus: !headerStyle.showStatus })
+              )
+            }
+          >
             <span className="option-title">Show status</span>
-            <span className="option-desc">Show online indicator in header</span>
-          </label>
+            <OptionDesc>Show online indicator in header</OptionDesc>
+          </div>
 
-          <label className={`option-card ${headerStyle.showCloseButton ? 'checked' : ''}`}>
-            <input
-              type="checkbox"
-              checked={headerStyle.showCloseButton}
-              onChange={(e) => onHeaderStyleChange({ ...headerStyle, showCloseButton: e.target.checked })}
-            />
+          <div
+            className={`option-card ${headerStyle.showCloseButton ? 'checked' : ''}`}
+            role="button"
+            tabIndex={0}
+            aria-pressed={headerStyle.showCloseButton}
+            onClick={() => onHeaderStyleChange({ ...headerStyle, showCloseButton: !headerStyle.showCloseButton })}
+            onKeyDown={(event) =>
+              handleToggleCardKeyDown(event, () =>
+                onHeaderStyleChange({ ...headerStyle, showCloseButton: !headerStyle.showCloseButton })
+              )
+            }
+          >
             <span className="option-title">Show close button</span>
-            <span className="option-desc">Show close button in header</span>
-          </label>
+            <OptionDesc>Show close button in header</OptionDesc>
+          </div>
 
-          <label className={`option-card ${headerStyle.showAvatar ? 'checked' : ''}`}>
-            <input
-              type="checkbox"
-              checked={headerStyle.showAvatar}
-              onChange={(e) => onHeaderStyleChange({ ...headerStyle, showAvatar: e.target.checked })}
-            />
+          <div
+            className={`option-card ${headerStyle.showAvatar ? 'checked' : ''}`}
+            role="button"
+            tabIndex={0}
+            aria-pressed={headerStyle.showAvatar}
+            onClick={() => onHeaderStyleChange({ ...headerStyle, showAvatar: !headerStyle.showAvatar })}
+            onKeyDown={(event) =>
+              handleToggleCardKeyDown(event, () =>
+                onHeaderStyleChange({ ...headerStyle, showAvatar: !headerStyle.showAvatar })
+              )
+            }
+          >
             <span className="option-title">Show avatar</span>
-            <span className="option-desc">Show avatar in header</span>
-          </label>
+            <OptionDesc>Show avatar in header</OptionDesc>
+          </div>
 
-          <label className={`option-card ${headerStyle.showTitle ? 'checked' : ''}`}>
-            <input
-              type="checkbox"
-              checked={headerStyle.showTitle}
-              onChange={(e) => onHeaderStyleChange({ ...headerStyle, showTitle: e.target.checked })}
-            />
+          <div
+            className={`option-card ${headerStyle.showTitle ? 'checked' : ''}`}
+            role="button"
+            tabIndex={0}
+            aria-pressed={headerStyle.showTitle}
+            onClick={() => onHeaderStyleChange({ ...headerStyle, showTitle: !headerStyle.showTitle })}
+            onKeyDown={(event) =>
+              handleToggleCardKeyDown(event, () =>
+                onHeaderStyleChange({ ...headerStyle, showTitle: !headerStyle.showTitle })
+              )
+            }
+          >
             <span className="option-title">Show title</span>
-            <span className="option-desc">Show widget title in header</span>
-          </label>
+            <OptionDesc>Show widget title in header</OptionDesc>
+          </div>
 
-          <label className="option-card">
+          <div className="option-card option-card--radio">
             <span className="option-title">Border type</span>
-            <div className="option-row">
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="header-border-type"
-                  checked={headerStyle.borderType === 'none'}
-                  onChange={() => onHeaderStyleChange({ ...headerStyle, borderType: 'none' })}
-                />
-                <span>None</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="header-border-type"
-                  checked={headerStyle.borderType === 'solid'}
-                  onChange={() => onHeaderStyleChange({ ...headerStyle, borderType: 'solid' })}
-                />
-                <span>Solid</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="header-border-type"
-                  checked={headerStyle.borderType === 'rounded'}
-                  onChange={() => onHeaderStyleChange({ ...headerStyle, borderType: 'rounded' })}
-                />
-                <span>Rounded</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="header-border-type"
-                  checked={headerStyle.borderType === 'shadow'}
-                  onChange={() => onHeaderStyleChange({ ...headerStyle, borderType: 'shadow' })}
-                />
-                <span>Shadow</span>
-              </label>
-            </div>
-          </label>
+            <GlassRadioRow
+              name="header-border-type"
+              value={headerStyle.borderType}
+              options={[
+                { value: 'none', label: 'None' },
+                { value: 'solid', label: 'Solid' },
+                { value: 'rounded', label: 'Rounded' },
+                { value: 'shadow', label: 'Shadow' },
+              ]}
+              onChange={(nextValue) =>
+                onHeaderStyleChange({ ...headerStyle, borderType: nextValue as BorderType })
+              }
+            />
+          </div>
 
-          <label className="option-card">
+          <div className="option-card option-card--radio">
             <span className="option-title">Shadow type</span>
-            <div className="option-row">
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="header-shadow-type"
-                  checked={headerStyle.shadowType === 'none'}
-                  onChange={() => onHeaderStyleChange({ ...headerStyle, shadowType: 'none' })}
-                />
-                <span>None</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="header-shadow-type"
-                  checked={headerStyle.shadowType === 'light'}
-                  onChange={() => onHeaderStyleChange({ ...headerStyle, shadowType: 'light' })}
-                />
-                <span>Light</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="header-shadow-type"
-                  checked={headerStyle.shadowType === 'medium'}
-                  onChange={() => onHeaderStyleChange({ ...headerStyle, shadowType: 'medium' })}
-                />
-                <span>Medium</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="header-shadow-type"
-                  checked={headerStyle.shadowType === 'heavy'}
-                  onChange={() => onHeaderStyleChange({ ...headerStyle, shadowType: 'heavy' })}
-                />
-                <span>Heavy</span>
-              </label>
-            </div>
-          </label>
+            <GlassRadioRow
+              name="header-shadow-type"
+              value={headerStyle.shadowType}
+              options={[
+                { value: 'none', label: 'None' },
+                { value: 'light', label: 'Light' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'heavy', label: 'Heavy' },
+              ]}
+              onChange={(nextValue) =>
+                onHeaderStyleChange({ ...headerStyle, shadowType: nextValue as ShadowType })
+              }
+            />
+          </div>
         </div>
       </div>
 
       <div className="group">
         <button type="button" className={`dropbtn ${openSections.body ? 'open' : ''}`} onClick={() => onToggleSection('body')}>
-          <span className="label">💬 Chat body design</span>
+          <SectionLabel icon={<FiMessageSquare />} tone="gray">Chat messages</SectionLabel>
           <span className="dropbtn-icon">
             <FiChevronDown />
           </span>
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.body ? 'open' : ''}`}>
-          <label className="option-card">
+          <div className="option-card option-card--radio">
             <span className="option-title">Border type</span>
-            <div className="option-row">
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="body-border-type"
-                  checked={bodyStyle.borderType === 'none'}
-                  onChange={() => onBodyStyleChange({ ...bodyStyle, borderType: 'none' })}
-                />
-                <span>None</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="body-border-type"
-                  checked={bodyStyle.borderType === 'solid'}
-                  onChange={() => onBodyStyleChange({ ...bodyStyle, borderType: 'solid' })}
-                />
-                <span>Solid</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="body-border-type"
-                  checked={bodyStyle.borderType === 'rounded'}
-                  onChange={() => onBodyStyleChange({ ...bodyStyle, borderType: 'rounded' })}
-                />
-                <span>Rounded</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="body-border-type"
-                  checked={bodyStyle.borderType === 'shadow'}
-                  onChange={() => onBodyStyleChange({ ...bodyStyle, borderType: 'shadow' })}
-                />
-                <span>Shadow</span>
-              </label>
-            </div>
-          </label>
+            <GlassRadioRow
+              name="body-border-type"
+              value={bodyStyle.borderType}
+              options={[
+                { value: 'none', label: 'None' },
+                { value: 'solid', label: 'Solid' },
+                { value: 'rounded', label: 'Rounded' },
+                { value: 'shadow', label: 'Shadow' },
+              ]}
+              onChange={(nextValue) =>
+                onBodyStyleChange({ ...bodyStyle, borderType: nextValue as BorderType })
+              }
+            />
+          </div>
 
-          <label className="option-card">
+          <div className="option-card option-card--radio">
             <span className="option-title">Shadow type</span>
-            <div className="option-row">
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="body-shadow-type"
-                  checked={bodyStyle.shadowType === 'none'}
-                  onChange={() => onBodyStyleChange({ ...bodyStyle, shadowType: 'none' })}
-                />
-                <span>None</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="body-shadow-type"
-                  checked={bodyStyle.shadowType === 'light'}
-                  onChange={() => onBodyStyleChange({ ...bodyStyle, shadowType: 'light' })}
-                />
-                <span>Light</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="body-shadow-type"
-                  checked={bodyStyle.shadowType === 'medium'}
-                  onChange={() => onBodyStyleChange({ ...bodyStyle, shadowType: 'medium' })}
-                />
-                <span>Medium</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="body-shadow-type"
-                  checked={bodyStyle.shadowType === 'heavy'}
-                  onChange={() => onBodyStyleChange({ ...bodyStyle, shadowType: 'heavy' })}
-                />
-                <span>Heavy</span>
-              </label>
-            </div>
-          </label>
+            <GlassRadioRow
+              name="body-shadow-type"
+              value={bodyStyle.shadowType}
+              options={[
+                { value: 'none', label: 'None' },
+                { value: 'light', label: 'Light' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'heavy', label: 'Heavy' },
+              ]}
+              onChange={(nextValue) =>
+                onBodyStyleChange({ ...bodyStyle, shadowType: nextValue as ShadowType })
+              }
+            />
+          </div>
 
-          <label className="option-card">
+          <div className="option-card option-card--radio">
             <span className="option-title">Message style</span>
-            <div className="option-row">
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="body-message-style"
-                  checked={bodyStyle.messageStyle === 'bubble'}
-                  onChange={() => onBodyStyleChange({ ...bodyStyle, messageStyle: 'bubble' })}
-                />
-                <span>Bubble</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="body-message-style"
-                  checked={bodyStyle.messageStyle === 'flat'}
-                  onChange={() => onBodyStyleChange({ ...bodyStyle, messageStyle: 'flat' })}
-                />
-                <span>Flat</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="body-message-style"
-                  checked={bodyStyle.messageStyle === 'card'}
-                  onChange={() => onBodyStyleChange({ ...bodyStyle, messageStyle: 'card' })}
-                />
-                <span>Card</span>
-              </label>
-            </div>
-          </label>
-
-          <label className={`option-card ${bodyStyle.showTimestamps ? 'checked' : ''}`}>
-            <input
-              type="checkbox"
-              checked={bodyStyle.showTimestamps}
-              onChange={(e) => onBodyStyleChange({ ...bodyStyle, showTimestamps: e.target.checked })}
+            <GlassRadioRow
+              name="body-message-style"
+              value={bodyStyle.messageStyle}
+              options={[
+                { value: 'bubble', label: 'Bubble' },
+                { value: 'flat', label: 'Flat' },
+                { value: 'card', label: 'Card' },
+              ]}
+              onChange={(nextValue) =>
+                onBodyStyleChange({ ...bodyStyle, messageStyle: nextValue as MessageStyle })
+              }
             />
+          </div>
+
+          <div
+            className={`option-card ${bodyStyle.showTimestamps ? 'checked' : ''}`}
+            role="button"
+            tabIndex={0}
+            aria-pressed={bodyStyle.showTimestamps}
+            onClick={() => onBodyStyleChange({ ...bodyStyle, showTimestamps: !bodyStyle.showTimestamps })}
+            onKeyDown={(event) =>
+              handleToggleCardKeyDown(event, () =>
+                onBodyStyleChange({ ...bodyStyle, showTimestamps: !bodyStyle.showTimestamps })
+              )
+            }
+          >
             <span className="option-title">Show timestamps</span>
-            <span className="option-desc">Show message timestamps</span>
-          </label>
+            <OptionDesc>Show message timestamps</OptionDesc>
+          </div>
 
-          <label className={`option-card ${bodyStyle.showReadReceipts ? 'checked' : ''}`}>
-            <input
-              type="checkbox"
-              checked={bodyStyle.showReadReceipts}
-              onChange={(e) => onBodyStyleChange({ ...bodyStyle, showReadReceipts: e.target.checked })}
-            />
+          <div
+            className={`option-card ${bodyStyle.showReadReceipts ? 'checked' : ''}`}
+            role="button"
+            tabIndex={0}
+            aria-pressed={bodyStyle.showReadReceipts}
+            onClick={() => onBodyStyleChange({ ...bodyStyle, showReadReceipts: !bodyStyle.showReadReceipts })}
+            onKeyDown={(event) =>
+              handleToggleCardKeyDown(event, () =>
+                onBodyStyleChange({ ...bodyStyle, showReadReceipts: !bodyStyle.showReadReceipts })
+              )
+            }
+          >
             <span className="option-title">Show read receipts</span>
-            <span className="option-desc">Show read receipts on messages</span>
-          </label>
+            <OptionDesc>Show read receipts on messages</OptionDesc>
+          </div>
         </div>
       </div>
 
       <div className="group">
         <button type="button" className={`dropbtn ${openSections.footer ? 'open' : ''}`} onClick={() => onToggleSection('footer')}>
-          <span className="label">⌨️ Footer design</span>
+          <SectionLabel icon={<FiSend />} tone="gray">Message box</SectionLabel>
           <span className="dropbtn-icon">
             <FiChevronDown />
           </span>
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.footer ? 'open' : ''}`}>
-          <label className={`option-card ${footerStyle.showSendButton ? 'checked' : ''}`}>
-            <input
-              type="checkbox"
-              checked={footerStyle.showSendButton}
-              onChange={(e) => onFooterStyleChange({ ...footerStyle, showSendButton: e.target.checked })}
-            />
+          <div
+            className={`option-card ${footerStyle.showSendButton ? 'checked' : ''}`}
+            role="button"
+            tabIndex={0}
+            aria-pressed={footerStyle.showSendButton}
+            onClick={() => onFooterStyleChange({ ...footerStyle, showSendButton: !footerStyle.showSendButton })}
+            onKeyDown={(event) =>
+              handleToggleCardKeyDown(event, () =>
+                onFooterStyleChange({ ...footerStyle, showSendButton: !footerStyle.showSendButton })
+              )
+            }
+          >
             <span className="option-title">Show send button</span>
-            <span className="option-desc">Show send button in footer</span>
-          </label>
+            <OptionDesc>Show send button in footer</OptionDesc>
+          </div>
 
-          <label className="option-card">
+          <div className="option-card option-card--radio">
             <span className="option-title">Border type</span>
-            <div className="option-row">
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="footer-border-type"
-                  checked={footerStyle.borderType === 'none'}
-                  onChange={() => onFooterStyleChange({ ...footerStyle, borderType: 'none' })}
-                />
-                <span>None</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="footer-border-type"
-                  checked={footerStyle.borderType === 'solid'}
-                  onChange={() => onFooterStyleChange({ ...footerStyle, borderType: 'solid' })}
-                />
-                <span>Solid</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="footer-border-type"
-                  checked={footerStyle.borderType === 'rounded'}
-                  onChange={() => onFooterStyleChange({ ...footerStyle, borderType: 'rounded' })}
-                />
-                <span>Rounded</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="footer-border-type"
-                  checked={footerStyle.borderType === 'shadow'}
-                  onChange={() => onFooterStyleChange({ ...footerStyle, borderType: 'shadow' })}
-                />
-                <span>Shadow</span>
-              </label>
-            </div>
-          </label>
-
-          <label className="option-card">
-            <span className="option-title">Shadow type</span>
-            <div className="option-row">
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="footer-shadow-type"
-                  checked={footerStyle.shadowType === 'none'}
-                  onChange={() => onFooterStyleChange({ ...footerStyle, shadowType: 'none' })}
-                />
-                <span>None</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="footer-shadow-type"
-                  checked={footerStyle.shadowType === 'light'}
-                  onChange={() => onFooterStyleChange({ ...footerStyle, shadowType: 'light' })}
-                />
-                <span>Light</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="footer-shadow-type"
-                  checked={footerStyle.shadowType === 'medium'}
-                  onChange={() => onFooterStyleChange({ ...footerStyle, shadowType: 'medium' })}
-                />
-                <span>Medium</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="footer-shadow-type"
-                  checked={footerStyle.shadowType === 'heavy'}
-                  onChange={() => onFooterStyleChange({ ...footerStyle, shadowType: 'heavy' })}
-                />
-                <span>Heavy</span>
-              </label>
-            </div>
-          </label>
-
-          <label className="option-card">
-            <span className="option-title">Input style</span>
-            <div className="option-row">
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="footer-input-style"
-                  checked={footerStyle.inputStyle === 'flat'}
-                  onChange={() => onFooterStyleChange({ ...footerStyle, inputStyle: 'flat' })}
-                />
-                <span>Flat</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="footer-input-style"
-                  checked={footerStyle.inputStyle === 'rounded'}
-                  onChange={() => onFooterStyleChange({ ...footerStyle, inputStyle: 'rounded' })}
-                />
-                <span>Rounded</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="footer-input-style"
-                  checked={footerStyle.inputStyle === 'outlined'}
-                  onChange={() => onFooterStyleChange({ ...footerStyle, inputStyle: 'outlined' })}
-                />
-                <span>Outlined</span>
-              </label>
-            </div>
-          </label>
-
-          <label className={`option-card ${footerStyle.showPlaceholder ? 'checked' : ''}`}>
-            <input
-              type="checkbox"
-              checked={footerStyle.showPlaceholder}
-              onChange={(e) => onFooterStyleChange({ ...footerStyle, showPlaceholder: e.target.checked })}
+            <GlassRadioRow
+              name="footer-border-type"
+              value={footerStyle.borderType}
+              options={[
+                { value: 'none', label: 'None' },
+                { value: 'solid', label: 'Solid' },
+                { value: 'rounded', label: 'Rounded' },
+                { value: 'shadow', label: 'Shadow' },
+              ]}
+              onChange={(nextValue) =>
+                onFooterStyleChange({ ...footerStyle, borderType: nextValue as BorderType })
+              }
             />
+          </div>
+
+          <div className="option-card option-card--radio">
+            <span className="option-title">Shadow type</span>
+            <GlassRadioRow
+              name="footer-shadow-type"
+              value={footerStyle.shadowType}
+              options={[
+                { value: 'none', label: 'None' },
+                { value: 'light', label: 'Light' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'heavy', label: 'Heavy' },
+              ]}
+              onChange={(nextValue) =>
+                onFooterStyleChange({ ...footerStyle, shadowType: nextValue as ShadowType })
+              }
+            />
+          </div>
+
+          <div className="option-card option-card--radio">
+            <span className="option-title">Input style</span>
+            <GlassRadioRow
+              name="footer-input-style"
+              value={footerStyle.inputStyle}
+              options={[
+                { value: 'flat', label: 'Flat' },
+                { value: 'rounded', label: 'Rounded' },
+                { value: 'outlined', label: 'Outlined' },
+              ]}
+              onChange={(nextValue) =>
+                onFooterStyleChange({ ...footerStyle, inputStyle: nextValue as InputStyle })
+              }
+            />
+          </div>
+
+          <div
+            className={`option-card ${footerStyle.showPlaceholder ? 'checked' : ''}`}
+            role="button"
+            tabIndex={0}
+            aria-pressed={footerStyle.showPlaceholder}
+            onClick={() => onFooterStyleChange({ ...footerStyle, showPlaceholder: !footerStyle.showPlaceholder })}
+            onKeyDown={(event) =>
+              handleToggleCardKeyDown(event, () =>
+                onFooterStyleChange({ ...footerStyle, showPlaceholder: !footerStyle.showPlaceholder })
+              )
+            }
+          >
             <span className="option-title">Show placeholder</span>
-            <span className="option-desc">Show placeholder text in input field</span>
-          </label>
+            <OptionDesc>Show placeholder text in input field</OptionDesc>
+          </div>
         </div>
       </div>
 
       <div className="group">
         <button type="button" className={`dropbtn ${openSections.colorTheme ? 'open' : ''}`} onClick={() => onToggleSection('colorTheme')}>
-          <span className="label">🎨 Color theme</span>
+          <SectionLabel icon={<FiDroplet />} tone="colorful">Colors</SectionLabel>
           <span className="dropbtn-icon">
             <FiChevronDown />
           </span>
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.colorTheme ? 'open' : ''}`}>
-          {Object.entries(colorThemeInfo).map(([theme, info]) => (
-            <label key={theme} className={`option-card ${colorTheme === theme ? 'checked' : ''}`}>
-              <input type="radio" name="colorTheme" checked={colorTheme === theme} onChange={() => onColorThemeChange(theme as ColorTheme)} />
-              <span className="option-title">{info.label}</span>
-              <span className="option-desc">{info.description}</span>
-            </label>
-          ))}
+          <div className="option-card option-card--radio">
+            <span className="option-title">Theme</span>
+            <GlassRadioRow
+              name="color-theme"
+              value={colorTheme}
+              options={Object.entries(colorThemeInfo).map(([theme, info]) => ({
+                value: theme as ColorTheme,
+                label: info.label,
+                description: info.description,
+                swatches:
+                  theme === 'modern'
+                    ? ['#3b82f6', '#1e40af', '#ffffff', '#e5e7eb']
+                    : theme === 'chilling'
+                      ? ['#10b981', '#047857', '#f0fdf4', '#bbf7d0']
+                      : theme === 'corporate'
+                        ? ['#6b7280', '#374151', '#f9fafb', '#d1d5db']
+                        : ['#7c3aed', '#5b21b6', '#faf5ff', '#e9d5ff'],
+              }))}
+              onChange={(nextValue) => onColorThemeChange(nextValue as ColorTheme)}
+            />
+          </div>
         </div>
       </div>
 
       <div className="group">
         <button type="button" className={`dropbtn ${openSections.position ? 'open' : ''}`} onClick={() => onToggleSection('position')}>
-          <span className="label">📍 Widget position</span>
+          <SectionLabel icon={<FiMapPin />} tone="red">Screen position</SectionLabel>
           <span className="dropbtn-icon">
             <FiChevronDown />
           </span>
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.position ? 'open' : ''}`}>
-          {[
-            { value: 'bottom-right', label: 'Bottom right', desc: 'Bottom right of the screen' },
-            { value: 'bottom-left', label: 'Bottom left', desc: 'Bottom left of the screen' },
-          ].map((pos) => (
-            <label key={pos.value} className={`option-card ${position === pos.value ? 'checked' : ''}`}>
-              <input type="radio" name="position" checked={position === pos.value} onChange={() => onPositionChange(pos.value as Position)} />
-              <span className="option-title">{pos.label}</span>
-              <span className="option-desc">{pos.desc}</span>
-            </label>
-          ))}
+          <div className="option-card">
+            <span className="option-title">Position</span>
+            <GlassRadioRow
+              name="widget-position"
+              value={position}
+              options={[
+                { value: 'bottom-right', label: 'Bottom right', description: 'Bottom right of the screen' },
+                { value: 'bottom-left', label: 'Bottom left', description: 'Bottom left of the screen' },
+              ]}
+              onChange={(nextValue) => onPositionChange(nextValue as Position)}
+            />
+          </div>
         </div>
       </div>
 
       <div className="group">
         <button type="button" className={`dropbtn ${openSections.branding ? 'open' : ''}`} onClick={() => onToggleSection('branding')}>
-          <span className="label">Custom branding</span>
+          <SectionLabel icon={<FiImage />} tone="neutral">Your branding</SectionLabel>
           <span className="dropbtn-icon">
             <FiChevronDown />
           </span>
@@ -812,7 +863,7 @@ export default function StyleSelector({
 
       <div className="group">
         <button type="button" className={`dropbtn ${openSections.advanced ? 'open' : ''}`} onClick={() => onToggleSection('advanced')}>
-          <span className="label">Advanced settings</span>
+          <SectionLabel icon={<FiSliders />} tone="neutral">Widget behavior</SectionLabel>
           <span className="dropbtn-icon">
             <FiChevronDown />
           </span>

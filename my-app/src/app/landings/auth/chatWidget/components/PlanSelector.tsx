@@ -1,7 +1,7 @@
 'use client'
 
 import { FiCheck, FiChevronDown, FiX } from 'react-icons/fi'
-import { FaInfinity, FaMoneyBillWave  } from 'react-icons/fa'
+import { FaInfinity, FaMoneyBillWave, FaRegCreditCard } from 'react-icons/fa'
 import { MdMoneyOff, MdAttachMoney } from "react-icons/md";
 import './PlanSelector.css'
 
@@ -58,7 +58,12 @@ export default function PlanSelector({
   return (
     <div className="group">
       <button type="button" className={`dropbtn ${isOpen ? 'open' : ''}`} onClick={onToggle}>
-        <span className="label">Subscription</span>
+        <span className="label section-label">
+          <span className="section-label-icon section-label-icon--green" aria-hidden="true">
+            <FaRegCreditCard />
+          </span>
+          <span>Subscription</span>
+        </span>
         <span className="dropbtn-icon">
           <FiChevronDown />
         </span>

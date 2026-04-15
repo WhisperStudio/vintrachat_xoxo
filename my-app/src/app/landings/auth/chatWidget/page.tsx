@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { FiRefreshCw, FiSave, FiSliders } from 'react-icons/fi'
+import { FiCheck, FiCreditCard, FiRefreshCw, FiSave, FiSliders } from 'react-icons/fi'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { updateChatWidgetConfig } from '@/lib/auth.service'
@@ -136,6 +136,7 @@ export default function ChatWidgetBuilderPage() {
   const [showBreakdown, setShowBreakdown] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [resetAnimating, setResetAnimating] = useState(false)
 
   const total = useMemo(
     () => planPrices[inputs.plan][inputs.billingCycle],
@@ -184,6 +185,11 @@ export default function ChatWidgetBuilderPage() {
   const resetBuilder = () => {
     setInputs(defaultInputs)
     setSaveStatus('idle')
+  }
+
+  const handleReset = () => {
+    setResetAnimating(true)
+    resetBuilder()
   }
 
   const saveConfig = async () => {
@@ -252,8 +258,12 @@ export default function ChatWidgetBuilderPage() {
         <section className="chatbuilder-hero">
           <h1>Chat Widget Builder</h1>
           <p>
-            Configure a simple chat widget preview. Choose a subscription and customize
-            the chat bubble, header, body and footer styles.
+            Configure a simple chat widget preview. Choose a{' '}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#16a34a' }}>
+              <FiCreditCard aria-hidden="true" />
+              <span>subscription</span>
+            </span>{' '}
+            and customize the chat bubble, header, body and footer styles.
           </p>
 
           <p style={{ marginTop: 10 }}>
@@ -291,14 +301,33 @@ export default function ChatWidgetBuilderPage() {
                 )}
 
                 {isAuthenticated ? (
-                  <button className="save-btn" onClick={saveConfig} disabled={isSaving}>
-                    <FiSave />
-                    {isSaving ? 'Saving...' : saveStatus === 'success' ? 'Saved!' : 'Save Configuration'}
+                  <button
+                    className={`save-btn ${isSaving ? 'save-btn--saving' : ''} ${saveStatus === 'success' ? 'save-btn--success' : ''}`}
+                    onClick={saveConfig}
+                    disabled={isSaving}
+                    type="button"
+                  >
+                    <span className={`save-btn-icon ${isSaving ? 'is-saving' : ''} ${saveStatus === 'success' ? 'is-success' : ''}`}>
+                      {isSaving ? (
+                        <FiRefreshCw />
+                      ) : saveStatus === 'success' ? (
+                        <FiCheck />
+                      ) : (
+                        <FiSave />
+                      )}
+                    </span>
+                    <span>{isSaving ? 'Saving...' : saveStatus === 'success' ? 'Saved!' : 'Save Configuration'}</span>
                   </button>
                 ) : null}
 
-                <button className="reset-btn" onClick={resetBuilder} type="button">
-                  <FiRefreshCw /> Reset
+                <button className="reset-btn" onClick={handleReset} type="button">
+                  <span
+                    className={`reset-btn-icon ${resetAnimating ? 'reset-btn-icon--spin' : ''}`}
+                    onAnimationEnd={() => setResetAnimating(false)}
+                  >
+                    <FiRefreshCw />
+                  </span>
+                  <span>Reset</span>
                 </button>
               </div>
             </div>

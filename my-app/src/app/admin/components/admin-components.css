@@ -883,6 +883,9 @@
     0 12px 22px rgba(15, 23, 42, 0.05),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
+.adminDropdownButton:hover:has(.open) {
+  transform: translateY(0px);
+}
 
 .adminDropdownButton:focus-visible {
   outline: none;
