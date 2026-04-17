@@ -5,6 +5,7 @@ import { FiCopy, FiMail, FiShield, FiUserPlus, FiUsers } from 'react-icons/fi'
 import { useAuth } from '@/context/AuthContext'
 import { createInvitation, getBusinessInvitations } from '@/lib/invitation.service'
 import { getBusinessUsers, updateUserRole } from '@/lib/auth.service'
+import { getDailyConversationCount, getPlanLabel, getPlanLimits, getTodayUsageKey } from '@/lib/subscription'
 import type { BusinessInvitation, BusinessUser, UserRole } from '@/types/database'
 import AdminDropdown from './AdminDropdown'
 import './admin-components.css'
@@ -55,6 +56,17 @@ export default function AdminUserManagementPanel() {
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState('')
 
+  const plan = business?.chatWidgetConfig?.plan || 'free'
+  const planLimits = getPlanLimits(plan)
+  const todayKey = getTodayUsageKey()
+  const todayConversationCount = getDailyConversationCount(business?.chatAnalytics, new Date())
+  const dailyConversationLimitReached =
+    planLimits.maxDailyConversations !== null &&
+    todayConversationCount >= planLimits.maxDailyConversations
+  const memberLimitReached =
+    planLimits.maxTeamMembers !== null && users.length >= planLimits.maxTeamMembers
+  const inviteLocked = memberLimitReached
+
   const sortedUsers = useMemo(
     () => [...users].sort((a, b) => Number(b.role === 'admin') - Number(a.role === 'admin')),
     [users]
@@ -65,6 +77,8 @@ export default function AdminUserManagementPanel() {
 
     async function loadData() {
       if (!dbUser?.businessId) return
+
+      await refreshBusiness()
 
       const [nextUsers, nextInvites] = await Promise.all([
         getBusinessUsers(dbUser.businessId),
@@ -97,7 +111,7 @@ export default function AdminUserManagementPanel() {
       const result = await createInvitation(dbUser.businessId, inviteEmail.trim().toLowerCase(), inviteRole, dbUser.id)
 
       if (!result.success) {
-        setStatusMessage('Could not create invitation')
+        setStatusMessage(result.message || 'Could not create invitation')
         return
       }
 
@@ -167,6 +181,42 @@ export default function AdminUserManagementPanel() {
         </div>
       </div>
 
+      <div className="adminUsersQuotaRow">
+        <div className={`adminUsersQuotaCard ${dailyConversationLimitReached ? 'is-alert' : ''}`}>
+          <span>Plan</span>
+          <strong>{getPlanLabel(plan)}</strong>
+          <small>{planLimits.maxDailyConversations ? `${planLimits.maxDailyConversations} conversations/day` : 'Unlimited conversations'}</small>
+        </div>
+
+        <div className={`adminUsersQuotaCard ${dailyConversationLimitReached ? 'is-alert' : ''}`}>
+          <span>Today</span>
+          <strong>
+            {todayConversationCount}
+            {planLimits.maxDailyConversations ? ` / ${planLimits.maxDailyConversations}` : ''}
+          </strong>
+          <small>
+            {dailyConversationLimitReached ? 'Limit reached today' : `Today’s usage · ${todayKey}`}
+          </small>
+        </div>
+
+        <div className={`adminUsersQuotaCard ${memberLimitReached ? 'is-alert' : ''}`}>
+          <span>Members</span>
+          <strong>
+            {sortedUsers.length}
+            {planLimits.maxTeamMembers ? ` / ${planLimits.maxTeamMembers}` : ''}
+          </strong>
+          <small>
+            {planLimits.maxTeamMembers ? 'Team member limit active' : 'Unlimited team members'}
+          </small>
+        </div>
+
+        <div className="adminUsersQuotaCard">
+          <span>Orb access</span>
+          <strong>{planLimits.orbAvailable ? 'Enabled' : 'Locked'}</strong>
+          <small>{planLimits.extendedDesignOptions ? 'Extended design options unlocked' : 'Extended design options locked to Pro+'}</small>
+        </div>
+      </div>
+
       <div className="adminUsersInviteBar">
         <label>
           <span>
@@ -195,9 +245,14 @@ export default function AdminUserManagementPanel() {
           />
         </label>
 
-        <button className="primaryBtn adminUsersInviteButton" type="button" onClick={handleInvite} disabled={savingInvite}>
+        <button
+          className="primaryBtn adminUsersInviteButton"
+          type="button"
+          onClick={handleInvite}
+          disabled={savingInvite || inviteLocked}
+        >
           <FiUserPlus />
-          {savingInvite ? 'Inviting...' : 'Invite user'}
+          {savingInvite ? 'Inviting...' : inviteLocked ? 'Member limit reached' : 'Invite user'}
         </button>
       </div>
 

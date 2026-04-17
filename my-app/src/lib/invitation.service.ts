@@ -16,6 +16,20 @@ import {
 
 import { db } from "@/lib/firebase";
 import { BusinessInvitation, UserRole } from "@/types/database";
+import { getPlanLimits, type SubscriptionPlan } from "@/lib/subscription";
+
+async function getBusinessTeamState(businessId: string) {
+  const businessSnap = await getDoc(doc(db, `businesses/${businessId}`));
+  const businessPlan = (businessSnap.exists()
+    ? businessSnap.data()?.chatWidgetConfig?.plan || 'free'
+    : 'free') as SubscriptionPlan;
+  const usersSnap = await getDocs(collection(db, `businesses/${businessId}/users`));
+
+  return {
+    plan: businessPlan,
+    memberCount: usersSnap.size,
+  };
+}
 
 // ----------------------
 // CREATE INVITE
@@ -27,6 +41,16 @@ export async function createInvitation(
   createdBy: string
 ) {
   try {
+    const teamState = await getBusinessTeamState(businessId);
+    const limits = getPlanLimits(teamState.plan);
+
+    if (limits.maxTeamMembers !== null && teamState.memberCount >= limits.maxTeamMembers) {
+      return {
+        success: false,
+        message: `Team limit reached for ${limits.maxTeamMembers} members on this plan.`,
+      };
+    }
+
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
@@ -90,6 +114,12 @@ export async function acceptInvitation(
     }
 
     const userData = pendingSnap.data();
+    const teamState = await getBusinessTeamState(businessId);
+    const limits = getPlanLimits(teamState.plan);
+
+    if (limits.maxTeamMembers !== null && teamState.memberCount >= limits.maxTeamMembers) {
+      return { success: false, message: "Team limit reached for this subscription" };
+    }
 
     await setDoc(
       doc(db, `businesses/${businessId}/users/${userId}`),

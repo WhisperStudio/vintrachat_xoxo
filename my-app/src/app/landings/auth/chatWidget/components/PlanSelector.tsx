@@ -24,9 +24,10 @@ interface PlanSelectorProps {
 
 const planFeatures: Record<Plan, PlanFeature[]> = {
   free: [
-    { label: '100 conversations/month', status: 'included' },
+    { label: '200 conversations/day', status: 'included' },
     { label: '1 team member', status: 'included' },
-    { label: 'Basic AI responses', status: 'included' },
+    { label: 'AI up to 200/day', status: 'included' },
+    { label: 'Orb chat button', status: 'excluded' },
     { label: 'Remove branding', status: 'excluded' },
     { label: 'Email support', status: 'excluded' },
     { label: 'Extended design options', status: 'excluded' },
@@ -34,7 +35,8 @@ const planFeatures: Record<Plan, PlanFeature[]> = {
   pro: [
     { label: 'Unlimited conversations', status: 'highlight' },
     { label: '5 team members', status: 'included' },
-    { label: 'Advanced AI responses', status: 'included' },
+    { label: 'Unlimited AI conversations', status: 'included' },
+    { label: 'Orb chat button', status: 'included' },
     { label: 'Remove branding', status: 'included' },
     { label: 'Email support', status: 'included' },
     { label: 'Extended design options', status: 'included' },
@@ -42,6 +44,7 @@ const planFeatures: Record<Plan, PlanFeature[]> = {
   business: [
     { label: 'Everything in Pro', status: 'included' },
     { label: 'Unlimited team members', status: 'highlight' },
+    { label: 'Orb chat button', status: 'included' },
     { label: 'API access', status: 'included' },
     { label: 'SLA guarantee', status: 'included' },
   ],
@@ -79,13 +82,15 @@ export default function PlanSelector({
             <input type="radio" name="plan" checked={plan === value} onChange={() => onPlanChange(value)} />
 
             <div className="option-main">
-              <span className="option-title">{title}</span>
-              <span className="option-price">
+               <span className="option-price">
+                <span className="option-title">{title}</span>
                 {value === 'free' && <MdMoneyOff className="money-icon" />}
                 {value === 'pro' && <><MdAttachMoney className="money-icon" /><MdAttachMoney className="money-icon" /></>}
                 {value === 'business' && <><MdAttachMoney className="money-icon" /><MdAttachMoney className="money-icon" /><MdAttachMoney className="money-icon" /></>}
+              
+             </span>
                 <span className="price-text">{price}</span>
-              </span>
+              
               <span className="option-desc">{desc}</span>
             </div>
 

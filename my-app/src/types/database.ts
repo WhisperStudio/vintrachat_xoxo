@@ -36,9 +36,22 @@ export interface ChatAnalytics {
   aiOnlySessions: number;
   supportRequests: number;
   savedSupportChats: number;
+  dailyConversationCounts?: Record<string, number>;
   countryCounts?: Record<string, number>;
   timeline?: ChatAnalyticsEvent[];
   lastChatAt?: Date;
+}
+
+export type BubbleIconChoice = 'chat' | 'phone' | 'cpu' | 'message' | 'support' | 'orb';
+export interface OrbStyleConfig {
+  hoverEnabled: boolean;
+  hoverGlyph: string;
+  replyEnabled: boolean;
+  replyGlyphs: string;
+  inactiveEnabled: boolean;
+  inactiveGlyphs: string;
+  inactivityMinMinutes: number;
+  inactivityMaxMinutes: number;
 }
 
 export interface ChatAnalyticsEvent {
@@ -139,11 +152,12 @@ export interface ChatWidgetConfig {
   // Design options (affects shapes, shadows, borders, elements)
   bubbleStyle: {
     showStatus: boolean;
-    iconChoice: 'chat' | 'phone' | 'cpu' | 'message' | 'support';
+    iconChoice: BubbleIconChoice;
     borderType: 'none' | 'solid' | 'rounded' | 'shadow';
     shadowType: 'none' | 'light' | 'medium' | 'heavy';
     animationType: 'none' | 'bounce' | 'fade' | 'slide';
     sizeType: 'small' | 'medium' | 'large';
+    orbStyle?: OrbStyleConfig;
   };
   
   headerStyle: {

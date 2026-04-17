@@ -5,6 +5,8 @@ import { FiCheck, FiCreditCard, FiRefreshCw, FiSave, FiSliders } from 'react-ico
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { updateChatWidgetConfig } from '@/lib/auth.service'
+import { sanitizeBubbleStyleForPlan } from '@/lib/subscription'
+import type { BubbleIconChoice, OrbStyleConfig } from '@/types/database'
 import './ChatWidget.css'
 
 import PlanSelector from './components/PlanSelector'
@@ -17,6 +19,17 @@ type BillingCycle = 'monthly' | 'yearly'
 type ColorTheme = 'modern' | 'chilling' | 'corporate' | 'luxury'
 type Position = 'bottom-right' | 'bottom-left'
 
+const defaultOrbStyle: OrbStyleConfig = {
+  hoverEnabled: true,
+  hoverGlyph: 'A',
+  replyEnabled: false,
+  replyGlyphs: '',
+  inactiveEnabled: false,
+  inactiveGlyphs: '',
+  inactivityMinMinutes: 2,
+  inactivityMaxMinutes: 4,
+}
+
 type InputsState = {
   plan: Plan
   billingCycle: BillingCycle
@@ -24,11 +37,12 @@ type InputsState = {
   position: Position
   bubbleStyle: {
     showStatus: boolean
-    iconChoice: 'chat' | 'phone' | 'cpu' | 'message' | 'support'
+    iconChoice: BubbleIconChoice
     borderType: 'none' | 'solid' | 'rounded' | 'shadow'
     shadowType: 'none' | 'light' | 'medium' | 'heavy'
     animationType: 'none' | 'bounce' | 'fade' | 'slide'
     sizeType: 'small' | 'medium' | 'large'
+    orbStyle?: OrbStyleConfig
   }
   headerStyle: {
     showStatus: boolean
@@ -75,6 +89,7 @@ const defaultInputs: InputsState = {
     shadowType: 'medium',
     animationType: 'bounce',
     sizeType: 'medium',
+    orbStyle: defaultOrbStyle,
   },
   headerStyle: {
     showStatus: true,
@@ -147,13 +162,21 @@ export default function ChatWidgetBuilderPage() {
     if (!isAuthenticated || !business?.chatWidgetConfig || hasLoadedDbConfig) return
 
     const config = business.chatWidgetConfig
+    const bubbleStyle = config.bubbleStyle || defaultInputs.bubbleStyle
 
     setInputs({
       plan: config.plan || defaultInputs.plan,
       billingCycle: config.billingCycle || defaultInputs.billingCycle,
       colorTheme: config.colorTheme || defaultInputs.colorTheme,
       position: config.position || defaultInputs.position,
-      bubbleStyle: config.bubbleStyle || defaultInputs.bubbleStyle,
+      bubbleStyle: {
+        ...defaultInputs.bubbleStyle,
+        ...bubbleStyle,
+        orbStyle: {
+          ...defaultOrbStyle,
+          ...(bubbleStyle.orbStyle || {}),
+        },
+      },
       headerStyle: config.headerStyle || defaultInputs.headerStyle,
       bodyStyle: config.bodyStyle || defaultInputs.bodyStyle,
       footerStyle: config.footerStyle || defaultInputs.footerStyle,
@@ -163,6 +186,16 @@ export default function ChatWidgetBuilderPage() {
 
     setHasLoadedDbConfig(true)
   }, [isAuthenticated, business, hasLoadedDbConfig])
+
+  useEffect(() => {
+    if (inputs.plan !== 'free') return
+    if (inputs.bubbleStyle.iconChoice !== 'orb') return
+
+    setInputs((prev) => ({
+      ...prev,
+      bubbleStyle: sanitizeBubbleStyleForPlan(prev.bubbleStyle, prev.plan),
+    }))
+  }, [inputs.plan, inputs.bubbleStyle.iconChoice])
 
   const updateInput = <K extends keyof InputsState>(key: K, value: InputsState[K]) => {
     setInputs((prev) => ({ ...prev, [key]: value }))
@@ -207,7 +240,7 @@ export default function ChatWidgetBuilderPage() {
         billingCycle: inputs.billingCycle,
         colorTheme: inputs.colorTheme,
         position: inputs.position,
-        bubbleStyle: inputs.bubbleStyle,
+        bubbleStyle: sanitizeBubbleStyleForPlan(inputs.bubbleStyle, inputs.plan),
         headerStyle: inputs.headerStyle,
         bodyStyle: inputs.bodyStyle,
         footerStyle: inputs.footerStyle,
@@ -343,6 +376,7 @@ export default function ChatWidgetBuilderPage() {
 
             <StyleSelector
               bubbleStyle={inputs.bubbleStyle}
+              plan={inputs.plan}
               headerStyle={inputs.headerStyle}
               bodyStyle={inputs.bodyStyle}
               footerStyle={inputs.footerStyle}

@@ -262,6 +262,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         errorMessage={error}
         statusText={configResponse?.assistantEnabled ? 'AI live' : 'AI off'}
         disableInput={isSending}
+        bubbleActivityState={isSending ? 'replying' : 'idle'}
       />
     </div>
   )

@@ -351,8 +351,8 @@ const widgetStyles = `
 
 .widget-icon {
   position: relative;
-  width: 58px;
-  height: 58px;
+  width: calc(58px * var(--widget-scale));
+  height: calc(58px * var(--widget-scale));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -371,9 +371,88 @@ const widgetStyles = `
   transform: scale(1.06);
 }
 
+.widget-icon--orb {
+  background: #000;
+  border: none;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.widget-icon--orb:hover {
+  transform: scale(1.03);
+  box-shadow: none;
+}
+
+.widget-orb-avatar {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 28%, rgba(255, 255, 255, 0.95), transparent 28%),
+    radial-gradient(circle at 40% 42%, rgba(219, 234, 254, 0.92), rgba(139, 92, 246, 0.82) 62%, rgba(76, 29, 149, 0.98) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 10px 20px rgba(124, 58, 237, 0.18);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.widget-icon--orb-idle .widget-orb-overlay {
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.2));
+}
+
+.widget-icon--orb-replying .widget-orb-overlay {
+  animation: orbOverlaySpin 1.15s linear infinite;
+}
+
+.widget-icon--orb-replying.widget-icon--orb .widget-orb-avatar {
+  animation: orbPulse 1.15s ease-in-out infinite;
+}
+
+.widget-icon--orb-mode-color-shift.widget-icon--orb .widget-orb-avatar {
+  animation: orbColorShift 1.15s ease-in-out infinite;
+}
+
+.widget-icon--orb-mode-spin.widget-icon--orb .widget-orb-avatar {
+  animation: orbSpin 1.15s linear infinite;
+}
+
+.widget-icon--orb-mode-pulse.widget-icon--orb .widget-orb-avatar {
+  animation: orbPulse 1.15s ease-in-out infinite;
+}
+
+.widget-icon--orb-replying.widget-icon--orb {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 0 24px rgba(124, 58, 237, 0.2),
+    0 0 42px rgba(59, 130, 246, 0.12);
+}
+
+.widget-orb-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 2;
+  color: rgba(255, 255, 255, 0.96);
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.32);
+  pointer-events: none;
+}
+
+.widget-orb-overlay--glyph {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.widget-orb-overlay--icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
 .widget-icon svg {
-  width: 28px;
-  height: 28px;
+  width: calc(28px * var(--widget-scale));
+  height: calc(28px * var(--widget-scale));
   display: block;
 }
 
@@ -386,6 +465,47 @@ const widgetStyles = `
   border: 2px solid #fff;
   border-radius: 50%;
   background: #10b981;
+}
+
+@keyframes orbOverlaySpin {
+  from {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.04);
+  }
+  to {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes orbPulse {
+  0%,
+  100% {
+    filter: saturate(1) brightness(1);
+  }
+  50% {
+    filter: saturate(1.15) brightness(1.1);
+  }
+}
+
+@keyframes orbColorShift {
+  0%,
+  100% {
+    filter: hue-rotate(0deg) saturate(1.02) brightness(1);
+  }
+  50% {
+    filter: hue-rotate(30deg) saturate(1.2) brightness(1.12);
+  }
+}
+
+@keyframes orbSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .border-none {
@@ -755,7 +875,13 @@ export async function GET(
     pendingHumanSupportText: '',
     countryCode: '',
     hasOpenedOnce: FORCE_OPEN,
-    hasUnreadWhileClosed: false
+    hasUnreadWhileClosed: false,
+    hovered: false,
+    orbInactiveActive: false,
+    orbCycleTick: 0,
+    orbTicker: null,
+    orbInactivityTimer: null,
+    orbInactiveHoldTimer: null
   };
 
   var icons = {
@@ -764,6 +890,7 @@ export async function GET(
     support: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 10a6 6 0 1 0-12 0v4a2 2 0 0 0 2 2h1v-5H6"></path><path d="M18 10v6a4 4 0 0 1-4 4h-2"></path><path d="M15 16h1a2 2 0 0 0 2-2v-4"></path></svg>',
     phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.89.34 1.77.67 2.61a2 2 0 0 1-.45 2.11L8 9.91a16 16 0 0 0 6.09 6.09l1.47-1.33a2 2 0 0 1 2.11-.45c.84.33 1.72.55 2.61.67A2 2 0 0 1 22 16.92Z"></path></svg>',
     cpu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"></rect><rect x="9" y="9" width="6" height="6"></rect><path d="M9 1v3"></path><path d="M15 1v3"></path><path d="M9 20v3"></path><path d="M15 20v3"></path><path d="M20 9h3"></path><path d="M20 14h3"></path><path d="M1 9h3"></path><path d="M1 14h3"></path></svg>',
+    orb: '<svg viewBox="0 0 24 24" aria-hidden="true"><defs><radialGradient id="orbGlow" cx="32%" cy="28%" r="72%"><stop offset="0%" stop-color="#ffffff"/><stop offset="38%" stop-color="#dbeafe"/><stop offset="74%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#4c1d95"/></radialGradient><radialGradient id="orbHighlight" cx="28%" cy="24%" r="58%"><stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/><stop offset="100%" stop-color="#ffffff" stop-opacity="0"/></radialGradient></defs><circle cx="12" cy="12" r="9" fill="url(#orbGlow)"/><circle cx="12" cy="12" r="6.8" fill="url(#orbHighlight)" opacity="0.7"/><path d="M11 7.3c-1.7.3-3 1.7-3 3.4" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="1.6" opacity=".92"/></svg>',
     send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg>',
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>'
   };
@@ -775,6 +902,116 @@ export async function GET(
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function getOrbStyle(config) {
+    return (config && config.bubbleStyle && config.bubbleStyle.orbStyle) || {
+      hoverEnabled: true,
+      hoverGlyph: 'A',
+      replyEnabled: false,
+      replyGlyphs: '',
+      inactiveEnabled: false,
+      inactiveGlyphs: '',
+      inactivityMinMinutes: 2,
+      inactivityMaxMinutes: 4
+    };
+  }
+
+  function normalizeGlyphList(value, maxLength) {
+    return String(value || '')
+      .split('')
+      .map(function (char) { return char.toUpperCase(); })
+      .filter(Boolean)
+      .slice(0, maxLength);
+  }
+
+  function getOrbPhase(orbStyle) {
+    if (state.hovered && orbStyle.hoverEnabled) return 'hover';
+    if (state.sending && orbStyle.replyEnabled) return 'reply';
+    if (state.orbInactiveActive && orbStyle.inactiveEnabled) return 'inactive';
+    return 'none';
+  }
+
+  function getOrbGlyphList(orbStyle, phase) {
+    if (phase === 'hover') {
+      return orbStyle.hoverEnabled ? normalizeGlyphList(orbStyle.hoverGlyph, 1) : [];
+    }
+    if (phase === 'reply') {
+      return orbStyle.replyEnabled ? normalizeGlyphList(orbStyle.replyGlyphs, 3) : [];
+    }
+    if (phase === 'inactive') {
+      return orbStyle.inactiveEnabled ? normalizeGlyphList(orbStyle.inactiveGlyphs, 5) : [];
+    }
+    return [];
+  }
+
+  function syncOrbTicker(orbStyle, phase, glyphList) {
+    if (state.orbTicker) {
+      clearInterval(state.orbTicker);
+      state.orbTicker = null;
+    }
+
+    if (phase === 'hover' || glyphList.length <= 1) {
+      state.orbCycleTick = 0;
+      return;
+    }
+
+    state.orbTicker = setInterval(function () {
+      state.orbCycleTick += 1;
+      render();
+    }, 650);
+  }
+
+  function clearOrbInactivityTimers() {
+    if (state.orbInactivityTimer) {
+      clearTimeout(state.orbInactivityTimer);
+      state.orbInactivityTimer = null;
+    }
+    if (state.orbInactiveHoldTimer) {
+      clearTimeout(state.orbInactiveHoldTimer);
+      state.orbInactiveHoldTimer = null;
+    }
+  }
+
+  function markOrbActivity() {
+    state.orbInactiveActive = false;
+    clearOrbInactivityTimers();
+  }
+
+  function normalizeOrbInactivityWindow(orbStyle) {
+    var minMinutes = Math.max(1, Number(orbStyle && orbStyle.inactivityMinMinutes) || 2);
+    var maxMinutes = Math.max(minMinutes, Number(orbStyle && orbStyle.inactivityMaxMinutes) || 4);
+    return {
+      minMs: minMinutes * 60000,
+      maxMs: maxMinutes * 60000
+    };
+  }
+
+  function syncOrbInactivity(orbStyle, phase) {
+    clearOrbInactivityTimers();
+
+    if (!orbStyle || !orbStyle.inactiveEnabled || phase === 'hover' || phase === 'reply') {
+      state.orbInactiveActive = false;
+      return;
+    }
+
+    if (state.orbInactiveActive) {
+      state.orbInactiveHoldTimer = setTimeout(function () {
+        state.orbInactiveActive = false;
+        render();
+      }, 20000);
+      return;
+    }
+
+    var windowMs = normalizeOrbInactivityWindow(orbStyle);
+    var delayMs = windowMs.minMs >= windowMs.maxMs
+      ? windowMs.minMs
+      : Math.floor(windowMs.minMs + Math.random() * (windowMs.maxMs - windowMs.minMs));
+
+    state.orbInactivityTimer = setTimeout(function () {
+      state.orbInactiveActive = true;
+      render();
+    }, delayMs);
   }
 
   function formatTime(value) {
@@ -1004,6 +1241,7 @@ export async function GET(
     var theme = getThemeName(config);
     var position = getPosition(config);
     var iconChoice = bubbleStyle.iconChoice || 'chat';
+    var orbStyle = getOrbStyle(config);
     var bubbleIcon = icons[iconChoice] || icons.chat;
     var shouldAnimateBubble =
       bubbleStyle.animationType &&
@@ -1012,6 +1250,12 @@ export async function GET(
     var headerAvatar = getLogo(config)
       ? '<img src="' + escapeHtml(getLogo(config)) + '" alt="logo" />'
       : icons.message;
+    var orbPhase = iconChoice === 'orb' ? getOrbPhase(orbStyle) : 'none';
+    var orbGlyphList = iconChoice === 'orb' ? getOrbGlyphList(orbStyle, orbPhase) : [];
+    var orbGlyph = orbGlyphList.length ? orbGlyphList[state.orbCycleTick % orbGlyphList.length] : '';
+
+    syncOrbTicker(orbStyle, orbPhase, orbGlyphList);
+    syncOrbInactivity(orbStyle, orbPhase);
 
     mount.className = 'vintra-root position-' + position;
     var shouldShowWidget = state.configLoaded && state.open;
@@ -1070,9 +1314,14 @@ export async function GET(
           'border-' + (bubbleStyle.borderType || 'none'),
           'shadow-' + (bubbleStyle.shadowType || 'none'),
           shouldAnimateBubble ? 'animation-' + bubbleStyle.animationType : 'animation-none',
-          'size-' + (bubbleStyle.sizeType || 'medium')
+          'size-' + (bubbleStyle.sizeType || 'medium'),
+          iconChoice === 'orb' ? 'widget-icon--orb' : '',
+          iconChoice === 'orb' && orbPhase === 'hover' ? 'widget-icon--orb-hover' : '',
+          iconChoice === 'orb' && orbPhase === 'reply' ? 'widget-icon--orb-replying' : '',
+          iconChoice === 'orb' && orbPhase === 'inactive' ? 'widget-icon--orb-idle' : ''
         ]) + '" aria-label="Open chat">' +
-          bubbleIcon +
+          (iconChoice === 'orb' ? '<span class="widget-orb-avatar"></span>' : '') +
+          (iconChoice === 'orb' && orbGlyph ? '<span class="widget-orb-overlay widget-orb-overlay--glyph widget-orb-overlay--' + orbPhase + '">' + escapeHtml(orbGlyph) + '</span>' : bubbleIcon) +
           (bubbleStyle.showStatus ? '<span class="status-dot"></span>' : '') +
         '</button>' +
       '</div>';
@@ -1088,6 +1337,16 @@ export async function GET(
     }
 
     if (bubbleButton) {
+      bubbleButton.addEventListener('mouseenter', function () {
+        state.hovered = true;
+        render();
+      });
+
+      bubbleButton.addEventListener('mouseleave', function () {
+        state.hovered = false;
+        render();
+      });
+
       bubbleButton.addEventListener('click', function () {
         state.open = !state.open;
         if (state.open) {
@@ -1108,6 +1367,7 @@ export async function GET(
     if (input) {
       input.addEventListener('input', function (event) {
         state.inputValue = event.target.value;
+        markOrbActivity();
       });
 
       input.addEventListener('keydown', function (event) {
@@ -1120,6 +1380,7 @@ export async function GET(
 
     if (sendButton) {
       sendButton.addEventListener('click', function () {
+        markOrbActivity();
         sendMessage();
       });
     }
@@ -1171,6 +1432,8 @@ export async function GET(
   async function sendMessage() {
     var text = String(state.inputValue || '').trim();
     if (!text || state.sending) return;
+
+    markOrbActivity();
 
     if (state.awaitingVisitorName) {
       state.sending = true;

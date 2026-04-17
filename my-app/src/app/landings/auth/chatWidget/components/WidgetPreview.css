@@ -186,8 +186,8 @@
   position: absolute;
   right: 0rem;
   bottom: 0rem;
-  width: 58px;
-  height: 58px;
+  width: calc(58px * var(--widget-scale));
+  height: calc(58px * var(--widget-scale));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -195,7 +195,7 @@
   border-radius: 50%;
   background: linear-gradient(135deg, #3b82f6, #7c3aed);
   color: #fff;
-  font-size: 2rem;
+  font-size: calc(2rem * var(--widget-scale));
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -203,6 +203,124 @@
 .widget-icon:hover {
   transform: scale(1.08);
   box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+}
+
+.widget-icon--orb {
+  background: #000;
+  border: none;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.widget-icon--orb:hover {
+  transform: scale(1.03);
+  box-shadow: none;
+}
+
+.widget-orb-avatar {
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.widget-orb-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 2;
+  color: rgba(255, 255, 255, 0.96);
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.32);
+  pointer-events: none;
+}
+
+.widget-orb-overlay--glyph {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.widget-orb-overlay--icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.widget-icon--orb-idle .widget-orb-overlay {
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.2));
+}
+
+.widget-icon--orb-replying .widget-orb-overlay {
+  animation: orbOverlaySpin 1.15s linear infinite;
+}
+
+.widget-icon--orb-replying.widget-icon--orb .widget-orb-avatar {
+  animation: orbPulse 1.15s ease-in-out infinite;
+}
+
+.widget-icon--orb-mode-color-shift.widget-icon--orb .widget-orb-avatar {
+  animation: orbColorShift 1.15s ease-in-out infinite;
+}
+
+.widget-icon--orb-mode-spin.widget-icon--orb .widget-orb-avatar {
+  animation: orbSpin 1.15s linear infinite;
+}
+
+.widget-icon--orb-mode-pulse.widget-icon--orb .widget-orb-avatar {
+  animation: orbPulse 1.15s ease-in-out infinite;
+}
+
+.widget-icon--orb-replying.widget-icon--orb {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 0 24px rgba(124, 58, 237, 0.2),
+    0 0 42px rgba(59, 130, 246, 0.12);
+}
+
+@keyframes orbOverlaySpin {
+  from {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.04);
+  }
+  to {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes orbPulse {
+  0%,
+  100% {
+    filter: saturate(1) brightness(1);
+  }
+  50% {
+    filter: saturate(1.15) brightness(1.1);
+  }
+}
+
+@keyframes orbColorShift {
+  0%,
+  100% {
+    filter: hue-rotate(0deg) saturate(1.02) brightness(1);
+  }
+  50% {
+    filter: hue-rotate(30deg) saturate(1.2) brightness(1.12);
+  }
+}
+
+@keyframes orbSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.widget-icon--orb .status-dot {
+  z-index: 2;
 }
 
 .close-btn {
@@ -615,6 +733,14 @@
 .theme-luxury .widget-icon {
   background-color: var(--chat-primary);
   color: #fff;
+}
+
+.theme-modern .widget-icon--orb,
+.theme-chilling .widget-icon--orb,
+.theme-corporate .widget-icon--orb,
+.theme-luxury .widget-icon--orb {
+  background: transparent;
+  color: inherit;
 }
 
 /* ========= ANIMATIONS ========= */

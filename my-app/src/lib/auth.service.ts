@@ -34,6 +34,10 @@ import {
   ChatAnalyticsEvent,
   SupportTaskCategory,
 } from "@/types/database";
+import {
+  sanitizeBubbleStyleForPlan,
+  type SubscriptionPlan,
+} from "@/lib/subscription";
 
 // ----------------------
 // Google Auth
@@ -272,6 +276,16 @@ const defaultWidgetConfig: ChatWidgetConfig = {
     shadowType: "medium",
     animationType: "fade",
     sizeType: "medium",
+    orbStyle: {
+      hoverEnabled: true,
+      hoverGlyph: 'A',
+      replyEnabled: false,
+      replyGlyphs: '',
+      inactiveEnabled: false,
+      inactiveGlyphs: '',
+      inactivityMinMinutes: 2,
+      inactivityMaxMinutes: 4,
+    },
   },
   headerStyle: {
     showStatus: true,
@@ -335,6 +349,7 @@ const defaultChatAnalytics: ChatAnalytics = {
   aiOnlySessions: 0,
   supportRequests: 0,
   savedSupportChats: 0,
+  dailyConversationCounts: {},
   countryCounts: {},
   timeline: [],
 };
@@ -553,6 +568,7 @@ export async function getBusinessInfo(
       chatAnalytics: data.chatAnalytics
         ? {
             ...data.chatAnalytics,
+            dailyConversationCounts: data.chatAnalytics.dailyConversationCounts || {},
             countryCounts: data.chatAnalytics.countryCounts || {},
             timeline: Array.isArray(data.chatAnalytics.timeline)
               ? data.chatAnalytics.timeline.map((event: any) => ({
@@ -590,9 +606,16 @@ export async function updateChatWidgetConfig(
 ) {
   try {
     const businessRef = doc(db, "businesses", businessId);
+    const plan = (config?.plan || 'free') as SubscriptionPlan;
+    const nextConfig: Partial<ChatWidgetConfig> = {
+      ...config,
+      bubbleStyle: config?.bubbleStyle
+        ? sanitizeBubbleStyleForPlan(config.bubbleStyle, plan)
+        : config?.bubbleStyle,
+    };
     
     await updateDoc(businessRef, {
-      "chatWidgetConfig": config,
+      "chatWidgetConfig": nextConfig,
       updatedAt: serverTimestamp(),
     });
     

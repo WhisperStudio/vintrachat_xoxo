@@ -11,7 +11,7 @@ interface PricingPanelProps {
   plan: 'free' | 'pro' | 'business'
   bubbleStyle: {
     showStatus: boolean
-    iconChoice: 'chat' | 'phone' | 'cpu' | 'message' | 'support'
+    iconChoice: 'chat' | 'phone' | 'cpu' | 'message' | 'support' | 'orb'
     borderType: 'none' | 'solid' | 'rounded' | 'shadow'
     shadowType: 'none' | 'light' | 'medium' | 'heavy'
     animationType: 'none' | 'bounce' | 'fade' | 'slide'

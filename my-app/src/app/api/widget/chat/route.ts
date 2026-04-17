@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/firebase-admin'
 import { getBusinessByWidgetKey } from '@/lib/widget.server'
+import { getDailyConversationCount, getPlanLimits, getTodayUsageKey } from '@/lib/subscription'
 
 function corsHeaders(origin?: string | null) {
   return {
@@ -276,6 +277,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Widget not found' }, { status: 404, headers })
     }
 
+    const plan = business.chatWidgetConfig.plan || 'free'
+    const planLimits = getPlanLimits(plan)
+    const todayKey = getTodayUsageKey()
+    const currentDailyConversationCount = getDailyConversationCount(business.chatAnalytics, new Date())
+    const isNewConversation = !body.sessionId
+
+    if (
+      plan === 'free' &&
+      isNewConversation &&
+      planLimits.maxDailyConversations !== null &&
+      currentDailyConversationCount >= planLimits.maxDailyConversations
+    ) {
+      return NextResponse.json(
+        { error: 'The Limit for todays usages is met' },
+        { status: 429, headers }
+      )
+    }
+
     const assistantConfig = business.chatAssistantConfig || {
       enabled: true,
       provider: 'gemini' as const,
@@ -471,9 +490,10 @@ export async function POST(req: NextRequest) {
       'chatAnalytics.timeline': FieldValue.arrayUnion(...analyticsTimelineEvents),
     }
 
-    if (!body.sessionId) {
+    if (isNewConversation) {
       analyticsUpdates['chatAnalytics.totalSessions'] = FieldValue.increment(1)
       analyticsUpdates['chatAnalytics.aiOnlySessions'] = FieldValue.increment(1)
+      analyticsUpdates[`chatAnalytics.dailyConversationCounts.${todayKey}`] = FieldValue.increment(1)
     }
 
     if (needsHumanSupport && !requiresName) {

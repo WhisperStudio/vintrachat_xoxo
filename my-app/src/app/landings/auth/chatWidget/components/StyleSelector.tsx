@@ -9,6 +9,7 @@ import {
   FiImage,
   FiLayout,
   FiMapPin,
+  FiLock,
   FiMessageCircle,
   FiMessageSquare,
   FiPhone,
@@ -16,9 +17,11 @@ import {
   FiSliders,
   FiLifeBuoy,
 } from 'react-icons/fi'
+import type { BubbleIconChoice, OrbStyleConfig } from '@/types/database'
 import './StyleSelector.css'
 
 type ColorTheme = 'modern' | 'chilling' | 'corporate' | 'luxury'
+type Plan = 'free' | 'pro' | 'business'
 type Position = 'bottom-right' | 'bottom-left' 
 type BorderType = 'none' | 'solid' | 'rounded' | 'shadow'
 type ShadowType = 'none' | 'light' | 'medium' | 'heavy'
@@ -37,11 +40,12 @@ type GlassRadioOption<T extends string> = {
 interface StyleSelectorProps {
   bubbleStyle: {
     showStatus: boolean
-    iconChoice: 'chat' | 'phone' | 'cpu' | 'message' | 'support'
+    iconChoice: BubbleIconChoice
     borderType: BorderType
     shadowType: ShadowType
     animationType: AnimationType
     sizeType: SizeType
+    orbStyle?: OrbStyleConfig
   }
   headerStyle: {
     showStatus: boolean
@@ -70,6 +74,7 @@ interface StyleSelectorProps {
   onBodyStyleChange: (style: StyleSelectorProps['bodyStyle']) => void
   onFooterStyleChange: (style: StyleSelectorProps['footerStyle']) => void
   colorTheme: ColorTheme
+  plan: Plan
   position: Position
   customBranding: {
     title?: string
@@ -110,12 +115,19 @@ const iconChoices: Array<{
   value: StyleSelectorProps['bubbleStyle']['iconChoice']
   label: string
   icon: ReactNode
+  minPlan?: Exclude<Plan, 'free'>
 }> = [
   { value: 'chat', label: 'Chat', icon: <FiMessageCircle /> },
   { value: 'phone', label: 'Phone', icon: <FiPhone /> },
   { value: 'cpu', label: 'Robot', icon: <FiCpu /> },
   { value: 'message', label: 'Message', icon: <FiMessageSquare /> },
   { value: 'support', label: 'Support', icon: <FiLifeBuoy /> },
+  {
+    value: 'orb',
+    label: 'Orb',
+    icon: <span className="iconChoiceOrbPreview" aria-hidden="true" />,
+    minPlan: 'pro',
+  },
 ]
 
 function OptionDesc({ children }: { children: ReactNode }) {
@@ -261,6 +273,7 @@ export default function StyleSelector({
   onBodyStyleChange,
   onFooterStyleChange,
   colorTheme,
+  plan,
   position,
   customBranding,
   settings,
@@ -282,6 +295,33 @@ export default function StyleSelector({
   } | null>(null)
 
   const activeIconChoice = useMemo(() => bubbleStyle.iconChoice, [bubbleStyle.iconChoice])
+  const orbStyle = bubbleStyle.orbStyle || {
+    hoverEnabled: true,
+    hoverGlyph: 'A',
+    replyEnabled: false,
+    replyGlyphs: '',
+    inactiveEnabled: false,
+    inactiveGlyphs: '',
+    inactivityMinMinutes: 2,
+    inactivityMaxMinutes: 4,
+  }
+
+  const inactivityMinMinutes = Number.isFinite(orbStyle.inactivityMinMinutes)
+    ? orbStyle.inactivityMinMinutes
+    : 2
+  const inactivityMaxMinutes = Number.isFinite(orbStyle.inactivityMaxMinutes)
+    ? orbStyle.inactivityMaxMinutes
+    : 4
+
+  const updateOrbStyle = (patch: Partial<OrbStyleConfig>) => {
+    onBubbleStyleChange({
+      ...bubbleStyle,
+      orbStyle: {
+        ...orbStyle,
+        ...patch,
+      },
+    })
+  }
 
   const handleToggleCardKeyDown = (
     event: ReactKeyboardEvent<HTMLDivElement>,
@@ -376,7 +416,8 @@ export default function StyleSelector({
                 />
               ) : null}
               {iconChoices.map((choice) => {
-                const active = bubbleStyle.iconChoice === choice.value
+                const locked = choice.minPlan === 'pro' && plan === 'free'
+                const active = bubbleStyle.iconChoice === choice.value && !locked
                 return (
                   <button
                     key={choice.value}
@@ -384,15 +425,24 @@ export default function StyleSelector({
                       iconChoiceButtonRefs.current[choice.value] = node
                     }}
                     type="button"
-                    className={`iconChoiceButton ${active ? 'active' : ''}`}
+                    className={`iconChoiceButton ${active ? 'active' : ''} ${locked ? 'locked' : ''}`}
                     role="radio"
                     aria-checked={active}
+                    disabled={locked}
+                    aria-disabled={locked}
+                    title={locked ? 'Available on Pro and Enterprise plans' : undefined}
                     onClick={() =>
-                      onBubbleStyleChange({ ...bubbleStyle, iconChoice: choice.value })
+                      !locked && onBubbleStyleChange({ ...bubbleStyle, iconChoice: choice.value })
                     }
                   >
                     <span className="iconChoiceIcon">{choice.icon}</span>
                     <span>{choice.label}</span>
+                    {locked && (
+                      <span className="iconChoiceLock">
+                        <FiLock />
+                        Pro
+                      </span>
+                    )}
                   </button>
                 )
               })}
@@ -465,6 +515,118 @@ export default function StyleSelector({
               }
             />
           </div>
+
+          {bubbleStyle.iconChoice === 'orb' && (
+            <div className="option-card option-card--orb option-card--radio">
+              <span className="option-title">Orb behavior</span>
+              <OptionDesc>Set one hover letter, up to three reply letters, and up to five idle letters.</OptionDesc>
+
+              <div className="orbSettingsGrid">
+                <label className="orbField orbField--checkbox">
+                  <span>Show hover symbol</span>
+                  <input
+                    type="checkbox"
+                    checked={orbStyle.hoverEnabled}
+                    onChange={(event) => updateOrbStyle({ hoverEnabled: event.target.checked })}
+                  />
+                </label>
+
+                <label className="orbField">
+                  <span>Hover letter</span>
+                  <input
+                    type="text"
+                    maxLength={1}
+                    value={orbStyle.hoverGlyph}
+                    onChange={(event) =>
+                      updateOrbStyle({ hoverGlyph: event.target.value.slice(0, 1).toUpperCase() })
+                    }
+                    placeholder="A"
+                    disabled={!orbStyle.hoverEnabled}
+                  />
+                </label>
+
+                <label className="orbField orbField--checkbox">
+                  <span>Show reply symbol</span>
+                  <input
+                    type="checkbox"
+                    checked={orbStyle.replyEnabled}
+                    onChange={(event) => updateOrbStyle({ replyEnabled: event.target.checked })}
+                  />
+                </label>
+
+                <label className="orbField">
+                  <span>Reply letters</span>
+                  <input
+                    type="text"
+                    maxLength={3}
+                    value={orbStyle.replyGlyphs}
+                    onChange={(event) =>
+                      updateOrbStyle({ replyGlyphs: event.target.value.slice(0, 3).toUpperCase() })
+                    }
+                    placeholder="ABC"
+                    disabled={!orbStyle.replyEnabled}
+                  />
+                </label>
+
+                <label className="orbField orbField--checkbox">
+                  <span>Show inactive symbol</span>
+                  <input
+                    type="checkbox"
+                    checked={orbStyle.inactiveEnabled}
+                    onChange={(event) => updateOrbStyle({ inactiveEnabled: event.target.checked })}
+                  />
+                </label>
+
+                <label className="orbField">
+                  <span>Inactive letters</span>
+                  <input
+                    type="text"
+                    maxLength={5}
+                    value={orbStyle.inactiveGlyphs}
+                    onChange={(event) =>
+                      updateOrbStyle({ inactiveGlyphs: event.target.value.slice(0, 5).toUpperCase() })
+                    }
+                    placeholder="ABCDE"
+                    disabled={!orbStyle.inactiveEnabled}
+                  />
+                </label>
+
+                <label className="orbField orbField--number">
+                  <span>Inactive min (min)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    step={1}
+                    value={inactivityMinMinutes}
+                    onChange={(event) =>
+                      updateOrbStyle({
+                        inactivityMinMinutes: Math.max(1, Math.min(60, Number(event.target.value) || 1)),
+                      })
+                    }
+                    placeholder="2"
+                  />
+                </label>
+
+                <label className="orbField orbField--number">
+                  <span>Inactive max (min)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    step={1}
+                    value={inactivityMaxMinutes}
+                    onChange={(event) =>
+                      updateOrbStyle({
+                        inactivityMaxMinutes: Math.max(1, Math.min(120, Number(event.target.value) || 1)),
+                      })
+                    }
+                    placeholder="4"
+                  />
+                </label>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
