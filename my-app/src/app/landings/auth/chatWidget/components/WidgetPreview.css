@@ -66,6 +66,30 @@
   will-change: transform, opacity;
 }
 
+.chat-content {
+  position: relative;
+  z-index: 1;
+}
+
+.chat-widget-locked .chat-body,
+.chat-widget-locked .chat-footer {
+  pointer-events: none;
+  user-select: none;
+}
+
+.chat-widget-locked .chat-header,
+.chat-widget-locked .chat-header-actions,
+.chat-widget-locked .close-btn {
+  pointer-events: auto;
+  position: relative;
+  z-index: 3;
+}
+
+.chat-lock-overlay {
+  pointer-events: none;
+  z-index: 2;
+}
+
 .chat-widget.open {
   opacity: 1;
   transform: translateY(-110px) scale(var(--widget-scale));
@@ -220,9 +244,17 @@
 .widget-orb-avatar {
   width: 100%;
   height: 100%;
-  pointer-events: auto;
-  position: relative;
+  display: block;
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
   z-index: 1;
+}
+
+.widget-orb-avatar svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .widget-orb-overlay {
@@ -256,19 +288,19 @@
 }
 
 .widget-icon--orb-replying.widget-icon--orb .widget-orb-avatar {
-  animation: orbPulse 1.15s ease-in-out infinite;
+  transform: scale(0.995);
 }
 
 .widget-icon--orb-mode-color-shift.widget-icon--orb .widget-orb-avatar {
-  animation: orbColorShift 1.15s ease-in-out infinite;
+  transform: scale(1);
 }
 
 .widget-icon--orb-mode-spin.widget-icon--orb .widget-orb-avatar {
-  animation: orbSpin 1.15s linear infinite;
+  transform: scale(1);
 }
 
 .widget-icon--orb-mode-pulse.widget-icon--orb .widget-orb-avatar {
-  animation: orbPulse 1.15s ease-in-out infinite;
+  transform: scale(0.995);
 }
 
 .widget-icon--orb-replying.widget-icon--orb {

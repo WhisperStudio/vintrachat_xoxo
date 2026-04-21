@@ -58,7 +58,7 @@ interface WidgetPreviewProps {
   onInputValueChange?: (value: string) => void
   onSendMessage?: () => void
   openOverride?: boolean
-  onToggleOpen?: () => void
+  onToggleOpen?: (open: boolean) => void
   errorMessage?: string | null
   statusText?: string
   disableInput?: boolean
@@ -98,8 +98,6 @@ export default function WidgetPreview({
   const [internalIsReplying, setInternalIsReplying] = useState(false)
   const [internalIsOrbHovered, setInternalIsOrbHovered] = useState(false)
   const [orbInactiveActive, setOrbInactiveActive] = useState(false)
-  const [orbCycleIndex, setOrbCycleIndex] = useState(0)
-  const [orbPersistentGlyph, setOrbPersistentGlyph] = useState('')
   const [orbActivityNonce, setOrbActivityNonce] = useState(0)
   const orbInactivityTimerRef = useRef<number | null>(null)
   const orbInactiveHoldTimerRef = useRef<number | null>(null)
@@ -118,12 +116,14 @@ export default function WidgetPreview({
   const isReplying = bubbleActivityState === 'replying' || internalIsReplying
 
   const setIsChatOpen = (value: boolean | ((prev: boolean) => boolean)) => {
+    const nextValue = typeof value === 'function' ? value(isChatOpen) : value
+
     if (onToggleOpen) {
-      onToggleOpen()
+      onToggleOpen(nextValue)
       return
     }
 
-    setInternalIsChatOpen(value)
+    setInternalIsChatOpen(nextValue)
   }
 
   const setInputValue = (value: string) => {
@@ -227,64 +227,19 @@ export default function WidgetPreview({
   const orbPhase =
     bubbleStyle.iconChoice !== 'orb'
       ? 'none'
-      : internalIsOrbHovered && orbSettings.hoverEnabled
-        ? 'hover'
-        : isReplying && orbSettings.replyEnabled
+      : isReplying && orbSettings.replyEnabled
           ? 'reply'
           : orbInactiveActive && orbSettings.inactiveEnabled
             ? 'inactive'
+            : internalIsOrbHovered && orbSettings.hoverEnabled
+              ? 'hover'
             : 'spin'
 
-  const orbGlyphs = (() => {
-    if (orbPhase === 'hover') {
-      return orbSettings.hoverEnabled ? [orbSettings.hoverGlyph.slice(0, 1).toUpperCase()] : []
-    }
-
-    if (orbPhase === 'reply') {
-      return orbSettings.replyEnabled
-        ? orbSettings.replyGlyphs
-            .split('')
-            .map((char) => char.toUpperCase())
-            .slice(0, 3)
-        : []
-    }
-
-    if (orbPhase === 'inactive') {
-      return orbSettings.inactiveEnabled
-        ? orbSettings.inactiveGlyphs
-            .split('')
-            .map((char) => char.toUpperCase())
-            .slice(0, 5)
-        : []
-    }
-
-    return []
-  })()
-
-  const orbGlyph = orbGlyphs.length ? orbGlyphs[orbCycleIndex % orbGlyphs.length] : ''
-
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'production' && bubbleStyle.iconChoice === 'orb') {
-      console.debug('[WidgetPreview] orb phase', {
-        orbPhase,
-        hovered: internalIsOrbHovered,
-        replying: isReplying,
-        inactive: orbInactiveActive,
-        glyph: orbGlyph,
-      })
+    if (bubbleStyle.iconChoice !== 'orb' || !orbSettings.hoverEnabled) {
+      setInternalIsOrbHovered(false)
     }
-  }, [bubbleStyle.iconChoice, orbPhase, internalIsOrbHovered, isReplying, orbInactiveActive, orbGlyph])
-
-  useEffect(() => {
-    if (bubbleStyle.iconChoice !== 'orb') {
-      setOrbPersistentGlyph('')
-      return
-    }
-
-    if (orbPhase !== 'spin' && orbGlyph) {
-      setOrbPersistentGlyph(orbGlyph)
-    }
-  }, [bubbleStyle.iconChoice, orbPhase, orbGlyph])
+  }, [bubbleStyle.iconChoice, orbSettings.hoverEnabled])
 
   useEffect(() => {
     if (bubbleStyle.iconChoice !== 'orb' || !orbSettings.inactiveEnabled) {
@@ -292,7 +247,7 @@ export default function WidgetPreview({
       return
     }
 
-    if (internalIsOrbHovered || isReplying) {
+    if (isReplying) {
       setOrbInactiveActive(false)
       return
     }
@@ -340,34 +295,10 @@ export default function WidgetPreview({
     orbSettings.inactivityMaxMinutes,
     inactivityMinMinutes,
     inactivityMaxMinutes,
-    internalIsOrbHovered,
     isReplying,
     orbInactiveActive,
     orbActivityNonce,
   ])
-
-  useEffect(() => {
-    if (bubbleStyle.iconChoice !== 'orb') {
-      setOrbCycleIndex(0)
-      return
-    }
-
-    if (orbPhase === 'hover') {
-      setOrbCycleIndex(0)
-      return
-    }
-
-    if (orbGlyphs.length <= 1) {
-      setOrbCycleIndex(0)
-      return
-    }
-
-    const timer = window.setInterval(() => {
-      setOrbCycleIndex((current) => (current + 1) % orbGlyphs.length)
-    }, 650)
-
-    return () => window.clearInterval(timer)
-  }, [bubbleStyle.iconChoice, orbPhase, orbGlyphs.length])
 
   const previewContent = (
     <div
@@ -452,26 +383,18 @@ export default function WidgetPreview({
           </div>
 
           <div
-            className={`widget-icon ${bubbleClasses} ${bubbleStyle.iconChoice === 'orb' ? 'widget-icon--orb' : ''} ${bubbleStyle.iconChoice === 'orb' && orbPhase === 'hover' ? 'widget-icon--orb-hover' : ''} ${bubbleStyle.iconChoice === 'orb' && orbPhase === 'reply' ? 'widget-icon--orb-replying' : ''} ${bubbleStyle.iconChoice === 'orb' && orbPhase === 'inactive' ? 'widget-icon--orb-idle' : ''}`}
-            onClick={() => setIsChatOpen((prev) => !prev)}
+            className={`widget-icon ${bubbleClasses} ${bubbleStyle.iconChoice === 'orb' ? 'widget-icon--orb' : ''} ${bubbleStyle.iconChoice === 'orb' && orbPhase === 'reply' ? 'widget-icon--orb-replying' : ''} ${bubbleStyle.iconChoice === 'orb' && orbPhase === 'inactive' ? 'widget-icon--orb-idle' : ''}`}
             onPointerEnter={() => {
-              if (process.env.NODE_ENV !== 'production') {
-                console.debug('[WidgetPreview] orb hover enter', {
-                  orbPhase,
-                  glyph: orbGlyph,
-                })
+              if (bubbleStyle.iconChoice === 'orb' && orbSettings.hoverEnabled) {
+                setInternalIsOrbHovered(true)
               }
-              setInternalIsOrbHovered(true)
             }}
             onPointerLeave={() => {
-              if (process.env.NODE_ENV !== 'production') {
-                console.debug('[WidgetPreview] orb hover leave', {
-                  orbPhase,
-                  glyph: orbGlyph,
-                })
+              if (bubbleStyle.iconChoice === 'orb' && orbSettings.hoverEnabled) {
+                setInternalIsOrbHovered(false)
               }
-              setInternalIsOrbHovered(false)
             }}
+            onClick={() => setIsChatOpen((prev) => !prev)}
             role="button"
             tabIndex={0}
           >
@@ -484,7 +407,7 @@ export default function WidgetPreview({
               <OrbAvatar
                 className="widget-orb-avatar"
                 aria-hidden="true"
-                glyph={orbPhase === 'spin' ? orbPersistentGlyph : orbGlyph}
+                glyph={orbPhase === 'spin' ? '' : ''}
                 orbMode={orbPhase === 'spin' || orbPhase === 'none' ? 'spin' : orbPhase}
               />
             )}

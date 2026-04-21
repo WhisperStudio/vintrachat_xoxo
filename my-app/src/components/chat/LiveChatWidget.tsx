@@ -146,8 +146,8 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
 
   const config = configResponse?.widgetConfig
 
-  const handleToggle = () => {
-    setIsOpen((prev) => !prev)
+  const handleToggle = (nextOpen: boolean) => {
+    setIsOpen(nextOpen)
   }
 
   const handleSend = async () => {

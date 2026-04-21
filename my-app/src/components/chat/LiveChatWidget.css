@@ -23,7 +23,8 @@ body {
 }
 
 .widget-frame-shell .floating-chat-preview {
-  width: 390px;
+  position: fixed;
+  width: min(390px, calc(100vw - 24px));
   z-index: 2147483002;
 }
 
