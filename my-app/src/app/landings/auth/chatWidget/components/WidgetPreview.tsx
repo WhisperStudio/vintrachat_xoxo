@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useRef, useState, type ComponentType, type SVGProps } from 'react'
+import { useEffect, useRef, useState, type ComponentType, type CSSProperties, type SVGProps } from 'react'
 import { FiCheckCircle, FiCpu, FiLifeBuoy, FiMessageCircle, FiMessageSquare, FiPhone, FiSend } from 'react-icons/fi'
 import GlassOrbAvatar from '../../../../../svgs/GlassOrbAvatar'
+import { getWidgetThemeClass, getWidgetThemeStyle, joinWidgetClasses } from '@/components/chat/widgetDesign'
 import './WidgetPreview.css'
 import type { BubbleIconChoice, OrbStyleConfig } from '@/types/database'
 
@@ -183,26 +184,28 @@ export default function WidgetPreview({
     }, enablePreviewChat ? 850 : 180)
   }
 
-  const bubbleClasses = [
+  const themeClass = getWidgetThemeClass(colorTheme)
+  const themeVars = getWidgetThemeStyle(colorTheme)
+  const bubbleClasses = joinWidgetClasses(
     `border-${bubbleStyle.borderType}`,
     `shadow-${bubbleStyle.shadowType}`,
     `animation-${bubbleStyle.animationType}`,
-    `size-${bubbleStyle.sizeType}`,
-  ].join(' ')
+    `size-${bubbleStyle.sizeType}`
+  )
 
-  const bodyClasses = [
+  const bodyClasses = joinWidgetClasses(
     'chat-body',
     `border-${bodyStyle.borderType}`,
     `shadow-${bodyStyle.shadowType}`,
-    `messages-${bodyStyle.messageStyle}`,
-  ].join(' ')
+    `messages-${bodyStyle.messageStyle}`
+  )
 
-  const footerClasses = [
+  const footerClasses = joinWidgetClasses(
     'chat-footer',
     `border-${footerStyle.borderType}`,
     `shadow-${footerStyle.shadowType}`,
-    `input-${footerStyle.inputStyle}`,
-  ].join(' ')
+    `input-${footerStyle.inputStyle}`
+  )
 
   const title = customBranding.title || 'Support Chat'
   const description = customBranding.description || 'Usually replies in a few minutes'
@@ -304,7 +307,7 @@ export default function WidgetPreview({
     <div
       className={`widget-viewport ${variant === 'embedded' ? 'widget-viewport-embedded' : ''} position-${position}`}
     >
-      <div className={`floating-chat-preview theme-${colorTheme}`}>
+      <div className={`floating-chat-preview ${themeClass}`} style={themeVars as CSSProperties}>
         <div className="widgetcontainer">
           <div className={`chat-widget ${isChatOpen ? 'open' : ''}`}>
             <div className="chat-header">
@@ -346,17 +349,21 @@ export default function WidgetPreview({
                   key={msg.id}
                   className={`message ${msg.isBot ? 'message-bot' : 'message-user'}`}
                 >
-                  {msg.text}
-                  {bodyStyle.showTimestamps && (
-                    <span className="timestamp">
-                      {new Date().toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </span>
-                  )}
-                  {bodyStyle.showReadReceipts && !msg.isBot && (
-                    <span className="read-receipt">Read</span>
+                  <div className="message-content">{msg.text}</div>
+                  {(bodyStyle.showTimestamps || (bodyStyle.showReadReceipts && !msg.isBot)) && (
+                    <div className="message-meta">
+                      {bodyStyle.showTimestamps && (
+                        <span className="timestamp">
+                          {new Date().toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      )}
+                      {bodyStyle.showReadReceipts && !msg.isBot && (
+                        <span className="read-receipt">Read</span>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}
@@ -407,7 +414,7 @@ export default function WidgetPreview({
               <OrbAvatar
                 className="widget-orb-avatar"
                 aria-hidden="true"
-                glyph={orbPhase === 'spin' ? '' : ''}
+                glyph={orbSettings.hoverEnabled ? orbSettings.hoverGlyph || '' : ''}
                 orbMode={orbPhase === 'spin' || orbPhase === 'none' ? 'spin' : orbPhase}
               />
             )}
