@@ -1,5 +1,6 @@
 'use client'
 
+import type { CSSProperties } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { FiChevronDown } from 'react-icons/fi'
 
@@ -7,6 +8,8 @@ export type AdminDropdownOption = {
   value: string
   label: string
   description?: string
+  accent?: string
+  accentSoft?: string
 }
 
 type AdminDropdownProps = {
@@ -34,6 +37,16 @@ export default function AdminDropdown({
   const rootRef = useRef<HTMLDivElement | null>(null)
 
   const selected = useMemo(() => options.find((option) => option.value === value), [options, value])
+
+  const selectedStyle = useMemo<CSSProperties | undefined>(() => {
+    if (!selected?.accent) return undefined
+
+    return {
+      '--dropdown-accent': selected.accent,
+      '--dropdown-accent-border': selected.accent,
+      '--dropdown-accent-soft': selected.accentSoft || selected.accent,
+    } as CSSProperties
+  }, [selected?.accent, selected?.accentSoft])
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent | TouchEvent) => {
@@ -70,6 +83,7 @@ export default function AdminDropdown({
       <button
         type="button"
         className={['adminDropdownButton', open ? 'open' : '', buttonClassName].filter(Boolean).join(' ')}
+        style={selectedStyle}
         onClick={() => !disabled && setOpen((prev) => !prev)}
         aria-expanded={open}
         aria-haspopup="listbox"
@@ -83,6 +97,15 @@ export default function AdminDropdown({
         <div className={['adminDropdownMenu', menuClassName].filter(Boolean).join(' ')} role="listbox">
           {options.map((option) => {
             const active = option.value === value
+            const optionStyle = option.accent
+              ? ({
+                  '--dropdown-accent': option.accent,
+                  '--dropdown-accent-border': option.accent,
+                  '--dropdown-accent-soft': option.accentSoft || option.accent,
+                  color: active ? '#475569' : option.accent,
+                } as CSSProperties)
+              : undefined
+
             return (
               <button
                 key={option.value}
@@ -90,6 +113,7 @@ export default function AdminDropdown({
                 className={`adminDropdownOption ${active ? 'active' : ''}`}
                 role="option"
                 aria-selected={active}
+                style={optionStyle}
                 onClick={() => handleSelect(option.value)}
               >
                 <span>{option.label}</span>

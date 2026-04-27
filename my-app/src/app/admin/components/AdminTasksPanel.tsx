@@ -39,6 +39,33 @@ const taskStatusLabels: Record<SupportTaskStatus, string> = {
 
 const taskPriorityOrder: SupportTaskPriority[] = ['critical', 'high', 'medium', 'low']
 
+const taskPriorityAccents: Record<
+  SupportTaskPriority,
+  { color: string; soft: string }
+> = {
+  critical: { color: 'rgba(239, 68, 68, 1)', soft: 'rgba(239, 68, 68, 0.12)' },
+  high: { color: 'rgba(249, 115, 22, 1)', soft: 'rgba(249, 115, 22, 0.12)' },
+  medium: { color: 'rgba(59, 130, 246, 1)', soft: 'rgba(59, 130, 246, 0.12)' },
+  low: { color: 'rgba(16, 185, 129, 1)', soft: 'rgba(16, 185, 129, 0.12)' },
+}
+
+const categoryAccentPalette = [
+  { color: 'rgba(59, 130, 246, 1)', soft: 'rgba(59, 130, 246, 0.12)' },
+  { color: 'rgba(16, 185, 129, 1)', soft: 'rgba(16, 185, 129, 0.12)' },
+  { color: 'rgba(249, 115, 22, 1)', soft: 'rgba(249, 115, 22, 0.12)' },
+  { color: 'rgba(236, 72, 153, 1)', soft: 'rgba(236, 72, 153, 0.12)' },
+  { color: 'rgba(139, 92, 246, 1)', soft: 'rgba(139, 92, 246, 0.12)' },
+  { color: 'rgba(14, 165, 233, 1)', soft: 'rgba(14, 165, 233, 0.12)' },
+]
+
+function accentForKey(value: string) {
+  let hash = 0
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0
+  }
+  return categoryAccentPalette[hash % categoryAccentPalette.length]
+}
+
 function speakerLabel(role: SupportChatMessage['role']) {
   switch (role) {
     case 'assistant':
@@ -122,6 +149,18 @@ export default function AdminTasksPanel() {
   const taskChatMessages = selectedTask?.chatMessages?.length
     ? selectedTask.chatMessages
     : selectedChat?.messages || []
+
+  const categoryOptions = useMemo(
+    () =>
+      categories.map((category) => ({
+        value: category.id,
+        label: category.name,
+        description: category.default ? 'Default category' : 'Custom category',
+        accent: accentForKey(category.id).color,
+        accentSoft: accentForKey(category.id).soft,
+      })),
+    [categories]
+  )
 
   const filteredTasks = useMemo(() => {
     const nextTasks = tasks.filter((task) => {
@@ -373,6 +412,20 @@ export default function AdminTasksPanel() {
             <FiPlus />
             {taskCreatorOpen ? 'Close task form' : 'New task'}
           </button>
+          <button
+            type="button"
+            className="secondaryBtn adminToolBtn"
+            onClick={() =>
+              setFilters({
+                status: 'all',
+                priority: 'all',
+                categoryId: 'all',
+                sortBy: 'newest',
+              })
+            }
+          >
+            Reset filters
+          </button>
         </div>
       </div>
 
@@ -412,6 +465,8 @@ export default function AdminTasksPanel() {
               ...taskPriorityOrder.map((value) => ({
                 value,
                 label: taskPriorityLabels[value],
+                accent: taskPriorityAccents[value].color,
+                accentSoft: taskPriorityAccents[value].soft,
               })),
             ]}
             onChange={(nextValue) =>
@@ -432,11 +487,7 @@ export default function AdminTasksPanel() {
             placeholder="All categories"
             options={[
               { value: 'all', label: 'All categories' },
-              ...categories.map((category) => ({
-                value: category.id,
-                label: category.name,
-                description: category.default ? 'Default category' : 'Custom category',
-              })),
+              ...categoryOptions,
             ]}
             onChange={(nextValue) =>
               setFilters((prev) => ({
@@ -464,23 +515,8 @@ export default function AdminTasksPanel() {
                 sortBy: nextValue as 'newest' | 'oldest',
               }))
             }
-          />
+            />
         </label>
-
-        <button
-          type="button"
-          className="secondaryBtn"
-          onClick={() =>
-            setFilters({
-              status: 'all',
-              priority: 'all',
-              categoryId: 'all',
-              sortBy: 'newest',
-            })
-          }
-        >
-          Reset filters
-        </button>
       </div>
 
       {taskCreatorOpen ? (
@@ -514,11 +550,7 @@ export default function AdminTasksPanel() {
               <span>Category</span>
               <AdminDropdown
                 value={creatorDraft.categoryId}
-                options={categories.map((category) => ({
-                  value: category.id,
-                  label: category.name,
-                  description: category.default ? 'Default category' : 'Custom category',
-                }))}
+                options={categoryOptions}
                 onChange={(nextValue) =>
                   setCreatorDraft((prev) => ({ ...prev, categoryId: nextValue }))
                 }
@@ -532,6 +564,8 @@ export default function AdminTasksPanel() {
                 options={taskPriorityOrder.map((value) => ({
                   value,
                   label: `${taskPriorityLabels[value]} priority`,
+                  accent: taskPriorityAccents[value].color,
+                  accentSoft: taskPriorityAccents[value].soft,
                 }))}
                 onChange={(nextValue) =>
                   setCreatorDraft((prev) => ({
@@ -658,9 +692,17 @@ export default function AdminTasksPanel() {
                     </div>
                   </div>
 
+                  <div className="adminTaskCardChips">
+                    <span className={`taskStatus taskStatus-${task.status}`}>
+                      {taskStatusLabels[task.status]}
+                    </span>
+                    <span className="taskCategoryChip">{task.categoryName}</span>
+                  </div>
+
                   <p className="adminTaskCardPreview">{task.description}</p>
                   <div className="adminTaskCardFooter">
                     <span>{formatDate(task.createdAt)}</span>
+                    <span>{task.comments?.length || 0} notes</span>
                   </div>
                 </button>
               )
@@ -712,14 +754,16 @@ export default function AdminTasksPanel() {
             <div className="adminTaskDetailControls">
               <label className="adminTaskFilter">
                 <span>Priority</span>
-                <AdminDropdown
-                  value={selectedTask.priority}
-                  options={taskPriorityOrder.map((value) => ({
-                    value,
-                    label: taskPriorityLabels[value],
-                  }))}
-                  onChange={(nextValue) =>
-                    void updateTaskField(
+              <AdminDropdown
+                value={selectedTask.priority}
+                options={taskPriorityOrder.map((value) => ({
+                  value,
+                  label: taskPriorityLabels[value],
+                  accent: taskPriorityAccents[value].color,
+                  accentSoft: taskPriorityAccents[value].soft,
+                }))}
+                onChange={(nextValue) =>
+                  void updateTaskField(
                       selectedTask.id,
                       'priority',
                       nextValue as SupportTaskPriority
@@ -750,12 +794,10 @@ export default function AdminTasksPanel() {
                 <span>Category</span>
                 <AdminDropdown
                   value={selectedTask.categoryId}
-                  options={categories.map((category) => ({
-                    value: category.id,
-                    label: category.name,
-                    description: category.default ? 'Default category' : 'Custom category',
-                  }))}
-                  onChange={(nextValue) => void updateTaskField(selectedTask.id, 'categoryId', nextValue)}
+                  options={categoryOptions}
+                  onChange={(nextValue) =>
+                    void updateTaskField(selectedTask.id, 'categoryId', nextValue)
+                  }
                 />
               </label>
             </div>
