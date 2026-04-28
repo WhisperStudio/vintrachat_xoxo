@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { WebsiteShowcaseModal } from './website-showcases'
 
 // ─── Minimal inline SVG icons ───────────────────────────────────────────────
 
@@ -121,6 +120,205 @@ function MiniSiteMockup({ site }: { site: typeof websites[0] }) {
   )
 }
 
+function DetailedSitePreview({ site }: { site: typeof websites[0] }) {
+  const browserBar = (
+    <div style={{ background: '#F5F5F5', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid #E8E8E8' }}>
+      <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#FF5F57', display: 'inline-block' }} />
+      <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#FFBD2E', display: 'inline-block' }} />
+      <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#28C840', display: 'inline-block' }} />
+      <div style={{ flex: 1, background: '#E0E0E0', borderRadius: 999, height: 16, marginLeft: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ fontSize: 9, color: '#777', fontWeight: 700 }}>vintra.app/{site.label.toLowerCase()}</span>
+      </div>
+    </div>
+  )
+
+  const heroBase = {
+    background: `linear-gradient(135deg, ${site.color}, ${site.color}CC)`,
+    padding: '18px 18px 20px',
+  } as const
+
+  let content: React.ReactNode = null
+
+  if (site.label === 'Restaurant') {
+    content = (
+      <>
+        <div style={heroBase}>
+          <div style={{ color: 'rgba(255,255,255,0.72)', fontSize: 10, fontWeight: 800, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 10 }}>Fine dining booking</div>
+          <div style={{ color: '#fff', fontWeight: 900, fontSize: 22, lineHeight: 1.05 }}>Tasting menu with instant reservations</div>
+          <div style={{ color: 'rgba(255,255,255,0.84)', fontSize: 11, lineHeight: 1.55, marginTop: 8 }}>Elegant hero, course highlights, chef spotlight and a strong reserve-now focus.</div>
+        </div>
+        <div style={{ padding: '14px 16px 16px', background: '#fff' }}>
+          <div style={{ background: '#FFF8F2', borderRadius: 12, padding: '10px 12px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800 }}>Chef&apos;s 7-course tasting</div>
+              <div style={{ fontSize: 10, color: '#7A5A46', marginTop: 3 }}>Wine pairing available tonight</div>
+            </div>
+            <div style={{ color: site.color, fontWeight: 900, fontSize: 12 }}>1 290 kr</div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
+            {['4.9 rating', '320 bookings', 'Open today'].map((item) => (
+              <div key={item} style={{ background: site.accent, borderRadius: 10, padding: '10px 6px', textAlign: 'center', fontSize: 10, fontWeight: 800 }}>{item}</div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1, background: site.color, color: '#fff', borderRadius: 10, padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 800 }}>Reserve table</div>
+            <div style={{ flex: 1, background: '#111', color: '#fff', borderRadius: 10, padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 800 }}>See menu</div>
+          </div>
+        </div>
+      </>
+    )
+  } else if (site.label === 'Portfolio') {
+    content = (
+      <>
+        <div style={heroBase}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 12, background: 'rgba(255,255,255,0.18)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 18 }}>✦</div>
+            <div>
+              <div style={{ color: 'rgba(255,255,255,0.74)', fontSize: 10, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase' }}>Creative portfolio</div>
+              <div style={{ color: '#fff', fontWeight: 900, fontSize: 18 }}>Ola Nordmann Studio</div>
+            </div>
+          </div>
+          <div style={{ color: '#fff', fontWeight: 900, fontSize: 21, lineHeight: 1.05 }}>Case studies that feel premium and deliberate</div>
+        </div>
+        <div style={{ padding: 16, background: '#fff' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 0.75fr', gap: 8, marginBottom: 12 }}>
+            <div style={{ height: 82, borderRadius: 12, background: 'linear-gradient(135deg,#DDE8FF,#F5F7FF)' }} />
+            <div style={{ display: 'grid', gap: 8 }}>
+              <div style={{ height: 37, borderRadius: 12, background: '#EEF4FF' }} />
+              <div style={{ height: 37, borderRadius: 12, background: '#F3F4F6' }} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+            {['Brand identity', 'UX systems', 'Web design'].map((chip) => (
+              <span key={chip} style={{ borderRadius: 999, background: '#F3F4F6', padding: '6px 10px', fontSize: 10, fontWeight: 700 }}>{chip}</span>
+            ))}
+          </div>
+          <div style={{ background: site.color, color: '#fff', borderRadius: 10, padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 800 }}>View selected work</div>
+        </div>
+      </>
+    )
+  } else if (site.label === 'Nettbutikk') {
+    content = (
+      <>
+        <div style={heroBase}>
+          <div style={{ color: 'rgba(255,255,255,0.74)', fontSize: 10, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 10 }}>Campaign storefront</div>
+          <div style={{ color: '#fff', fontWeight: 900, fontSize: 22, lineHeight: 1.05 }}>Bestsellers, fast checkout and shipping trust</div>
+          <div style={{ color: 'rgba(255,255,255,0.84)', fontSize: 11, lineHeight: 1.55, marginTop: 8 }}>Shop preview with real promo hierarchy instead of a generic landing card.</div>
+        </div>
+        <div style={{ padding: 16, background: '#fff' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 12 }}>
+            {[
+              ['Nordic wool set', '799 kr'],
+              ['Autumn jacket', '1 290 kr'],
+            ].map(([title, price]) => (
+              <div key={title} style={{ borderRadius: 12, background: '#F8FAF9', padding: 10 }}>
+                <div style={{ height: 56, borderRadius: 10, background: '#EAF7F1', marginBottom: 8 }} />
+                <div style={{ fontSize: 10, fontWeight: 800 }}>{title}</div>
+                <div style={{ fontSize: 10, color: site.color, fontWeight: 900, marginTop: 3 }}>{price}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: site.accent, borderRadius: 12, padding: '10px 12px' }}>
+            <span style={{ fontSize: 10, fontWeight: 800 }}>Free shipping over 499 kr</span>
+            <span style={{ fontSize: 10, color: site.color, fontWeight: 900 }}>Today only</span>
+          </div>
+        </div>
+      </>
+    )
+  } else if (site.label === 'Startup') {
+    content = (
+      <>
+        <div style={heroBase}>
+          <div style={{ color: 'rgba(255,255,255,0.74)', fontSize: 10, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 10 }}>SaaS launch</div>
+          <div style={{ color: '#fff', fontWeight: 900, fontSize: 22, lineHeight: 1.05 }}>Clear product story with demand capture built in</div>
+          <div style={{ color: 'rgba(255,255,255,0.84)', fontSize: 11, lineHeight: 1.55, marginTop: 8 }}>Waitlist, feature proof and pricing blocks that look much closer to a real startup landing.</div>
+        </div>
+        <div style={{ padding: 16, background: '#fff' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
+            {['8.4k waitlist', '31% demo', '4 plans'].map((item) => (
+              <div key={item} style={{ background: '#F5F0FF', borderRadius: 12, padding: '12px 8px', textAlign: 'center', fontSize: 10, fontWeight: 800 }}>{item}</div>
+            ))}
+          </div>
+          <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+            {['Live analytics dashboard', 'Workflow automation builder', 'CRM and Slack integrations'].map((line) => (
+              <div key={line} style={{ borderRadius: 10, border: '1px solid #EEE7FF', padding: '9px 10px', fontSize: 10, fontWeight: 700 }}>{line}</div>
+            ))}
+          </div>
+          <div style={{ background: site.color, color: '#fff', borderRadius: 10, padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 800 }}>Join waitlist</div>
+        </div>
+      </>
+    )
+  } else if (site.label === 'Frisør / Spa') {
+    content = (
+      <>
+        <div style={{ ...heroBase, background: `linear-gradient(135deg, ${site.color}, #F1A7CF)` }}>
+          <div style={{ color: 'rgba(255,255,255,0.76)', fontSize: 10, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 10 }}>Beauty booking</div>
+          <div style={{ color: '#fff', fontWeight: 900, fontSize: 22, lineHeight: 1.05 }}>Calm service preview with booking times and treatments</div>
+        </div>
+        <div style={{ padding: 16, background: '#fff' }}>
+          <div style={{ background: '#FDF4F9', borderRadius: 12, padding: '10px 12px', marginBottom: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, marginBottom: 6 }}>Available today</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {['12:00', '13:30', '15:00', '17:15'].map((slot) => (
+                <span key={slot} style={{ background: '#fff', borderRadius: 999, padding: '6px 9px', fontSize: 10, fontWeight: 700 }}>{slot}</span>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {['Hair styling', 'Relax massage', 'Skin treatment'].map((service) => (
+              <div key={service} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 10, background: site.accent, padding: '10px 12px' }}>
+                <span style={{ fontSize: 10, fontWeight: 800 }}>{service}</span>
+                <span style={{ fontSize: 10, color: site.color, fontWeight: 900 }}>Book</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </>
+    )
+  } else {
+    content = (
+      <>
+        <div style={{ ...heroBase, background: `linear-gradient(135deg, ${site.color}, #365B84)` }}>
+          <div style={{ color: 'rgba(255,255,255,0.74)', fontSize: 10, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 10 }}>Corporate trust</div>
+          <div style={{ color: '#fff', fontWeight: 900, fontSize: 22, lineHeight: 1.05 }}>Company front page with clearer credibility signals</div>
+          <div style={{ color: 'rgba(255,255,255,0.84)', fontSize: 11, lineHeight: 1.55, marginTop: 8 }}>Service summary, client logos and contact-first structure for B2B confidence.</div>
+        </div>
+        <div style={{ padding: 16, background: '#fff' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
+            {['Since 1998', '42 clients', '1 day response'].map((item) => (
+              <div key={item} style={{ background: '#F2F5F8', borderRadius: 12, padding: '11px 8px', textAlign: 'center', fontSize: 10, fontWeight: 800 }}>{item}</div>
+            ))}
+          </div>
+          <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+            {['Operations consulting', 'Project delivery', 'Support and maintenance'].map((line) => (
+              <div key={line} style={{ borderRadius: 10, border: '1px solid #E3EAF1', padding: '9px 10px', fontSize: 10, fontWeight: 700 }}>{line}</div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1, background: site.color, color: '#fff', borderRadius: 10, padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 800 }}>Book meeting</div>
+            <div style={{ flex: 1, background: '#EFF3F8', color: '#1E3A5F', borderRadius: 10, padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 800 }}>View services</div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <div style={{
+      width: 360,
+      borderRadius: 20,
+      overflow: 'hidden',
+      border: '1px solid rgba(255,255,255,0.18)',
+      boxShadow: '0 26px 70px rgba(0,0,0,0.34)',
+      background: '#fff',
+      flexShrink: 0,
+    }}>
+      {browserBar}
+      {content}
+    </div>
+  )
+}
+
 // ─── Chat widget preview ─────────────────────────────────────────────────────
 
 function ChatWidgetPreview() {
@@ -210,39 +408,203 @@ function Reveal({ children, delay = 0, className = '' }: { children: React.React
   )
 }
 
-// ─── Infinite carousel ───────────────────────────────────────────────────────
+// ─── Auto showcase carousel ──────────────────────────────────────────────────
 
-function WebsiteCarousel({ setSelectedLabel }: { setSelectedLabel: (label: string) => void }) {
-  const doubled = [...websites, ...websites]
+function WebsiteCarousel() {
+  const moveDurationMs = 900
+  const pauseDurationMs = 2200
+  const visibleOffsets = [-5, -4, -3, -2, -1, 1, 2, 3, 4, 5]
+  const [activeIndex, setActiveIndex] = useState(0)
+
+  useEffect(() => {
+    const advanceTimer = window.setTimeout(() => {
+      setActiveIndex((current) => current + 1)
+    }, pauseDurationMs + moveDurationMs)
+
+    return () => window.clearTimeout(advanceTimer)
+  }, [activeIndex])
+
+  const activeSite = websites[((activeIndex % websites.length) + websites.length) % websites.length]
+
+  const getOffsetX = (offset: number) => {
+    const direction = Math.sign(offset)
+    const distance = Math.abs(offset)
+
+    if (distance === 1) return direction * 255
+    if (distance === 2) return direction * 430
+    return direction * (430 + (distance - 2) * 150)
+  }
+
   return (
-    <div style={{ overflow: 'hidden', position: 'relative', padding: '20px 0' }}>
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 80, background: 'linear-gradient(to right, var(--bg), transparent)', zIndex: 1, pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 80, background: 'linear-gradient(to left, var(--bg), transparent)', zIndex: 1, pointerEvents: 'none' }} />
+    <div style={{ overflow: 'hidden', position: 'relative', padding: '30px 0 40px', height: 620 }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at center, rgba(255,255,255,0.08), transparent 42%)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 160, background: 'linear-gradient(to right, #111, transparent)', zIndex: 2, pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 160, background: 'linear-gradient(to left, #111, transparent)', zIndex: 2, pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', inset: 0 }}>
+        {visibleOffsets.map((offset) => {
+          const virtualIndex = activeIndex + offset
+          const site = websites[((virtualIndex % websites.length) + websites.length) % websites.length]
+          const depth = Math.abs(offset)
+          const scale = Math.max(0.5, 0.92 - depth * 0.1)
+          const opacity = Math.max(0, 0.82 - depth * 0.14)
+
+          return (
+            <div
+              key={`${site.label}-${virtualIndex}`}
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                transform: `translate(-50%, -50%) translateX(${getOffsetX(offset)}px) scale(${scale})`,
+                transformOrigin: 'center center',
+                transition: `transform ${moveDurationMs}ms cubic-bezier(0.18, 0.72, 0.24, 1), opacity ${moveDurationMs}ms ease, filter ${moveDurationMs}ms ease`,
+                opacity,
+                filter: `blur(${Math.min(depth * 0.22, 0.9)}px) saturate(${Math.max(0.62, 1 - depth * 0.08)})`,
+                zIndex: 4 - depth,
+                pointerEvents: 'none',
+              }}
+            >
+              <MiniSiteMockup site={site} />
+            </div>
+          )
+        })}
+      </div>
+      <div
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 8,
+          pointerEvents: 'none',
+        }}
+      >
+        <div
+          key={activeSite.label}
+          style={{
+            animation: `preview-swap ${moveDurationMs}ms cubic-bezier(0.16, 0.84, 0.24, 1)`,
+            transformOrigin: 'center center',
+            transform: 'scale(1)',
+          }}
+        >
+          <DetailedSitePreview site={activeSite} />
+        </div>
+      </div>
       <style>{`
-        @keyframes scroll-left {
-          from { transform: translateX(0) }
-          to   { transform: translateX(-50%) }
+        @keyframes preview-swap {
+          0% { opacity: 0; transform: translateY(18px) scale(0.985); }
+          55% { opacity: 1; transform: translateY(0) scale(1.01); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
         }
-        .carousel-track {
-          display: flex;
-          gap: 20px;
-          width: max-content;
-          animation: scroll-left 30s linear infinite;
-        }
-        .carousel-track:hover { animation-play-state: paused }
       `}</style>
-      <div className="carousel-track">
-        {doubled.map((site, i) => (
-          <div 
-            key={i} 
-            onClick={() => setSelectedLabel(site.label)}
-            style={{ cursor: 'pointer', transition: 'transform 0.2s' }}
-            onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.05)')}
-            onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-          >
-            <MiniSiteMockup site={site} />
+    </div>
+  )
+}
+
+function ChatbotShowcasePreview() {
+  const messages = [
+    { from: 'bot', text: 'Hei! Jeg kan hjelpe med booking, åpningstider eller priser.' },
+    { from: 'user', text: 'Har dere ledig time i morgen?' },
+    { from: 'bot', text: 'Ja, jeg fant 13:30 og 15:00. Vil du at jeg reserverer en av dem?' },
+  ]
+
+  return (
+    <div style={{ position: 'relative', width: 380, maxWidth: '100%' }}>
+      <div style={{
+        position: 'absolute',
+        inset: '8% -8% auto auto',
+        width: 180,
+        height: 180,
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(124,58,237,0.28), rgba(124,58,237,0))',
+        filter: 'blur(4px)',
+      }} />
+      <div style={{
+        position: 'absolute',
+        left: -24,
+        bottom: 26,
+        width: 132,
+        borderRadius: 18,
+        background: '#fff',
+        boxShadow: '0 24px 50px rgba(17,24,39,0.16)',
+        border: '1px solid rgba(15,23,42,0.08)',
+        padding: 14,
+        zIndex: 1,
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: '#7C3AED', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
+          Today
+        </div>
+        <div style={{ display: 'grid', gap: 8 }}>
+          {['13:30', '15:00', '17:15'].map((slot) => (
+            <div key={slot} style={{ background: '#F6F3FF', borderRadius: 10, padding: '8px 10px', fontSize: 12, fontWeight: 800, color: '#3B2C73' }}>
+              {slot}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{
+        position: 'relative',
+        borderRadius: 28,
+        overflow: 'hidden',
+        background: '#fff',
+        border: '1px solid rgba(255,255,255,0.22)',
+        boxShadow: '0 36px 90px rgba(2,6,23,0.24)',
+      }}>
+        <div style={{ background: 'linear-gradient(135deg,#7C3AED,#1D4ED8)', padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 14, background: 'rgba(255,255,255,0.18)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 18 }}>
+            ✦
           </div>
-        ))}
+          <div>
+            <div style={{ color: '#fff', fontWeight: 800, fontSize: 14 }}>Vintra Assistant</div>
+            <div style={{ color: 'rgba(255,255,255,0.78)', fontSize: 11 }}>Live booking and support</div>
+          </div>
+          <div style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.16)', color: '#fff', borderRadius: 999, padding: '6px 10px', fontSize: 10, fontWeight: 800 }}>
+            Online
+          </div>
+        </div>
+
+        <div style={{ padding: '18px 16px 16px', background: 'linear-gradient(180deg,#F9FAFB,#FFFFFF)' }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+            {['Book time', 'Answer FAQs', 'Qualify leads'].map((chip) => (
+              <span key={chip} style={{ borderRadius: 999, background: '#F3F4F6', padding: '6px 10px', fontSize: 10, fontWeight: 700, color: '#4B5563' }}>
+                {chip}
+              </span>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {messages.map((message, index) => (
+              <div key={index} style={{ display: 'flex', justifyContent: message.from === 'user' ? 'flex-end' : 'flex-start' }}>
+                <div style={{
+                  maxWidth: '82%',
+                  padding: '10px 12px',
+                  borderRadius: message.from === 'user' ? '16px 16px 6px 16px' : '16px 16px 16px 6px',
+                  background: message.from === 'user' ? '#1D4ED8' : '#F3F4F6',
+                  color: message.from === 'user' ? '#fff' : '#111827',
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                  boxShadow: message.from === 'user' ? '0 8px 18px rgba(29,78,216,0.18)' : 'none',
+                }}>
+                  {message.text}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 16 }}>
+            {[
+              ['24/7', 'Svarer'],
+              ['2 min', 'Booking'],
+              ['CRM', 'Sync'],
+            ].map(([value, label]) => (
+              <div key={label} style={{ background: '#F8FAFC', borderRadius: 14, padding: '12px 8px', textAlign: 'center', border: '1px solid rgba(15,23,42,0.06)' }}>
+                <div style={{ fontSize: 15, fontWeight: 900, color: '#111827' }}>{value}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', marginTop: 3 }}>{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -281,20 +643,7 @@ function FeatureRow({ icon, title, desc }: { icon: string; title: string; desc: 
 
 export default function MainLanding() {
   const [heroMounted, setHeroMounted] = useState(false)
-  const [selectedSite, setSelectedSite] = useState<typeof websites[0] | null>(null)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [selectedLabel, setSelectedLabel] = useState<string | null>(null)
   useEffect(() => { setTimeout(() => setHeroMounted(true), 80) }, [])
-
-  const handleSiteClick = (site: typeof websites[0]) => {
-    setSelectedSite(site)
-    setModalOpen(true)
-  }
-
-  const closeModal = () => {
-    setModalOpen(false)
-    setSelectedSite(null)
-  }
 
   return (
     <>
@@ -518,79 +867,140 @@ export default function MainLanding() {
                 Websites for all industries
               </h2>
               <p style={{ textAlign: 'center', color: '#e0e0e0', fontSize: 16, marginBottom: 48 }}>
-                Hover to pause — see what's possible
+                Each concept gets a larger preview in the middle before the next one takes over
               </p>
             </div>
           </Reveal>
-          <WebsiteCarousel setSelectedLabel={setSelectedLabel} />
+          <WebsiteCarousel />
         </section>
 
-        {/* ── USE CASES ──────────────────────────────────── */}
-        <section id="chatbot" className="page" style={{ padding: '100px 24px' }}>
-          <Reveal>
-            <h2 style={{ fontSize: 'clamp(26px,3.5vw,40px)', fontWeight: 900, textAlign: 'center', letterSpacing: -0.8, marginBottom: 56 }}>
-              The chatbot that never sleeps
-            </h2>
-          </Reveal>
-
-          <div style={{ display: 'flex', gap: 48, alignItems: 'center', flexWrap: 'wrap' }}>
-            <Reveal delay={0} className="">
-              <div style={{ flex: 1, minWidth: 280 }}>
-                <div className="use-case-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-                  {[
-                    { icon: '🛒', label: 'E-commerce', color: '#EEF4FF' },
-                    { icon: '🏨', label: 'Hotel', color: '#FFF4EE' },
-                    { icon: '🏥', label: 'Clinic', color: '#EEFAF4' },
-                    { icon: '✂️', label: 'Salon', color: '#FDF0F8' },
-                    { icon: '🎓', label: 'Course', color: '#F5F0FF' },
-                    { icon: '🏢', label: 'Business', color: '#F5F5F5' },
-                  ].map(({ icon, label, color }) => (
-                    <div key={label} style={{
-                      background: color, borderRadius: 16,
-                      padding: '20px 12px', textAlign: 'center',
-                      border: '1px solid rgba(0,0,0,0.06)',
-                      transition: 'transform 0.2s',
-                    }}
-                      onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.05)')}
-                      onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-                    >
-                      <div style={{ fontSize: 28, marginBottom: 6 }}>{icon}</div>
-                      <div style={{ fontSize: 13, fontWeight: 700 }}>{label}</div>
-                    </div>
-                  ))}
+        {/* ── CHATBOT SHOWCASE ──────────────────────────── */}
+        <section
+          id="chatbot"
+          style={{
+            padding: '110px 24px',
+            background: 'linear-gradient(180deg, #FCFBFF 0%, #F4F7FB 100%)',
+          }}
+        >
+          <div className="page">
+            <Reveal>
+              <div style={{ textAlign: 'center', maxWidth: 760, margin: '0 auto 58px' }}>
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 14px',
+                  borderRadius: 999,
+                  background: '#EFE7FF',
+                  color: '#6D28D9',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  letterSpacing: 0.6,
+                  marginBottom: 16,
+                }}>
+                  <span>AI Chatbot</span>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E' }} />
+                  <span>Always on</span>
                 </div>
-              </div>
-            </Reveal>
-
-            <Reveal delay={150}>
-              <div style={{ flex: 1, minWidth: 280 }}>
-                <h3 style={{ fontSize: 26, fontWeight: 900, letterSpacing: -0.5, marginBottom: 16 }}>
-                  Answer questions.<br />Book appointments. Sell more.
-                </h3>
-                <p style={{ color: '#555', fontSize: 16, lineHeight: 1.7, marginBottom: 24 }}>
-                  Our AI chatbot learns about your business and answers your customers 24/7. You set the rules — we take care of the rest.
+                <h2 style={{ fontSize: 'clamp(30px,4vw,46px)', fontWeight: 900, letterSpacing: -1, marginBottom: 16 }}>
+                  The chatbot that never sleeps
+                </h2>
+                <p style={{ color: '#5B6472', fontSize: 17, lineHeight: 1.8 }}>
+                  Built to answer faster, book smarter and guide customers to the right next step without making your team do repetitive work all day.
                 </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {[
-                    'Answer common questions automatically',
-                    'Book appointments and meetings directly in chat',
-                    'Direct traffic to the right page or person',
-                    'Integrate with existing tools',
-                  ].map(item => (
-                    <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 15, color: '#444' }}>
-                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <CheckIcon />
-                      </div>
-                      {item}
-                    </div>
-                  ))}
-                </div>
               </div>
             </Reveal>
 
-            <Reveal delay={300}>
-              <ChatWidgetPreview />
-            </Reveal>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1.02fr) minmax(340px, 0.98fr)',
+                gap: 36,
+                alignItems: 'center',
+              }}
+            >
+              <Reveal delay={0}>
+                <div style={{
+                  background: '#fff',
+                  borderRadius: 30,
+                  border: '1px solid rgba(15,23,42,0.06)',
+                  boxShadow: '0 26px 70px rgba(15,23,42,0.08)',
+                  padding: '32px 30px',
+                }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 14, marginBottom: 28 }}>
+                    {[
+                      { icon: '🛒', label: 'E-commerce', color: '#EEF4FF' },
+                      { icon: '🏨', label: 'Hotel', color: '#FFF4EE' },
+                      { icon: '🏥', label: 'Clinic', color: '#EEFAF4' },
+                      { icon: '✂️', label: 'Salon', color: '#FDF0F8' },
+                      { icon: '🎓', label: 'Course', color: '#F5F0FF' },
+                      { icon: '🏢', label: 'Business', color: '#F5F5F5' },
+                    ].map(({ icon, label, color }) => (
+                      <div
+                        key={label}
+                        style={{
+                          background: color,
+                          borderRadius: 18,
+                          padding: '18px 12px',
+                          textAlign: 'center',
+                          border: '1px solid rgba(15,23,42,0.05)',
+                        }}
+                      >
+                        <div style={{ fontSize: 26, marginBottom: 8 }}>{icon}</div>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: '#1F2937' }}>{label}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ display: 'grid', gap: 22 }}>
+                    <div>
+                      <h3 style={{ fontSize: 'clamp(26px,3vw,34px)', fontWeight: 900, letterSpacing: -0.7, marginBottom: 12 }}>
+                        Answer questions. Book appointments. Sell more.
+                      </h3>
+                      <p style={{ color: '#5B6472', fontSize: 16, lineHeight: 1.8 }}>
+                        Our AI chatbot learns about your business and answers your customers 24/7. You set the rules, the tone and the next step. It handles the routine work while your team focuses on what matters.
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'grid', gap: 12 }}>
+                      {[
+                        'Answer common questions automatically',
+                        'Book appointments and meetings directly in chat',
+                        'Direct traffic to the right page or person',
+                        'Integrate with existing tools',
+                      ].map((item) => (
+                        <div
+                          key={item}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                            padding: '14px 16px',
+                            borderRadius: 16,
+                            background: '#F8FAFC',
+                            border: '1px solid rgba(15,23,42,0.05)',
+                            color: '#334155',
+                            fontSize: 15,
+                            fontWeight: 600,
+                          }}
+                        >
+                          <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#7C3AED', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                            <CheckIcon />
+                          </div>
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </Reveal>
+
+              <Reveal delay={160}>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <ChatbotShowcasePreview />
+                </div>
+              </Reveal>
+            </div>
           </div>
         </section>
 
@@ -670,14 +1080,6 @@ export default function MainLanding() {
             </div>
           </div>
         </footer>
-
-        {/* ── WEBSITE SHOWCASE MODAL ─────────────────────────────── */}
-        {selectedLabel && (
-          <WebsiteShowcaseModal 
-            label={selectedLabel} 
-            onClose={() => setSelectedLabel(null)} 
-          />
-        )}
       </main>
     </>
   )
