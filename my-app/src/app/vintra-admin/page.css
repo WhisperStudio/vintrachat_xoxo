@@ -1,0 +1,579 @@
+.vintraAdminShell {
+  min-height: 100vh;
+  padding: 32px;
+  color: #0f172a;
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.14), transparent 28%),
+    radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 24%),
+    linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+}
+
+.vintraAdminLoading,
+.vintraAdminGuard,
+.vintraAdminEmpty {
+  max-width: 720px;
+  margin: 10vh auto 0;
+  padding: 32px;
+  border-radius: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.08);
+  text-align: center;
+}
+
+.vintraAdminLoading {
+  font-weight: 700;
+}
+
+.vintraAdminGuard svg,
+.vintraAdminEmpty svg {
+  font-size: 2rem;
+  color: #1d4ed8;
+  margin-bottom: 12px;
+}
+
+.vintraAdminHero {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 22px 24px;
+  border-radius: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+}
+
+.vintraAdminEyebrow {
+  margin: 0 0 8px;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.vintraAdminHero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.vintraAdminHero p {
+  margin: 0.6rem 0 0;
+  color: #475569;
+}
+
+.vintraAdminHeroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.vintraAdminButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.8rem 1rem;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 800;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.vintraAdminButton:hover {
+  transform: translateY(-1px);
+}
+
+.vintraAdminButton.primary {
+  color: #fff;
+  background: linear-gradient(135deg, #111827, #1d4ed8);
+  box-shadow: 0 14px 24px rgba(29, 78, 216, 0.18);
+}
+
+.vintraAdminButton.danger {
+  color: #fff;
+  background: linear-gradient(135deg, #7f1d1d, #dc2626);
+  box-shadow: 0 14px 24px rgba(220, 38, 38, 0.18);
+}
+
+.vintraAdminButton.secondary {
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(148, 163, 184, 0.24);
+  box-shadow: 0 12px 22px rgba(15, 23, 42, 0.04);
+}
+
+.vintraAdminButton:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.vintraAdminStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 16px 0;
+}
+
+.vintraAdminStats.compact {
+  margin-top: 0;
+}
+
+.vintraAdminStatCard {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 16px 28px rgba(15, 23, 42, 0.05);
+}
+
+.vintraAdminStatCard svg {
+  font-size: 1.1rem;
+  color: #2563eb;
+}
+
+.vintraAdminStatCard span {
+  color: #64748b;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.vintraAdminStatCard strong {
+  font-size: 1.45rem;
+}
+
+.vintraAdminStatCard small {
+  color: #64748b;
+}
+
+.vintraAdminGrid {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.vintraAdminTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.vintraAdminTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.75rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.82);
+  color: #475569;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.vintraAdminTab.active {
+  color: #0f172a;
+  border-color: rgba(37, 99, 235, 0.26);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.1);
+}
+
+.vintraAdminPanel {
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.05);
+}
+
+.vintraAdminPanelHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.vintraAdminPanelHeader h2,
+.vintraAdminPanelHeader h3 {
+  margin: 0;
+}
+
+.vintraAdminPanelHeader p {
+  margin: 0.3rem 0 0;
+  color: #64748b;
+}
+
+.vintraAdminPanelHeader span,
+.vintraAdminBadge {
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(241, 245, 249, 0.92);
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.vintraAdminList,
+.vintraAdminScrollList {
+  display: grid;
+  gap: 10px;
+}
+
+.vintraAdminListItem,
+.vintraAdminListCard {
+  display: grid;
+  gap: 6px;
+  padding: 14px 15px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.vintraAdminListItem {
+  text-align: left;
+  cursor: pointer;
+}
+
+.vintraAdminListItem.active {
+  border-color: rgba(59, 130, 246, 0.24);
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.08);
+}
+
+.vintraAdminListItem strong,
+.vintraAdminListCard strong {
+  display: block;
+}
+
+.vintraAdminListItem span,
+.vintraAdminListItem small,
+.vintraAdminListCard span,
+.vintraAdminListCard small {
+  color: #64748b;
+}
+
+.vintraAdminDetails {
+  display: grid;
+  gap: 16px;
+}
+
+.vintraAdminSection {
+  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+}
+
+.vintraAdminChartsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.vintraAdminChartCard {
+  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.04);
+}
+
+.vintraAdminChartCard h3 {
+  margin: 0;
+}
+
+.vintraAdminChartCard p {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+}
+
+.vintraAdminChartEmpty {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px dashed rgba(148, 163, 184, 0.24);
+  color: #64748b;
+  text-align: center;
+}
+
+.vintraAdminBarList {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.vintraAdminBarRow {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.vintraAdminBarLabel {
+  display: grid;
+  gap: 2px;
+}
+
+.vintraAdminBarLabel span,
+.vintraAdminHelpText {
+  color: #64748b;
+  font-size: 0.84rem;
+}
+
+.vintraAdminBarTrack {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.9);
+  overflow: hidden;
+}
+
+.vintraAdminBarFill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb, #14b8a6);
+}
+
+.vintraAdminBarValue {
+  min-width: 3rem;
+  text-align: right;
+}
+
+.vintraAdminConfirmRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(248, 250, 252, 0.88);
+  color: #475569;
+}
+
+.vintraAdminConfirmRow input {
+  width: auto;
+}
+
+.vintraAdminPillList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.vintraAdminHelpText {
+  margin: 10px 0 0;
+}
+
+.vintraAdminSectionHeader p {
+  margin: 0.3rem 0 0;
+  color: #64748b;
+}
+
+.vintraAdminSectionHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.vintraAdminSectionHeader h3 {
+  margin: 0;
+}
+
+.vintraAdminSectionHeader span,
+.vintraAdminStatus {
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(241, 245, 249, 0.92);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.vintraAdminStatus.status-online {
+  background: rgba(220, 252, 231, 0.92);
+  color: #166534;
+}
+
+.vintraAdminStatus.status-degraded {
+  background: rgba(254, 249, 195, 0.92);
+  color: #854d0e;
+}
+
+.vintraAdminStatus.status-offline {
+  background: rgba(254, 226, 226, 0.96);
+  color: #991b1b;
+}
+
+.vintraAdminFormGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.vintraAdminFormGrid label,
+.vintraAdminInlineAdd {
+  display: grid;
+  gap: 8px;
+}
+
+.vintraAdminFormGrid label span,
+.vintraAdminInlineAdd span {
+  color: #475569;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.vintraAdminFormGrid input,
+.vintraAdminFormGrid textarea,
+.vintraAdminInlineAdd input {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+  outline: none;
+}
+
+.vintraAdminFormGrid select {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+  outline: none;
+}
+
+.vintraAdminFormGrid input:focus,
+.vintraAdminFormGrid textarea:focus,
+.vintraAdminInlineAdd input:focus {
+  border-color: rgba(59, 130, 246, 0.34);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.08);
+}
+
+.vintraAdminFull {
+  grid-column: 1 / -1;
+}
+
+.vintraAdminToggle {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vintraAdminToggle input {
+  width: auto;
+}
+
+.vintraAdminTwoCol {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.vintraAdminRowMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #64748b;
+  font-size: 0.84rem;
+}
+
+.vintraAdminDangerLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #b91c1c;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.vintraAdminInlineAdd {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.vintraAdminDetails {
+  display: grid;
+  gap: 16px;
+}
+
+.vintraAdminEmpty {
+  display: grid;
+  gap: 8px;
+  place-items: center;
+}
+
+.vintraAdminBanner {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  font-weight: 700;
+}
+
+.vintraAdminBanner.error {
+  background: rgba(254, 242, 242, 0.96);
+  color: #b91c1c;
+}
+
+.vintraAdminBanner.success {
+  background: rgba(220, 252, 231, 0.96);
+  color: #166534;
+}
+
+@media (max-width: 1100px) {
+  .vintraAdminGrid,
+  .vintraAdminTwoCol,
+  .vintraAdminStats,
+  .vintraAdminChartsGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .vintraAdminGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .vintraAdminShell {
+    padding: 16px;
+  }
+
+  .vintraAdminHero {
+    flex-direction: column;
+  }
+
+  .vintraAdminHeroActions {
+    justify-content: flex-start;
+  }
+
+  .vintraAdminStats,
+  .vintraAdminFormGrid,
+  .vintraAdminTwoCol,
+  .vintraAdminChartsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .vintraAdminInlineAdd {
+    grid-template-columns: 1fr;
+  }
+
+  .vintraAdminBarRow {
+    grid-template-columns: 1fr;
+  }
+}

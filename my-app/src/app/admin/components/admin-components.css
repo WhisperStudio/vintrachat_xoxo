@@ -1823,6 +1823,36 @@
   color: #0f172a;
 }
 
+.adminAnalyticsCountryRow strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.adminAnalyticsCountryFlag {
+  width: 1.1rem;
+  height: 0.825rem;
+  object-fit: cover;
+  border-radius: 0.15rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  font-size: 1.05rem;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.adminAnalyticsCountryValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.adminAnalyticsCountryFlagFallback {
+  width: 1.05rem;
+  height: 1.05rem;
+  color: #64748b;
+  flex: 0 0 auto;
+}
+
 .adminAnalyticsCountryRow span,
 .adminAnalyticsEventItem span {
   color: #64748b;

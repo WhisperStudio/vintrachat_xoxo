@@ -1,0 +1,313 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { adminDb } from '@/lib/firebase-admin'
+import { requireVintraAdmin, VintraAdminAuthError } from '@/lib/vintra-admin.server'
+
+type GeminiHealth = {
+  status: 'online' | 'degraded' | 'offline'
+  model: string
+  latencyMs?: number
+  checkedAt: string
+  detail?: string
+  fallbackModels: Array<{
+    model: string
+    status: 'online' | 'degraded' | 'offline'
+    latencyMs?: number
+    detail?: string
+  }>
+}
+
+function toIso(value: any) {
+  if (!value) return null
+  if (typeof value?.toDate === 'function') return value.toDate().toISOString()
+  if (value instanceof Date) return value.toISOString()
+  return new Date(value).toISOString()
+}
+
+function mapUsers(users: any[]) {
+  return users.map((docSnap) => {
+    const data = docSnap.data()
+    return {
+      id: docSnap.id,
+      email: String(data.email || ''),
+      displayName: data.displayName || null,
+      role: data.role || 'user',
+      status: data.status || 'active',
+      createdAt: toIso(data.createdAt),
+      updatedAt: toIso(data.updatedAt),
+      lastLogin: toIso(data.lastLogin),
+    }
+  })
+}
+
+function parseModelList(value?: string | null) {
+  return String(value || '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+}
+
+function getGeminiModelCandidates(primaryModel: string) {
+  const configuredFallbacks = parseModelList(process.env.GEMINI_MODEL_FALLBACKS)
+  const defaultFallbacks = ['gemma-3-27b-it', 'gemma-3-12b-it', 'gemma-3-4b-it', 'gemma-3-1b-it']
+  const preferredOrder = configuredFallbacks.length > 0 ? configuredFallbacks : defaultFallbacks
+  return [primaryModel, ...preferredOrder].filter((model, index, self) => self.indexOf(model) === index)
+}
+
+async function checkGeminiModel(modelApiKey: string, model: string): Promise<{
+  status: 'online' | 'degraded' | 'offline'
+  model: string
+  latencyMs?: number
+  detail?: string
+}> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 5000)
+  const started = Date.now()
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}?key=${modelApiKey}`,
+      { signal: controller.signal }
+    )
+
+    if (response.ok) {
+      return {
+        status: 'online' as const,
+        model,
+        latencyMs: Date.now() - started,
+      }
+    }
+
+    return {
+      status: 'degraded' as const,
+      model,
+      latencyMs: Date.now() - started,
+      detail: `Gemini responded with ${response.status}`,
+    }
+  } catch (error) {
+    return {
+      status: 'offline' as const,
+      model,
+      detail: error instanceof Error ? error.message : 'Unknown Gemini error',
+    }
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+async function checkGeminiHealth(): Promise<GeminiHealth> {
+  const apiKey = process.env.GEMINI_API_KEY
+  const primaryModel = process.env.GEMINI_MODEL || 'gemma-3-4b-it'
+  const checkedAt = new Date().toISOString()
+  const fallbackModels = getGeminiModelCandidates(primaryModel)
+
+  if (!apiKey) {
+    return {
+      status: 'offline',
+      model: primaryModel,
+      checkedAt,
+      detail: 'Missing GEMINI_API_KEY',
+      fallbackModels: fallbackModels.map((model) => ({
+        model,
+        status: 'offline' as const,
+        detail: 'Missing GEMINI_API_KEY',
+      })),
+    }
+  }
+
+  const modelChecks: Array<{
+    status: 'online' | 'degraded' | 'offline'
+    model: string
+    latencyMs?: number
+    detail?: string
+  }> = []
+  for (const model of fallbackModels) {
+    modelChecks.push(await checkGeminiModel(apiKey, model))
+  }
+
+  const primaryCheck = modelChecks[0] || {
+    status: 'offline' as const,
+    model: primaryModel,
+    detail: 'No Gemini models configured',
+  }
+
+  return {
+    status: primaryCheck.status,
+    model: primaryCheck.model,
+    latencyMs: primaryCheck.latencyMs,
+    checkedAt,
+    detail: primaryCheck.detail,
+    fallbackModels: modelChecks.map((entry) => ({
+      model: entry.model,
+      status: entry.status,
+      latencyMs: entry.latencyMs,
+      detail: entry.detail,
+    })),
+  }
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const adminUser = await requireVintraAdmin(req)
+
+    const businessSnap = await adminDb.collection('businesses').get()
+
+    const aggregateAnalytics = {
+      totalSessions: 0,
+      totalMessages: 0,
+      aiOnlySessions: 0,
+      supportRequests: 0,
+      savedSupportChats: 0,
+      dailyConversationCounts: {} as Record<string, number>,
+      countryCounts: {} as Record<string, number>,
+      modelUsage: {} as Record<string, number>,
+    }
+
+    const businesses = await Promise.all(
+      businessSnap.docs.map(async (businessDoc) => {
+        const data = businessDoc.data()
+        const [usersSnap, chatsSnap, categoriesSnap] = await Promise.all([
+          businessDoc.ref.collection('users').get(),
+          businessDoc.ref.collection('supportChats').orderBy('updatedAt', 'desc').limit(5).get(),
+          Promise.resolve(Array.isArray(data.supportTaskCategories) ? data.supportTaskCategories : []),
+        ])
+
+        const users = mapUsers(usersSnap.docs)
+        const latestChat = chatsSnap.docs[0]?.data() || null
+        const analytics = data.chatAnalytics || {}
+
+        aggregateAnalytics.totalSessions += Number(analytics.totalSessions || 0)
+        aggregateAnalytics.totalMessages += Number(analytics.totalMessages || 0)
+        aggregateAnalytics.aiOnlySessions += Number(analytics.aiOnlySessions || 0)
+        aggregateAnalytics.supportRequests += Number(analytics.supportRequests || 0)
+        aggregateAnalytics.savedSupportChats += Number(analytics.savedSupportChats || 0)
+
+        const dailyConversationCounts = analytics.dailyConversationCounts || {}
+        Object.entries(dailyConversationCounts).forEach(([key, value]) => {
+          aggregateAnalytics.dailyConversationCounts[key] =
+            (aggregateAnalytics.dailyConversationCounts[key] || 0) + Number(value || 0)
+        })
+
+        const countryCounts = analytics.countryCounts || {}
+        Object.entries(countryCounts).forEach(([key, value]) => {
+          aggregateAnalytics.countryCounts[key] =
+            (aggregateAnalytics.countryCounts[key] || 0) + Number(value || 0)
+        })
+
+        const modelUsage = analytics.modelUsage || {}
+        Object.entries(modelUsage).forEach(([key, value]) => {
+          aggregateAnalytics.modelUsage[key] =
+            (aggregateAnalytics.modelUsage[key] || 0) + Number(value || 0)
+        })
+
+        return {
+          id: businessDoc.id,
+          name: String(data.name || ''),
+          email: String(data.email || ''),
+          ownerId: String(data.ownerId || ''),
+          widgetKey: String(data.chatWidgetKey || ''),
+          plan: data.chatWidgetConfig?.plan || 'free',
+          assistantEnabled: Boolean(data.chatAssistantConfig?.enabled),
+          assistantModel: String(data.chatAssistantConfig?.model || process.env.GEMINI_MODEL || 'gemma-3-4b-it'),
+          assistantConfig: data.chatAssistantConfig
+            ? {
+                enabled: Boolean(data.chatAssistantConfig.enabled),
+                model: String(data.chatAssistantConfig.model || process.env.GEMINI_MODEL || 'gemma-3-4b-it'),
+                systemPrompt: String(data.chatAssistantConfig.systemPrompt || ''),
+                businessContext: String(data.chatAssistantConfig.businessContext || ''),
+                restrictions: String(data.chatAssistantConfig.restrictions || ''),
+                supportTriggerKeywords: Array.isArray(data.chatAssistantConfig.supportTriggerKeywords)
+                  ? data.chatAssistantConfig.supportTriggerKeywords
+                  : [],
+                handoffMessage: String(data.chatAssistantConfig.handoffMessage || ''),
+              }
+            : null,
+          lastChatAt: toIso(data.chatAnalytics?.lastChatAt),
+          updatedAt: toIso(data.updatedAt),
+          userCount: users.length,
+          chatCount: chatsSnap.size,
+          users,
+          categories: categoriesSnap.map((category: any) => ({
+            id: String(category.id || ''),
+            name: String(category.name || ''),
+            default: Boolean(category.default),
+            createdAt: toIso(category.createdAt),
+            updatedAt: toIso(category.updatedAt),
+          })),
+          latestChat: latestChat
+            ? {
+                id: String(latestChat.sessionId || ''),
+                preview: String(latestChat.preview || ''),
+                status: String(latestChat.status || ''),
+                updatedAt: toIso(latestChat.updatedAt),
+              }
+            : null,
+        }
+      })
+    )
+
+    const totalUsers = businesses.reduce((sum, business) => sum + business.userCount, 0)
+    const totalChats = businesses.reduce((sum, business) => sum + business.chatCount, 0)
+    const health = await checkGeminiHealth()
+    const latestActivity = businesses
+      .map((business) => business.lastChatAt)
+      .filter(Boolean)
+      .sort()
+      .at(-1) || null
+
+    const topCountries = Object.entries(aggregateAnalytics.countryCounts)
+      .map(([code, count]) => ({ code, count: Number(count || 0) }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6)
+
+    const modelUsageEntries = Object.entries(aggregateAnalytics.modelUsage)
+      .map(([model, count]) => ({ model, count: Number(count || 0) }))
+      .sort((a, b) => b.count - a.count)
+
+    const configuredModelUsage = businesses
+      .reduce<Record<string, number>>((acc, business) => {
+        const model = business.assistantModel || 'unknown'
+        acc[model] = (acc[model] || 0) + Math.max(1, business.chatCount || business.userCount || 0)
+        return acc
+      }, {})
+    const configuredModels = Object.entries(configuredModelUsage)
+      .map(([model, count]) => ({ model, count }))
+      .sort((a, b) => b.count - a.count)
+
+    const averageMessagesPerSession =
+      aggregateAnalytics.totalSessions > 0
+        ? aggregateAnalytics.totalMessages / aggregateAnalytics.totalSessions
+        : 0
+
+    return NextResponse.json({
+      adminEmail: adminUser.email || null,
+      totals: {
+        businesses: businesses.length,
+        users: totalUsers,
+        chats: totalChats,
+      },
+      health,
+      latestActivity,
+      analytics: {
+        totalSessions: aggregateAnalytics.totalSessions,
+        totalMessages: aggregateAnalytics.totalMessages,
+        aiOnlySessions: aggregateAnalytics.aiOnlySessions,
+        supportRequests: aggregateAnalytics.supportRequests,
+        savedSupportChats: aggregateAnalytics.savedSupportChats,
+        averageMessagesPerSession,
+        dailyConversationCounts: aggregateAnalytics.dailyConversationCounts,
+        countryCounts: aggregateAnalytics.countryCounts,
+        topCountries,
+        modelUsage: modelUsageEntries,
+        configuredModels,
+      },
+      businesses,
+    })
+  } catch (error) {
+    if (error instanceof VintraAdminAuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
+
+    console.error('Vintra admin summary error:', error)
+    return NextResponse.json({ error: 'Failed to load Vintra admin summary' }, { status: 500 })
+  }
+}

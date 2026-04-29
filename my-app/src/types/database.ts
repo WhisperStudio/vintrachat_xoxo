@@ -38,6 +38,7 @@ export interface ChatAnalytics {
   savedSupportChats: number;
   dailyConversationCounts?: Record<string, number>;
   countryCounts?: Record<string, number>;
+  modelUsage?: Record<string, number>;
   timeline?: ChatAnalyticsEvent[];
   lastChatAt?: Date;
 }

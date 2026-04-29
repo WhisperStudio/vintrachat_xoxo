@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import {
   FiActivity,
   FiClock,
@@ -24,6 +24,23 @@ declare global {
 
 type AnalyticsView = 'overview' | 'timeline' | 'geography'
 type AnalyticsRange = '24h' | '7d' | '30d' | 'all'
+
+type RangeAnalytics = {
+  totalSessions: number
+  supportRequests: number
+  aiOnlySessions: number
+  savedSupportChats: number
+  countryCounts: Record<string, number>
+  lastActivityAt: Date | null
+}
+
+type AnalyticsCard = {
+  label: string
+  value: ReactNode
+  detail: string
+  icon: ComponentType
+  tone: 'green' | 'blue' | 'violet' | 'amber' | 'sky' | 'slate'
+}
 
 const emptyAnalytics: ChatAnalytics = {
   totalSessions: 0,
@@ -75,23 +92,105 @@ function getRangeStart(range: AnalyticsRange) {
   }
 }
 
-function formatBucketLabel(date: Date, range: AnalyticsRange) {
+function getTimelineBucketStart(date: Date, range: AnalyticsRange) {
+  const bucket = new Date(date)
+
   if (range === '24h') {
-    return new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(date)
+    bucket.setMinutes(0, 0, 0)
+    return bucket
   }
 
-  if (range === '7d' || range === '30d') {
-    return new Intl.DateTimeFormat(undefined, {
-      month: 'short',
-      day: 'numeric',
-    }).format(date)
+  if (range === '7d' || range === '30d' || range === 'all') {
+    bucket.setHours(0, 0, 0, 0)
+    return bucket
   }
 
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-  }).format(date)
+  return bucket
+}
+
+function buildRangeAnalytics(events: ChatAnalyticsEvent[]): RangeAnalytics {
+  const sessionStarts = new Set<string>()
+  const supportRequestedSessions = new Set<string>()
+  const supportChatSessions = new Set<string>()
+  const sessionCountries = new Map<string, string>()
+  let lastActivityAt: Date | null = null
+
+  events.forEach((event) => {
+    const createdAt = new Date(event.createdAt)
+    if (!Number.isNaN(createdAt.getTime()) && (!lastActivityAt || createdAt > lastActivityAt)) {
+      lastActivityAt = createdAt
+    }
+
+    if (event.countryCode && !sessionCountries.has(event.sessionId)) {
+      sessionCountries.set(event.sessionId, event.countryCode)
+    }
+
+    switch (event.kind) {
+      case 'session-start':
+        sessionStarts.add(event.sessionId)
+        break
+      case 'support-request':
+        supportRequestedSessions.add(event.sessionId)
+        supportChatSessions.add(event.sessionId)
+        break
+      case 'support-message':
+      case 'support-open':
+      case 'support-returned':
+        supportChatSessions.add(event.sessionId)
+        break
+      default:
+        break
+    }
+  })
+
+  const countryCounts = Array.from(sessionCountries.values()).reduce<Record<string, number>>(
+    (accumulator, countryCode) => {
+      accumulator[countryCode] = (accumulator[countryCode] || 0) + 1
+      return accumulator
+    },
+    {}
+  )
+
+  return {
+    totalSessions: sessionStarts.size,
+    supportRequests: supportRequestedSessions.size,
+    aiOnlySessions: Math.max(sessionStarts.size - supportRequestedSessions.size, 0),
+    savedSupportChats: supportChatSessions.size,
+    countryCounts,
+    lastActivityAt,
+  }
+}
+
+function buildEmptyTimelineBuckets(range: AnalyticsRange) {
+  const now = new Date()
+  const start = getRangeStart(range)
+  const placeholderStart = start.getTime() === 0 ? new Date(now.getTime() - 24 * 60 * 60 * 1000) : start
+
+  return [
+    { bucket: placeholderStart, activity: 0, handovers: 0 },
+    { bucket: now, activity: 0, handovers: 0 },
+  ]
+}
+
+function countryCodeToFlagEmoji(countryCode?: string) {
+  const normalized = String(countryCode || '').trim().toUpperCase()
+
+  if (!/^[A-Z]{2}$/.test(normalized) || normalized === 'XX') {
+    return '🌐'
+  }
+
+  const codePoints = [...normalized].map((char) => 127397 + char.charCodeAt(0))
+  return String.fromCodePoint(...codePoints)
+}
+
+function countryCodeToFlagImage(countryCode?: string) {
+  const normalized = String(countryCode || '').trim().toUpperCase()
+
+  if (!/^[A-Z]{2}$/.test(normalized) || normalized === 'XX') {
+    return null
+  }
+
+  return `https://flagcdn.com/w40/${normalized.toLowerCase()}.png`
 }
 
 function eventLabel(kind: ChatAnalyticsEvent['kind']) {
@@ -179,68 +278,6 @@ export default function AdminAnalyticsPanel() {
     }
   }, [])
 
-  const analyticsCards = useMemo(() => {
-    const supportRate =
-      analytics.totalSessions > 0
-        ? Math.round((analytics.supportRequests / analytics.totalSessions) * 100)
-        : 0
-    const aiRate =
-      analytics.totalSessions > 0
-        ? Math.round((analytics.aiOnlySessions / analytics.totalSessions) * 100)
-        : 0
-    const savedRate =
-      analytics.supportRequests > 0
-        ? Math.round((analytics.savedSupportChats / analytics.supportRequests) * 100)
-        : 0
-    const latestCountry =
-      Object.entries(analytics.countryCounts || {}).sort((a, b) => b[1] - a[1])[0]?.[0] || 'XX'
-
-    return [
-      {
-        label: 'Total sessions',
-        value: analytics.totalSessions,
-        detail: 'All widget conversations',
-        icon: FiActivity,
-        tone: 'green',
-      },
-      {
-        label: 'Support requests',
-        value: analytics.supportRequests,
-        detail: `${supportRate}% of all sessions`,
-        icon: FiShield,
-        tone: 'blue',
-      },
-      {
-        label: 'AI-only sessions',
-        value: analytics.aiOnlySessions,
-        detail: `${aiRate}% handled fully by AI`,
-        icon: FiCpu,
-        tone: 'violet',
-      },
-      {
-        label: 'Saved support chats',
-        value: analytics.savedSupportChats,
-        detail: `${savedRate}% of support requests`,
-        icon: FiTrendingUp,
-        tone: 'amber',
-      },
-      {
-        label: 'Top country',
-        value: latestCountry,
-        detail: 'Most common visitor country code',
-        icon: FiGlobe,
-        tone: 'sky',
-      },
-      {
-        label: 'Last activity',
-        value: analytics.lastChatAt ? new Date(analytics.lastChatAt).toLocaleTimeString() : 'None',
-        detail: analytics.lastChatAt ? new Date(analytics.lastChatAt).toLocaleString() : 'No chats yet',
-        icon: FiClock,
-        tone: 'slate',
-      },
-    ]
-  }, [analytics])
-
   const timelineEvents = useMemo(() => {
     const start = getRangeStart(range)
     return [...(analytics.timeline || [])]
@@ -248,28 +285,117 @@ export default function AdminAnalyticsPanel() {
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
   }, [analytics.timeline, range])
 
+  const rangeAnalytics = useMemo(() => buildRangeAnalytics(timelineEvents), [timelineEvents])
+
+  const analyticsCards = useMemo(() => {
+    const supportRate =
+      rangeAnalytics.totalSessions > 0
+        ? Math.round((rangeAnalytics.supportRequests / rangeAnalytics.totalSessions) * 100)
+        : 0
+    const aiRate =
+      rangeAnalytics.totalSessions > 0
+        ? Math.round((rangeAnalytics.aiOnlySessions / rangeAnalytics.totalSessions) * 100)
+        : 0
+    const savedRate =
+      rangeAnalytics.supportRequests > 0
+        ? Math.round((rangeAnalytics.savedSupportChats / rangeAnalytics.supportRequests) * 100)
+        : 0
+    const latestCountry =
+      Object.entries(rangeAnalytics.countryCounts || {}).sort((a, b) => b[1] - a[1])[0]?.[0] || 'XX'
+
+    return [
+      {
+        label: 'Total sessions',
+        value: rangeAnalytics.totalSessions,
+        detail: 'Selected range only',
+        icon: FiActivity,
+        tone: 'green',
+      },
+      {
+        label: 'Support requests',
+        value: rangeAnalytics.supportRequests,
+        detail: `${supportRate}% of sessions in range`,
+        icon: FiShield,
+        tone: 'blue',
+      },
+      {
+        label: 'AI-only sessions',
+        value: rangeAnalytics.aiOnlySessions,
+        detail: `${aiRate}% handled fully by AI`,
+        icon: FiCpu,
+        tone: 'violet',
+      },
+      {
+        label: 'Saved support chats',
+        value: rangeAnalytics.savedSupportChats,
+        detail: `${savedRate}% of support requests`,
+        icon: FiTrendingUp,
+        tone: 'amber',
+      },
+      {
+        label: 'Top country',
+        value: (
+          <span className="adminAnalyticsCountryValue">
+            {countryCodeToFlagImage(latestCountry) ? (
+              <img
+                className="adminAnalyticsCountryFlag"
+                src={countryCodeToFlagImage(latestCountry) as string}
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+                decoding="async"
+              />
+            ) : (
+              <FiGlobe className="adminAnalyticsCountryFlagFallback" aria-hidden="true" />
+            )}
+            <span>{latestCountry}</span>
+          </span>
+        ),
+        detail: 'Based on selected range',
+        icon: FiGlobe,
+        tone: 'sky',
+      },
+      {
+        label: 'Last activity',
+        value: analytics.lastChatAt ? new Date(analytics.lastChatAt).toLocaleTimeString() : 'None',
+        detail: analytics.lastChatAt
+          ? new Date(analytics.lastChatAt).toLocaleString()
+          : 'No chats yet',
+        icon: FiClock,
+        tone: 'slate',
+      },
+    ] satisfies AnalyticsCard[]
+  }, [rangeAnalytics])
+
   const timelineBuckets = useMemo(() => {
-    const map = new Map<string, { bucket: string; activity: number; handovers: number }>()
+    const map = new Map<number, { bucket: Date; activity: number; handovers: number }>()
 
     timelineEvents.forEach((event) => {
       const date = new Date(event.createdAt)
-      const bucket = formatBucketLabel(date, range)
-      const current = map.get(bucket) || { bucket, activity: 0, handovers: 0 }
+      const bucketStart = getTimelineBucketStart(date, range)
+      const bucketKey = bucketStart.getTime()
+      const current = map.get(bucketKey) || {
+        bucket: bucketStart,
+        activity: 0,
+        handovers: 0,
+      }
 
       current.activity += 1
       if (event.kind === 'support-request' || event.kind === 'support-open') {
         current.handovers += 1
       }
 
-      map.set(bucket, current)
+      map.set(bucketKey, current)
     })
 
-    return Array.from(map.values())
+    return Array.from(map.values()).sort(
+      (a, b) => a.bucket.getTime() - b.bucket.getTime()
+    )
   }, [range, timelineEvents])
 
   const countryEntries = useMemo(() => {
-    return Object.entries(analytics.countryCounts || {}).sort((a, b) => b[1] - a[1])
-  }, [analytics.countryCounts])
+    return Object.entries(rangeAnalytics.countryCounts || {}).sort((a, b) => b[1] - a[1])
+  }, [rangeAnalytics.countryCounts])
 
   useEffect(() => {
     if (!chartReady || !window.google?.charts) return
@@ -277,11 +403,20 @@ export default function AdminAnalyticsPanel() {
     const google = window.google
 
     if (view === 'overview' && overviewRef.current) {
+      const hasOverviewData =
+        rangeAnalytics.aiOnlySessions > 0 ||
+        rangeAnalytics.supportRequests > 0 ||
+        rangeAnalytics.savedSupportChats > 0
+
       const pieData = google.visualization.arrayToDataTable([
         ['Type', 'Count'],
-        ['AI only', analytics.aiOnlySessions],
-        ['Support requested', analytics.supportRequests],
-        ['Saved follow-ups', analytics.savedSupportChats],
+        ...(hasOverviewData
+          ? [
+              ['AI only', rangeAnalytics.aiOnlySessions],
+              ['Support requested', rangeAnalytics.supportRequests],
+              ['Saved follow-ups', rangeAnalytics.savedSupportChats],
+            ]
+          : [['No data', 1]]),
       ])
 
       const pieChart = new google.visualization.PieChart(overviewRef.current)
@@ -290,7 +425,7 @@ export default function AdminAnalyticsPanel() {
         pieHole: 0.72,
         legend: { position: 'bottom', textStyle: { color: '#475569', fontName: 'Inter' } },
         chartArea: { left: 10, top: 10, width: '92%', height: '82%' },
-        colors: ['#60a5fa', '#34d399', '#f59e0b'],
+        colors: hasOverviewData ? ['#60a5fa', '#34d399', '#f59e0b'] : ['#cbd5e1'],
         pieSliceText: 'none',
         tooltip: { textStyle: { fontName: 'Inter' } },
         fontName: 'Inter',
@@ -298,12 +433,15 @@ export default function AdminAnalyticsPanel() {
     }
 
     if (view === 'timeline' && timelineRef.current) {
+      const lineChart = new google.visualization.LineChart(timelineRef.current)
+      const chartTimelineBuckets =
+        timelineBuckets.length > 0 ? timelineBuckets : buildEmptyTimelineBuckets(range)
+
       const lineData = google.visualization.arrayToDataTable([
         ['Time', 'Activity', 'Handovers'],
-        ...timelineBuckets.map((bucket) => [bucket.bucket, bucket.activity, bucket.handovers]),
+        ...chartTimelineBuckets.map((bucket) => [bucket.bucket, bucket.activity, bucket.handovers]),
       ])
 
-      const lineChart = new google.visualization.LineChart(timelineRef.current)
       lineChart.draw(lineData, {
         backgroundColor: 'transparent',
         legend: { position: 'bottom', textStyle: { color: '#475569', fontName: 'Inter' } },
@@ -314,6 +452,7 @@ export default function AdminAnalyticsPanel() {
         hAxis: {
           textStyle: { color: '#64748b', fontName: 'Inter' },
           gridlines: { color: 'rgba(148, 163, 184, 0.12)' },
+          format: range === '24h' ? 'HH:mm' : 'MMM d',
         },
         vAxis: {
           textStyle: { color: '#64748b', fontName: 'Inter' },
@@ -342,11 +481,12 @@ export default function AdminAnalyticsPanel() {
       })
     }
   }, [
-    analytics.aiOnlySessions,
-    analytics.savedSupportChats,
-    analytics.supportRequests,
     chartReady,
     countryEntries,
+    range,
+    rangeAnalytics.aiOnlySessions,
+    rangeAnalytics.savedSupportChats,
+    rangeAnalytics.supportRequests,
     timelineBuckets,
     view,
   ])
@@ -394,7 +534,9 @@ export default function AdminAnalyticsPanel() {
           <p>Live widget activity, support handovers, geography, and timeline trends.</p>
         </div>
         <div className="adminAnalyticsBadge">
-          {analytics.lastChatAt ? `Updated ${new Date(analytics.lastChatAt).toLocaleString()}` : 'No recent activity'}
+          {rangeAnalytics.lastActivityAt
+            ? `Updated ${new Date(rangeAnalytics.lastActivityAt).toLocaleString()}`
+            : 'No recent activity'}
         </div>
       </div>
 
@@ -503,7 +645,21 @@ export default function AdminAnalyticsPanel() {
               {topCountries.length ? (
                 topCountries.map(([country, count]) => (
                   <div key={country} className="adminAnalyticsCountryRow">
-                    <strong>{country}</strong>
+                    <strong>
+                      {countryCodeToFlagImage(country) ? (
+                        <img
+                          className="adminAnalyticsCountryFlag"
+                          src={countryCodeToFlagImage(country) as string}
+                          alt=""
+                          aria-hidden="true"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : (
+                        <FiGlobe className="adminAnalyticsCountryFlagFallback" aria-hidden="true" />
+                      )}
+                      {country}
+                    </strong>
                     <span>{count}</span>
                   </div>
                 ))
@@ -573,7 +729,21 @@ export default function AdminAnalyticsPanel() {
               {topCountries.length ? (
                 topCountries.map(([country, count]) => (
                   <div key={country} className="adminAnalyticsCountryRow">
-                    <strong>{country}</strong>
+                    <strong>
+                      {countryCodeToFlagImage(country) ? (
+                        <img
+                          className="adminAnalyticsCountryFlag"
+                          src={countryCodeToFlagImage(country) as string}
+                          alt=""
+                          aria-hidden="true"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : (
+                        <FiGlobe className="adminAnalyticsCountryFlagFallback" aria-hidden="true" />
+                      )}
+                      {country}
+                    </strong>
                     <span>{count}</span>
                   </div>
                 ))

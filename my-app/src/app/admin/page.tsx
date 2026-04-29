@@ -10,6 +10,7 @@ import AdminUserManagementPanel from './components/AdminUserManagementPanel'
 import AdminTasksPanel from './components/AdminTasksPanel'
 import WidgetAdminPanel from './widget/page'
 import './page.css'
+import { isVintraAdminEmail } from '@/lib/vintra-admin'
 
 type AdminTab =
   | 'overview'
@@ -23,7 +24,7 @@ type AdminTab =
   | 'settings'
 
 export default function AdminPage() {
-  const { isAuthenticated, dbUser, loading } = useAuth()
+  const { isAuthenticated, dbUser, loading, firebaseUser } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
   const sidebarRef = useRef<HTMLElement | null>(null)
@@ -56,8 +57,13 @@ export default function AdminPage() {
   const visibleAdminItems = adminItems.filter((item) => visibleTabs.includes(item.tab))
 
   useEffect(() => {
+    if (!loading && isVintraAdminEmail(firebaseUser?.email)) {
+      router.replace('/vintra-admin')
+      return
+    }
+
     if (!loading && !isAuthenticated) router.push('/auth/login')
-  }, [isAuthenticated, loading, router])
+  }, [firebaseUser?.email, isAuthenticated, loading, router])
 
   useLayoutEffect(() => {
     const updateIndicator = () => {

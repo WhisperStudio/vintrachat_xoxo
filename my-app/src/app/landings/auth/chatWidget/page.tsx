@@ -299,12 +299,6 @@ export default function ChatWidgetBuilderPage() {
             and customize the chat bubble, header, body and footer styles.
           </p>
 
-          <p style={{ marginTop: 10 }}>
-            Status:{' '}
-            <strong>
-              {isAuthenticated && dbUser ? 'Koblet til database ✅' : 'Preview mode for guests 👀'}
-            </strong>
-          </p>
         </section>
 
         <div className="chatbuilder-grid">

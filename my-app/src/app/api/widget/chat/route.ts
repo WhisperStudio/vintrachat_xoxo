@@ -23,6 +23,7 @@ type IncomingMessage = {
 type GeminiResult = {
   reply: string
   needsHumanSupport: boolean
+  modelUsed: string
 }
 
 class GeminiApiError extends Error {
@@ -103,7 +104,21 @@ function supportsNativeJsonMode(model: string) {
   return !model.toLowerCase().startsWith('gemma-')
 }
 
-function extractGeminiResult(rawText: string): GeminiResult {
+function parseModelList(value?: string | null) {
+  return String(value || '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+}
+
+function getGeminiModelFallbacks(primaryModel: string) {
+  const configuredFallbacks = parseModelList(process.env.GEMINI_MODEL_FALLBACKS)
+  const defaultFallbacks = ['gemma-3-27b-it', 'gemma-3-12b-it', 'gemma-3-4b-it', 'gemma-3-1b-it']
+  const preferredOrder = configuredFallbacks.length > 0 ? configuredFallbacks : defaultFallbacks
+  return [primaryModel, ...preferredOrder].filter((model, index, self) => self.indexOf(model) === index)
+}
+
+function extractGeminiResult(rawText: string): Omit<GeminiResult, 'modelUsed'> {
   try {
     const parsed = JSON.parse(rawText)
 
@@ -172,74 +187,89 @@ async function generateGeminiReply(prompt: string, model: string): Promise<Gemin
       reply:
         'AI is ready in the app, but Gemini is not configured yet. Add GEMINI_API_KEY to enable live answers.',
       needsHumanSupport: false,
+      modelUsed: model,
     }
   }
 
   const retryDelays = [800, 1600, 3000]
-  const useNativeJsonMode = supportsNativeJsonMode(model)
+  const modelCandidates = getGeminiModelFallbacks(model)
 
-  for (let attempt = 0; attempt <= retryDelays.length; attempt += 1) {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey,
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: prompt }],
-            },
-          ],
-          generationConfig: useNativeJsonMode
-            ? {
-                responseMimeType: 'application/json',
-                responseJsonSchema: {
-                  type: 'object',
-                  properties: {
-                    reply: {
-                      type: 'string',
-                      description: 'The assistant reply shown to the visitor.',
+  for (const candidate of modelCandidates) {
+    const useNativeJsonMode = supportsNativeJsonMode(candidate)
+
+    for (let attempt = 0; attempt <= retryDelays.length; attempt += 1) {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${candidate}:generateContent`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey,
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [{ text: prompt }],
+              },
+            ],
+            generationConfig: useNativeJsonMode
+              ? {
+                  responseMimeType: 'application/json',
+                  responseJsonSchema: {
+                    type: 'object',
+                    properties: {
+                      reply: {
+                        type: 'string',
+                        description: 'The assistant reply shown to the visitor.',
+                      },
+                      needsHumanSupport: {
+                        type: 'boolean',
+                        description:
+                          'True only when the visitor explicitly asks for human support or contact.',
+                      },
                     },
-                    needsHumanSupport: {
-                      type: 'boolean',
-                      description:
-                        'True only when the visitor explicitly asks for human support or contact.',
-                    },
+                    required: ['reply', 'needsHumanSupport'],
                   },
-                  required: ['reply', 'needsHumanSupport'],
-                },
-              }
-            : undefined,
-        }),
+                }
+              : undefined,
+          }),
+        }
+      )
+
+      if (response.ok) {
+        const json = await response.json()
+        const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text
+
+        if (!rawText) {
+          throw new Error('Gemini returned no text')
+        }
+
+        return {
+          ...extractGeminiResult(rawText),
+          modelUsed: candidate,
+        }
       }
-    )
 
-    if (response.ok) {
-      const json = await response.json()
-      const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text
+      const errorText = await response.text()
+      const retryable =
+        response.status === 429 ||
+        response.status === 503 ||
+        /quota|resource exhausted|too many requests/i.test(errorText)
 
-      if (!rawText) {
-        throw new Error('Gemini returned no text')
+      if (retryable && attempt < retryDelays.length) {
+        await sleep(retryDelays[attempt])
+        continue
       }
 
-      return extractGeminiResult(rawText)
+      if (retryable) {
+        break
+      }
+
+      throw new GeminiApiError(response.status, `Gemini request failed: ${response.status} ${errorText}`)
     }
-
-    const errorText = await response.text()
-    const retryable = response.status === 429 || response.status === 503
-
-    if (retryable && attempt < retryDelays.length) {
-      await sleep(retryDelays[attempt])
-      continue
-    }
-
-    throw new GeminiApiError(response.status, `Gemini request failed: ${response.status} ${errorText}`)
   }
 
-  throw new Error('Gemini request failed after retries')
+  throw new Error('Gemini request failed after retries and model fallbacks')
 }
 
 export async function OPTIONS(req: NextRequest) {
@@ -428,6 +458,7 @@ export async function POST(req: NextRequest) {
 
         aiReply = result.reply
         aiWantsHumanSupport = result.needsHumanSupport
+        assistantConfig.model = result.modelUsed
       } catch (error) {
         if (error instanceof GeminiApiError && (error.status === 429 || error.status === 503)) {
           console.warn('Gemini temporarily unavailable:', error.message)
@@ -494,6 +525,11 @@ export async function POST(req: NextRequest) {
       analyticsUpdates['chatAnalytics.totalSessions'] = FieldValue.increment(1)
       analyticsUpdates['chatAnalytics.aiOnlySessions'] = FieldValue.increment(1)
       analyticsUpdates[`chatAnalytics.dailyConversationCounts.${todayKey}`] = FieldValue.increment(1)
+    }
+
+    if (assistantConfig.enabled) {
+      analyticsUpdates[`chatAnalytics.modelUsage.${assistantConfig.model || process.env.GEMINI_MODEL || 'gemma-3-4b-it'}`] =
+        FieldValue.increment(1)
     }
 
     if (needsHumanSupport && !requiresName) {

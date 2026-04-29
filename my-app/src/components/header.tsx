@@ -6,6 +6,7 @@ import styled, { css, keyframes } from 'styled-components'
 import { useAuth } from '@/context/AuthContext'
 import { usePathname, useRouter } from 'next/navigation'
 import { getInvitationsForEmail } from '@/lib/invitation.service'
+import { isVintraAdminEmail } from '@/lib/vintra-admin'
 import type { BusinessInvitation } from '@/types/database'
 import {
   FiArrowRight,
@@ -371,8 +372,9 @@ export default function Header() {
   const navButtonRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
   const [navIndicator, setNavIndicator] = useState<{ left: number; width: number; opacity: number } | null>(null)
 
-  const showInvitationCenter = !!firebaseUser && !dbUser
-  const showGuestLinks = !firebaseUser || showInvitationCenter
+  const showVintraAdmin = isVintraAdminEmail(firebaseUser?.email)
+  const showInvitationCenter = !!firebaseUser && !dbUser && !showVintraAdmin
+  const showGuestLinks = (!firebaseUser || showInvitationCenter) && !showVintraAdmin
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 18)
@@ -430,13 +432,15 @@ export default function Header() {
       ]
     }
 
-    return [
-      { href: '/landings/user', label: 'Dashboard', icon: <FiGrid /> },
-      { href: '/landings/auth/websites', label: 'My Websites', icon: <FiLayers /> },
-      { href: '/landings/auth/chatWidget', label: 'My Chat Widgets', icon: <FiMessageSquare /> },
-      { href: '/admin', label: 'Admin Panel', icon: <FiBriefcase /> },
-    ]
-  }, [pendingInvites.length, showGuestLinks, showInvitationCenter])
+    return showVintraAdmin
+      ? [{ href: '/vintra-admin', label: 'Vintra Admin', icon: <FiBriefcase /> }]
+      : [
+          { href: '/landings/user', label: 'Dashboard', icon: <FiGrid /> },
+          { href: '/landings/auth/websites', label: 'My Websites', icon: <FiLayers /> },
+          { href: '/landings/auth/chatWidget', label: 'My Chat Widgets', icon: <FiMessageSquare /> },
+          { href: '/admin', label: 'Admin Panel', icon: <FiBriefcase /> },
+        ]
+  }, [pendingInvites.length, showGuestLinks, showInvitationCenter, showVintraAdmin])
 
   const isActivePath = (href: string) => {
     if (!pathname) return false
@@ -537,10 +541,18 @@ export default function Header() {
                   </ActionButton>
                 </>
               ) : (
-                <ActionButton type="button" onClick={handleLogout}>
-                  <FiLogOut />
-                  <span>Log Out</span>
-                </ActionButton>
+                <>
+                  {showVintraAdmin ? (
+                    <PrimaryAction href="/vintra-admin">
+                      <FiBriefcase />
+                      <span>Vintra Admin</span>
+                    </PrimaryAction>
+                  ) : null}
+                  <ActionButton type="button" onClick={handleLogout}>
+                    <FiLogOut />
+                    <span>Log Out</span>
+                  </ActionButton>
+                </>
               )}
             </ActionRow>
           </RightSide>
@@ -593,10 +605,18 @@ export default function Header() {
                 </ActionButton>
               </>
             ) : (
-              <ActionButton type="button" onClick={handleLogout}>
-                <FiLogOut />
-                <span>Log Out</span>
-              </ActionButton>
+              <>
+                {showVintraAdmin ? (
+                  <PrimaryAction href="/vintra-admin">
+                    <FiBriefcase />
+                    <span>Vintra Admin</span>
+                  </PrimaryAction>
+                ) : null}
+                <ActionButton type="button" onClick={handleLogout}>
+                  <FiLogOut />
+                  <span>Log Out</span>
+                </ActionButton>
+              </>
             )}
           </MobileActionStack>
         </MobilePanel>

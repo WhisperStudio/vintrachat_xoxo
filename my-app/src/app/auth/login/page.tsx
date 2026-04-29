@@ -5,10 +5,11 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { signInWithEmail } from '@/lib/auth.service'
 import { useAuth } from '@/context/AuthContext'
+import { isVintraAdminEmail } from '@/lib/vintra-admin'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { isAuthenticated, loading } = useAuth()
+  const { firebaseUser, isAuthenticated, loading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -17,9 +18,9 @@ export default function LoginPage() {
   // Redirect hvis allerede innlogget
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      router.push('/admin')
+      router.push(isVintraAdminEmail(firebaseUser?.email) ? '/vintra-admin' : '/admin')
     }
-  }, [isAuthenticated, loading, router])
+  }, [firebaseUser?.email, isAuthenticated, loading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

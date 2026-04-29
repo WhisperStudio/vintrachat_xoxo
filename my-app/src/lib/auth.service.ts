@@ -38,6 +38,7 @@ import {
   sanitizeBubbleStyleForPlan,
   type SubscriptionPlan,
 } from "@/lib/subscription";
+import { getVintraAdminRedirectPath, isVintraAdminEmail, normalizeEmail } from "@/lib/vintra-admin";
 
 // ----------------------
 // Google Auth
@@ -351,6 +352,7 @@ const defaultChatAnalytics: ChatAnalytics = {
   savedSupportChats: 0,
   dailyConversationCounts: {},
   countryCounts: {},
+  modelUsage: {},
   timeline: [],
 };
 
@@ -401,6 +403,15 @@ export async function signInWithEmail(email: string, password: string) {
       };
     }
 
+    const signedInEmail = normalizeEmail(cred.user.email || email)
+    if (isVintraAdminEmail(signedInEmail)) {
+      return {
+        success: true,
+        message: 'Vintra admin innlogging OK',
+        redirectTo: getVintraAdminRedirectPath(signedInEmail),
+      }
+    }
+
     const userExists = await getCurrentUser(cred.user);
 
     if (!userExists) {
@@ -413,6 +424,7 @@ export async function signInWithEmail(email: string, password: string) {
     return {
       success: true,
       message: "Innlogging OK",
+      redirectTo: getVintraAdminRedirectPath(cred.user.email || email),
     };
   } catch (err: any) {
     return { success: false, message: err.message };
@@ -570,6 +582,7 @@ export async function getBusinessInfo(
             ...data.chatAnalytics,
             dailyConversationCounts: data.chatAnalytics.dailyConversationCounts || {},
             countryCounts: data.chatAnalytics.countryCounts || {},
+            modelUsage: data.chatAnalytics.modelUsage || {},
             timeline: Array.isArray(data.chatAnalytics.timeline)
               ? data.chatAnalytics.timeline.map((event: any) => ({
                   id: event.id || crypto.randomUUID(),
