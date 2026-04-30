@@ -91,6 +91,7 @@ const contactStructuredData = {
       '@type': 'Organization',
       '@id': organizationId,
       name: siteConfig.legalName,
+      alternateName: siteConfig.alternateName,
       url: siteConfig.url,
       logo: absoluteUrl('/favicon.ico'),
       email: siteConfig.contact.email,
@@ -1106,7 +1107,27 @@ export default function MainLanding() {
           <div className="hero-grid" style={{ display: 'flex', gap: 48, alignItems: 'center' }}>
             {/* left text */}
             <div style={{ flex: 1, minWidth: 0 }}>
-              
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '10px 16px',
+                borderRadius: 999,
+                background: '#EEF4FF',
+                color: '#1A6BFF',
+                fontSize: 12,
+                fontWeight: 900,
+                letterSpacing: 0.7,
+                textTransform: 'uppercase',
+                marginBottom: 18,
+                opacity: heroMounted ? 1 : 0,
+                transform: heroMounted ? 'none' : 'translateY(20px)',
+                transition: 'all 0.6s ease',
+              }}>
+                <span>Vintra</span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E' }} />
+                <span>Official site</span>
+              </div>
 
               <h1 style={{
                 fontSize: 'clamp(36px, 5vw, 60px)',
@@ -1115,9 +1136,9 @@ export default function MainLanding() {
                 opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateY(20px)',
                 transition: 'all 0.6s ease 0.1s',
               }}>
-                Your website.<br />
-                Your chatbot.<br />
-                <span style={{ color: '#1A6BFF' }}>Your way.</span>
+                <span style={{ display: 'block' }}>Vintra builds</span>
+                websites and chatbots<br />
+                <span style={{ color: '#1A6BFF' }}>that are easy to find.</span>
               </h1>
 
               <p style={{
@@ -1125,7 +1146,7 @@ export default function MainLanding() {
                 opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateY(20px)',
                 transition: 'all 0.6s ease 0.2s',
               }}>
-                Start free. No registration. See the result before you decide.
+                Vintra is the official site for website design, AI chatbots, pricing, support, phone, and email in one place.
               </p>
 
               <div style={{

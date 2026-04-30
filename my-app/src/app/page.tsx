@@ -3,7 +3,7 @@ import MainLanding from './landings/main/page'
 import { siteConfig } from '@/lib/site-config'
 
 export const metadata: Metadata = {
-  title: 'Websites and AI chatbots for businesses',
+  title: 'Vintra official site for websites, AI chatbots, pricing and support',
   description: siteConfig.description,
   alternates: {
     canonical: '/',

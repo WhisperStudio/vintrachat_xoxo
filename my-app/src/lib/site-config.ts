@@ -18,8 +18,10 @@ function normalizeSiteUrl(value?: string | null) {
 export const siteConfig = {
   name: 'Vintra',
   legalName: 'Vintra',
+  alternateName: 'Vintra Studio',
   description:
-    'Vintra builds modern websites and AI chatbots for businesses that want more leads, faster support, and a stronger online presence.',
+    'Vintra is the official site for business websites and AI chatbots. See pricing, support, phone, and email in one place.',
+  tagline: 'Websites and AI chatbots for businesses',
   url: normalizeSiteUrl(process.env.NEXT_PUBLIC_APP_URL),
   locale: 'nb_NO',
   contact: {
