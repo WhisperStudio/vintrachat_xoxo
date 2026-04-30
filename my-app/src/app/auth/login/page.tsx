@@ -5,8 +5,6 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { signInWithEmail } from '@/lib/auth.service'
 import { useAuth } from '@/context/AuthContext'
-import { isVintraAdminEmail } from '@/lib/vintra-admin'
-
 export default function LoginPage() {
   const router = useRouter()
   const { firebaseUser, isAuthenticated, loading } = useAuth()
@@ -18,7 +16,7 @@ export default function LoginPage() {
   // Redirect hvis allerede innlogget
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      router.push(isVintraAdminEmail(firebaseUser?.email) ? '/vintra-admin' : '/admin')
+      router.push('/admin')
     }
   }, [firebaseUser?.email, isAuthenticated, loading, router])
 

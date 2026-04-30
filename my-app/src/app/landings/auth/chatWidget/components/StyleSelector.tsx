@@ -1,6 +1,16 @@
 'use client'
 
-import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from 'react'
 import { FaRegLightbulb } from 'react-icons/fa'
 import {
   FiChevronDown,
@@ -29,6 +39,19 @@ type AnimationType = 'none' | 'bounce' | 'fade' | 'slide'
 type SizeType = 'small' | 'medium' | 'large'
 type MessageStyle = 'bubble' | 'flat' | 'card'
 type InputStyle = 'flat' | 'rounded' | 'outlined'
+
+type LogoStyle = {
+  zoom: number
+  focusX: number
+  focusY: number
+}
+
+type CustomBranding = {
+  title?: string
+  description?: string
+  logo?: string
+  logoStyle?: LogoStyle
+}
 
 type GlassRadioOption<T extends string> = {
   value: T
@@ -76,18 +99,14 @@ interface StyleSelectorProps {
   colorTheme: ColorTheme
   plan: Plan
   position: Position
-  customBranding: {
-    title?: string
-    description?: string
-    logo?: string
-  }
+  customBranding: CustomBranding
   settings: {
     autoOpen: boolean
     delayMs: number
   }
   onColorThemeChange: (theme: ColorTheme) => void
   onPositionChange: (position: Position) => void
-  onCustomBrandingChange: (branding: any) => void
+  onCustomBrandingChange: (branding: CustomBranding) => void
   onSettingsChange: (settings: any) => void
   openSections: {
     bubble: boolean
@@ -259,6 +278,268 @@ function GlassRadioRow<T extends string>({
           </button>
         )
       })}
+    </div>
+  )
+}
+
+const defaultLogoStyle: LogoStyle = {
+  zoom: 100,
+  focusX: 50,
+  focusY: 50,
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function normalizeLogoStyle(style?: Partial<LogoStyle>) {
+  return {
+    zoom: clamp(Number(style?.zoom || 100), 80, 180),
+    focusX: clamp(Number(style?.focusX || 50), 0, 100),
+    focusY: clamp(Number(style?.focusY || 50), 0, 100),
+  }
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('Could not read the image file'))
+    reader.readAsDataURL(file)
+  })
+}
+
+function LogoUploadEditor({
+  branding,
+  onChange,
+}: {
+  branding: CustomBranding
+  onChange: (branding: CustomBranding) => void
+}) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const previewRef = useRef<HTMLDivElement | null>(null)
+  const [isDragOver, setIsDragOver] = useState(false)
+  const [isDraggingFocus, setIsDraggingFocus] = useState(false)
+  const [error, setError] = useState('')
+
+  const logoStyle = normalizeLogoStyle({
+    ...defaultLogoStyle,
+    ...(branding.logoStyle || {}),
+  })
+
+  const updateBranding = (patch: Partial<CustomBranding>) => {
+    onChange({
+      ...branding,
+      ...patch,
+    })
+  }
+
+  const updateLogoStyle = (patch: Partial<LogoStyle>) => {
+    updateBranding({
+      logoStyle: {
+        ...normalizeLogoStyle(logoStyle),
+        zoom: clamp(Number(patch.zoom ?? logoStyle.zoom), 80, 180),
+        focusX: clamp(Number(patch.focusX ?? logoStyle.focusX), 0, 100),
+        focusY: clamp(Number(patch.focusY ?? logoStyle.focusY), 0, 100),
+      },
+    })
+  }
+
+  const setLogoFromFile = async (file?: File | null) => {
+    if (!file) return
+
+    if (file.type !== 'image/png') {
+      setError('Last opp en PNG-fil.')
+      return
+    }
+
+    try {
+      const dataUrl = await readFileAsDataUrl(file)
+      updateBranding({
+        logo: dataUrl,
+        logoStyle: defaultLogoStyle,
+      })
+      setError('')
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : 'Could not upload the image')
+    }
+  }
+
+  const applyFocusFromPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const rect = previewRef.current?.getBoundingClientRect()
+    if (!rect) return
+
+    const nextFocusX = clamp(((event.clientX - rect.left) / rect.width) * 100, 0, 100)
+    const nextFocusY = clamp(((event.clientY - rect.top) / rect.height) * 100, 0, 100)
+
+    updateLogoStyle({
+      focusX: nextFocusX,
+      focusY: nextFocusY,
+    })
+  }
+
+  const handleDrop = async (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    setIsDragOver(false)
+
+    const file = event.dataTransfer.files?.[0]
+    await setLogoFromFile(file)
+  }
+
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    await setLogoFromFile(event.target.files?.[0])
+    event.target.value = ''
+  }
+
+  const openFilePicker = () => {
+    fileInputRef.current?.click()
+  }
+
+  return (
+    <div className="logoEditor">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png"
+        onChange={handleFileChange}
+        className="logoEditorInput"
+      />
+
+      <div
+        className={`logoEditorDropzone ${isDragOver ? 'is-dragging' : ''} ${branding.logo ? 'has-image' : 'empty'}`}
+        onClick={openFilePicker}
+        onDragEnter={(event) => {
+          event.preventDefault()
+          setIsDragOver(true)
+        }}
+        onDragOver={(event) => {
+          event.preventDefault()
+          setIsDragOver(true)
+        }}
+        onDragLeave={() => setIsDragOver(false)}
+        onDrop={handleDrop}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            openFilePicker()
+          }
+        }}
+      >
+        {branding.logo ? (
+          <div
+            ref={previewRef}
+            className={`logoEditorPreview ${isDraggingFocus ? 'is-dragging' : ''}`}
+            onPointerDown={(event) => {
+              event.preventDefault()
+              setIsDraggingFocus(true)
+              applyFocusFromPointer(event)
+              event.currentTarget.setPointerCapture(event.pointerId)
+            }}
+            onPointerMove={(event) => {
+              if (!isDraggingFocus) return
+              applyFocusFromPointer(event)
+            }}
+            onPointerUp={(event) => {
+              setIsDraggingFocus(false)
+              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                event.currentTarget.releasePointerCapture(event.pointerId)
+              }
+            }}
+            onPointerCancel={() => setIsDraggingFocus(false)}
+            onPointerLeave={() => setIsDraggingFocus(false)}
+          >
+            <div
+              className="logoEditorImage"
+              aria-hidden="true"
+              style={{
+                backgroundImage: `url(${branding.logo})`,
+                backgroundRepeat: 'no-repeat',
+                backgroundSize: `${logoStyle.zoom}% ${logoStyle.zoom}%`,
+                backgroundPosition: `${logoStyle.focusX}% ${logoStyle.focusY}%`,
+              }}
+            />
+            <div className="logoEditorHint">
+              Drag inside the circle to reposition
+            </div>
+          </div>
+        ) : (
+          <div className="logoEditorPlaceholder">
+            <FiImage className="logoEditorPlaceholderIcon" />
+            <strong>Drop a PNG logo here</strong>
+            <span>or click to choose a file</span>
+          </div>
+        )}
+      </div>
+
+      <div className="logoEditorControls">
+        <label className="branding-field">
+          <span>Zoom</span>
+          <input
+            type="range"
+            min="80"
+            max="180"
+            step="1"
+            value={logoStyle.zoom}
+            onChange={(event) => updateLogoStyle({ zoom: Number(event.target.value) })}
+            disabled={!branding.logo}
+          />
+        </label>
+
+        <div className="logoEditorGrid">
+          <label className="branding-field">
+            <span>Horizontal position</span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={logoStyle.focusX}
+              onChange={(event) => updateLogoStyle({ focusX: Number(event.target.value) })}
+              disabled={!branding.logo}
+            />
+          </label>
+
+          <label className="branding-field">
+            <span>Vertical position</span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={logoStyle.focusY}
+              onChange={(event) => updateLogoStyle({ focusY: Number(event.target.value) })}
+              disabled={!branding.logo}
+            />
+          </label>
+        </div>
+
+        <div className="logoEditorActions">
+          <button
+            type="button"
+            className="logoEditorAction"
+            onClick={() => updateBranding({ logo: undefined })}
+            disabled={!branding.logo}
+          >
+            Remove logo
+          </button>
+          <button
+            type="button"
+            className="logoEditorAction secondary"
+            onClick={() => updateLogoStyle(defaultLogoStyle)}
+            disabled={!branding.logo}
+          >
+            Reset crop
+          </button>
+        </div>
+
+        <p className="logoEditorMeta">
+          PNG only. Drop a file, then drag within the circle or adjust the sliders.
+        </p>
+
+        {error ? <p className="logoEditorError">{error}</p> : null}
+      </div>
     </div>
   )
 }
@@ -1011,14 +1292,9 @@ export default function StyleSelector({
             />
           </div>
 
-          <div className="branding-field">
-            <label>Logo URL (optional)</label>
-            <input
-              type="text"
-              value={customBranding.logo || ''}
-              onChange={(e) => onCustomBrandingChange({ ...customBranding, logo: e.target.value })}
-              placeholder="https://example.com/logo.png"
-            />
+          <div className="branding-field branding-field--logo">
+            <label>Logo upload</label>
+            <LogoUploadEditor branding={customBranding} onChange={onCustomBrandingChange} />
           </div>
         </div>
       </div>

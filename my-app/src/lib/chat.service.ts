@@ -15,6 +15,7 @@ import {
 import { db } from '@/lib/firebase'
 import type {
   Business,
+  BusinessFeedback,
   ChatAnalytics,
   ChatAnalyticsEvent,
   SupportChatMessage,
@@ -67,6 +68,24 @@ function mapAnalyticsEvent(event: any): ChatAnalyticsEvent {
     sessionId: String(event.sessionId || ''),
     countryCode: event.countryCode || undefined,
     createdAt: toDate(event.createdAt),
+  }
+}
+
+function mapFeedbackEntry(entry: any): BusinessFeedback {
+  const rawRating = Number(entry.rating || 0)
+  return {
+    id: String(entry.id || crypto.randomUUID()),
+    businessId: String(entry.businessId || ''),
+    sessionId: entry.sessionId || undefined,
+    widgetKey: entry.widgetKey || undefined,
+    visitorName: entry.visitorName || undefined,
+    rating: Number.isFinite(rawRating) ? Math.max(1, Math.min(5, rawRating)) : 0,
+    text: String(entry.text || ''),
+    pageTitle: entry.pageTitle || undefined,
+    pageUrl: entry.pageUrl || undefined,
+    countryCode: entry.countryCode || undefined,
+    source: entry.source === 'widget' ? 'widget' : 'widget',
+    createdAt: toDate(entry.createdAt),
   }
 }
 
@@ -401,4 +420,16 @@ export async function addSupportTaskComment(
     comments: arrayUnion(taskComment),
     updatedAt: serverTimestamp(),
   })
+}
+
+export async function getBusinessFeedback(
+  businessId: string
+): Promise<BusinessFeedback[]> {
+  const feedbackRef = collection(db, `businesses/${businessId}/feedback`)
+  const feedbackQuery = query(feedbackRef, orderBy('createdAt', 'desc'))
+  const snap = await getDocs(feedbackQuery)
+
+  return snap.docs.map((feedbackDoc) =>
+    mapFeedbackEntry({ id: feedbackDoc.id, ...feedbackDoc.data() })
+  )
 }

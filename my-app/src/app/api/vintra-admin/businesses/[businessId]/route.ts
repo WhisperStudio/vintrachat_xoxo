@@ -134,6 +134,23 @@ export async function PATCH(
       if (typeof assistant.handoffMessage === 'string') {
         updates['chatAssistantConfig.handoffMessage'] = assistant.handoffMessage
       }
+      if (typeof assistant.faqSuggestionsEnabled === 'boolean') {
+        updates['chatAssistantConfig.faqSuggestionsEnabled'] = assistant.faqSuggestionsEnabled
+      }
+      if (Array.isArray(assistant.faqSuggestions)) {
+        updates['chatAssistantConfig.faqSuggestions'] = assistant.faqSuggestions
+          .map((value: string) => String(value).trim())
+          .filter(Boolean)
+      }
+      if (typeof assistant.replyInUserLanguage === 'boolean') {
+        updates['chatAssistantConfig.replyInUserLanguage'] = assistant.replyInUserLanguage
+      }
+      if (typeof assistant.responseStyle === 'string') {
+        updates['chatAssistantConfig.responseStyle'] = assistant.responseStyle
+      }
+      if (typeof assistant.extraInstructions === 'string') {
+        updates['chatAssistantConfig.extraInstructions'] = assistant.extraInstructions
+      }
     }
 
     if (Object.keys(updates).length === 0) {

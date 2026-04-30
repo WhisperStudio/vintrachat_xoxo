@@ -47,6 +47,17 @@ const fallbackSupportKeywords = [
   'customer service',
 ]
 
+const fallbackFeedbackKeywords = [
+  'feedback',
+  'review',
+  'rating',
+  'star',
+  'stars',
+  'vurdering',
+  'anmeldelse',
+  'tilbakemelding',
+]
+
 function trimHistory(history: unknown[]): IncomingMessage[] {
   return history
     .filter((message): message is IncomingMessage => {
@@ -68,6 +79,11 @@ function trimHistory(history: unknown[]): IncomingMessage[] {
 }
 
 function didUserRequestHumanSupport(message: string, keywords: string[]) {
+  const normalized = message.toLowerCase()
+  return keywords.some((keyword) => normalized.includes(keyword.toLowerCase()))
+}
+
+function didUserRequestFeedback(message: string, keywords: string[]) {
   const normalized = message.toLowerCase()
   return keywords.some((keyword) => normalized.includes(keyword.toLowerCase()))
 }
@@ -151,6 +167,10 @@ function buildPrompt(args: {
   restrictions: string
   strictContextOnly: boolean
   supportKeywords: string[]
+  faqSuggestions: string[]
+  replyInUserLanguage: boolean
+  responseStyle: string
+  extraInstructions: string
   history: IncomingMessage[]
   message: string
 }) {
@@ -158,14 +178,29 @@ function buildPrompt(args: {
     .map((entry) => `${entry.role === 'assistant' ? 'Assistant' : 'User'}: ${entry.text}`)
     .join('\n')
 
+  const faqSuggestions = args.faqSuggestions
+    .map((entry) => String(entry || '').trim())
+    .filter(Boolean)
+  const faqText = faqSuggestions.length
+    ? faqSuggestions.map((item) => `- ${item}`).join('\n')
+    : 'No FAQ suggestions configured.'
+
+  const languageRule = args.replyInUserLanguage
+    ? 'Reply in the same language as the latest user message. Match Norwegian with Norwegian and English with English.'
+    : 'Reply in the language that best fits the conversation and business context.'
+
   return [
     `You are the website assistant for ${args.businessName}.`,
     args.systemPrompt,
+    languageRule,
     args.strictContextOnly
       ? 'Use only the provided business context for factual claims. If context is missing, say that clearly.'
       : 'Use the provided context as your primary source, but you may answer generally when the context is silent.',
     `Business context:\n${args.businessContext || 'No business context has been configured yet.'}`,
     `Restrictions:\n${args.restrictions || 'No additional restrictions configured.'}`,
+    args.responseStyle ? `Response style:\n${args.responseStyle}` : 'Response style:\nKeep the answer natural and helpful.',
+    args.extraInstructions ? `Extra instructions:\n${args.extraInstructions}` : 'Extra instructions:\nNone.',
+    `FAQ suggestions / common questions to anticipate:\n${faqText}`,
     `Treat these phrases as likely requests for human support: ${args.supportKeywords.join(', ')}`,
     'Return JSON with keys "reply" and "needsHumanSupport".',
     'Set "needsHumanSupport" to true only when the user explicitly asks to contact support, a human, an agent, or similar human follow-up.',
@@ -293,6 +328,7 @@ export async function POST(req: NextRequest) {
     const requestHumanSupport = Boolean(body.requestHumanSupport)
     const supportRequestText = body.supportRequestText ? String(body.supportRequestText).trim() : ''
     const history = trimHistory(Array.isArray(body.history) ? body.history : [])
+    const requestFeedbackForm = didUserRequestFeedback(message, fallbackFeedbackKeywords)
 
     if (!widgetKey || (!message && !requestHumanSupport)) {
       return NextResponse.json(
@@ -336,6 +372,46 @@ export async function POST(req: NextRequest) {
       supportTriggerKeywords: fallbackSupportKeywords,
       handoffMessage:
         'I understand. I am putting you through to a human assistant now. Please hold on while I connect you with someone available.',
+      faqSuggestionsEnabled: false,
+      faqSuggestions: [],
+      replyInUserLanguage: true,
+      responseStyle: '',
+      extraInstructions: '',
+    }
+
+    if (requestFeedbackForm) {
+      const businessRef = adminDb.collection('businesses').doc(business.id)
+      const todayKey = getTodayUsageKey()
+      const analyticsTimelineEvents = [createAnalyticsEvent('visitor-message', sessionId, countryCode)]
+
+      if (!body.sessionId) {
+        analyticsTimelineEvents.unshift(createAnalyticsEvent('session-start', sessionId, countryCode))
+      }
+
+      const finalReply = 'Absolutely. I opened a quick feedback form for you.'
+
+      await businessRef.update({
+        updatedAt: FieldValue.serverTimestamp(),
+        'chatAnalytics.totalMessages': FieldValue.increment(1),
+        'chatAnalytics.lastChatAt': FieldValue.serverTimestamp(),
+        [`chatAnalytics.countryCounts.${countryCode}`]: FieldValue.increment(1),
+        'chatAnalytics.timeline': FieldValue.arrayUnion(...analyticsTimelineEvents),
+        ...(body.sessionId ? {} : {
+          'chatAnalytics.totalSessions': FieldValue.increment(1),
+          'chatAnalytics.aiOnlySessions': FieldValue.increment(1),
+          [`chatAnalytics.dailyConversationCounts.${todayKey}`]: FieldValue.increment(1),
+        }),
+      })
+
+      return NextResponse.json(
+        {
+          sessionId,
+          reply: finalReply,
+          feedbackFormRequested: true,
+          countryCode,
+        },
+        { headers }
+      )
     }
 
     if (requestHumanSupport) {
@@ -446,6 +522,13 @@ export async function POST(req: NextRequest) {
         restrictions: assistantConfig.restrictions,
         strictContextOnly: assistantConfig.strictContextOnly,
         supportKeywords,
+        faqSuggestions:
+          assistantConfig.faqSuggestionsEnabled && Array.isArray(assistantConfig.faqSuggestions)
+            ? assistantConfig.faqSuggestions
+            : [],
+        replyInUserLanguage: assistantConfig.replyInUserLanguage !== false,
+        responseStyle: assistantConfig.responseStyle || '',
+        extraInstructions: assistantConfig.extraInstructions || '',
         history,
         message,
       })

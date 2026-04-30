@@ -16,6 +16,11 @@ export interface Business {
   chatAssistantConfig?: ChatAssistantConfig;
   chatAnalytics?: ChatAnalytics;
   supportTaskCategories?: SupportTaskCategory[];
+  onboarding?: BusinessOnboardingState;
+}
+
+export interface BusinessOnboardingState {
+  tutorialCompletedAt?: Date | null;
 }
 
 export interface ChatAssistantConfig {
@@ -28,6 +33,11 @@ export interface ChatAssistantConfig {
   restrictions: string;
   supportTriggerKeywords: string[];
   handoffMessage: string;
+  faqSuggestionsEnabled: boolean;
+  faqSuggestions: string[];
+  replyInUserLanguage: boolean;
+  responseStyle: string;
+  extraInstructions: string;
 }
 
 export interface ChatAnalytics {
@@ -138,6 +148,21 @@ export interface SupportTask {
   comments?: SupportTaskComment[];
 }
 
+export interface BusinessFeedback {
+  id: string;
+  businessId: string;
+  sessionId?: string;
+  widgetKey?: string;
+  visitorName?: string;
+  rating: number;
+  text: string;
+  pageTitle?: string;
+  pageUrl?: string;
+  countryCode?: string;
+  source: 'widget';
+  createdAt: Date;
+}
+
 // Chat Widget config
 export interface ChatWidgetConfig {
   // Plan and billing
@@ -191,6 +216,11 @@ export interface ChatWidgetConfig {
     title?: string;
     description?: string;
     logo?: string;
+    logoStyle?: {
+      zoom: number;
+      focusX: number;
+      focusY: number;
+    };
   };
   
   // Advanced settings

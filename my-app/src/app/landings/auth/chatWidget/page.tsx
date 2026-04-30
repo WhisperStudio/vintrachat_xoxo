@@ -12,7 +12,6 @@ import './ChatWidget.css'
 import PlanSelector from './components/PlanSelector'
 import StyleSelector from './components/StyleSelector'
 import WidgetPreview from './components/WidgetPreview'
-import PricingPanel from './components/PricingPanel'
 
 type Plan = 'free' | 'pro' | 'business'
 type BillingCycle = 'monthly' | 'yearly'
@@ -70,6 +69,11 @@ type InputsState = {
     title?: string
     description?: string
     logo?: string
+    logoStyle?: {
+      zoom: number
+      focusX: number
+      focusY: number
+    }
   }
   settings: {
     autoOpen: boolean
@@ -116,6 +120,11 @@ const defaultInputs: InputsState = {
   customBranding: {
     title: 'Support Chat',
     description: 'We are here to help you!',
+    logoStyle: {
+      zoom: 100,
+      focusX: 50,
+      focusY: 50,
+    },
   },
   settings: {
     autoOpen: false,
@@ -148,7 +157,6 @@ export default function ChatWidgetBuilderPage() {
     advanced: false,
   })
 
-  const [showBreakdown, setShowBreakdown] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [resetAnimating, setResetAnimating] = useState(false)
@@ -180,7 +188,15 @@ export default function ChatWidgetBuilderPage() {
       headerStyle: config.headerStyle || defaultInputs.headerStyle,
       bodyStyle: config.bodyStyle || defaultInputs.bodyStyle,
       footerStyle: config.footerStyle || defaultInputs.footerStyle,
-      customBranding: config.customBranding || defaultInputs.customBranding,
+      customBranding: {
+        ...defaultInputs.customBranding,
+        ...(config.customBranding || {}),
+        logoStyle: {
+          zoom: config.customBranding?.logoStyle?.zoom ?? defaultInputs.customBranding.logoStyle!.zoom,
+          focusX: config.customBranding?.logoStyle?.focusX ?? defaultInputs.customBranding.logoStyle!.focusX,
+          focusY: config.customBranding?.logoStyle?.focusY ?? defaultInputs.customBranding.logoStyle!.focusY,
+        },
+      },
       settings: config.settings || defaultInputs.settings,
     })
 
@@ -393,6 +409,9 @@ export default function ChatWidgetBuilderPage() {
 
           <div className="preview-panel">
             <WidgetPreview
+              total={total}
+              billingCycle={inputs.billingCycle}
+              plan={inputs.plan}
               bubbleStyle={inputs.bubbleStyle}
               headerStyle={inputs.headerStyle}
               bodyStyle={inputs.bodyStyle}
@@ -402,22 +421,6 @@ export default function ChatWidgetBuilderPage() {
               customBranding={inputs.customBranding}
               enablePreviewChat={true}
               previewReply="hi, this is only a test"
-            />
-
-            <PricingPanel
-              total={total}
-              billingCycle={inputs.billingCycle}
-              plan={inputs.plan}
-              bubbleStyle={inputs.bubbleStyle}
-              headerStyle={inputs.headerStyle}
-              bodyStyle={inputs.bodyStyle}
-              footerStyle={inputs.footerStyle}
-              showBreakdown={showBreakdown}
-              onToggleBreakdown={() => setShowBreakdown((prev) => !prev)}
-              isAuthenticated={isAuthenticated}
-              onContinue={() => router.push('/auth/login')}
-              onSave={saveConfig}
-              isSaving={isSaving}
             />
           </div>
         </div>

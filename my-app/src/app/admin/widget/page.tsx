@@ -22,6 +22,15 @@ const defaultAssistantConfig: ChatAssistantConfig = {
   supportTriggerKeywords: ['support', 'human', 'agent', 'contact'],
   handoffMessage:
     'I will flag this conversation for human follow-up so the team can contact you.',
+  faqSuggestionsEnabled: true,
+  faqSuggestions: [
+    'What are your opening hours?',
+    'How do I contact support?',
+    'What services do you offer?',
+  ],
+  replyInUserLanguage: true,
+  responseStyle: 'Friendly, clear, and concise',
+  extraInstructions: 'Always keep answers short unless the user asks for more detail.',
 }
 
 export default function WidgetAdminPanel() {
@@ -248,6 +257,8 @@ export default function WidgetAdminPanel() {
               variant="embedded"
               enablePreviewChat={true}
               previewReply="hi, this is only a test"
+              faqSuggestionsEnabled={assistantConfig.faqSuggestionsEnabled}
+              faqSuggestions={assistantConfig.faqSuggestions}
             />
           </div>
         </section>
@@ -346,6 +357,34 @@ export default function WidgetAdminPanel() {
               />
             </label>
 
+            <label className="widget-ai-field widget-ai-toggle">
+              <span>Reply in user language</span>
+              <input
+                type="checkbox"
+                checked={assistantConfig.replyInUserLanguage}
+                onChange={(event) =>
+                  setAssistantConfig((prev) => ({
+                    ...prev,
+                    replyInUserLanguage: event.target.checked,
+                  }))
+                }
+              />
+            </label>
+
+            <label className="widget-ai-field widget-ai-toggle">
+              <span>FAQ suggestions enabled</span>
+              <input
+                type="checkbox"
+                checked={assistantConfig.faqSuggestionsEnabled}
+                onChange={(event) =>
+                  setAssistantConfig((prev) => ({
+                    ...prev,
+                    faqSuggestionsEnabled: event.target.checked,
+                  }))
+                }
+              />
+            </label>
+
             <label className="widget-ai-field">
               <span>Provider</span>
               <input type="text" value={assistantConfig.provider} disabled />
@@ -381,6 +420,21 @@ export default function WidgetAdminPanel() {
             </label>
 
             <label className="widget-ai-field widget-ai-field-full">
+              <span>Response style</span>
+              <input
+                type="text"
+                value={assistantConfig.responseStyle}
+                onChange={(event) =>
+                  setAssistantConfig((prev) => ({
+                    ...prev,
+                    responseStyle: event.target.value,
+                  }))
+                }
+                placeholder="Friendly, short, and direct"
+              />
+            </label>
+
+            <label className="widget-ai-field widget-ai-field-full">
               <span>Business context</span>
               <textarea
                 value={assistantConfig.businessContext}
@@ -396,6 +450,24 @@ export default function WidgetAdminPanel() {
             </label>
 
             <label className="widget-ai-field widget-ai-field-full">
+              <span>FAQ suggestions</span>
+              <textarea
+                value={assistantConfig.faqSuggestions.join('\n')}
+                onChange={(event) =>
+                  setAssistantConfig((prev) => ({
+                    ...prev,
+                    faqSuggestions: event.target.value
+                      .split(/\n|,/)
+                      .map((entry) => entry.trim())
+                      .filter(Boolean),
+                  }))
+                }
+                rows={4}
+                placeholder={'What are your opening hours?\nHow do I contact support?\nWhat services do you offer?'}
+              />
+            </label>
+
+            <label className="widget-ai-field widget-ai-field-full">
               <span>Restrictions</span>
               <textarea
                 value={assistantConfig.restrictions}
@@ -407,6 +479,21 @@ export default function WidgetAdminPanel() {
                 }
                 rows={4}
                 placeholder="Topics the AI should avoid or rules it must follow."
+              />
+            </label>
+
+            <label className="widget-ai-field widget-ai-field-full">
+              <span>Extra instructions</span>
+              <textarea
+                value={assistantConfig.extraInstructions}
+                onChange={(event) =>
+                  setAssistantConfig((prev) => ({
+                    ...prev,
+                    extraInstructions: event.target.value,
+                  }))
+                }
+                rows={3}
+                placeholder="Optional guardrails, style notes, or support routing instructions."
               />
             </label>
 

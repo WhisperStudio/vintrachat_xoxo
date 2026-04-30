@@ -7,6 +7,152 @@
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.05);
 }
 
+.adminFeedbackPanel {
+  gap: 18px;
+}
+
+.adminFeedbackSummary {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background:
+    radial-gradient(circle at top right, rgba(96, 165, 250, 0.08), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.05);
+}
+
+.adminFeedbackSummaryScore {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 6px 10px;
+}
+
+.adminFeedbackSummaryScore strong {
+  font-size: 2.8rem;
+  line-height: 1;
+  color: #0f172a;
+}
+
+.adminFeedbackSummaryScore span {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.adminFeedbackSummaryMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.adminFeedbackSummaryMeta > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.adminFeedbackSummaryMeta svg {
+  font-size: 1rem;
+  color: #f59e0b;
+}
+
+.adminFeedbackSummaryMeta strong {
+  color: #0f172a;
+  font-size: 1.3rem;
+}
+
+.adminFeedbackSummaryMeta span {
+  color: #64748b;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.adminFeedbackList {
+  display: grid;
+  gap: 12px;
+}
+
+.adminFeedbackCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.04);
+}
+
+.adminFeedbackCardTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.adminFeedbackCardTop strong {
+  display: block;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.adminFeedbackCardTop span {
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.adminFeedbackCard p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.adminFeedbackCardMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #64748b;
+  font-size: 0.86rem;
+}
+
+.adminFeedbackCardMeta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.adminFeedbackCardMeta svg {
+  color: #94a3b8;
+}
+
+.adminFeedbackStars {
+  display: inline-flex;
+  gap: 4px;
+  color: #e5e7eb;
+}
+
+.adminFeedbackStar {
+  color: #d1d5db;
+}
+
+.adminFeedbackStarFilled {
+  color: #f59e0b;
+}
+
+.adminFeedbackEmpty {
+  margin: 0;
+  color: #64748b;
+}
+
 .adminStatsGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

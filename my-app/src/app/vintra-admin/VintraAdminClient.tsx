@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState, type ReactElement } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   FiActivity,
-  FiArrowLeft,
   FiBarChart2,
   FiDatabase,
   FiPlus,
@@ -72,6 +71,11 @@ type VintraBusiness = {
     restrictions?: string
     supportTriggerKeywords?: string[]
     handoffMessage?: string
+    faqSuggestionsEnabled?: boolean
+    faqSuggestions?: string[]
+    replyInUserLanguage?: boolean
+    responseStyle?: string
+    extraInstructions?: string
   } | null
 }
 
@@ -127,6 +131,11 @@ type DraftState = {
   restrictions: string
   supportTriggerKeywords: string
   handoffMessage: string
+  faqSuggestionsEnabled: boolean
+  faqSuggestions: string
+  replyInUserLanguage: boolean
+  responseStyle: string
+  extraInstructions: string
 }
 
 type VintraTab = 'overview' | 'businesses' | 'gemini' | 'database'
@@ -298,6 +307,11 @@ export default function VintraAdminClient() {
       restrictions: selectedBusiness.assistantConfig?.restrictions || '',
       supportTriggerKeywords: (selectedBusiness.assistantConfig?.supportTriggerKeywords || []).join(', '),
       handoffMessage: selectedBusiness.assistantConfig?.handoffMessage || '',
+      faqSuggestionsEnabled: selectedBusiness.assistantConfig?.faqSuggestionsEnabled ?? true,
+      faqSuggestions: (selectedBusiness.assistantConfig?.faqSuggestions || []).join('\n'),
+      replyInUserLanguage: selectedBusiness.assistantConfig?.replyInUserLanguage ?? true,
+      responseStyle: selectedBusiness.assistantConfig?.responseStyle || '',
+      extraInstructions: selectedBusiness.assistantConfig?.extraInstructions || '',
     })
     setConfirmPlanChange(false)
     setConfirmBusinessDelete(false)
@@ -360,6 +374,14 @@ export default function VintraAdminClient() {
               .map((entry) => entry.trim())
               .filter(Boolean),
             handoffMessage: draft.handoffMessage,
+            faqSuggestionsEnabled: draft.faqSuggestionsEnabled,
+            faqSuggestions: draft.faqSuggestions
+              .split(/\n|,/)
+              .map((entry) => entry.trim())
+              .filter(Boolean),
+            replyInUserLanguage: draft.replyInUserLanguage,
+            responseStyle: draft.responseStyle,
+            extraInstructions: draft.extraInstructions,
           },
         }),
       })
@@ -546,17 +568,6 @@ export default function VintraAdminClient() {
           <button type="button" className="vintraAdminButton secondary" onClick={() => void loadSummary()} disabled={busy}>
             <FiRefreshCcw />
             Refresh
-          </button>
-          <button type="button" className="vintraAdminButton secondary" onClick={() => router.push('/admin')}>
-            <FiArrowLeft />
-            Back to app admin
-          </button>
-          <button
-            type="button"
-            className="vintraAdminButton primary"
-            onClick={() => void logout().then(() => router.push('/auth/login'))}
-          >
-            Sign out
           </button>
         </div>
       </section>
