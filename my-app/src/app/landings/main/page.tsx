@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { absoluteUrl, siteConfig } from '@/lib/site-config'
 
 // ─── Minimal inline SVG icons ───────────────────────────────────────────────
 
@@ -78,6 +79,46 @@ const websites = [
     img: '🏢',
   },
 ]
+
+const organizationId = `${siteConfig.url}/#organization`
+const websiteId = `${siteConfig.url}/#website`
+const emailHref = `mailto:${siteConfig.contact.email}`
+const phoneHref = siteConfig.contact.phone ? `tel:${siteConfig.contact.phone.replace(/\s+/g, '')}` : ''
+const contactStructuredData = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': organizationId,
+      name: siteConfig.legalName,
+      url: siteConfig.url,
+      logo: absoluteUrl('/favicon.ico'),
+      email: siteConfig.contact.email,
+      ...(siteConfig.contact.phone ? { telephone: siteConfig.contact.phone } : {}),
+      contactPoint: [
+        {
+          '@type': 'ContactPoint',
+          contactType: siteConfig.contact.contactType,
+          email: siteConfig.contact.email,
+          areaServed: siteConfig.contact.areaServed,
+          availableLanguage: siteConfig.contact.availableLanguage,
+          ...(siteConfig.contact.phone ? { telephone: siteConfig.contact.phone } : {}),
+        },
+      ],
+    },
+    {
+      '@type': 'WebSite',
+      '@id': websiteId,
+      url: siteConfig.url,
+      name: siteConfig.name,
+      description: siteConfig.description,
+      inLanguage: 'no',
+      publisher: {
+        '@id': organizationId,
+      },
+    },
+  ],
+}
 
 function MiniSiteMockup({ site }: { site: typeof websites[0] }) {
   return (
@@ -652,9 +693,14 @@ function FeatureRow({ icon, title, desc }: { icon: string; title: string; desc: 
 export default function MainLanding() {
   const [heroMounted, setHeroMounted] = useState(false)
   useEffect(() => { setTimeout(() => setHeroMounted(true), 80) }, [])
+  const currentYear = new Date().getFullYear()
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(contactStructuredData) }}
+      />
       <style>{`
         :root { --bg: #FAFAFA; }
         * { box-sizing: border-box; margin: 0; padding: 0 }
@@ -1090,7 +1136,7 @@ export default function MainLanding() {
                 <Link href="/landings/guest/websites" className="cta-primary">
                   Try website builder <ArrowRight />
                 </Link>
-                <Link href="/landings/guest/chatWidget" className="cta-secondary">
+                <Link href="/landings/auth/chatWidget" className="cta-secondary">
                   Test chatbot for free
                 </Link>
               </div>
@@ -1207,7 +1253,7 @@ export default function MainLanding() {
                       <FeatureRow key={title} icon={icon} title={title} desc={desc} />
                     ))}
                   </div>
-                  <Link href="/landings/guest/chatWidget" className="cta-primary" style={{ display: 'flex', width: '100%', justifyContent: 'center', background: '#7C3AED' }}>
+                  <Link href="/landings/auth/chatWidget" className="cta-primary" style={{ display: 'flex', width: '100%', justifyContent: 'center', background: '#7C3AED' }}>
                     Design your chatbot <ArrowRight />
                   </Link>
                 </div>
@@ -1388,22 +1434,70 @@ export default function MainLanding() {
               <Link href="/landings/guest/websites" className="cta-primary">
                 Design website <ArrowRight />
               </Link>
-              <Link href="/landings/guest/chatWidget" className="cta-secondary">
+              <Link href="/landings/auth/chatWidget" className="cta-secondary">
                 Test chatbot
               </Link>
             </div>
           </Reveal>
         </section>
 
+        <section id="contact" style={{ background: '#F7F8FA', borderTop: '1px solid #ECEEF2', borderBottom: '1px solid #ECEEF2' }}>
+          <div className="page" style={{ padding: '72px 24px' }}>
+            <Reveal>
+              <div style={{ maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
+                <div style={{ display: 'inline-block', padding: '8px 14px', borderRadius: 999, background: '#E8F0FF', color: '#1A6BFF', fontSize: 12, fontWeight: 800, letterSpacing: 0.5, marginBottom: 18 }}>
+                  Contact Vintra
+                </div>
+                <h2 style={{ fontSize: 'clamp(28px,4vw,42px)', fontWeight: 900, letterSpacing: -0.9, marginBottom: 14 }}>
+                  Easy for visitors and Google to find
+                </h2>
+                <p style={{ color: '#5B6472', fontSize: 17, lineHeight: 1.8, marginBottom: 34 }}>
+                  Reach us directly for website projects, chatbot setup, pricing questions, or support.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, textAlign: 'left' }}>
+                  <a
+                    href={emailHref}
+                    style={{ background: '#fff', borderRadius: 18, padding: '22px 20px', textDecoration: 'none', color: '#111', border: '1px solid #E6EAF0', boxShadow: '0 12px 28px rgba(15,23,42,0.06)' }}
+                  >
+                    <div style={{ fontSize: 12, fontWeight: 800, color: '#1A6BFF', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>Email</div>
+                    <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>{siteConfig.contact.email}</div>
+                    <div style={{ color: '#5B6472', fontSize: 14, lineHeight: 1.6 }}>Best for project questions and written follow-up.</div>
+                  </a>
+                  {phoneHref ? (
+                    <a
+                      href={phoneHref}
+                      style={{ background: '#fff', borderRadius: 18, padding: '22px 20px', textDecoration: 'none', color: '#111', border: '1px solid #E6EAF0', boxShadow: '0 12px 28px rgba(15,23,42,0.06)' }}
+                    >
+                      <div style={{ fontSize: 12, fontWeight: 800, color: '#0C9E6A', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>Phone</div>
+                      <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>{siteConfig.contact.phoneDisplay}</div>
+                      <div style={{ color: '#5B6472', fontSize: 14, lineHeight: 1.6 }}>Call for quick questions about websites, chatbots, and setup.</div>
+                    </a>
+                  ) : null}
+                  <a
+                    href={siteConfig.url}
+                    style={{ background: '#fff', borderRadius: 18, padding: '22px 20px', textDecoration: 'none', color: '#111', border: '1px solid #E6EAF0', boxShadow: '0 12px 28px rgba(15,23,42,0.06)' }}
+                  >
+                    <div style={{ fontSize: 12, fontWeight: 800, color: '#7C3AED', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>Website</div>
+                    <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>chat.vintrastudio.com</div>
+                    <div style={{ color: '#5B6472', fontSize: 14, lineHeight: 1.6 }}>Main site for product demos, pricing, and contact details.</div>
+                  </a>
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
         {/* ── FOOTER ─────────────────────────────────────── */}
         <footer style={{ borderTop: '1px solid #F0F0F0', padding: '32px 24px' }}>
           <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
             <span style={{ fontWeight: 900, fontSize: 18 }}>vintra</span>
-            <span style={{ color: '#999', fontSize: 13 }}>© 2024 Vintra. All rights reserved.</span>
-            <div style={{ display: 'flex', gap: 20 }}>
-              <a href="#" style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>Privacy</a>
-              <a href="#" style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>Terms</a>
-              <a href="#" style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>Contact</a>
+            <span style={{ color: '#999', fontSize: 13 }}>© {currentYear} Vintra. All rights reserved.</span>
+            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+              <a href={emailHref} style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>{siteConfig.contact.email}</a>
+              {phoneHref ? (
+                <a href={phoneHref} style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>{siteConfig.contact.phoneDisplay}</a>
+              ) : null}
+              <a href="#contact" style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>Contact</a>
             </div>
           </div>
         </footer>
