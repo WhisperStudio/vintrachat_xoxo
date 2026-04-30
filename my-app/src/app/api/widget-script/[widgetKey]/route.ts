@@ -138,6 +138,7 @@ export async function GET(
     error: '',
     assistantEnabled: true,
     config: null,
+    assistantConfig: null,
     configLoaded: false,
     messages: [],
     supportStatus: '',
@@ -149,6 +150,11 @@ export async function GET(
     hasOpenedOnce: FORCE_OPEN,
     hasUnreadWhileClosed: false,
     hovered: false,
+    feedbackOpen: false,
+    feedbackRating: 5,
+    feedbackText: '',
+    feedbackSubmitting: false,
+    faqSuggestions: [],
     orbInactiveActive: false,
     orbCycleTick: 0,
     orbTicker: null,
@@ -383,6 +389,41 @@ export async function GET(
     };
   }
 
+  function getAssistantConfig() {
+    return state.assistantConfig || {};
+  }
+
+  function refreshFaqSuggestions() {
+    var assistantConfig = getAssistantConfig();
+
+    if (!assistantConfig.faqSuggestionsEnabled || !Array.isArray(assistantConfig.faqSuggestions)) {
+      state.faqSuggestions = [];
+      return;
+    }
+
+    var cleaned = assistantConfig.faqSuggestions
+      .map(function (item) { return String(item || '').trim(); })
+      .filter(Boolean);
+
+    if (!cleaned.length) {
+      state.faqSuggestions = [];
+      return;
+    }
+
+    var unique = Array.from(new Set(cleaned));
+    var seeded = unique.map(function (item) {
+      return { item: item, sort: Math.random() };
+    });
+
+    seeded.sort(function (a, b) {
+      return a.sort - b.sort;
+    });
+
+    state.faqSuggestions = seeded.slice(0, 3).map(function (entry) {
+      return entry.item;
+    });
+  }
+
   function getPosition(config) {
     return config && config.position === 'bottom-left' ? 'bottom-left' : 'bottom-right';
   }
@@ -436,6 +477,60 @@ export async function GET(
         '</div>'
       );
     }).join('');
+  }
+
+  function getFaqSuggestionsMarkup() {
+    if (!state.open || !state.faqSuggestions.length) return '';
+
+    return (
+      '<div class="widget-faq-suggestions" aria-label="Suggested questions">' +
+        state.faqSuggestions.map(function (suggestion) {
+          return (
+            '<button type="button" class="widget-faq-chip" data-faq-suggestion="' + escapeHtml(suggestion) + '">' +
+              escapeHtml(suggestion) +
+            '</button>'
+          );
+        }).join('') +
+      '</div>'
+    );
+  }
+
+  function getFeedbackOverlayMarkup() {
+    if (!state.feedbackOpen) return '';
+
+    var stars = Array.from({ length: 5 }, function (_, index) {
+      var value = index + 1;
+      return (
+        '<button type="button" class="widget-feedback-star' + (value <= state.feedbackRating ? ' is-active' : '') + '" data-feedback-rating="' + value + '" aria-label="' + value + ' star' + (value === 1 ? '' : 's') + '">' +
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.6 3.1 6.29 6.94 1.01-5.02 4.9 1.18 6.9L12 18.98 5.8 21.7l1.18-6.9-5.02-4.9 6.94-1.01Z"></path></svg>' +
+        '</button>'
+      );
+    }).join('');
+
+    return (
+      '<div class="widget-feedback-overlay" role="dialog" aria-modal="true" aria-label="Leave feedback">' +
+        '<div class="widget-feedback-card">' +
+          '<div class="widget-feedback-header">' +
+            '<div>' +
+              '<h4>Leave feedback</h4>' +
+              '<p>Tell us what you think and give us a star rating.</p>' +
+            '</div>' +
+            '<button type="button" class="widget-feedback-close" aria-label="Close">' +
+              '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>' +
+            '</button>' +
+          '</div>' +
+          '<div class="widget-feedback-rating" aria-label="Rating selector">' + stars + '</div>' +
+          '<label class="widget-feedback-field">' +
+            '<span>Your feedback</span>' +
+            '<textarea rows="5" placeholder="What went well, and what could be better?">' + escapeHtml(state.feedbackText) + '</textarea>' +
+          '</label>' +
+          '<div class="widget-feedback-actions">' +
+            '<button type="button" class="widget-feedback-secondary" ' + (state.feedbackSubmitting ? 'disabled' : '') + '>Cancel</button>' +
+            '<button type="button" class="widget-feedback-primary" ' + (state.feedbackSubmitting ? 'disabled' : '') + '>' + (state.feedbackSubmitting ? 'Submitting...' : 'Submit feedback') + '</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    );
   }
 
   var supportPollTimer = null;
@@ -538,6 +633,7 @@ export async function GET(
         if (state.open) {
           state.hasOpenedOnce = true;
           state.hasUnreadWhileClosed = false;
+          refreshFaqSuggestions();
         }
         render();
         return;
@@ -549,10 +645,48 @@ export async function GET(
         return;
       }
 
+      if (button.classList.contains('widget-faq-chip')) {
+        var suggestion = String(button.getAttribute('data-faq-suggestion') || button.textContent || '').trim();
+        if (suggestion) {
+          state.inputValue = suggestion;
+          render();
+          sendMessage();
+        }
+        return;
+      }
+
+      if (button.classList.contains('widget-feedback-star')) {
+        var rating = Number(button.getAttribute('data-feedback-rating') || 0);
+        if (rating >= 1 && rating <= 5) {
+          state.feedbackRating = rating;
+          render();
+        }
+        return;
+      }
+
+      if (button.classList.contains('widget-feedback-close') || button.classList.contains('widget-feedback-secondary')) {
+        state.feedbackOpen = false;
+        state.feedbackText = '';
+        state.feedbackRating = 5;
+        render();
+        return;
+      }
+
+      if (button.classList.contains('widget-feedback-primary')) {
+        submitFeedback();
+        return;
+      }
+
       if (button.classList.contains('send-btn')) {
         markOrbActivity();
         sendMessage();
       }
+    });
+
+    mount.addEventListener('input', function (event) {
+      var target = event.target;
+      if (!target || target.tagName !== 'TEXTAREA') return;
+      state.feedbackText = target.value;
     });
   }
 
@@ -562,6 +696,7 @@ export async function GET(
     var headerStyle = config.headerStyle || {};
     var bodyStyle = config.bodyStyle || {};
     var footerStyle = config.footerStyle || {};
+    var assistantConfig = getAssistantConfig();
     var theme = getThemeName(config);
     var themeClass = THEME_CLASS_BY_NAME[theme] || THEME_CLASS_BY_NAME.modern || 'theme-modern';
     var position = getPosition(config);
@@ -573,8 +708,19 @@ export async function GET(
       bubbleStyle.animationType !== 'none' &&
       (!state.hasOpenedOnce || (!state.open && state.hasUnreadWhileClosed));
     var logoStyle = getLogoStyle(config);
+    if (state.open && assistantConfig.faqSuggestionsEnabled && !state.faqSuggestions.length) {
+      refreshFaqSuggestions();
+    }
     var headerAvatar = getLogo(config)
-      ? '<div class="avatar avatar--image"><div class="avatar-image" aria-hidden="true" style="background-image: url(' + JSON.stringify(getLogo(config)) + '); background-repeat: no-repeat; background-size: ' + logoStyle.zoom + '% ' + logoStyle.zoom + '%; background-position: ' + logoStyle.focusX + '% ' + logoStyle.focusY + '%;"></div></div>'
+      ? '<div class="avatar avatar--image">' +
+          '<img' +
+            ' class="avatar-image avatar-image--img"' +
+            ' alt=""' +
+            ' aria-hidden="true"' +
+            ' src="' + escapeHtml(getLogo(config)) + '"' +
+            ' style="object-fit: cover; object-position: ' + logoStyle.focusX + '% ' + logoStyle.focusY + '%; transform: scale(' + (logoStyle.zoom / 100) + '); transform-origin: ' + logoStyle.focusX + '% ' + logoStyle.focusY + '%;"' +
+          ' />' +
+        '</div>'
       : icons.message;
     var orbPhase = iconChoice === 'orb' ? getOrbPhase(orbStyle) : 'none';
     var orbGlyphList = iconChoice === 'orb' ? getOrbGlyphList(orbStyle, orbPhase) : [];
@@ -612,6 +758,7 @@ export async function GET(
           '<div class="' + classes(['chat-body', 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '">' +
             getMessagesMarkup(config) +
           '</div>' +
+          getFaqSuggestionsMarkup() +
           '<div class="' + classes([
             'chat-footer',
             'border-' + (footerStyle.borderType || 'none'),
@@ -619,13 +766,14 @@ export async function GET(
             'input-' + (footerStyle.inputStyle || 'flat')
           ]) + '">' +
             '<input type="text" ' +
-              ((state.sending || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled ' : '') +
+              ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled ' : '') +
               'value="' + escapeHtml(state.inputValue) + '" ' +
               'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : (state.awaitingVisitorName ? 'Write your name to contact human support...' : (state.supportStatus === 'needs-human' ? 'Waiting for human support...' : 'Write a message...'))) + '" />' +
-            (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + ((state.sending || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled' : '') + '>' + icons.send + '</button>') +
+            (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled' : '') + '>' + icons.send + '</button>') +
           '</div>' +
           (state.awaitingVisitorName ? '<div class="name-request-hint">Please write your name to connect with human support.</div>' : '') +
           (state.error ? '<div class="widget-inline-error">' + escapeHtml(state.error) + '</div>' : '') +
+          getFeedbackOverlayMarkup() +
           '</div>' +
           (shouldShowSupportGate() ? (
             '<div class="chat-lock-overlay">' +
@@ -714,6 +862,7 @@ export async function GET(
       }
 
       state.config = json.widgetConfig || null;
+      state.assistantConfig = json.assistantConfig || null;
       state.assistantEnabled = json.assistantEnabled !== false;
       state.configLoaded = true;
 
@@ -727,6 +876,8 @@ export async function GET(
         startSupportPolling();
         void syncSupportChat();
       }
+
+      refreshFaqSuggestions();
 
       render();
     } catch (error) {
@@ -886,6 +1037,12 @@ export async function GET(
           state.pendingHumanSupportText = text;
         }
 
+        if (json.feedbackFormRequested) {
+          state.feedbackOpen = true;
+          state.feedbackText = '';
+          state.feedbackRating = 5;
+        }
+
         if (json.supportRequested) {
           state.supportStatus = 'needs-human';
           startSupportPolling();
@@ -898,6 +1055,49 @@ export async function GET(
       state.error = error instanceof Error ? error.message : 'Failed to process chat';
     } finally {
       state.sending = false;
+      render();
+    }
+  }
+
+  async function submitFeedback() {
+    if (!state.sessionId || state.feedbackSubmitting || !String(state.feedbackText || '').trim()) {
+      return;
+    }
+
+    state.feedbackSubmitting = true;
+    state.error = '';
+    render();
+
+    try {
+      var response = await fetch(ORIGIN + '/api/widget/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        mode: 'cors',
+        body: JSON.stringify({
+          widgetKey: WIDGET_KEY,
+          sessionId: state.sessionId,
+          rating: state.feedbackRating,
+          text: state.feedbackText,
+          pageTitle: document.title,
+          pageUrl: window.location.href
+        })
+      });
+
+      var json = await response.json();
+
+      if (!response.ok) {
+        throw new Error(json && json.error ? json.error : 'Failed to submit feedback');
+      }
+
+      state.feedbackOpen = false;
+      state.feedbackText = '';
+      state.feedbackRating = 5;
+    } catch (error) {
+      state.error = error instanceof Error ? error.message : 'Failed to submit feedback';
+    } finally {
+      state.feedbackSubmitting = false;
       render();
     }
   }
