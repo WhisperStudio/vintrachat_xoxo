@@ -1,10 +1,64 @@
+import type { Metadata } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/context/AuthContext'
 import AppShell from '@/components/AppShell'
+import { absoluteUrl, siteConfig } from '@/lib/site-config'
 
-export const metadata = {
-  title: 'V.O.T.E',
-  description: 'Landing and dashboard demo',
+export const metadata: Metadata = {
+  metadataBase: new URL(siteConfig.url),
+  title: {
+    default: 'Vintra | Business websites, AI chatbots, pricing and support',
+    template: '%s | Vintra',
+  },
+  description: siteConfig.description,
+  applicationName: siteConfig.name,
+  publisher: siteConfig.legalName,
+  creator: siteConfig.legalName,
+  category: 'technology',
+  referrer: 'origin-when-cross-origin',
+  keywords: [
+    'Vintra',
+    'Vintra Studio',
+    'Vintra chatbot',
+    'Vintra website',
+    'Vintra pricing',
+    'Vintra support',
+    'websites for businesses',
+    'AI chatbot',
+  ],
+  openGraph: {
+    type: 'website',
+    locale: siteConfig.locale,
+    url: siteConfig.url,
+    siteName: siteConfig.name,
+    title: 'Vintra | Business websites, AI chatbots, pricing and support',
+    description: siteConfig.description,
+    images: [
+      {
+        url: absoluteUrl('/opengraph-image'),
+        width: 1200,
+        height: 630,
+        alt: 'Vintra website and AI chatbot preview',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Vintra | Business websites, AI chatbots, pricing and support',
+    description: siteConfig.description,
+    images: [absoluteUrl('/opengraph-image')],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
+  },
 }
 
 export default function RootLayout({
