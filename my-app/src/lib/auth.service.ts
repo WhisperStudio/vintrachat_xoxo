@@ -38,7 +38,7 @@ import {
   sanitizeBubbleStyleForPlan,
   type SubscriptionPlan,
 } from "@/lib/subscription";
-import { getVintraAdminRedirectPath, isVintraAdminEmail, normalizeEmail } from "@/lib/vintra-admin";
+import { isVintraAdminEmail, normalizeEmail } from "@/lib/vintra-admin";
 
 // ----------------------
 // Google Auth
@@ -342,6 +342,15 @@ const defaultAssistantConfig: ChatAssistantConfig = {
   ],
   handoffMessage:
     "I can help with that. I will flag this conversation for human follow-up so the team can contact you.",
+  faqSuggestionsEnabled: true,
+  faqSuggestions: [
+    'What are your opening hours?',
+    'How do I contact support?',
+    'What services do you offer?',
+  ],
+  replyInUserLanguage: true,
+  responseStyle: 'Friendly, clear, and concise',
+  extraInstructions: 'Always keep answers short unless the user asks for more detail.',
 };
 
 const defaultChatAnalytics: ChatAnalytics = {
@@ -365,9 +374,12 @@ const defaultChatAnalytics: ChatAnalytics = {
     chatWidgetConfig: defaultWidgetConfig,
     chatAssistantConfig: defaultAssistantConfig,
     chatAnalytics: defaultChatAnalytics,
-    supportTaskCategories: defaultSupportTaskCategories,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+  supportTaskCategories: defaultSupportTaskCategories,
+  onboarding: {
+    tutorialCompletedAt: null,
+  },
+  createdAt: serverTimestamp(),
+  updatedAt: serverTimestamp(),
   });
 
   // legg user som admin
@@ -408,7 +420,7 @@ export async function signInWithEmail(email: string, password: string) {
       return {
         success: true,
         message: 'Vintra admin innlogging OK',
-        redirectTo: getVintraAdminRedirectPath(signedInEmail),
+        redirectTo: '/admin',
       }
     }
 
@@ -424,7 +436,7 @@ export async function signInWithEmail(email: string, password: string) {
     return {
       success: true,
       message: "Innlogging OK",
-      redirectTo: getVintraAdminRedirectPath(cred.user.email || email),
+      redirectTo: "/admin",
     };
   } catch (err: any) {
     return { success: false, message: err.message };
@@ -604,6 +616,12 @@ export async function getBusinessInfo(
             updatedAt: category.updatedAt?.toDate?.() || new Date(),
           }))
         : [],
+      onboarding: data.onboarding
+        ? {
+            tutorialCompletedAt:
+              data.onboarding.tutorialCompletedAt?.toDate?.() || data.onboarding.tutorialCompletedAt || null,
+          }
+        : undefined,
     };
   }
 

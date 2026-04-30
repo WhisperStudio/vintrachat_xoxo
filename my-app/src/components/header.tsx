@@ -432,14 +432,16 @@ export default function Header() {
       ]
     }
 
+    const authenticatedItems: NavItem[] = [
+      { href: '/landings/user', label: 'Dashboard', icon: <FiGrid /> },
+      { href: '/landings/auth/websites', label: 'My Websites', icon: <FiLayers /> },
+      { href: '/landings/auth/chatWidget', label: 'My Chat Widgets', icon: <FiMessageSquare /> },
+      { href: '/admin', label: 'Admin Panel', icon: <FiBriefcase /> },
+    ]
+
     return showVintraAdmin
-      ? [{ href: '/vintra-admin', label: 'Vintra Admin', icon: <FiBriefcase /> }]
-      : [
-          { href: '/landings/user', label: 'Dashboard', icon: <FiGrid /> },
-          { href: '/landings/auth/websites', label: 'My Websites', icon: <FiLayers /> },
-          { href: '/landings/auth/chatWidget', label: 'My Chat Widgets', icon: <FiMessageSquare /> },
-          { href: '/admin', label: 'Admin Panel', icon: <FiBriefcase /> },
-        ]
+      ? [...authenticatedItems, { href: '/vintra-admin', label: 'Vintra Admin', icon: <FiBriefcase /> }]
+      : authenticatedItems
   }, [pendingInvites.length, showGuestLinks, showInvitationCenter, showVintraAdmin])
 
   const isActivePath = (href: string) => {
@@ -488,7 +490,7 @@ export default function Header() {
           </LeftSide>
 
           <CenterZone>
-            <DesktopNav aria-label="Primary" ref={desktopNavRef}>
+            <DesktopNav aria-label="Primary" ref={desktopNavRef} data-vintra-main-nav>
               {navIndicator ? (
                 <DesktopNavIndicator
                   style={{
@@ -542,12 +544,6 @@ export default function Header() {
                 </>
               ) : (
                 <>
-                  {showVintraAdmin ? (
-                    <PrimaryAction href="/vintra-admin">
-                      <FiBriefcase />
-                      <span>Vintra Admin</span>
-                    </PrimaryAction>
-                  ) : null}
                   <ActionButton type="button" onClick={handleLogout}>
                     <FiLogOut />
                     <span>Log Out</span>
@@ -606,12 +602,7 @@ export default function Header() {
               </>
             ) : (
               <>
-                {showVintraAdmin ? (
-                  <PrimaryAction href="/vintra-admin">
-                    <FiBriefcase />
-                    <span>Vintra Admin</span>
-                  </PrimaryAction>
-                ) : null}
+               
                 <ActionButton type="button" onClick={handleLogout}>
                   <FiLogOut />
                   <span>Log Out</span>

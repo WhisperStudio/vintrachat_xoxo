@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+﻿import { NextRequest } from 'next/server'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { WIDGET_THEME_CLASS, WIDGET_THEME_VARS } from '@/components/chat/widgetDesign'
@@ -157,8 +157,8 @@ export async function GET(
   };
 
   var icons = {
-    message: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8A8.5 8.5 0 0 1 12.5 20a8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7A8.38 8.38 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3a8.5 8.5 0 0 1 8.5 8.5Z"></path></svg>',
-    chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8A8.5 8.5 0 0 1 12.5 20a8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7A8.38 8.38 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3a8.5 8.5 0 0 1 8.5 8.5Z"></path></svg>',
+    message: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.75C4 4.784 4.784 4 5.75 4h12.5C19.216 4 20 4.784 20 5.75v8.5c0 .966-.784 1.75-1.75 1.75H12l-4 4v-4H5.75C4.784 16 4 15.216 4 14.25z"></path></svg>',
+    chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4a8 8 0 0 0-6.9 12.1L4 20l3.9-1.1A8 8 0 1 0 12 4Z"></path></svg>',
     support: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 10a6 6 0 1 0-12 0v4a2 2 0 0 0 2 2h1v-5H6"></path><path d="M18 10v6a4 4 0 0 1-4 4h-2"></path><path d="M15 16h1a2 2 0 0 0 2-2v-4"></path></svg>',
     phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.89.34 1.77.67 2.61a2 2 0 0 1-.45 2.11L8 9.91a16 16 0 0 0 6.09 6.09l1.47-1.33a2 2 0 0 1 2.11-.45c.84.33 1.72.55 2.61.67A2 2 0 0 1 22 16.92Z"></path></svg>',
     cpu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"></rect><rect x="9" y="9" width="6" height="6"></rect><path d="M9 1v3"></path><path d="M15 1v3"></path><path d="M9 20v3"></path><path d="M15 20v3"></path><path d="M20 9h3"></path><path d="M20 14h3"></path><path d="M1 9h3"></path><path d="M1 14h3"></path></svg>',
@@ -369,6 +369,20 @@ export async function GET(
     return config && config.customBranding ? config.customBranding.logo : '';
   }
 
+  function getLogoStyle(config) {
+    var style = config && config.customBranding ? config.customBranding.logoStyle : null;
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    return {
+      zoom: clamp(style && typeof style.zoom === 'number' ? style.zoom : 100, 80, 180),
+      focusX: clamp(style && typeof style.focusX === 'number' ? style.focusX : 50, 0, 100),
+      focusY: clamp(style && typeof style.focusY === 'number' ? style.focusY : 50, 0, 100),
+    };
+  }
+
   function getPosition(config) {
     return config && config.position === 'bottom-left' ? 'bottom-left' : 'bottom-right';
   }
@@ -558,8 +572,9 @@ export async function GET(
       bubbleStyle.animationType &&
       bubbleStyle.animationType !== 'none' &&
       (!state.hasOpenedOnce || (!state.open && state.hasUnreadWhileClosed));
+    var logoStyle = getLogoStyle(config);
     var headerAvatar = getLogo(config)
-      ? '<img src="' + escapeHtml(getLogo(config)) + '" alt="logo" />'
+      ? '<div class="avatar avatar--image"><div class="avatar-image" aria-hidden="true" style="background-image: url(' + JSON.stringify(getLogo(config)) + '); background-repeat: no-repeat; background-size: ' + logoStyle.zoom + '% ' + logoStyle.zoom + '%; background-position: ' + logoStyle.focusX + '% ' + logoStyle.focusY + '%;"></div></div>'
       : icons.message;
     var orbPhase = iconChoice === 'orb' ? getOrbPhase(orbStyle) : 'none';
     var orbGlyphList = iconChoice === 'orb' ? getOrbGlyphList(orbStyle, orbPhase) : [];
@@ -583,7 +598,7 @@ export async function GET(
           '<div class="chat-content">' +
           '<div class="chat-header">' +
             '<div class="chat-header-left">' +
-              (headerStyle.showAvatar !== false ? '<div class="avatar">' + headerAvatar + '</div>' : '') +
+              (headerStyle.showAvatar !== false ? headerAvatar : '') +
               '<div class="chat-header-copy">' +
                 (headerStyle.showTitle !== false ? '<h3>' + escapeHtml(getTitle(config)) + '</h3>' : '') +
                 '<p>' + escapeHtml(getDescription(config)) + '</p>' +
@@ -899,4 +914,5 @@ export async function GET(
     },
   })
 }
+
 

@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState, type ComponentType, type CSSProperties, type SVGProps } from 'react'
+import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type SVGProps } from 'react'
 import { FiCheckCircle, FiCpu, FiLifeBuoy, FiMessageCircle, FiMessageSquare, FiPhone, FiSend } from 'react-icons/fi'
 import GlassOrbAvatar from '../../../../../svgs/GlassOrbAvatar'
 import { getWidgetThemeClass, getWidgetThemeStyle, joinWidgetClasses } from '@/components/chat/widgetDesign'
+import FeedbackFormOverlay from '@/components/chat/FeedbackFormOverlay'
 import './WidgetPreview.css'
 import type { BubbleIconChoice, OrbStyleConfig } from '@/types/database'
 
@@ -12,6 +13,9 @@ const OrbAvatar = GlassOrbAvatar as ComponentType<
 >
 
 interface WidgetPreviewProps {
+  total?: number
+  billingCycle?: 'monthly' | 'yearly'
+  plan?: 'free' | 'pro' | 'business'
   bubbleStyle: {
     showStatus: boolean
     iconChoice: BubbleIconChoice
@@ -49,21 +53,40 @@ interface WidgetPreviewProps {
     title?: string
     description?: string
     logo?: string
+    logoStyle?: {
+      zoom: number
+      focusX: number
+      focusY: number
+    }
   }
   initialOpen?: boolean
   variant?: 'default' | 'embedded'
   enablePreviewChat?: boolean
   previewReply?: string
+  faqSuggestionsEnabled?: boolean
+  faqSuggestions?: string[]
   messagesOverride?: Message[]
   inputValueOverride?: string
   onInputValueChange?: (value: string) => void
-  onSendMessage?: () => void
+  onSendMessage?: (message?: string) => void
   openOverride?: boolean
   onToggleOpen?: (open: boolean) => void
   errorMessage?: string | null
   statusText?: string
   disableInput?: boolean
   bubbleActivityState?: 'idle' | 'replying'
+  feedbackOverlay?: {
+    open: boolean
+    title?: string
+    description?: string
+    rating: number
+    text: string
+    submitting?: boolean
+    onRatingChange: (rating: number) => void
+    onTextChange: (text: string) => void
+    onSubmit: () => void
+    onClose: () => void
+  }
 }
 
 interface Message {
@@ -72,7 +95,22 @@ interface Message {
   isBot: boolean
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function normalizeLogoStyle(raw?: { zoom: number; focusX: number; focusY: number }) {
+  return {
+    zoom: clamp(Number(raw?.zoom || 100), 80, 180),
+    focusX: clamp(Number(raw?.focusX || 50), 0, 100),
+    focusY: clamp(Number(raw?.focusY || 50), 0, 100),
+  }
+}
+
 export default function WidgetPreview({
+  total,
+  billingCycle,
+  plan,
   bubbleStyle,
   headerStyle,
   bodyStyle,
@@ -84,6 +122,8 @@ export default function WidgetPreview({
   variant = 'default',
   enablePreviewChat = false,
   previewReply = 'hi, this is only a test',
+  faqSuggestionsEnabled = false,
+  faqSuggestions = [],
   messagesOverride,
   inputValueOverride,
   onInputValueChange,
@@ -94,6 +134,7 @@ export default function WidgetPreview({
   statusText = 'Online',
   disableInput = false,
   bubbleActivityState = 'idle',
+  feedbackOverlay,
 }: WidgetPreviewProps) {
   const [internalIsChatOpen, setInternalIsChatOpen] = useState(initialOpen)
   const [internalIsReplying, setInternalIsReplying] = useState(false)
@@ -110,11 +151,55 @@ export default function WidgetPreview({
     },
   ])
   const [internalInputValue, setInternalInputValue] = useState('')
+  const [internalFeedbackOpen, setInternalFeedbackOpen] = useState(false)
+  const [internalFeedbackRating, setInternalFeedbackRating] = useState(5)
+  const [internalFeedbackText, setInternalFeedbackText] = useState('')
+  const [internalFeedbackSubmitting, setInternalFeedbackSubmitting] = useState(false)
+  const [faqSuggestionNonce, setFaqSuggestionNonce] = useState(0)
 
   const isChatOpen = openOverride ?? internalIsChatOpen
   const messages = messagesOverride ?? internalMessages
   const inputValue = inputValueOverride ?? internalInputValue
   const isReplying = bubbleActivityState === 'replying' || internalIsReplying
+  const feedbackKeywords = ['feedback', 'review', 'rating', 'star', 'stars', 'vurdering', 'anmeldelse', 'tilbakemelding']
+  const internalRequestedFeedback = (text: string) =>
+    feedbackKeywords.some((keyword) => text.toLowerCase().includes(keyword))
+  const activeFaqSuggestions = useMemo(() => {
+    if (!faqSuggestionsEnabled) return []
+
+    const cleaned = faqSuggestions
+      .map((item) => item.trim())
+      .filter(Boolean)
+
+    if (!cleaned.length) return []
+
+    const unique = Array.from(new Set(cleaned))
+    const seeded = unique.map((item) => ({ item, sort: Math.random() }))
+    seeded.sort((a, b) => a.sort - b.sort)
+    return seeded.slice(0, 3).map((entry) => entry.item)
+  }, [faqSuggestions, faqSuggestionsEnabled, faqSuggestionNonce])
+  const activeFeedbackOverlay = feedbackOverlay || {
+    open: internalFeedbackOpen,
+    rating: internalFeedbackRating,
+    text: internalFeedbackText,
+    submitting: internalFeedbackSubmitting,
+    onRatingChange: setInternalFeedbackRating,
+    onTextChange: setInternalFeedbackText,
+    onSubmit: () => {
+      setInternalFeedbackSubmitting(true)
+      window.setTimeout(() => {
+        setInternalFeedbackSubmitting(false)
+        setInternalFeedbackOpen(false)
+        setInternalFeedbackText('')
+        setInternalFeedbackRating(5)
+      }, 450)
+    },
+    onClose: () => {
+      setInternalFeedbackOpen(false)
+      setInternalFeedbackText('')
+      setInternalFeedbackRating(5)
+    },
+  }
 
   const setIsChatOpen = (value: boolean | ((prev: boolean) => boolean)) => {
     const nextValue = typeof value === 'function' ? value(isChatOpen) : value
@@ -144,20 +229,40 @@ export default function WidgetPreview({
     if (isChatOpen) {
       setOrbInactiveActive(false)
       setOrbActivityNonce((current) => current + 1)
+      setFaqSuggestionNonce((current) => current + 1)
     }
   }, [isChatOpen])
 
-  const handleSend = () => {
-    if (!inputValue.trim()) return
+  const handleSend = (messageOverride?: string) => {
+    const nextText = String(messageOverride ?? inputValue ?? '').trim()
+    if (!nextText) return
+
+    if (!onSendMessage && internalRequestedFeedback(nextText)) {
+      setInternalMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          text: nextText,
+          isBot: false,
+        },
+        {
+          id: crypto.randomUUID(),
+          text: 'Absolutely. I opened a quick feedback form for you.',
+          isBot: true,
+        },
+      ])
+      setInputValue('')
+      setInternalFeedbackOpen(true)
+      return
+    }
 
     if (onSendMessage) {
       setOrbInactiveActive(false)
       setOrbActivityNonce((current) => current + 1)
-      onSendMessage()
+      onSendMessage(nextText)
       return
     }
 
-    const nextText = inputValue.trim()
     setInternalIsReplying(true)
     setOrbInactiveActive(false)
     setOrbActivityNonce((current) => current + 1)
@@ -206,9 +311,11 @@ export default function WidgetPreview({
     `shadow-${footerStyle.shadowType}`,
     `input-${footerStyle.inputStyle}`
   )
+  const showFaqSuggestions = isChatOpen && faqSuggestionsEnabled && activeFaqSuggestions.length > 0
 
   const title = customBranding.title || 'Support Chat'
   const description = customBranding.description || 'Usually replies in a few minutes'
+  const logoStyle = normalizeLogoStyle(customBranding.logoStyle)
   const orbSettings = bubbleStyle.orbStyle || {
     hoverEnabled: true,
     hoverGlyph: 'A',
@@ -313,9 +420,18 @@ export default function WidgetPreview({
             <div className="chat-header">
               <div className="chat-header-left">
                 {headerStyle.showAvatar && (
-                  <div className="avatar">
+                  <div className={`avatar ${customBranding.logo ? 'avatar--image' : ''}`}>
                     {customBranding.logo ? (
-                      <img src={customBranding.logo} alt="logo" className="avatar-image" />
+                      <div
+                        className="avatar-image"
+                        aria-hidden="true"
+                        style={{
+                          backgroundImage: `url(${customBranding.logo})`,
+                          backgroundRepeat: 'no-repeat',
+                          backgroundSize: `${logoStyle.zoom}% ${logoStyle.zoom}%`,
+                          backgroundPosition: `${logoStyle.focusX}% ${logoStyle.focusY}%`,
+                        }}
+                      />
                     ) : (
                       <FiMessageCircle />
                     )}
@@ -369,6 +485,22 @@ export default function WidgetPreview({
               ))}
             </div>
 
+            {showFaqSuggestions && (
+              <div className="widget-faq-suggestions" aria-label="Suggested questions">
+                {activeFaqSuggestions.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    className="widget-faq-chip"
+                    onClick={() => handleSend(suggestion)}
+                    disabled={disableInput}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className={footerClasses}>
               <input
                 type="text"
@@ -380,13 +512,25 @@ export default function WidgetPreview({
               />
 
               {footerStyle.showSendButton && (
-                <button type="button" onClick={handleSend} disabled={disableInput}>
+                <button type="button" onClick={() => handleSend()} disabled={disableInput}>
                   <FiSend />
                 </button>
               )}
             </div>
 
             {errorMessage && <div className="widget-inline-error">{errorMessage}</div>}
+            <FeedbackFormOverlay
+              open={Boolean(activeFeedbackOverlay.open)}
+              title={feedbackOverlay?.title}
+              description={feedbackOverlay?.description}
+              rating={activeFeedbackOverlay.rating || 0}
+              text={activeFeedbackOverlay.text || ''}
+              submitting={activeFeedbackOverlay.submitting}
+              onRatingChange={activeFeedbackOverlay.onRatingChange}
+              onTextChange={activeFeedbackOverlay.onTextChange}
+              onSubmit={activeFeedbackOverlay.onSubmit}
+              onClose={activeFeedbackOverlay.onClose}
+            />
           </div>
 
           <div
@@ -405,20 +549,22 @@ export default function WidgetPreview({
             role="button"
             tabIndex={0}
           >
-            {bubbleStyle.iconChoice === 'chat' && <FiMessageCircle />}
-            {bubbleStyle.iconChoice === 'phone' && <FiPhone />}
-            {bubbleStyle.iconChoice === 'cpu' && <FiCpu />}
-            {bubbleStyle.iconChoice === 'message' && <FiMessageSquare />}
-            {bubbleStyle.iconChoice === 'support' && <FiLifeBuoy />}
-            {bubbleStyle.iconChoice === 'orb' && (
-              <OrbAvatar
-                className="widget-orb-avatar"
-                aria-hidden="true"
-                glyph={orbSettings.hoverEnabled ? orbSettings.hoverGlyph || '' : ''}
-                orbMode={orbPhase === 'spin' || orbPhase === 'none' ? 'spin' : orbPhase}
-              />
-            )}
-            {bubbleStyle.showStatus && <span className="status-dot" />}
+            <span className="widget-icon-inner" aria-hidden="true">
+              {bubbleStyle.iconChoice === 'chat' && <FiMessageCircle />}
+              {bubbleStyle.iconChoice === 'phone' && <FiPhone />}
+              {bubbleStyle.iconChoice === 'cpu' && <FiCpu />}
+              {bubbleStyle.iconChoice === 'message' && <FiMessageSquare />}
+              {bubbleStyle.iconChoice === 'support' && <FiLifeBuoy />}
+              {bubbleStyle.iconChoice === 'orb' && (
+                <OrbAvatar
+                  className="widget-orb-avatar"
+                  aria-hidden="true"
+                  glyph={orbSettings.hoverEnabled ? orbSettings.hoverGlyph || '' : ''}
+                  orbMode={orbPhase === 'spin' || orbPhase === 'none' ? 'spin' : orbPhase}
+                />
+              )}
+              {bubbleStyle.showStatus && <span className="status-dot" />}
+            </span>
           </div>
         </div>
       </div>
@@ -431,8 +577,20 @@ export default function WidgetPreview({
 
   return (
     <div className="widget-preview-shell glass">
-      <div className="viewport-label">Widget preview</div>
       {previewContent}
+      {typeof total === 'number' ? (
+        <div className="widget-preview-total">
+          <p className="widget-preview-total-label">Subscription total</p>
+          <h3 className="widget-preview-total-price">
+            ${total}
+            <span>/{billingCycle === 'monthly' ? 'month' : 'year'}</span>
+          </h3>
+          <div className="widget-preview-total-meta">
+            <span>{plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : 'Plan'}</span>
+            <span>{billingCycle || 'monthly'}</span>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

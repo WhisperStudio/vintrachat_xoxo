@@ -219,6 +219,13 @@ export async function GET(req: NextRequest) {
                   ? data.chatAssistantConfig.supportTriggerKeywords
                   : [],
                 handoffMessage: String(data.chatAssistantConfig.handoffMessage || ''),
+                faqSuggestionsEnabled: Boolean(data.chatAssistantConfig.faqSuggestionsEnabled),
+                faqSuggestions: Array.isArray(data.chatAssistantConfig.faqSuggestions)
+                  ? data.chatAssistantConfig.faqSuggestions
+                  : [],
+                replyInUserLanguage: Boolean(data.chatAssistantConfig.replyInUserLanguage ?? true),
+                responseStyle: String(data.chatAssistantConfig.responseStyle || ''),
+                extraInstructions: String(data.chatAssistantConfig.extraInstructions || ''),
               }
             : null,
           lastChatAt: toIso(data.chatAnalytics?.lastChatAt),

@@ -157,6 +157,233 @@ backdrop-filter: blur(7px);
   padding-top: 164px;
 }
 
+.adminPageTutorialMode .adminSidebar,
+.adminPageTutorialMode .adminContent {
+  position: relative;
+  z-index: 1;
+}
+
+.adminOverviewHero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.adminOverviewHero h1 {
+  margin: 0;
+}
+
+.adminOverviewHero p {
+  margin: 0.45rem 0 0;
+  color: #64748b;
+  line-height: 1.55;
+}
+
+.adminTutorialOrb {
+  width: 88px;
+  height: 88px;
+  border: none;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.12) 28%, transparent 30%),
+    linear-gradient(135deg, #60a5fa, #7c3aed 55%, #a855f7);
+  color: #fff;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.26),
+    0 18px 34px rgba(99, 102, 241, 0.24),
+    0 0 28px rgba(99, 102, 241, 0.24);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  animation: tutorialOrbPulse 2.8s ease-in-out infinite;
+}
+
+.adminTutorialOrb::after {
+  content: '';
+  position: absolute;
+  inset: 10%;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.7), transparent 48%),
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.16), transparent 68%);
+  filter: blur(8px);
+  opacity: 0.85;
+}
+
+.adminTutorialOrb svg,
+.adminTutorialOrb span {
+  position: relative;
+  z-index: 1;
+}
+
+.adminTutorialOrb svg {
+  font-size: 1.25rem;
+}
+
+.adminTutorialOrb span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adminTutorialBackdrop {
+  position: fixed;
+  background: rgba(148, 163, 184, 0.66);
+  backdrop-filter: grayscale(1) blur(7px) saturate(0.55);
+  z-index: 55;
+  pointer-events: auto;
+}
+
+.adminTutorialBackdropTop {
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.adminTutorialBackdropLeft,
+.adminTutorialBackdropRight,
+.adminTutorialBackdropBottom {
+  bottom: 0;
+}
+
+.adminTutorialSpotlight {
+  position: fixed;
+  z-index: 56;
+  border-radius: 26px;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 9999px rgba(149, 184, 148, 0.7),
+    0 0 0 2px rgba(255, 255, 255, 0.32),
+    0 0 44px rgba(188, 0, 0, 0.2);
+}
+
+.adminTutorialCoach {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 57;
+  width: min(720px, calc(100vw - 24px));
+  pointer-events: none;
+}
+
+.adminTutorialCoachCard {
+  pointer-events: auto;
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    0 24px 48px rgba(15, 23, 42, 0.18),
+    0 0 0 1px rgba(255, 255, 255, 0.7);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.adminTutorialCoachTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.adminTutorialCoachStep {
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.adminTutorialCoachSkip {
+  border: none;
+  border-radius: 999px;
+  background: rgba(241, 245, 249, 0.96);
+  color: #475569;
+  font-weight: 700;
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+}
+
+.adminTutorialCoach h3 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.adminTutorialCoach p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.55;
+}
+
+.adminTutorialCoachCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: fit-content;
+  padding: 0.82rem 1rem;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #3b82f6, #7c3aed);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 14px 24px rgba(99, 102, 241, 0.24);
+}
+
+.adminTutorialQuickNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.adminTutorialQuickNav button {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  background: rgba(248, 250, 252, 0.92);
+  color: #475569;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.adminTutorialQuickNav button.active {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.14), rgba(124, 58, 237, 0.14));
+  border-color: rgba(99, 102, 241, 0.24);
+  color: #0f172a;
+}
+
+.adminTutorialNav {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.adminTutorialNavBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.98);
+  color: #475569;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.adminTutorialNavBtnPrimary {
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  color: #fff;
+  border-color: transparent;
+}
+
 .miniGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -180,6 +407,84 @@ backdrop-filter: blur(7px);
 
 .miniStat span {
   color: #6b7280;
+}
+
+.adminTutorialCard {
+  margin-top: 20px;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(99, 102, 241, 0.14);
+  background:
+    radial-gradient(circle at top right, rgba(99, 102, 241, 0.08), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.94));
+  box-shadow:
+    0 16px 30px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.adminTutorialHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.adminTutorialEyebrow {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 8px;
+  color: #2563eb;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.adminTutorialHeader h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.adminTutorialHeader p {
+  margin: 0.5rem 0 0;
+  color: #64748b;
+  line-height: 1.55;
+}
+
+.adminTutorialGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.adminTutorialTile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.82);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.04);
+}
+
+.adminTutorialTile:hover {
+  border-color: rgba(99, 102, 241, 0.24);
+  transform: translateY(-1px);
+}
+
+.adminTutorialTile strong {
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.adminTutorialTile p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.5;
 }
 
 .settingsToggleRow {
@@ -216,5 +521,41 @@ backdrop-filter: blur(7px);
 
   .adminContent {
     padding-top: 30px;
+  }
+
+  .adminTutorialGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .adminTutorialHeader {
+    flex-direction: column;
+  }
+
+  .adminOverviewHero {
+    flex-direction: column;
+  }
+
+  .adminTutorialOrb {
+    width: 76px;
+    height: 76px;
+  }
+
+  .adminTutorialCoach {
+    width: calc(100vw - 16px);
+    bottom: 8px;
+  }
+
+  .adminTutorialNav {
+    flex-direction: column;
+  }
+}
+
+@keyframes tutorialOrbPulse {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.04);
   }
 }

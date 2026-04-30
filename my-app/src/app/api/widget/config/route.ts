@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
       widgetKey: business.chatWidgetKey,
       widgetConfig: business.chatWidgetConfig,
       assistantEnabled: business.chatAssistantConfig?.enabled ?? true,
+      assistantConfig: business.chatAssistantConfig || null,
     }, { headers })
   } catch (error) {
     console.error('Widget config error:', error)

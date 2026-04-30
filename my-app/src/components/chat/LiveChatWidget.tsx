@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import WidgetPreview from '@/app/landings/auth/chatWidget/components/WidgetPreview'
 import '@/app/landings/auth/chatWidget/ChatWidget.css'
 import './LiveChatWidget.css'
-import type { ChatWidgetConfig } from '@/types/database'
+import type { ChatAssistantConfig, ChatWidgetConfig } from '@/types/database'
 
 type WidgetMessage = {
   id: string
@@ -18,6 +18,7 @@ type WidgetConfigResponse = {
   widgetKey: string
   widgetConfig: ChatWidgetConfig
   assistantEnabled: boolean
+  assistantConfig?: ChatAssistantConfig | null
 }
 
 const emptyMessages: WidgetMessage[] = []
@@ -41,6 +42,10 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   const [inputValue, setInputValue] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [feedbackRating, setFeedbackRating] = useState(5)
+  const [feedbackText, setFeedbackText] = useState('')
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
 
   useEffect(() => {
     window.parent.postMessage(
@@ -150,8 +155,8 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     setIsOpen(nextOpen)
   }
 
-  const handleSend = async () => {
-    const text = inputValue.trim()
+  const handleSend = async (messageOverride?: string) => {
+    const text = String(messageOverride ?? inputValue).trim()
     if (!text || isSending) return
 
     const userMessage: WidgetMessage = {
@@ -202,6 +207,10 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
           createdAt: new Date().toISOString(),
         },
       ])
+
+      if (data.feedbackFormRequested) {
+        setFeedbackOpen(true)
+      }
     } catch (err) {
       console.error(err)
       setError('The assistant could not reply right now.')
@@ -209,6 +218,44 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       setInputValue(text)
     } finally {
       setIsSending(false)
+    }
+  }
+
+  const handleSubmitFeedback = async () => {
+    if (!sessionId || feedbackSubmitting || !feedbackText.trim()) return
+
+    setFeedbackSubmitting(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/widget/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          widgetKey,
+          sessionId,
+          rating: feedbackRating,
+          text: feedbackText,
+          pageTitle: document.title,
+          pageUrl: window.location.href,
+        }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to submit feedback')
+      }
+
+      setFeedbackOpen(false)
+      setFeedbackText('')
+      setFeedbackRating(5)
+    } catch (err) {
+      console.error(err)
+      setError('The feedback form could not be submitted right now.')
+    } finally {
+      setFeedbackSubmitting(false)
     }
   }
 
@@ -251,18 +298,35 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
           title,
           description,
           logo: config.customBranding?.logo,
+          logoStyle: config.customBranding?.logoStyle,
         }}
         variant="embedded"
         messagesOverride={widgetMessages}
         inputValueOverride={inputValue}
         onInputValueChange={setInputValue}
         onSendMessage={handleSend}
+        faqSuggestionsEnabled={Boolean(configResponse?.assistantConfig?.faqSuggestionsEnabled)}
+        faqSuggestions={configResponse?.assistantConfig?.faqSuggestions || []}
         openOverride={isOpen}
         onToggleOpen={handleToggle}
         errorMessage={error}
         statusText={configResponse?.assistantEnabled ? 'AI live' : 'AI off'}
-        disableInput={isSending}
+        disableInput={isSending || feedbackOpen}
         bubbleActivityState={isSending ? 'replying' : 'idle'}
+        feedbackOverlay={{
+          open: feedbackOpen,
+          rating: feedbackRating,
+          text: feedbackText,
+          submitting: feedbackSubmitting,
+          onRatingChange: setFeedbackRating,
+          onTextChange: setFeedbackText,
+          onSubmit: handleSubmitFeedback,
+          onClose: () => {
+            setFeedbackOpen(false)
+            setFeedbackText('')
+            setFeedbackRating(5)
+          },
+        }}
       />
     </div>
   )
