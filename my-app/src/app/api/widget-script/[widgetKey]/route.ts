@@ -6,6 +6,13 @@ import { WIDGET_THEME_CLASS, WIDGET_THEME_VARS } from '@/components/chat/widgetD
 const widgetStyles = `
 :host {
   all: initial;
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+  display: block;
+  visibility: visible;
+  opacity: 1;
 }
 
 *,
@@ -17,9 +24,12 @@ const widgetStyles = `
 .vintra-root {
   position: fixed;
   inset: auto 24px 24px auto;
-  z-index: 2147483000;
+  z-index: 2147483647;
   font-family: Inter, Arial, sans-serif;
   pointer-events: none;
+  display: block;
+  visibility: visible;
+  opacity: 1;
 }
 
 .vintra-root.position-bottom-left {
@@ -34,10 +44,19 @@ const widgetStyles = `
   align-items: flex-end;
   gap: 12px;
   pointer-events: none;
+  isolation: isolate;
 }
 
 .vintra-root.position-bottom-left .vintra-stack {
   align-items: flex-start;
+}
+
+.vintra-stack > .chat-widget {
+  z-index: 2147483646;
+}
+
+.vintra-stack > .widget-icon {
+  z-index: 2147483647;
 }
 
 .vintra-debug {
@@ -86,20 +105,39 @@ export async function GET(
   if (window[GLOBAL_KEY]) return;
   window[GLOBAL_KEY] = true;
 
-  var host = document.createElement('div');
-  host.setAttribute('data-vintra-widget-key', WIDGET_KEY);
-  document.body.appendChild(host);
-
-  var shadowRoot = host.attachShadow({ mode: 'open' });
-  var style = document.createElement('style');
-  style.textContent = ${JSON.stringify(widgetStyles)};
-  shadowRoot.appendChild(style);
-
-  var mount = document.createElement('div');
-  mount.className = 'vintra-root position-bottom-right';
-  shadowRoot.appendChild(mount);
-
+  var host = null;
+  var shadowRoot = null;
+  var mount = null;
   var debugEl = null;
+
+  function createHost() {
+    if (host && shadowRoot && mount) return;
+
+    var mountTarget = document.body || document.documentElement;
+    if (!mountTarget) {
+      throw new Error('Document is not ready for widget mount');
+    }
+
+    host = document.createElement('div');
+    host.setAttribute('data-vintra-widget-key', WIDGET_KEY);
+    host.style.position = 'fixed';
+    host.style.inset = '0';
+    host.style.zIndex = '2147483647';
+    host.style.pointerEvents = 'none';
+    host.style.display = 'block';
+    host.style.visibility = 'visible';
+    host.style.opacity = '1';
+    mountTarget.appendChild(host);
+
+    shadowRoot = host.attachShadow({ mode: 'open' });
+    var style = document.createElement('style');
+    style.textContent = ${JSON.stringify(widgetStyles)};
+    shadowRoot.appendChild(style);
+
+    mount = document.createElement('div');
+    mount.className = 'vintra-root position-bottom-right';
+    shadowRoot.appendChild(mount);
+  }
   function setDebug(message) {
     if (!DEBUG_MODE) return;
     if (!debugEl) {
@@ -1102,9 +1140,18 @@ export async function GET(
     }
   }
 
-  bindWidgetActions();
-  render();
-  loadConfig();
+  function startWidget() {
+    createHost();
+    bindWidgetActions();
+    render();
+    loadConfig();
+  }
+
+  if (document.body || document.documentElement) {
+    startWidget();
+  } else {
+    document.addEventListener('DOMContentLoaded', startWidget, { once: true });
+  }
 })();`
 
   return new Response(script, {
