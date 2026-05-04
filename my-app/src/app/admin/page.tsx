@@ -5,7 +5,7 @@ import { db } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore'
-import { FiArrowLeft, FiArrowRight, FiArrowUpRight, FiPlay, FiZap } from 'react-icons/fi'
+import { FiArrowLeft, FiArrowRight, FiArrowUpRight, FiChevronLeft, FiChevronRight, FiPlay, FiZap } from 'react-icons/fi'
 import AdminAnalyticsPanel from './components/AdminAnalyticsPanel'
 import AdminChatsPanel from './components/AdminChatsPanel'
 import AdminFeedbackPanel from './components/AdminFeedbackPanel'
@@ -57,6 +57,7 @@ export default function AdminPage() {
   const [tutorialDismissed, setTutorialDismissed] = useState(false)
   const [tutorialActive, setTutorialActive] = useState(false)
   const [tutorialStepIndex, setTutorialStepIndex] = useState(0)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [tutorialSpotlight, setTutorialSpotlight] = useState<{
     top: number
     left: number
@@ -313,8 +314,21 @@ export default function AdminPage() {
 
   return (
     <>
-      <main className={`adminPage ${tutorialActive ? 'adminPageTutorialMode' : ''}`}>
-        <aside className="adminSidebar" ref={sidebarRef}>
+      <main
+        className={`adminPage ${tutorialActive ? 'adminPageTutorialMode' : ''} ${
+          sidebarCollapsed ? 'adminPageSidebarCollapsed' : ''
+        }`}
+      >
+        <aside className={`adminSidebar ${sidebarCollapsed ? 'adminSidebarCollapsed' : ''}`} ref={sidebarRef}>
+          <button
+            type="button"
+            className="adminSidebarCollapseToggle"
+            onClick={() => setSidebarCollapsed((current) => !current)}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {sidebarCollapsed ? <FiChevronRight /> : <FiChevronLeft />}
+          </button>
           {indicatorStyle ? (
             <span
               className="adminSidebarIndicator"

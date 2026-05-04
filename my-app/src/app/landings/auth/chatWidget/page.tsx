@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { FiCheck, FiCreditCard, FiRefreshCw, FiSave, FiSliders } from 'react-icons/fi'
+import { FiCheck, FiCreditCard, FiRefreshCw, FiSave, FiSliders, FiMonitor, FiSmartphone } from 'react-icons/fi'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { updateChatWidgetConfig } from '@/lib/auth.service'
@@ -17,6 +17,7 @@ type Plan = 'free' | 'pro' | 'business'
 type BillingCycle = 'monthly' | 'yearly'
 type ColorTheme = 'modern' | 'chilling' | 'corporate' | 'luxury'
 type Position = 'bottom-right' | 'bottom-left'
+type PreviewMode = 'desktop' | 'mobile'
 
 const defaultOrbStyle: OrbStyleConfig = {
   hoverEnabled: true,
@@ -144,6 +145,7 @@ export default function ChatWidgetBuilderPage() {
 
   const [inputs, setInputs] = useState<InputsState>(defaultInputs)
   const [hasLoadedDbConfig, setHasLoadedDbConfig] = useState(false)
+  const [previewMode, setPreviewMode] = useState<PreviewMode>('desktop')
 
   const [openSections, setOpenSections] = useState({
     plan: false,
@@ -408,6 +410,26 @@ export default function ChatWidgetBuilderPage() {
           </div>
 
           <div className="preview-panel">
+            <div className="previewModeSwitcher" role="tablist" aria-label="Preview device">
+              <button
+                type="button"
+                className={previewMode === 'desktop' ? 'active' : ''}
+                onClick={() => setPreviewMode('desktop')}
+                aria-pressed={previewMode === 'desktop'}
+              >
+                <FiMonitor />
+                <span>Desktop</span>
+              </button>
+              <button
+                type="button"
+                className={previewMode === 'mobile' ? 'active' : ''}
+                onClick={() => setPreviewMode('mobile')}
+                aria-pressed={previewMode === 'mobile'}
+              >
+                <FiSmartphone />
+                <span>Mobile</span>
+              </button>
+            </div>
             <WidgetPreview
               total={total}
               billingCycle={inputs.billingCycle}
@@ -421,6 +443,7 @@ export default function ChatWidgetBuilderPage() {
               customBranding={inputs.customBranding}
               enablePreviewChat={true}
               previewReply="hi, this is only a test"
+              previewMode={previewMode}
             />
           </div>
         </div>

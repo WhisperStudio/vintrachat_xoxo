@@ -93,7 +93,7 @@ const contactStructuredData = {
       name: siteConfig.legalName,
       alternateName: siteConfig.alternateName,
       url: siteConfig.url,
-      logo: absoluteUrl('/favicon.ico'),
+      logo: absoluteUrl('/image/logo.png'),
       email: siteConfig.contact.email,
       ...(siteConfig.contact.phone ? { telephone: siteConfig.contact.phone } : {}),
       contactPoint: [

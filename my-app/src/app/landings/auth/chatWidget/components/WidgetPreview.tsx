@@ -61,6 +61,7 @@ interface WidgetPreviewProps {
   }
   initialOpen?: boolean
   variant?: 'default' | 'embedded'
+  previewMode?: 'desktop' | 'mobile'
   enablePreviewChat?: boolean
   previewReply?: string
   faqSuggestionsEnabled?: boolean
@@ -120,6 +121,7 @@ export default function WidgetPreview({
   customBranding,
   initialOpen = false,
   variant = 'default',
+  previewMode = 'desktop',
   enablePreviewChat = false,
   previewReply = 'hi, this is only a test',
   faqSuggestionsEnabled = false,
@@ -412,7 +414,7 @@ export default function WidgetPreview({
 
   const previewContent = (
     <div
-      className={`widget-viewport ${variant === 'embedded' ? 'widget-viewport-embedded' : ''} position-${position}`}
+      className={`widget-viewport ${variant === 'embedded' ? 'widget-viewport-embedded' : ''} position-${position} preview-${previewMode}`}
     >
       <div className={`floating-chat-preview ${themeClass}`} style={themeVars as CSSProperties}>
         <div className="widgetcontainer">
@@ -576,8 +578,14 @@ export default function WidgetPreview({
   }
 
   return (
-    <div className="widget-preview-shell glass">
-      {previewContent}
+    <div className={`widget-preview-shell glass preview-shell-${previewMode}`}>
+      {previewMode === 'mobile' ? (
+        <div className="widget-preview-device-frame">
+          <div className="widget-preview-device-shell">{previewContent}</div>
+        </div>
+      ) : (
+        previewContent
+      )}
       {typeof total === 'number' ? (
         <div className="widget-preview-total">
           <p className="widget-preview-total-label">Subscription total</p>

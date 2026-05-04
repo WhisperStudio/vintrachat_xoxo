@@ -6,6 +6,11 @@ import { absoluteUrl, siteConfig } from '@/lib/site-config'
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
+  icons: {
+    icon: '/image/logo.png',
+    shortcut: '/image/logo.png',
+    apple: '/image/logo.png',
+  },
   title: {
     default: 'Vintra | Business websites, AI chatbots, pricing and support',
     template: '%s | Vintra',

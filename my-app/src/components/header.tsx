@@ -41,7 +41,7 @@ const activePulse = keyframes`
 const StyledHeader = styled.header<{ $scrolled: boolean }>`
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 80;
   width: 100%;
   padding: ${({ $scrolled }) => ($scrolled ? '14px 20px 0' : '20px 20px 0')};
   background: transparent;
@@ -83,39 +83,23 @@ const LeftSide = styled.div`
   min-width: 0;
 `
 
+const BrandIcon = styled.img`
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  object-fit: cover;
+  display: block;
+  box-shadow:
+    0 16px 28px rgba(37, 99, 235, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+`
+
 const Brand = styled(Link)`
   display: inline-flex;
   align-items: center;
   gap: 14px;
   text-decoration: none;
   min-width: 0;
-`
-
-const BrandBadge = styled.div`
-  position: relative;
-  width: 46px;
-  height: 46px;
-  border-radius: 15px;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 45%, #2563eb 100%);
-  color: #f8fafc;
-  font-family: "Georgia", "Times New Roman", serif;
-  font-size: 1.15rem;
-  font-style: italic;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  box-shadow:
-    0 16px 28px rgba(37, 99, 235, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 1px;
-    border-radius: 14px;
-    background: linear-gradient(160deg, rgba(255, 255, 255, 0.18), transparent 45%);
-  }
 `
 
 const BrandText = styled.div`
@@ -164,11 +148,42 @@ const DesktopNav = styled.nav`
   gap: 8px;
   padding: 8px;
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(226, 232, 240, 0.78);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 10px 24px rgba(15, 23, 42, 0.05);
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+    pointer-events: none;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 100%;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.8),
+      transparent,
+      rgba(255, 255, 255, 0.3)
+    );
+    pointer-events: none;
+  }
 `
 
 const DesktopNavIndicator = styled.span`
@@ -262,6 +277,16 @@ const BaseButtonStyles = css`
   gap: 10px;
   padding: 11px 16px;
   border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+  background: var(--button-bg, rgba(255, 255, 255, 0.05));
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border: 1px solid var(--button-border, rgba(255, 255, 255, 0.3));
+  box-shadow:
+    var(--button-shadow, 0 8px 32px rgba(0, 0, 0, 0.1)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
   font-size: 0.92rem;
   font-weight: 800;
   transition:
@@ -270,6 +295,33 @@ const BaseButtonStyles = css`
     background 0.2s ease,
     border-color 0.2s ease;
 
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+    pointer-events: none;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 100%;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.8),
+      transparent,
+      rgba(255, 255, 255, 0.3)
+    );
+    pointer-events: none;
+  }
+
   &:hover {
     transform: translateY(-1px);
   }
@@ -277,10 +329,10 @@ const BaseButtonStyles = css`
 
 const SecondaryAction = styled(Link)`
   ${BaseButtonStyles}
+  --button-bg: rgba(255, 255, 255, 0.88);
+  --button-border: rgba(203, 213, 225, 0.95);
+  --button-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
   color: #0f172a;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(203, 213, 225, 0.95);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
 
   &:hover {
     box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
@@ -289,10 +341,10 @@ const SecondaryAction = styled(Link)`
 
 const PrimaryAction = styled(Link)`
   ${BaseButtonStyles}
+  --button-bg: linear-gradient(135deg, #111827 0%, #1d4ed8 100%);
+  --button-border: transparent;
+  --button-shadow: 0 16px 28px rgba(29, 78, 216, 0.22);
   color: #f8fafc;
-  background: linear-gradient(135deg, #111827 0%, #1d4ed8 100%);
-  border: 1px solid transparent;
-  box-shadow: 0 16px 28px rgba(29, 78, 216, 0.22);
 
   &:hover {
     box-shadow: 0 18px 30px rgba(29, 78, 216, 0.28);
@@ -301,13 +353,15 @@ const PrimaryAction = styled(Link)`
 
 const ActionButton = styled.button`
   ${BaseButtonStyles}
-  color: #0f172a;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(203, 213, 225, 0.95);
+  --button-bg: rgba(239, 68, 68, 0.14);
+  --button-border: rgba(239, 68, 68, 0.22);
+  --button-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  color: #475569;
   cursor: pointer;
 
   &:hover {
     box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+    color: #d21b1b;
   }
 `
 
@@ -331,18 +385,58 @@ const MobileToggle = styled.button`
 `
 
 const MobilePanel = styled.div<{ $open: boolean }>`
-  position: relative;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
   z-index: 1;
   display: ${({ $open }) => ($open ? 'grid' : 'none')};
   gap: 12px;
-  padding: 0 14px 14px;
+  padding: 14px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+    pointer-events: none;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 100%;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.8),
+      transparent,
+      rgba(255, 255, 255, 0.3)
+    );
+    pointer-events: none;
+  }
 
   @media (min-width: 1101px) {
     display: none;
   }
 
   @media (max-width: 720px) {
-    padding: 0 12px 12px;
+    padding: 12px;
   }
 `
 
@@ -481,7 +575,7 @@ export default function Header() {
         <HeaderInner>
           <LeftSide>
             <Brand href="/landings/main" aria-label="Go to home">
-              <BrandBadge aria-hidden="true">V</BrandBadge>
+              <BrandIcon src="/image/logo.png" alt="" aria-hidden="true" />
               <BrandText>
                 <BrandTitle>VINTRA</BrandTitle>
                 <BrandTag>Nordic Digital Studio</BrandTag>
