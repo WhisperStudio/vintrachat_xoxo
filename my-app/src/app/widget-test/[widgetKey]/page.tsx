@@ -35,7 +35,7 @@ export default async function WidgetTestPage({
         </p>
       </div>
 
-      <Script src={`/widget/${widgetKey}.js?debug=1&open=1`} strategy="afterInteractive" />
+      <Script src={`/widget/${widgetKey}.js?open=1`} strategy="afterInteractive" />
     </main>
   )
 }

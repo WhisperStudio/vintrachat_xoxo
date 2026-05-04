@@ -6,6 +6,9 @@ import { WIDGET_THEME_CLASS, WIDGET_THEME_VARS } from '@/components/chat/widgetD
 const widgetStyles = `
 :host {
   all: initial;
+  --vintra-viewport-height: 100vh;
+  --vintra-viewport-width: 100vw;
+  --vintra-keyboard-offset: 0px;
   position: fixed;
   inset: 0;
   z-index: 2147483647;
@@ -23,7 +26,7 @@ const widgetStyles = `
 
 .vintra-root {
   position: fixed;
-  inset: auto 24px 24px auto;
+  inset: auto 24px calc(24px + env(safe-area-inset-bottom, 0px)) auto;
   z-index: 2147483647;
   font-family: Inter, Arial, sans-serif;
   pointer-events: none;
@@ -33,12 +36,12 @@ const widgetStyles = `
 }
 
 .vintra-root.position-bottom-left {
-  inset: auto auto 24px 24px;
+  inset: auto auto calc(24px + env(safe-area-inset-bottom, 0px)) 24px;
 }
 
 .vintra-stack {
   position: relative;
-  width: min(390px, calc(100vw - 32px));
+  width: min(390px, calc(var(--vintra-viewport-width) - 32px));
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -59,20 +62,117 @@ const widgetStyles = `
   z-index: 2147483647;
 }
 
-.vintra-debug {
+.vintra-root.viewport-mobile {
+  inset: auto 10px calc(10px + env(safe-area-inset-bottom, 0px)) 10px;
+}
+
+.vintra-root.viewport-mobile.position-bottom-left,
+.vintra-root.viewport-mobile.position-bottom-right {
+  inset: auto 10px calc(10px + env(safe-area-inset-bottom, 0px)) 10px;
+}
+
+.vintra-root.viewport-mobile .vintra-stack {
+  width: min(100%, calc(var(--vintra-viewport-width) - 20px));
+  align-items: stretch;
+  gap: 10px;
+}
+
+.vintra-root.viewport-mobile .chat-widget {
   position: fixed;
-  left: 8px;
-  bottom: 8px;
-  max-width: 320px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: rgba(15, 23, 42, 0.82);
-  color: #fff;
-  font-size: 12px;
-  line-height: 1.4;
-  white-space: pre-wrap;
-  pointer-events: none;
-  z-index: 2147483647;
+  left: 10px;
+  right: 10px;
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px) + var(--vintra-keyboard-offset));
+  width: auto;
+  max-width: none;
+  max-height: min(720px, calc(var(--vintra-viewport-height) - 104px - var(--vintra-keyboard-offset)));
+  border-radius: 24px;
+  transform: translateY(18px) scale(0.98);
+  transform-origin: bottom center;
+  box-shadow: 0 28px 56px rgba(15, 23, 42, 0.22);
+}
+
+.vintra-root.viewport-mobile .chat-widget.open {
+  transform: translateY(0) scale(1);
+}
+
+.vintra-root.viewport-mobile .chat-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.vintra-root.viewport-mobile .chat-header {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.95rem 0.95rem 0.8rem;
+}
+
+.vintra-root.viewport-mobile .chat-header-left,
+.vintra-root.viewport-mobile .chat-header-actions {
+  width: 100%;
+}
+
+.vintra-root.viewport-mobile .chat-header-actions {
+  justify-content: space-between;
+}
+
+.vintra-root.viewport-mobile .chat-body {
+  height: auto;
+  min-height: 220px;
+  max-height: clamp(220px, calc(var(--vintra-viewport-height) - 310px - var(--vintra-keyboard-offset)), 52vh);
+  padding: 0.95rem;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.vintra-root.viewport-mobile .widget-faq-suggestions {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 0 0.95rem 0.25rem;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.vintra-root.viewport-mobile .widget-faq-suggestions::-webkit-scrollbar {
+  display: none;
+}
+
+.vintra-root.viewport-mobile .widget-faq-chip {
+  flex: 0 0 auto;
+}
+
+.vintra-root.viewport-mobile .chat-footer {
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.85rem 0.95rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
+}
+
+.vintra-root.viewport-mobile .chat-footer input {
+  min-height: 52px;
+  font-size: 16px;
+}
+
+.vintra-root.viewport-mobile .chat-footer button {
+  min-width: 52px;
+  min-height: 52px;
+  padding-inline: 1rem;
+}
+
+.vintra-root.viewport-mobile .widget-icon {
+  width: 64px;
+  height: 64px;
+  touch-action: manipulation;
+}
+
+.vintra-root.viewport-mobile .close-btn {
+  width: 34px;
+  height: 34px;
+  font-size: 16px;
+}
+
+.vintra-root.viewport-mobile.viewport-keyboard-open .chat-widget {
+  bottom: max(10px, calc(10px + env(safe-area-inset-bottom, 0px)));
 }
 
 ${readFileSync(join(process.cwd(), 'src/app/landings/auth/chatWidget/components/WidgetPreview.css'), 'utf8')}
@@ -108,7 +208,7 @@ export async function GET(
   var host = null;
   var shadowRoot = null;
   var mount = null;
-  var debugEl = null;
+  var viewportListenersBound = false;
 
   function createHost() {
     if (host && shadowRoot && mount) return;
@@ -140,13 +240,78 @@ export async function GET(
   }
   function setDebug(message) {
     if (!DEBUG_MODE) return;
-    if (!shadowRoot) return;
-    if (!debugEl) {
-      debugEl = document.createElement('div');
-      debugEl.className = 'vintra-debug';
-      shadowRoot.appendChild(debugEl);
+    if (window.console && typeof window.console.debug === 'function') {
+      window.console.debug('[Vintra widget]', message);
     }
-    debugEl.textContent = message;
+  }
+
+  function applyViewportStateToMount() {
+    if (!mount) return;
+    mount.classList.toggle('viewport-mobile', !!state.compactViewport);
+    mount.classList.toggle('viewport-keyboard-open', state.keyboardOffset > 0);
+  }
+
+  function getViewportMetrics() {
+    var visualViewport = window.visualViewport || null;
+    var width = Math.round(
+      (visualViewport && visualViewport.width) ||
+      window.innerWidth ||
+      document.documentElement.clientWidth ||
+      0
+    );
+    var height = Math.round(
+      (visualViewport && visualViewport.height) ||
+      window.innerHeight ||
+      document.documentElement.clientHeight ||
+      0
+    );
+    var keyboardOffset = 0;
+
+    if (visualViewport && window.innerHeight) {
+      keyboardOffset = Math.max(
+        0,
+        Math.round(window.innerHeight - visualViewport.height - visualViewport.offsetTop)
+      );
+    }
+
+    return {
+      width: width,
+      height: height,
+      keyboardOffset: keyboardOffset
+    };
+  }
+
+  function syncViewportMetrics() {
+    if (!host) return;
+
+    var metrics = getViewportMetrics();
+    state.compactViewport = metrics.width <= 640 || metrics.height <= 760;
+    state.keyboardOffset = metrics.keyboardOffset;
+
+    host.style.setProperty('--vintra-viewport-width', metrics.width + 'px');
+    host.style.setProperty('--vintra-viewport-height', metrics.height + 'px');
+    host.style.setProperty('--vintra-keyboard-offset', metrics.keyboardOffset + 'px');
+
+    applyViewportStateToMount();
+  }
+
+  function bindViewportListeners() {
+    if (viewportListenersBound) return;
+    viewportListenersBound = true;
+
+    var syncLater = function () {
+      window.setTimeout(syncViewportMetrics, 40);
+    };
+
+    window.addEventListener('resize', syncViewportMetrics);
+    window.addEventListener('orientationchange', syncLater);
+    window.addEventListener('focusin', syncLater);
+    window.addEventListener('focusout', syncLater);
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', syncViewportMetrics);
+      window.visualViewport.addEventListener('scroll', syncViewportMetrics);
+    }
   }
 
   function readStoredSessionId() {
@@ -192,6 +357,8 @@ export async function GET(
     feedbackText: '',
     feedbackSubmitting: false,
     faqSuggestions: [],
+    compactViewport: false,
+    keyboardOffset: 0,
     orbInactiveActive: false,
     orbCycleTick: 0,
     orbTicker: null,
@@ -767,6 +934,7 @@ export async function GET(
     syncOrbInactivity(orbStyle, orbPhase);
 
     mount.className = 'vintra-root position-' + position;
+    applyViewportStateToMount();
     var shouldShowWidget = state.configLoaded && state.open;
     mount.innerHTML =
       '<div class="vintra-stack ' + themeClass + '">' +
@@ -1141,6 +1309,8 @@ export async function GET(
 
   function startWidget() {
     createHost();
+    syncViewportMetrics();
+    bindViewportListeners();
     setDebug('Script loaded');
     bindWidgetActions();
     render();
