@@ -140,6 +140,7 @@ export async function GET(
   }
   function setDebug(message) {
     if (!DEBUG_MODE) return;
+    if (!shadowRoot) return;
     if (!debugEl) {
       debugEl = document.createElement('div');
       debugEl.className = 'vintra-debug';
@@ -147,8 +148,6 @@ export async function GET(
     }
     debugEl.textContent = message;
   }
-
-  setDebug('Script loaded');
 
   function readStoredSessionId() {
     try {
@@ -1142,6 +1141,7 @@ export async function GET(
 
   function startWidget() {
     createHost();
+    setDebug('Script loaded');
     bindWidgetActions();
     render();
     loadConfig();
