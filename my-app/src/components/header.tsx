@@ -84,14 +84,13 @@ const LeftSide = styled.div`
 `
 
 const BrandIcon = styled.img`
-  width: 46px;
+  width: 58px;
   height: 46px;
-  border-radius: 15px;
-  object-fit: cover;
+  border-radius: 0;
+  object-fit: contain;
   display: block;
-  box-shadow:
-    0 16px 28px rgba(37, 99, 235, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  background: transparent;
+  box-shadow: none;
 `
 
 const Brand = styled(Link)`

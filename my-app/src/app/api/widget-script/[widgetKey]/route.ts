@@ -922,7 +922,7 @@ export async function GET(
             ' alt=""' +
             ' aria-hidden="true"' +
             ' src="' + escapeHtml(getLogo(config)) + '"' +
-            ' style="object-fit: cover; object-position: ' + logoStyle.focusX + '% ' + logoStyle.focusY + '%; transform: scale(' + (logoStyle.zoom / 100) + '); transform-origin: ' + logoStyle.focusX + '% ' + logoStyle.focusY + '%;"' +
+            ' style="object-fit: contain; object-position: ' + logoStyle.focusX + '% ' + logoStyle.focusY + '%; transform: scale(' + (logoStyle.zoom / 100) + '); transform-origin: ' + logoStyle.focusX + '% ' + logoStyle.focusY + '%;"' +
           ' />' +
         '</div>'
       : icons.message;

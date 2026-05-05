@@ -6,29 +6,29 @@ import { absoluteUrl, siteConfig } from '@/lib/site-config'
 
 // ─── Minimal inline SVG icons ───────────────────────────────────────────────
 
-const GlobeIcon = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+const GlobeIcon = ({ size = 28, color = 'currentColor' }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5">
     <circle cx="12" cy="12" r="10" />
     <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
   </svg>
 )
 
-const BotIcon = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+const BotIcon = ({ size = 28, color = 'currentColor' }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5">
     <rect x="3" y="8" width="18" height="12" rx="3" />
     <path d="M9 13h.01M15 13h.01M8 8V6a4 4 0 0 1 8 0v2" />
     <path d="M12 3v2" />
   </svg>
 )
 
-const ArrowRight = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+const ArrowRight = ({ size = 16, color = 'currentColor' }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
     <path d="M5 12h14M12 5l7 7-7 7" />
   </svg>
 )
 
-const CheckIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+const CheckIcon = ({ size = 16, color = 'currentColor' }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5">
     <path d="M20 6L9 17l-5-5" />
   </svg>
 )
@@ -468,41 +468,57 @@ function Reveal({ children, delay = 0, className = '' }: { children: React.React
 function WebsiteCarousel() {
   const moveDurationMs = 1400
   const pauseDurationMs = 2600
-  const visibleOffsets = [-5, -4, -3, -2, -1, 1, 2, 3, 4, 5]
+  const visibleOffsets = [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
+  const miniCardStepPx = 222
   const [activeIndex, setActiveIndex] = useState(0)
-  const [outgoingIndex, setOutgoingIndex] = useState<number | null>(null)
+  const [railBaseIndex, setRailBaseIndex] = useState(0)
+  const [railProgress, setRailProgress] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
 
   useEffect(() => {
-    const transitionTimer = window.setTimeout(() => {
-      setOutgoingIndex(activeIndex)
-      setIsTransitioning(true)
-      setActiveIndex((current) => current + 1)
-    }, pauseDurationMs)
+    if (isTransitioning) return
 
-    const cleanupTimer = window.setTimeout(() => {
-      setOutgoingIndex(null)
-      setIsTransitioning(false)
-    }, pauseDurationMs + moveDurationMs)
+    const transitionTimer = window.setTimeout(() => {
+      setIsTransitioning(true)
+      setRailProgress(1)
+    }, pauseDurationMs)
 
     return () => {
       window.clearTimeout(transitionTimer)
+    }
+  }, [activeIndex, isTransitioning])
+
+  useEffect(() => {
+    if (!isTransitioning) return
+
+    const cleanupTimer = window.setTimeout(() => {
+      setActiveIndex((current) => current + 1)
+      setRailBaseIndex((current) => current + 1)
+      setRailProgress(0)
+      setIsTransitioning(false)
+    }, moveDurationMs)
+
+    return () => {
       window.clearTimeout(cleanupTimer)
     }
-  }, [activeIndex])
+  }, [isTransitioning])
 
   const activeSite = websites[((activeIndex % websites.length) + websites.length) % websites.length]
-  const outgoingSite = outgoingIndex === null
-    ? null
-    : websites[((outgoingIndex % websites.length) + websites.length) % websites.length]
+  const incomingSite = websites[(((activeIndex + 1) % websites.length) + websites.length) % websites.length]
 
-  const getOffsetX = (offset: number) => {
-    const direction = Math.sign(offset)
-    const distance = Math.abs(offset)
+  const getMiniScale = (slot: number) => {
+    const distance = Math.abs(slot)
+    return Math.max(0.56, 0.98 - distance * 0.085)
+  }
 
-    if (distance === 1) return direction * 260
-    if (distance === 2) return direction * 430
-    return direction * (430 + (distance - 2) * 142)
+  const getMiniOpacity = (slot: number) => {
+    const distance = Math.abs(slot)
+    return Math.max(0.16, 0.92 - distance * 0.12)
+  }
+
+  const getMiniBlur = (slot: number) => {
+    const distance = Math.abs(slot)
+    return Math.min(distance * 0.18, 1.1)
   }
 
   return (
@@ -510,13 +526,14 @@ function WebsiteCarousel() {
       <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at center, rgba(255,255,255,0.08), transparent 42%)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 160, background: 'linear-gradient(to right, #111, transparent)', zIndex: 2, pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 160, background: 'linear-gradient(to left, #111, transparent)', zIndex: 2, pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', inset: 0 }}>
+      <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
         {visibleOffsets.map((offset) => {
-          const virtualIndex = activeIndex + offset
+          const virtualIndex = railBaseIndex + offset
           const site = websites[((virtualIndex % websites.length) + websites.length) % websites.length]
-          const depth = Math.abs(offset)
-          const scale = Math.max(0.56, 0.94 - depth * 0.1)
-          const opacity = Math.max(0.16, 0.88 - depth * 0.13)
+          const slot = offset - railProgress
+          const depth = Math.abs(slot)
+          const scale = getMiniScale(slot)
+          const opacity = getMiniOpacity(slot)
 
           return (
             <div
@@ -525,12 +542,12 @@ function WebsiteCarousel() {
                 position: 'absolute',
                 left: '50%',
                 top: '50%',
-                transform: `translate(-50%, -50%) translateX(${getOffsetX(offset)}px) scale(${scale})`,
+                transform: `translate(-50%, -50%) translateX(${slot * miniCardStepPx}px) scale(${scale})`,
                 transformOrigin: 'center center',
                 transition: `transform ${moveDurationMs}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${moveDurationMs}ms ease, filter ${moveDurationMs}ms ease`,
                 opacity,
-                filter: `blur(${Math.min(depth * 0.16, 0.7)}px) saturate(${Math.max(0.72, 1 - depth * 0.06)})`,
-                zIndex: 4 - depth,
+                filter: `blur(${getMiniBlur(slot)}px) saturate(${Math.max(0.72, 1 - depth * 0.05)})`,
+                zIndex: 30 - Math.round(depth * 2),
                 pointerEvents: 'none',
               }}
             >
@@ -545,15 +562,15 @@ function WebsiteCarousel() {
           left: '50%',
           top: '50%',
           transform: 'translate(-50%, -50%)',
-          zIndex: 8,
+          zIndex: 5,
           pointerEvents: 'none',
           width: 360,
           height: 520,
         }}
       >
-        {outgoingSite ? (
+        {isTransitioning ? (
           <div
-            key={`outgoing-${outgoingIndex}`}
+            key={`outgoing-${activeIndex}`}
             style={{
               position: 'absolute',
               inset: 0,
@@ -561,11 +578,11 @@ function WebsiteCarousel() {
               transformOrigin: 'center center',
             }}
           >
-            <DetailedSitePreview site={outgoingSite} />
+            <DetailedSitePreview site={activeSite} />
           </div>
         ) : null}
         <div
-          key={`active-${activeIndex}`}
+          key={`active-${isTransitioning ? activeIndex + 1 : activeIndex}`}
           style={{
             position: 'absolute',
             inset: 0,
@@ -573,7 +590,7 @@ function WebsiteCarousel() {
             transformOrigin: 'center center',
           }}
         >
-          <DetailedSitePreview site={activeSite} />
+          <DetailedSitePreview site={isTransitioning ? incomingSite : activeSite} />
         </div>
       </div>
       <style>{`
@@ -660,37 +677,6 @@ function ChatbotShowcasePreview() {
   )
 }
 
-// ─── Pricing badge ───────────────────────────────────────────────────────────
-
-function Badge({ children, color }: { children: React.ReactNode; color: string }) {
-  return (
-    <span style={{
-      display: 'inline-block',
-      background: color,
-      color: '#fff',
-      borderRadius: 20,
-      padding: '3px 12px',
-      fontSize: 12,
-      fontWeight: 700,
-      letterSpacing: 0.3,
-    }}>{children}</span>
-  )
-}
-
-// ─── Feature row ─────────────────────────────────────────────────────────────
-
-function FeatureRow({ icon, title, desc }: { icon: string; title: string; desc: string }) {
-  return (
-    <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-      <div style={{ fontSize: 22, lineHeight: 1 }}>{icon}</div>
-      <div>
-        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>{title}</div>
-        <div style={{ fontSize: 14, color: '#666', lineHeight: 1.5 }}>{desc}</div>
-      </div>
-    </div>
-  )
-}
-
 export default function MainLanding() {
   const [heroMounted, setHeroMounted] = useState(false)
   useEffect(() => { setTimeout(() => setHeroMounted(true), 80) }, [])
@@ -739,12 +725,223 @@ export default function MainLanding() {
         }
         .cta-secondary:hover { transform: translateY(-2px); border-color: #999 }
         .product-card {
-          border-radius: 24px; padding: 40px 36px;
-          border: 1px solid rgba(0,0,0,0.07);
+          border-radius: 22px; padding: 32px 30px;
+          border: 1px solid rgba(15,23,42,0.08);
           background: #fff;
-          transition: transform 0.3s, box-shadow 0.3s;
+          box-shadow: 0 12px 34px rgba(15,23,42,0.06);
+          transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
         }
-        .product-card:hover { transform: translateY(-6px); box-shadow: 0 24px 64px rgba(0,0,0,0.12) }
+        .product-card:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 18px 40px rgba(15,23,42,0.1);
+          border-color: rgba(15,23,42,0.14);
+        }
+        .product-decision-intro {
+          text-align: center;
+          max-width: 680px;
+          margin: 0 auto 42px;
+        }
+        .product-decision-eyebrow {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 7px 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(15,23,42,0.08);
+          background: rgba(255,255,255,0.82);
+          color: #5b6472;
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          margin-bottom: 16px;
+        }
+        .product-decision-shell {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr);
+          align-items: stretch;
+          border-radius: 34px;
+          border: 1px solid rgba(15,23,42,0.08);
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,250,252,0.98));
+          box-shadow: 0 28px 80px rgba(15,23,42,0.08);
+          overflow: hidden;
+        }
+        .product-choice-card {
+          display: flex;
+          flex-direction: column;
+          gap: 28px;
+          padding: 40px 38px;
+          min-height: 100%;
+        }
+        .product-choice-card--website {
+          background:
+            radial-gradient(circle at top left, rgba(26,107,255,0.08), transparent 32%),
+            rgba(255,255,255,0.92);
+        }
+        .product-choice-card--chatbot {
+          background:
+            radial-gradient(circle at top right, rgba(124,58,237,0.09), transparent 34%),
+            rgba(255,255,255,0.92);
+        }
+        .product-choice-head {
+          display: flex;
+          align-items: flex-start;
+          gap: 16px;
+        }
+        .product-choice-icon {
+          width: 52px;
+          height: 52px;
+          border-radius: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex: 0 0 auto;
+        }
+        .product-choice-icon--website {
+          background: #eef4ff;
+          color: #1a6bff;
+        }
+        .product-choice-icon--chatbot {
+          background: #f5f0ff;
+          color: #7c3aed;
+        }
+        .product-choice-head h3 {
+          margin: 0 0 6px;
+          font-size: 28px;
+          font-weight: 900;
+          letter-spacing: -0.04em;
+          color: #0f172a;
+        }
+        .product-choice-subtitle {
+          margin: 0;
+          color: #5b6472;
+          font-size: 16px;
+          line-height: 1.7;
+        }
+        .product-choice-meta {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 10px;
+          border-radius: 999px;
+          background: rgba(15,23,42,0.04);
+          color: #334155;
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          width: fit-content;
+        }
+        .product-choice-copy-block {
+          display: grid;
+          gap: 14px;
+        }
+        .product-choice-copy-block strong {
+          font-size: 13px;
+          color: #0f172a;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+        .product-choice-list {
+          list-style: none;
+          display: grid;
+          gap: 12px;
+          padding: 0;
+          margin: 0;
+        }
+        .product-choice-list li {
+          position: relative;
+          padding-left: 18px;
+          color: #334155;
+          font-size: 16px;
+          line-height: 1.6;
+        }
+        .product-choice-list li::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 0.72em;
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: currentColor;
+          opacity: 0.9;
+          transform: translateY(-50%);
+        }
+        .product-choice-card--website .product-choice-list li::before {
+          color: #1a6bff;
+          background: #1a6bff;
+        }
+        .product-choice-card--chatbot .product-choice-list li::before {
+          color: #7c3aed;
+          background: #7c3aed;
+        }
+        .product-choice-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          margin-top: auto;
+          width: 100%;
+          min-height: 54px;
+          padding: 0 20px;
+          border-radius: 16px;
+          text-decoration: none;
+          font-size: 16px;
+          font-weight: 800;
+          transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        }
+        .product-choice-button:hover {
+          transform: translateY(-2px);
+        }
+        .product-choice-button--website {
+          background: #0f172a;
+          color: #fff;
+          box-shadow: 0 12px 26px rgba(15,23,42,0.18);
+        }
+        .product-choice-button--chatbot {
+          background: #7c3aed;
+          color: #fff;
+          box-shadow: 0 12px 26px rgba(124,58,237,0.22);
+        }
+        .product-choice-divider {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .product-choice-divider::before {
+          content: '';
+          position: absolute;
+          top: 30px;
+          bottom: 30px;
+          width: 1px;
+          background: linear-gradient(180deg, rgba(148,163,184,0), rgba(148,163,184,0.34), rgba(148,163,184,0));
+        }
+        .product-choice-divider span {
+          position: relative;
+          z-index: 1;
+          width: 42px;
+          height: 42px;
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          background: #fff;
+          border: 1px solid rgba(15,23,42,0.08);
+          color: #64748b;
+          font-size: 12px;
+          font-weight: 900;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          box-shadow: 0 8px 20px rgba(15,23,42,0.08);
+        }
+        .product-decision-note {
+          text-align: center;
+          color: #64748b;
+          font-size: 14px;
+          margin-top: 18px;
+        }
         .chatbotShowcaseSection {
           padding: 110px 24px;
           background: linear-gradient(180deg, #fcfbff 0%, #f4f7fb 100%);
@@ -1002,8 +1199,34 @@ export default function MainLanding() {
           .hero-grid { flex-direction: column !important }
           .product-grid { grid-template-columns: 1fr !important }
           .use-case-grid { grid-template-columns: 1fr 1fr !important }
+          .product-choice-card {
+            padding: 28px 22px;
+            gap: 22px;
+          }
+          .product-choice-head h3 {
+            font-size: 24px;
+          }
+          .product-choice-subtitle,
+          .product-choice-list li {
+            font-size: 15px;
+          }
         }
         @media (max-width: 900px) {
+          .product-decision-shell {
+            grid-template-columns: 1fr;
+          }
+          .product-choice-divider {
+            min-height: 70px;
+          }
+          .product-choice-divider::before {
+            top: 50%;
+            left: 26px;
+            right: 26px;
+            bottom: auto;
+            width: auto;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(148,163,184,0), rgba(148,163,184,0.34), rgba(148,163,184,0));
+          }
           .chatbotShowcaseSection {
             padding: 86px 20px;
           }
@@ -1191,97 +1414,238 @@ export default function MainLanding() {
           </div>
         </section>
 
-        {/* ── PRODUCTS ───────────────────────────────────── */}
-        <section id="websites" style={{ 
-          paddingBottom: 100, 
-          background: 'linear-gradient(to bottom, #F0F0F0 0%, #FAFAFA 100%)',
-          borderRadius: '50% 50% 0 0',
-          margin: 0,
-          padding: '100px 0 100px 0',
-          width: '100vw',
-          position: 'relative',
-          left: '50%',
-          right: '50%',
-          marginLeft: '-50vw',
-          marginRight: '-50vw'
+{/* ── PREMIER PRODUCT SELECTION ───────────────────────────────────── */}
+<section id="solutions" style={{ 
+  background: '#0f1115', // Sophisticated Midnight Slate
+  padding: '140px 0',
+  width: '100vw',
+  position: 'relative',
+  left: '50%',
+  right: '50%',
+  marginLeft: '-50vw',
+  marginRight: '-50vw',
+  overflow: 'hidden',
+  fontFamily: '"Inter", system-ui, sans-serif'
+}}>
+  {/* Cinematic Ambient Glows */}
+  <div style={{
+    position: 'absolute',
+    top: '-10%',
+    right: '5%',
+    width: '500px',
+    height: '500px',
+    background: 'radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(15, 17, 21, 0) 70%)',
+    zIndex: 0
+  }} />
+
+  <div className="page" style={{ position: 'relative', zIndex: 1, maxWidth: '1240px', margin: '0 auto', padding: '0 24px' }}>
+    
+    <Reveal>
+      <div style={{ textAlign: 'center', marginBottom: '100px' }}>
+        <div style={{ 
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '8px',
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          padding: '8px 20px',
+          borderRadius: '100px',
+          marginBottom: '28px'
         }}>
-          <div className="page" style={{ position: 'relative', zIndex: 1 }}>
-            <Reveal>
-              <h2 style={{ fontSize: 'clamp(28px,4vw,44px)', fontWeight: 900, textAlign: 'center', letterSpacing: -1, marginBottom: 16 }}>
-                Two products. Endless possibilities.
-              </h2>
-              <p style={{ textAlign: 'center', color: '#666', fontSize: 17, marginBottom: 56, maxWidth: 500, margin: '0 auto 56px' }}>
-                Start free. No registration. See the result before you decide.
-              </p>
-            </Reveal>
+          <span style={{ width: '6px', height: '6px', background: '#6366f1', borderRadius: '50%', display: 'inline-block' }}></span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>Choose your starting point</span>
+        </div>
+        
+        <h2 style={{ 
+          fontSize: 'clamp(42px, 6vw, 72px)', 
+          fontWeight: 900, 
+          letterSpacing: '-0.05em', 
+          color: '#fff',
+          lineHeight: 0.95,
+          marginBottom: '32px'
+        }}>
+          We build the site. <br/> 
+          The <span style={{ color: '#6366f1' }}>chatbot</span> handles the rest.
+        </h2>
+      </div>
+    </Reveal>
 
-            <div className="product-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-              {/* Website card */}
-              <Reveal delay={0}>
-                <div className="product-card" style={{ borderTop: '4px solid #1A6BFF' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
-                    <div style={{ width: 52, height: 52, borderRadius: 14, background: '#EEF4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1A6BFF' }}>
-                      <GlobeIcon />
-                    </div>
-                    <div>
-                      <h3 style={{ fontSize: 22, fontWeight: 900 }}>Website</h3>
-                      <span style={{ fontSize: 13, color: '#888' }}>Customized for you</span>
-                    </div>
-                  </div>
-                  <p style={{ fontSize: 15, color: '#555', lineHeight: 1.7, marginBottom: 28 }}>
-                    Draw up your dream website with our visual builder. Choose from dozens of design elements, see approximate prices in real time, and customize everything — from colors to features.
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 32 }}>
-                    {[
-                      ['🎨', 'Visual designer', 'Drag-and-drop, no code'],
-                      ['💰', 'Price estimate', 'See what it costs along the way'],
-                      ['📱', 'Mobile optimized', 'Looks great on all screens'],
-                      ['🔧', 'Customization', 'We build what you dream of'],
-                    ].map(([icon, title, desc]) => (
-                      <FeatureRow key={title} icon={icon} title={title} desc={desc} />
-                    ))}
-                  </div>
-                  <Link href="/landings/guest/websites" className="cta-primary" style={{ display: 'flex', width: '100%', justifyContent: 'center' }}>
-                    Design your website <ArrowRight />
-                  </Link>
-                </div>
-              </Reveal>
-
-              {/* Chatbot card */}
-              <Reveal delay={120}>
-                <div className="product-card" style={{ borderTop: '4px solid #7C3AED' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
-                    <div style={{ width: 52, height: 52, borderRadius: 14, background: '#F5F0FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7C3AED' }}>
-                      <BotIcon />
-                    </div>
-                    <div>
-                      <h3 style={{ fontSize: 22, fontWeight: 900 }}>AI Chatbot</h3>
-                      <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
-                        <Badge color="#0C9E6A">Free to start</Badge>
-                      </div>
-                    </div>
-                  </div>
-                  <p style={{ fontSize: 15, color: '#555', lineHeight: 1.7, marginBottom: 28 }}>
-                    Design your own chatbot and see it in action — completely free. Customize appearance, personality, and responses. Embed on your website with one line of code.
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 32 }}>
-                    {[
-                      ['✨', 'Customize everything', 'Colors, name, avatar and tone'],
-                      ['🆓', 'Free from start', 'Try all features without card'],
-                      ['⚡', 'Live preview', 'See changes instantly'],
-                      ['🔌', 'Easy integration', 'One line of code to your website'],
-                    ].map(([icon, title, desc]) => (
-                      <FeatureRow key={title} icon={icon} title={title} desc={desc} />
-                    ))}
-                  </div>
-                  <Link href="/landings/auth/chatWidget" className="cta-primary" style={{ display: 'flex', width: '100%', justifyContent: 'center', background: '#7C3AED' }}>
-                    Design your chatbot <ArrowRight />
-                  </Link>
-                </div>
-              </Reveal>
-            </div>
+    <div style={{ 
+      display: 'grid', 
+      gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', 
+      gap: '40px',
+      perspective: '1000px'
+    }}>
+      
+      {/* OPTION A: MANAGED WEBSITE SERVICE */}
+      <Reveal delay={100}>
+        <div className="product-card-group" style={{
+          background: 'linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '40px',
+          padding: '60px 50px',
+          transition: 'all 0.5s cubic-bezier(0.2, 1, 0.3, 1)',
+          position: 'relative',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.4)';
+          e.currentTarget.style.transform = 'translateY(-12px) scale(1.02)';
+          e.currentTarget.style.boxShadow = '0 30px 60px -12px rgba(0,0,0,0.5)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+          e.currentTarget.style.transform = 'translateY(0) scale(1)';
+        }}
+        >
+          <div style={{ 
+            width: '80px', 
+            height: '80px', 
+            borderRadius: '24px', 
+            background: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '40px',
+            boxShadow: '0 20px 40px rgba(255,255,255,0.1)'
+          }}>
+            <GlobeIcon size={38} color="#000" />
           </div>
-        </section>
+
+          <h3 style={{ color: '#fff', fontSize: '32px', fontWeight: 800, marginBottom: '20px' }}>Website</h3>
+          <p style={{ color: '#94a3b8', fontSize: '18px', lineHeight: '1.6', marginBottom: '40px' }}>
+            Don't waste weeks on templates. We build your professional presence for you, ensuring the perfect structure and look from day one.
+          </p>
+
+          <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 50px 0', flexGrow: 1 }}>
+            {['Done-for-you construction', 'Strategic layout & copywriting', 'Transparent upfront pricing'].map((item) => (
+              <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#cbd5e1', marginBottom: '16px', fontSize: '15px' }}>
+                <div style={{ color: '#6366f1' }}><CheckIcon size={18} /></div> {item}
+              </li>
+            ))}
+          </ul>
+
+          <Link href="/landings/guest/websites" style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            gap: '12px',
+            background: '#fff',
+            color: '#000',
+            height: '70px',
+            borderRadius: '20px',
+            fontWeight: '800',
+            fontSize: '18px',
+            textDecoration: 'none',
+            transition: '0.3s'
+          }}>
+            Get my website <ArrowRight size={20} />
+          </Link>
+        </div>
+      </Reveal>
+
+      {/* OPTION B: AUTOMATED CHATBOT */}
+      <Reveal delay={300}>
+        <div style={{
+          background: 'linear-gradient(145deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.05) 100%)',
+          border: '1px solid rgba(99, 102, 241, 0.2)',
+          borderRadius: '40px',
+          padding: '60px 50px',
+          transition: 'all 0.5s cubic-bezier(0.2, 1, 0.3, 1)',
+          position: 'relative',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-12px) scale(1.02)';
+          e.currentTarget.style.boxShadow = '0 30px 60px -12px rgba(99, 102, 241, 0.2)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0) scale(1)';
+        }}
+        >
+          <div style={{ 
+            width: '80px', 
+            height: '80px', 
+            borderRadius: '24px', 
+            background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '40px'
+          }}>
+            <BotIcon size={38} color="#fff" />
+          </div>
+
+          <h3 style={{ color: '#fff', fontSize: '32px', fontWeight: 800, marginBottom: '20px' }}>AI Chatbot</h3>
+          <p style={{ color: '#94a3b8', fontSize: '18px', lineHeight: '1.6', marginBottom: '40px' }}>
+            Instantly capture leads and answer visitor questions 24/7. Fully customizable behavior that matches your brand perfectly.
+          </p>
+
+          <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 50px 0', flexGrow: 1 }}>
+            {['Automated first conversations', 'Custom tone & personality', 'Live testing & instant embed'].map((item) => (
+              <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#cbd5e1', marginBottom: '16px', fontSize: '15px' }}>
+                <div style={{ color: '#a855f7' }}><CheckIcon size={18} /></div> {item}
+              </li>
+            ))}
+          </ul>
+
+          <Link href="/landings/auth/chatWidget" style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            gap: '12px',
+            background: 'linear-gradient(90deg, #6366f1, #a855f7)',
+            color: '#fff',
+            height: '70px',
+            borderRadius: '20px',
+            fontWeight: '800',
+            fontSize: '18px',
+            textDecoration: 'none',
+            transition: '0.3s'
+          }}>
+            Open chatbot builder <ArrowRight size={20} />
+          </Link>
+          
+          <div style={{
+            position: 'absolute',
+            top: '30px',
+            right: '30px',
+            background: 'rgba(255,255,255,0.1)',
+            backdropFilter: 'blur(10px)',
+            padding: '6px 14px',
+            borderRadius: '100px',
+            fontSize: '11px',
+            fontWeight: 700,
+            color: '#fff',
+            textTransform: 'uppercase',
+            border: '1px solid rgba(255,255,255,0.1)'
+          }}>Self-Service</div>
+        </div>
+      </Reveal>
+    </div>
+
+    <Reveal delay={500}>
+      <div style={{ 
+        marginTop: '80px', 
+        textAlign: 'center',
+        background: 'rgba(255,255,255,0.02)',
+        padding: '24px',
+        borderRadius: '24px',
+        border: '1px solid rgba(255,255,255,0.05)',
+        maxWidth: 'fit-content',
+        margin: '80px auto 0 auto'
+      }}>
+        <p style={{ margin: 0, color: '#64748b', fontWeight: 500 }}>
+          The best part? <span style={{ color: '#fff' }}>They work even better together.</span>
+        </p>
+      </div>
+    </Reveal>
+  </div>
+</section>
 
         {/* ── WEBSITE SHOWCASE CAROUSEL ──────────────────── */}
         <section style={{ background: '#111', padding: '80px 0', overflow: 'hidden' }}>
