@@ -488,7 +488,7 @@ export default function WidgetAdminPanel() {
             </label>
 
             <label className="widget-ai-field">
-              <span>Gemini model</span>
+              <span>Gemma model</span>
               <div className="widget-ai-readonly">
                 <strong>{assistantConfig.model || 'gemma-3-4b-it'}</strong>
                 <span>Managed from Vintra Admin</span>

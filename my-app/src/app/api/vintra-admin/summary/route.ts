@@ -20,6 +20,18 @@ type GeminiHealth = {
   }>
 }
 
+const ALLOWED_GEMMA_MODELS = [
+  'gemma-3-4b-it',
+  'gemma-3-12b-it',
+  'gemma-3-27b-it',
+  'gemma-3-1b-it',
+]
+
+function normalizeGemmaModel(model: string | null | undefined) {
+  const value = String(model || '').trim()
+  return ALLOWED_GEMMA_MODELS.includes(value) ? value : 'gemma-3-4b-it'
+}
+
 function toIso(value: any) {
   if (!value) return null
   if (typeof value?.toDate === 'function') return value.toDate().toISOString()
@@ -52,17 +64,12 @@ function parseModelList(value?: string | null) {
 
 function getGeminiModelCandidates(primaryModel: string) {
   const configuredFallbacks = parseModelList(process.env.GEMINI_MODEL_FALLBACKS)
-  const defaultFallbacks = [
-    'gemini-2.5-flash',
-    'gemini-2.5-pro',
-    'gemini-2.5-flash-lite',
-    'gemma-3-27b-it',
-    'gemma-3-12b-it',
-    'gemma-3-4b-it',
-    'gemma-3-1b-it',
-  ]
-  const preferredOrder = configuredFallbacks.length > 0 ? configuredFallbacks : defaultFallbacks
-  return [primaryModel, ...preferredOrder].filter((model, index, self) => self.indexOf(model) === index)
+  const defaultFallbacks = ALLOWED_GEMMA_MODELS
+  const preferredOrder = (configuredFallbacks.length > 0 ? configuredFallbacks : defaultFallbacks).filter((model) =>
+    ALLOWED_GEMMA_MODELS.includes(model)
+  )
+  const normalizedPrimary = normalizeGemmaModel(primaryModel)
+  return [normalizedPrimary, ...preferredOrder].filter((model, index, self) => self.indexOf(model) === index)
 }
 
 async function checkGeminiModel(modelApiKey: string, model: string): Promise<{
@@ -89,17 +96,22 @@ async function checkGeminiModel(modelApiKey: string, model: string): Promise<{
       }
     }
 
+    const errorText = await response.text().catch(() => '')
+    const errorSnippet = String(errorText || '').trim().slice(0, 240)
+
     return {
       status: 'degraded' as const,
       model,
       latencyMs: Date.now() - started,
-      detail: `Gemini responded with ${response.status}`,
+      detail: errorSnippet
+        ? `Gemma responded with ${response.status}: ${errorSnippet}`
+        : `Gemma responded with ${response.status}`,
     }
   } catch (error) {
     return {
       status: 'offline' as const,
       model,
-      detail: error instanceof Error ? error.message : 'Unknown Gemini error',
+      detail: error instanceof Error ? error.message : 'Unknown Gemma error',
     }
   } finally {
     clearTimeout(timeout)
@@ -111,7 +123,9 @@ async function checkGeminiHealth(options?: {
   strictModelOnly?: boolean
 }): Promise<GeminiHealth> {
   const apiKey = process.env.GEMINI_API_KEY
-  const primaryModel = String(options?.primaryModelOverride || process.env.GEMINI_MODEL || 'gemma-3-4b-it').trim()
+  const primaryModel = normalizeGemmaModel(
+    String(options?.primaryModelOverride || process.env.GEMINI_MODEL || 'gemma-3-4b-it').trim()
+  )
   const strictModelOnly = Boolean(options?.strictModelOnly)
   const checkedAt = new Date().toISOString()
   const fallbackModels = strictModelOnly ? [primaryModel] : getGeminiModelCandidates(primaryModel)
@@ -147,7 +161,7 @@ async function checkGeminiHealth(options?: {
   const primaryCheck = modelChecks[0] || {
     status: 'offline' as const,
     model: primaryModel,
-    detail: 'No Gemini models configured',
+    detail: 'No Gemma models configured',
   }
   const firstOnlineIndex = modelChecks.findIndex((entry) => entry.status === 'online')
   const recoveredWithFallback = firstOnlineIndex > 0
@@ -187,7 +201,8 @@ async function checkGeminiHealth(options?: {
 export async function GET(req: NextRequest) {
   try {
     const adminUser = await requireVintraAdmin(req)
-    const requestedModel = req.nextUrl.searchParams.get('model')?.trim() || null
+    const requestedModelRaw = req.nextUrl.searchParams.get('model')?.trim() || null
+    const requestedModel = normalizeGemmaModel(requestedModelRaw)
     const strictModelOnly =
       req.nextUrl.searchParams.get('strict') === '1' ||
       req.nextUrl.searchParams.get('strictModelOnly') === '1'
