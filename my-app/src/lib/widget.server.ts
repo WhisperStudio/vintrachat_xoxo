@@ -12,6 +12,7 @@ export interface WidgetBusinessRecord {
   chatWidgetConfig?: ChatWidgetConfig
   chatAssistantConfig?: ChatAssistantConfig
   chatAnalytics?: ChatAnalytics
+  chatWidgetEmbedSecret?: string
 }
 
 export async function getBusinessByWidgetKey(
@@ -37,5 +38,6 @@ export async function getBusinessByWidgetKey(
     chatWidgetConfig: data.chatWidgetConfig,
     chatAssistantConfig: data.chatAssistantConfig,
     chatAnalytics: data.chatAnalytics,
+    chatWidgetEmbedSecret: data.chatWidgetEmbedSecret,
   }
 }

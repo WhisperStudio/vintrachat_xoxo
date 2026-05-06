@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getBusinessByWidgetKey } from '@/lib/widget.server'
+import { authorizeWidgetRequest } from '@/lib/widget-embed-token.server'
 
 function corsHeaders(origin?: string | null) {
   return {
     'Access-Control-Allow-Origin': origin || '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Vintra-Embed-Token',
     Vary: 'Origin',
   }
 }
@@ -30,6 +31,11 @@ export async function GET(req: NextRequest) {
 
     if (!business?.chatWidgetConfig) {
       return NextResponse.json({ error: 'Widget not found' }, { status: 404, headers })
+    }
+
+    const access = await authorizeWidgetRequest({ req, business })
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.reason }, { status: 403, headers })
     }
 
     return NextResponse.json({

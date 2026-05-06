@@ -596,7 +596,8 @@ border: 1px solid rgba(168, 85, 247, 0.29);
 
 select,
 .branding-field input,
-.advanced-field input {
+.advanced-field input,
+.advanced-field textarea {
   width: 100%;
   padding: 0.85rem 1rem;
   border: 1px solid var(--border-strong);
@@ -604,6 +605,11 @@ select,
   background: #fff;
   font-size: 0.95rem;
   transition: var(--transition);
+}
+
+.advanced-field textarea {
+  min-height: 112px;
+  resize: vertical;
 }
 
 .iconChoiceGroup {
@@ -740,7 +746,8 @@ select,
 
 select:focus,
 .branding-field input:focus,
-.advanced-field input:focus {
+.advanced-field input:focus,
+.advanced-field textarea:focus {
   outline: none;
   border-color: rgba(124, 58, 237, 0.32);
   box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.08);
@@ -752,11 +759,22 @@ select:focus,
   gap: 0.5rem;
 }
 
+.advanced-field--full {
+  grid-column: 1 / -1;
+}
+
 .branding-field label,
 .advanced-field label {
   font-size: 0.92rem;
   font-weight: 700;
   color: var(--text-soft);
+}
+
+.field-note {
+  margin: -0.1rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: rgba(71, 85, 105, 0.82);
 }
 
 /* Responsive for StyleSelector */

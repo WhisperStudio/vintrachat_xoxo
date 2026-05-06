@@ -2,12 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/firebase-admin'
 import { getBusinessByWidgetKey } from '@/lib/widget.server'
+import { countWords, getClientIp } from '@/lib/widget-security'
+import { enforceWidgetRateLimit } from '@/lib/widget-rate-limit.server'
+import { authorizeWidgetRequest, getOrCreateWidgetEmbedSecret } from '@/lib/widget-embed-token.server'
+import { createWidgetCaptchaChallenge, verifyWidgetCaptchaToken } from '@/lib/widget-captcha.server'
+
+const MAX_WIDGET_FEEDBACK_WORDS = 400
 
 function corsHeaders(origin?: string | null) {
   return {
     'Access-Control-Allow-Origin': origin || '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Vintra-Embed-Token',
     Vary: 'Origin',
   }
 }
@@ -44,6 +50,8 @@ export async function POST(req: NextRequest) {
     const countryCode = String(body.countryCode || getRequestCountryCode(req) || 'XX')
       .trim()
       .toUpperCase()
+    const fingerprint = String(req.headers.get('x-vintra-fingerprint') || body.fingerprint || '').trim()
+    const captchaToken = String(req.headers.get('x-vintra-captcha-token') || body.captchaToken || '').trim()
 
     if (!widgetKey || !sessionId || !text || !Number.isFinite(rating) || rating < 1 || rating > 5) {
       return NextResponse.json(
@@ -56,6 +64,80 @@ export async function POST(req: NextRequest) {
 
     if (!business?.id) {
       return NextResponse.json({ error: 'Widget not found' }, { status: 404, headers })
+    }
+
+    const access = await authorizeWidgetRequest({ req, business })
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.reason }, { status: 403, headers })
+    }
+
+    const captchaSecret = await getOrCreateWidgetEmbedSecret(business.id)
+    const captchaVerification = captchaToken
+      ? verifyWidgetCaptchaToken({
+          secret: captchaSecret,
+          captchaToken,
+          businessId: business.id,
+          widgetKey,
+          sessionId,
+          fingerprint,
+          clientIp: getClientIp(req),
+        })
+      : { valid: false as const }
+
+    const rateLimitCheck = await enforceWidgetRateLimit({
+      businessId: business.id,
+      widgetKey,
+      clientId: getClientIp(req),
+      sessionId,
+      fingerprint,
+      action: 'widget-feedback',
+      rules: [
+        { windowMs: 60_000, maxRequests: 3 },
+      ],
+      captchaRules: [
+        { windowMs: 60_000, maxRequests: 30 },
+        { windowMs: 3_600_000, maxRequests: 120 },
+      ],
+      captchaTokenValid: captchaVerification.valid,
+    })
+
+    if (!rateLimitCheck.allowed) {
+      if (rateLimitCheck.captchaRequired) {
+        const challenge = createWidgetCaptchaChallenge({
+          secret: captchaSecret,
+          businessId: business.id,
+          widgetKey,
+          sessionId,
+          fingerprint,
+          clientIp: getClientIp(req),
+        })
+
+        return NextResponse.json(
+          {
+            error: 'Captcha required',
+            captchaRequired: true,
+            captchaQuestion: challenge.question,
+            captchaToken: challenge.challengeToken,
+            captchaExpiresInSeconds: challenge.expiresInSeconds,
+          },
+          { status: 429, headers }
+        )
+      }
+
+      return NextResponse.json(
+        {
+          error: `You're submitting feedback too quickly. Please wait ${rateLimitCheck.retryAfterSeconds}s and try again.`,
+          retryAfterSeconds: rateLimitCheck.retryAfterSeconds,
+        },
+        { status: 429, headers }
+      )
+    }
+
+    if (countWords(text) > MAX_WIDGET_FEEDBACK_WORDS) {
+      return NextResponse.json(
+        { error: `Feedback is too long. Max ${MAX_WIDGET_FEEDBACK_WORDS} words.` },
+        { status: 400, headers }
+      )
     }
 
     const feedbackRef = adminDb

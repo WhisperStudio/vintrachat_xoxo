@@ -228,6 +228,9 @@ export interface ChatWidgetConfig {
     autoOpen: boolean;
     delayMs: number;
   };
+
+  // Security settings
+  allowedDomains: string[];
 }
 
 // User - under businesses/{id}/users/{userId}

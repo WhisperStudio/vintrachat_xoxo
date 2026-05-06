@@ -209,6 +209,9 @@ export async function GET(
   var shadowRoot = null;
   var mount = null;
   var viewportListenersBound = false;
+  var EMBED_TOKEN = '';
+  var CAPTCHA_TOKEN = '';
+  var FINGERPRINT_LIGHT = buildFingerprintLight();
 
   function createHost() {
     if (host && shadowRoot && mount) return;
@@ -332,6 +335,28 @@ export async function GET(
     } catch (error) {}
   }
 
+  function captchaStorageKey() {
+    return '__vintraWidgetCaptcha__' + WIDGET_KEY;
+  }
+
+  function readStoredCaptchaToken() {
+    try {
+      return window.sessionStorage.getItem(captchaStorageKey()) || '';
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function writeStoredCaptchaToken(value) {
+    try {
+      if (value) {
+        window.sessionStorage.setItem(captchaStorageKey(), value);
+      } else {
+        window.sessionStorage.removeItem(captchaStorageKey());
+      }
+    } catch (error) {}
+  }
+
   var state = {
     open: FORCE_OPEN,
     sessionId: readStoredSessionId(),
@@ -365,6 +390,8 @@ export async function GET(
     orbInactivityTimer: null,
     orbInactiveHoldTimer: null
   };
+
+  CAPTCHA_TOKEN = readStoredCaptchaToken();
 
   var icons = {
     message: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.75C4 4.784 4.784 4 5.75 4h12.5C19.216 4 20 4.784 20 5.75v8.5c0 .966-.784 1.75-1.75 1.75H12l-4 4v-4H5.75C4.784 16 4 15.216 4 14.25z"></path></svg>',
@@ -506,6 +533,61 @@ export async function GET(
 
   function classes(parts) {
     return parts.filter(Boolean).join(' ');
+  }
+
+  function buildFingerprintLight() {
+    var nav = window.navigator || {};
+    var scr = window.screen || {};
+    var timeZone = '';
+
+    try {
+      timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    } catch (error) {}
+
+    return [
+      nav.userAgent || 'ua:unknown',
+      nav.language || 'lang:unknown',
+      nav.platform || 'platform:unknown',
+      timeZone || 'tz:unknown',
+      scr.width || 0,
+      scr.height || 0,
+      scr.colorDepth || 0,
+      nav.hardwareConcurrency || 0,
+      nav.maxTouchPoints || 0
+    ].join('|');
+  }
+
+  function widgetHeaders() {
+    var headers = {
+      'Content-Type': 'application/json',
+      'X-Vintra-Fingerprint': FINGERPRINT_LIGHT
+    };
+
+    if (EMBED_TOKEN) {
+      headers['X-Vintra-Embed-Token'] = EMBED_TOKEN;
+    }
+
+    if (CAPTCHA_TOKEN) {
+      headers['X-Vintra-Captcha-Token'] = CAPTCHA_TOKEN;
+    }
+
+    return headers;
+  }
+
+  function countWords(text) {
+    return String(text || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean).length;
+  }
+
+  function truncateTextByWords(text, maxWords) {
+    var words = String(text || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+
+    return words.slice(0, maxWords).join(' ');
   }
 
   function applyThemeVars(node, themeName) {
@@ -738,6 +820,7 @@ export async function GET(
   }
 
   var supportPollTimer = null;
+  var MAX_WIDGET_MESSAGE_WORDS = 400;
 
   function clearSupportState() {
     state.supportStatus = '';
@@ -760,7 +843,14 @@ export async function GET(
     try {
       var response = await fetch(
         ORIGIN + '/api/widget/support?key=' + encodeURIComponent(WIDGET_KEY) + '&sessionId=' + encodeURIComponent(state.sessionId),
-        { mode: 'cors' }
+        {
+          mode: 'cors',
+          headers: {
+            'X-Vintra-Embed-Token': EMBED_TOKEN,
+            'X-Vintra-Fingerprint': FINGERPRINT_LIGHT,
+            ...(CAPTCHA_TOKEN ? { 'X-Vintra-Captcha-Token': CAPTCHA_TOKEN } : {})
+          }
+        }
       );
 
       if (response.status === 404) {
@@ -773,6 +863,24 @@ export async function GET(
       var json = await response.json();
 
       if (!response.ok) {
+        if (response.status === 429 && json && json.captchaRequired && json.captchaQuestion && json.captchaToken) {
+          try {
+            var solved = await solveCaptchaChallenge(json.captchaQuestion, json.captchaToken);
+            if (solved) {
+              window.setTimeout(sendMessage, 0);
+              return;
+            }
+          } catch (captchaError) {
+            state.error = captchaError instanceof Error ? captchaError.message : 'Failed to verify captcha';
+            render();
+            return;
+          }
+        }
+        if (response.status === 429 && json && json.retryAfterSeconds) {
+          state.error = 'Please wait ' + json.retryAfterSeconds + 's before sending another message.';
+          render();
+          return;
+        }
         throw new Error(json && json.error ? json.error : 'Failed to sync support chat');
       }
 
@@ -818,6 +926,63 @@ export async function GET(
     if (supportPollTimer) return;
     state.supportPolling = true;
     supportPollTimer = window.setInterval(syncSupportChat, 3000);
+  }
+
+  async function loadEmbedToken() {
+    if (EMBED_TOKEN) return EMBED_TOKEN;
+
+    var response = await fetch(ORIGIN + '/api/widget/embed-token?key=' + encodeURIComponent(WIDGET_KEY), {
+      method: 'GET',
+      mode: 'cors',
+      headers: {
+        'X-Vintra-Embed-Token': EMBED_TOKEN
+      }
+    });
+
+    var json = await response.json();
+
+    if (!response.ok) {
+      throw new Error(json && json.error ? json.error : 'Failed to load widget token');
+    }
+
+    EMBED_TOKEN = String(json.token || '');
+    if (!EMBED_TOKEN) {
+      throw new Error('Missing widget token');
+    }
+
+    return EMBED_TOKEN;
+  }
+
+  async function solveCaptchaChallenge(challengeQuestion, challengeToken) {
+    var answer = window.prompt(String(challengeQuestion || '') + '\n\nEnter the answer to continue:');
+    if (!answer) {
+      return false;
+    }
+
+    var response = await fetch(ORIGIN + '/api/widget/captcha/verify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Vintra-Fingerprint': FINGERPRINT_LIGHT
+      },
+      mode: 'cors',
+      body: JSON.stringify({
+        widgetKey: WIDGET_KEY,
+        sessionId: state.sessionId || '',
+        fingerprint: FINGERPRINT_LIGHT,
+        challengeToken: challengeToken,
+        answer: answer
+      })
+    });
+
+    var json = await response.json();
+    if (!response.ok) {
+      throw new Error(json && json.error ? json.error : 'Failed to verify captcha');
+    }
+
+    CAPTCHA_TOKEN = String(json.captchaToken || '');
+    writeStoredCaptchaToken(CAPTCHA_TOKEN);
+    return true;
   }
 
   var widgetActionsBound = false;
@@ -1033,7 +1198,11 @@ export async function GET(
 
     if (input) {
       input.addEventListener('input', function (event) {
-        state.inputValue = event.target.value;
+        var nextValue = String(event.target.value || '');
+        if (countWords(nextValue) > MAX_WIDGET_MESSAGE_WORDS) {
+          nextValue = truncateTextByWords(nextValue, MAX_WIDGET_MESSAGE_WORDS);
+        }
+        state.inputValue = nextValue;
         markOrbActivity();
       });
 
@@ -1057,8 +1226,14 @@ export async function GET(
 
   async function loadConfig() {
     try {
+      await loadEmbedToken();
       var response = await fetch(ORIGIN + '/api/widget/config?key=' + encodeURIComponent(WIDGET_KEY), {
-        mode: 'cors'
+        mode: 'cors',
+        headers: {
+          'X-Vintra-Embed-Token': EMBED_TOKEN,
+          'X-Vintra-Fingerprint': FINGERPRINT_LIGHT,
+          ...(CAPTCHA_TOKEN ? { 'X-Vintra-Captcha-Token': CAPTCHA_TOKEN } : {})
+        }
       });
       var json = await response.json();
 
@@ -1093,7 +1268,7 @@ export async function GET(
   }
 
   async function sendMessage() {
-    var text = String(state.inputValue || '').trim();
+    var text = truncateTextByWords(String(state.inputValue || '').trim(), MAX_WIDGET_MESSAGE_WORDS);
     if (!text || state.sending) return;
 
     markOrbActivity();
@@ -1106,9 +1281,7 @@ export async function GET(
       try {
         var humanSupportResponse = await fetch(ORIGIN + '/api/widget/chat', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: widgetHeaders(),
           mode: 'cors',
           body: JSON.stringify({
             widgetKey: WIDGET_KEY,
@@ -1125,6 +1298,24 @@ export async function GET(
         var humanSupportJson = await humanSupportResponse.json();
 
         if (!humanSupportResponse.ok) {
+          if (humanSupportResponse.status === 429 && humanSupportJson && humanSupportJson.captchaRequired && humanSupportJson.captchaQuestion && humanSupportJson.captchaToken) {
+            try {
+              var humanSolved = await solveCaptchaChallenge(humanSupportJson.captchaQuestion, humanSupportJson.captchaToken);
+              if (humanSolved) {
+                window.setTimeout(sendMessage, 0);
+                return;
+              }
+            } catch (captchaError) {
+              state.error = captchaError instanceof Error ? captchaError.message : 'Failed to verify captcha';
+              render();
+              return;
+            }
+          }
+          if (humanSupportResponse.status === 429 && humanSupportJson && humanSupportJson.retryAfterSeconds) {
+            state.error = 'Please wait ' + humanSupportJson.retryAfterSeconds + 's before sending another message.';
+            render();
+            return;
+          }
           throw new Error(humanSupportJson && humanSupportJson.error ? humanSupportJson.error : 'Failed to process chat');
         }
 
@@ -1181,9 +1372,7 @@ export async function GET(
     try {
       var response = await fetch(ORIGIN + (inHumanSupportMode ? '/api/widget/support' : '/api/widget/chat'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: widgetHeaders(),
         mode: 'cors',
         body: JSON.stringify(
           inHumanSupportMode
@@ -1214,6 +1403,24 @@ export async function GET(
       var json = await response.json();
 
       if (!response.ok) {
+        if (response.status === 429 && json && json.captchaRequired && json.captchaQuestion && json.captchaToken) {
+          try {
+            var supportSolved = await solveCaptchaChallenge(json.captchaQuestion, json.captchaToken);
+            if (supportSolved) {
+              window.setTimeout(sendMessage, 0);
+              return;
+            }
+          } catch (captchaError) {
+            state.error = captchaError instanceof Error ? captchaError.message : 'Failed to verify captcha';
+            render();
+            return;
+          }
+        }
+        if (response.status === 429 && json && json.retryAfterSeconds) {
+          state.error = 'Please wait ' + json.retryAfterSeconds + 's before sending another message.';
+          render();
+          return;
+        }
         throw new Error(json && json.error ? json.error : 'Failed to process chat');
       }
 
@@ -1276,9 +1483,7 @@ export async function GET(
     try {
       var response = await fetch(ORIGIN + '/api/widget/feedback', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: widgetHeaders(),
         mode: 'cors',
         body: JSON.stringify({
           widgetKey: WIDGET_KEY,
@@ -1293,6 +1498,24 @@ export async function GET(
       var json = await response.json();
 
       if (!response.ok) {
+        if (response.status === 429 && json && json.captchaRequired && json.captchaQuestion && json.captchaToken) {
+          try {
+            var feedbackSolved = await solveCaptchaChallenge(json.captchaQuestion, json.captchaToken);
+            if (feedbackSolved) {
+              window.setTimeout(submitFeedback, 0);
+              return;
+            }
+          } catch (captchaError) {
+            state.error = captchaError instanceof Error ? captchaError.message : 'Failed to verify captcha';
+            render();
+            return;
+          }
+        }
+        if (response.status === 429 && json && json.retryAfterSeconds) {
+          state.error = 'Please wait ' + json.retryAfterSeconds + 's before sending feedback again.';
+          render();
+          return;
+        }
         throw new Error(json && json.error ? json.error : 'Failed to submit feedback');
       }
 

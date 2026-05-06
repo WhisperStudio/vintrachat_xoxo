@@ -5,6 +5,7 @@ import { FiCheckCircle, FiCpu, FiLifeBuoy, FiMessageCircle, FiMessageSquare, FiP
 import GlassOrbAvatar from '../../../../../svgs/GlassOrbAvatar'
 import { getWidgetThemeClass, getWidgetThemeStyle, joinWidgetClasses } from '@/components/chat/widgetDesign'
 import FeedbackFormOverlay from '@/components/chat/FeedbackFormOverlay'
+import { truncateTextByWords } from '@/lib/widget-security'
 import './WidgetPreview.css'
 import type { BubbleIconChoice, OrbStyleConfig } from '@/types/database'
 
@@ -95,6 +96,8 @@ interface Message {
   text: string
   isBot: boolean
 }
+
+const MAX_WIDGET_MESSAGE_WORDS = 400
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
@@ -215,14 +218,15 @@ export default function WidgetPreview({
   }
 
   const setInputValue = (value: string) => {
+    const nextValue = truncateTextByWords(value, MAX_WIDGET_MESSAGE_WORDS)
     if (onInputValueChange) {
-      onInputValueChange(value)
+      onInputValueChange(nextValue)
       setOrbInactiveActive(false)
       setOrbActivityNonce((current) => current + 1)
       return
     }
 
-    setInternalInputValue(value)
+    setInternalInputValue(nextValue)
     setOrbInactiveActive(false)
     setOrbActivityNonce((current) => current + 1)
   }
@@ -236,7 +240,7 @@ export default function WidgetPreview({
   }, [isChatOpen])
 
   const handleSend = (messageOverride?: string) => {
-    const nextText = String(messageOverride ?? inputValue ?? '').trim()
+    const nextText = truncateTextByWords(String(messageOverride ?? inputValue ?? '').trim(), MAX_WIDGET_MESSAGE_WORDS)
     if (!nextText) return
 
     if (!onSendMessage && internalRequestedFeedback(nextText)) {
@@ -510,6 +514,8 @@ export default function WidgetPreview({
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                maxLength={3500}
+                aria-describedby="widget-message-limit"
                 disabled={disableInput}
               />
 
@@ -521,6 +527,9 @@ export default function WidgetPreview({
             </div>
 
             {errorMessage && <div className="widget-inline-error">{errorMessage}</div>}
+            <div id="widget-message-limit" className="widget-input-limit-note">
+              Max {MAX_WIDGET_MESSAGE_WORDS} words
+            </div>
             <FeedbackFormOverlay
               open={Boolean(activeFeedbackOverlay.open)}
               title={feedbackOverlay?.title}

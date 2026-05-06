@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import WidgetPreview from '@/app/landings/auth/chatWidget/components/WidgetPreview'
 import '@/app/landings/auth/chatWidget/ChatWidget.css'
 import './LiveChatWidget.css'
@@ -46,6 +46,8 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   const [feedbackRating, setFeedbackRating] = useState(5)
   const [feedbackText, setFeedbackText] = useState('')
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
+  const [rateLimitUntil, setRateLimitUntil] = useState(0)
+  const [captchaToken, setCaptchaToken] = useState('')
 
   useEffect(() => {
     window.parent.postMessage(
@@ -57,6 +59,36 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       '*'
     )
   }, [widgetKey])
+
+  const fingerprintLight = useMemo(() => {
+    const nav = typeof navigator !== 'undefined' ? navigator : undefined
+    const screenRef = typeof window !== 'undefined' ? window.screen : undefined
+
+    return [
+      nav?.userAgent || 'ua:unknown',
+      nav?.language || 'lang:unknown',
+      nav?.platform || 'platform:unknown',
+      Intl.DateTimeFormat().resolvedOptions().timeZone || 'tz:unknown',
+      screenRef?.width || 0,
+      screenRef?.height || 0,
+      screenRef?.colorDepth || 0,
+      nav?.hardwareConcurrency || 0,
+      nav?.maxTouchPoints || 0,
+    ].join('|')
+  }, [])
+
+  useEffect(() => {
+    if (!rateLimitUntil) return
+
+    const timer = window.setInterval(() => {
+      if (Date.now() >= rateLimitUntil) {
+        setRateLimitUntil(0)
+        window.clearInterval(timer)
+      }
+    }, 1000)
+
+    return () => window.clearInterval(timer)
+  }, [rateLimitUntil])
 
   useEffect(() => {
     let active = true
@@ -117,6 +149,10 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     if (existingSessionId) {
       setSessionId(existingSessionId)
     }
+    const existingCaptchaToken = window.sessionStorage.getItem(`vintra-widget-captcha:${widgetKey}`)
+    if (existingCaptchaToken) {
+      setCaptchaToken(existingCaptchaToken)
+    }
   }, [widgetKey])
 
   useEffect(() => {
@@ -155,9 +191,12 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     setIsOpen(nextOpen)
   }
 
+  const isRateLimited = rateLimitUntil > Date.now()
+  const cooldownSeconds = isRateLimited ? Math.max(1, Math.ceil((rateLimitUntil - Date.now()) / 1000)) : 0
+
   const handleSend = async (messageOverride?: string) => {
     const text = String(messageOverride ?? inputValue).trim()
-    if (!text || isSending) return
+    if (!text || isSending || isRateLimited) return
 
     const userMessage: WidgetMessage = {
       id: messageId(),
@@ -177,6 +216,8 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Vintra-Fingerprint': fingerprintLight,
+          ...(captchaToken ? { 'X-Vintra-Captcha-Token': captchaToken } : {}),
         },
         body: JSON.stringify({
           widgetKey,
@@ -191,6 +232,52 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       const data = await response.json()
 
       if (!response.ok) {
+        if (response.status === 429 && data.captchaRequired && data.captchaQuestion && data.captchaToken) {
+          setMessages((prev) => prev.filter((message) => message.id !== userMessage.id))
+          setInputValue(text)
+
+          const answer = window.prompt(`${data.captchaQuestion}\n\nEnter the answer to continue:`)
+          if (!answer) {
+            throw new Error('Verification cancelled.')
+          }
+
+          const verifyResponse = await fetch('/api/widget/captcha/verify', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Vintra-Fingerprint': fingerprintLight,
+            },
+            body: JSON.stringify({
+              widgetKey,
+              sessionId: sessionId || '',
+              fingerprint: fingerprintLight,
+              challengeToken: data.captchaToken,
+              answer,
+            }),
+          })
+
+          const verifyJson = await verifyResponse.json()
+          if (!verifyResponse.ok) {
+            throw new Error(verifyJson.error || 'Failed to verify captcha')
+          }
+
+          const nextCaptchaToken = String(verifyJson.captchaToken || '')
+          setCaptchaToken(nextCaptchaToken)
+          window.sessionStorage.setItem(`vintra-widget-captcha:${widgetKey}`, nextCaptchaToken)
+
+          setMessages((prev) => prev.filter((message) => message.id !== userMessage.id))
+          setInputValue(text)
+          window.setTimeout(() => {
+            void handleSend(text)
+          }, 0)
+          return
+        }
+
+        if (response.status === 429 && data.retryAfterSeconds) {
+          setRateLimitUntil(Date.now() + Number(data.retryAfterSeconds) * 1000)
+          setError(null)
+          throw new Error(`You're sending messages too quickly. Try again in ${data.retryAfterSeconds}s.`)
+        }
         throw new Error(data.error || 'Failed to send message')
       }
 
@@ -213,7 +300,10 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       }
     } catch (err) {
       console.error(err)
-      setError('The assistant could not reply right now.')
+      const message = err instanceof Error ? err.message : ''
+      if (!message.toLowerCase().includes('too quickly')) {
+        setError('The assistant could not reply right now.')
+      }
       setMessages((prev) => prev.filter((message) => message.id !== userMessage.id))
       setInputValue(text)
     } finally {
@@ -222,7 +312,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   }
 
   const handleSubmitFeedback = async () => {
-    if (!sessionId || feedbackSubmitting || !feedbackText.trim()) return
+    if (!sessionId || feedbackSubmitting || !feedbackText.trim() || isRateLimited) return
 
     setFeedbackSubmitting(true)
     setError(null)
@@ -232,6 +322,8 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Vintra-Fingerprint': fingerprintLight,
+          ...(captchaToken ? { 'X-Vintra-Captcha-Token': captchaToken } : {}),
         },
         body: JSON.stringify({
           widgetKey,
@@ -245,6 +337,47 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
 
       const data = await response.json()
       if (!response.ok) {
+        if (response.status === 429 && data.captchaRequired && data.captchaQuestion && data.captchaToken) {
+          const answer = window.prompt(`${data.captchaQuestion}\n\nEnter the answer to continue:`)
+          if (!answer) {
+            throw new Error('Verification cancelled.')
+          }
+
+          const verifyResponse = await fetch('/api/widget/captcha/verify', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Vintra-Fingerprint': fingerprintLight,
+            },
+            body: JSON.stringify({
+              widgetKey,
+              sessionId,
+              fingerprint: fingerprintLight,
+              challengeToken: data.captchaToken,
+              answer,
+            }),
+          })
+
+          const verifyJson = await verifyResponse.json()
+          if (!verifyResponse.ok) {
+            throw new Error(verifyJson.error || 'Failed to verify captcha')
+          }
+
+          const nextCaptchaToken = String(verifyJson.captchaToken || '')
+          setCaptchaToken(nextCaptchaToken)
+          window.sessionStorage.setItem(`vintra-widget-captcha:${widgetKey}`, nextCaptchaToken)
+
+          window.setTimeout(() => {
+            void handleSubmitFeedback()
+          }, 0)
+          return
+        }
+
+        if (response.status === 429 && data.retryAfterSeconds) {
+          setRateLimitUntil(Date.now() + Number(data.retryAfterSeconds) * 1000)
+          setError(null)
+          throw new Error(`You're sending messages too quickly. Try again in ${data.retryAfterSeconds}s.`)
+        }
         throw new Error(data.error || 'Failed to submit feedback')
       }
 
@@ -253,7 +386,10 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       setFeedbackRating(5)
     } catch (err) {
       console.error(err)
-      setError('The feedback form could not be submitted right now.')
+      const message = err instanceof Error ? err.message : ''
+      if (!message.toLowerCase().includes('too quickly')) {
+        setError('The feedback form could not be submitted right now.')
+      }
     } finally {
       setFeedbackSubmitting(false)
     }
@@ -309,9 +445,8 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         faqSuggestions={configResponse?.assistantConfig?.faqSuggestions || []}
         openOverride={isOpen}
         onToggleOpen={handleToggle}
-        errorMessage={error}
         statusText={configResponse?.assistantEnabled ? 'AI live' : 'AI off'}
-        disableInput={isSending || feedbackOpen}
+        disableInput={isSending || feedbackOpen || isRateLimited}
         bubbleActivityState={isSending ? 'replying' : 'idle'}
         feedbackOverlay={{
           open: feedbackOpen,
@@ -327,6 +462,11 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
             setFeedbackRating(5)
           },
         }}
+        errorMessage={
+          isRateLimited
+            ? `Please wait ${cooldownSeconds}s before sending another message.`
+            : error
+        }
       />
     </div>
   )

@@ -39,6 +39,7 @@ import {
   type SubscriptionPlan,
 } from "@/lib/subscription";
 import { isVintraAdminEmail, normalizeEmail } from "@/lib/vintra-admin";
+import { parseAllowedDomainsInput } from "@/lib/widget-security";
 
 // ----------------------
 // Google Auth
@@ -125,6 +126,23 @@ function generateToken(length: number = 30) {
   return Array.from({ length })
     .map(() => chars[Math.floor(Math.random() * chars.length)])
     .join("");
+}
+
+function generateSecureSecret(bytesLength: number = 32) {
+  const cryptoObject: any =
+    typeof globalThis !== 'undefined'
+      ? (globalThis.crypto || (globalThis as any).msCrypto || null)
+      : null
+
+  if (cryptoObject && typeof cryptoObject.getRandomValues === 'function') {
+    const bytes = new Uint8Array(bytesLength)
+    cryptoObject.getRandomValues(bytes)
+    return Array.from(bytes)
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join('')
+  }
+
+  return generateToken(bytesLength * 2)
 }
 
 export function generateChatWidgetKey() {
@@ -318,6 +336,7 @@ const defaultWidgetConfig: ChatWidgetConfig = {
     autoOpen: false,
     delayMs: 3000,
   },
+  allowedDomains: [],
 };
 
 const defaultAssistantConfig: ChatAssistantConfig = {
@@ -371,6 +390,7 @@ const defaultChatAnalytics: ChatAnalytics = {
     email,
     ownerId: userId,
     chatWidgetKey: generateChatWidgetKey(),
+    chatWidgetEmbedSecret: generateSecureSecret(32),
     chatWidgetConfig: defaultWidgetConfig,
     chatAssistantConfig: defaultAssistantConfig,
     chatAnalytics: defaultChatAnalytics,
@@ -637,9 +657,18 @@ export async function updateChatWidgetConfig(
 ) {
   try {
     const businessRef = doc(db, "businesses", businessId);
+    const existingSnap = await getDoc(businessRef);
+    const existingConfig = existingSnap.exists()
+      ? ((existingSnap.data()?.chatWidgetConfig || {}) as Partial<ChatWidgetConfig>)
+      : {};
     const plan = (config?.plan || 'free') as SubscriptionPlan;
+    const allowedDomains =
+      config?.allowedDomains !== undefined
+        ? parseAllowedDomainsInput(config.allowedDomains)
+        : parseAllowedDomainsInput(existingConfig.allowedDomains);
     const nextConfig: Partial<ChatWidgetConfig> = {
       ...config,
+      allowedDomains,
       bubbleStyle: config?.bubbleStyle
         ? sanitizeBubbleStyleForPlan(config.bubbleStyle, plan)
         : config?.bubbleStyle,

@@ -6,7 +6,8 @@ import WidgetPreview from '@/app/landings/auth/chatWidget/components/WidgetPrevi
 import '@/app/landings/auth/chatWidget/ChatWidget.css'
 import './WidgetAdmin.css'
 import { useAuth } from '@/context/AuthContext'
-import { updateChatAssistantConfig } from '@/lib/auth.service'
+import { updateChatAssistantConfig, updateChatWidgetConfig } from '@/lib/auth.service'
+import { parseAllowedDomainsInput } from '@/lib/widget-security'
 import type { ChatAssistantConfig, ChatWidgetConfig } from '@/types/database'
 
 const defaultAssistantConfig: ChatAssistantConfig = {
@@ -40,6 +41,9 @@ export default function WidgetAdminPanel() {
   const [copied, setCopied] = useState(false)
   const [lastConfigUpdate, setLastConfigUpdate] = useState<string | null>(null)
   const [embedBaseUrl, setEmbedBaseUrl] = useState(process.env.NEXT_PUBLIC_APP_URL || '')
+  const [allowedDomainsText, setAllowedDomainsText] = useState('')
+  const [domainsSaving, setDomainsSaving] = useState(false)
+  const [domainsStatus, setDomainsStatus] = useState<'idle' | 'saved' | 'error'>('idle')
   const [assistantSaving, setAssistantSaving] = useState(false)
   const [assistantStatus, setAssistantStatus] = useState<'idle' | 'saved' | 'error'>('idle')
 
@@ -48,6 +52,11 @@ export default function WidgetAdminPanel() {
       const serializedConfig = JSON.stringify(business.chatWidgetConfig)
       setConfig(business.chatWidgetConfig as ChatWidgetConfig)
       setLastConfigUpdate(serializedConfig)
+      setAllowedDomainsText(
+        Array.isArray(business.chatWidgetConfig.allowedDomains)
+          ? business.chatWidgetConfig.allowedDomains.join('\n')
+          : ''
+      )
     }
 
     if (business?.chatAssistantConfig) {
@@ -67,6 +76,9 @@ export default function WidgetAdminPanel() {
       try {
         const nextConfig = JSON.parse(serializedConfig) as ChatWidgetConfig
         setConfig(nextConfig)
+        setAllowedDomainsText(
+          Array.isArray(nextConfig.allowedDomains) ? nextConfig.allowedDomains.join('\n') : ''
+        )
         setLastConfigUpdate(serializedConfig)
       } catch (error) {
         console.error('Failed to parse widget config update:', error)
@@ -138,6 +150,44 @@ export default function WidgetAdminPanel() {
     if (result.success) {
       void refreshBusiness()
       setTimeout(() => setAssistantStatus('idle'), 2000)
+    }
+  }
+
+  const saveAllowedDomains = async () => {
+    if (!dbUser?.businessId) return
+
+    setDomainsSaving(true)
+    setDomainsStatus('idle')
+
+    const parsedDomains = parseAllowedDomainsInput(allowedDomainsText)
+    const result = await updateChatWidgetConfig(dbUser.businessId, {
+      allowedDomains: parsedDomains,
+    })
+
+    setDomainsSaving(false)
+    setDomainsStatus(result.success ? 'saved' : 'error')
+
+    if (result.success) {
+      setConfig((prev) => (prev ? { ...prev, allowedDomains: parsedDomains } : prev))
+      setAllowedDomainsText(parsedDomains.join('\n'))
+      if (typeof window !== 'undefined') {
+        const storageKey = `widget-config-${dbUser.businessId}`
+        const nextConfigPayload = JSON.stringify({
+          ...(config || {}),
+          allowedDomains: parsedDomains,
+        })
+        localStorage.setItem(storageKey, nextConfigPayload)
+        window.dispatchEvent(
+          new CustomEvent('vintra-widget-config-updated', {
+            detail: {
+              businessId: dbUser.businessId,
+              serializedConfig: nextConfigPayload,
+            },
+          })
+        )
+      }
+      void refreshBusiness()
+      setTimeout(() => setDomainsStatus('idle'), 2000)
     }
   }
 
@@ -302,6 +352,47 @@ export default function WidgetAdminPanel() {
             <div className="widget-detail-row">
               <span>Delay</span>
               <strong>{config.settings?.delayMs || 3000} ms</strong>
+            </div>
+          </div>
+        </section>
+
+        <section className="widget-admin-card widget-admin-security">
+          <div className="widget-card-header">
+            <h3>Allowed domains</h3>
+            <button type="button" className="copy-btn" onClick={saveAllowedDomains} disabled={domainsSaving}>
+              {domainsSaving ? 'Saving...' : domainsStatus === 'saved' ? 'Saved!' : 'Save domains'}
+            </button>
+          </div>
+
+          <p className="widget-card-desc">
+            Add one allowed domain or full origin per line. If this list is empty, external sites are blocked.
+          </p>
+
+          <div className="widget-ai-grid">
+            <label className="widget-ai-field widget-ai-field-full">
+              <span>Allowed domains</span>
+              <textarea
+                value={allowedDomainsText}
+                onChange={(event) => setAllowedDomainsText(event.target.value)}
+                rows={5}
+                placeholder={'chat.vintrastudio.com\nhttp://localhost:3000/'}
+              />
+              <p className="field-note">
+                Press Enter for a new line. You can paste full URLs like <code>http://localhost:3000/</code>, or plain domains like <code>chat.vintrastudio.com</code>.
+              </p>
+            </label>
+
+            <div className="widget-domain-example">
+              <span>Example seed</span>
+              <strong>chat.vintrastudio.com</strong>
+              <strong>http://localhost:3000/</strong>
+              <button
+                type="button"
+                className="widget-domain-example-btn"
+                onClick={() => setAllowedDomainsText('chat.vintrastudio.com\nhttp://localhost:3000/')}
+              >
+                Use example
+              </button>
             </div>
           </div>
         </section>
