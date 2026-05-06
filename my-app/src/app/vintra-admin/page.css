@@ -295,6 +295,65 @@
   color: #64748b;
 }
 
+.vintraAdminHealthTimeline {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.vintraAdminHealthMeter {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(24px, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border-radius: 18px;
+  background: rgba(241, 245, 249, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.vintraAdminHealthCell {
+  height: 14px;
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.vintraAdminHealthMeta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vintraAdminHealthMeta strong {
+  font-size: 1.9rem;
+  color: #0f172a;
+}
+
+.vintraAdminHealthMeta span {
+  color: #64748b;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.vintraAdminHealthLabels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vintraAdminHealthCell.status-online {
+  background: linear-gradient(90deg, #16a34a, #22c55e);
+}
+
+.vintraAdminHealthCell.status-degraded {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.vintraAdminHealthCell.status-offline {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
 .vintraAdminChartEmpty {
   margin-top: 14px;
   padding: 16px;

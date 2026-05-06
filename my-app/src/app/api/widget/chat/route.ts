@@ -141,6 +141,10 @@ function getGeminiModelFallbacks(primaryModel: string) {
   return [primaryModel, ...preferredOrder].filter((model, index, self) => self.indexOf(model) === index)
 }
 
+function isNonRetryableFallbackError(status: number) {
+  return status === 400 || status === 403 || status === 404
+}
+
 function extractGeminiResult(rawText: string): Omit<GeminiResult, 'modelUsed'> {
   try {
     const parsed = JSON.parse(rawText)
@@ -304,6 +308,13 @@ async function generateGeminiReply(prompt: string, model: string): Promise<Gemin
       }
 
       if (retryable) {
+        break
+      }
+
+      if (isNonRetryableFallbackError(response.status)) {
+        console.warn(
+          `Gemini model ${candidate} unavailable (${response.status}), trying next fallback if available.`
+        )
         break
       }
 
@@ -637,12 +648,16 @@ export async function POST(req: NextRequest) {
       } catch (error) {
         if (error instanceof GeminiApiError && (error.status === 429 || error.status === 503)) {
           console.warn('Gemini temporarily unavailable:', error.message)
-          aiReply =
-            'AI assistant is temporarily unavailable right now. Please try again in a little while.'
-          aiWantsHumanSupport = false
         } else {
-          throw error
+          console.warn(
+            'Gemini fallback chain failed, using safe fallback reply:',
+            error instanceof Error ? error.message : String(error)
+          )
         }
+
+        aiReply =
+          'AI assistant is temporarily unavailable right now. Please try again in a little while.'
+        aiWantsHumanSupport = false
       }
     }
 

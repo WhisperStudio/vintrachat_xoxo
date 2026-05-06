@@ -85,6 +85,7 @@ type VintraHealth = {
   latencyMs?: number
   checkedAt: string
   detail?: string
+  uptimePercent: number
   fallbackModels: Array<{
     model: string
     status: 'online' | 'degraded' | 'offline'
@@ -160,6 +161,18 @@ function formatDate(value?: string | null) {
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat('en-US').format(Math.max(0, Math.round(value)))
+}
+
+function getHealthLabel(status?: string | null) {
+  if (status === 'online') return 'Healthy'
+  if (status === 'degraded') return 'Partial outage'
+  return 'Offline'
+}
+
+function getHealthTone(status?: string | null) {
+  if (status === 'online') return 'status-online'
+  if (status === 'degraded') return 'status-degraded'
+  return 'status-offline'
 }
 
 function getPercent(value: number, max: number) {
@@ -251,6 +264,50 @@ function SummaryStat({
       <strong>{value}</strong>
       {hint ? <small>{hint}</small> : null}
     </article>
+  )
+}
+
+function HealthTimeline({
+  items,
+  uptimePercent,
+}: {
+  items: VintraHealth['fallbackModels']
+  uptimePercent: number
+}) {
+  const total = items.length || 1
+  const onlineCount = items.filter((item) => item.status === 'online').length
+  const degradedCount = items.filter((item) => item.status === 'degraded').length
+  const offlineCount = items.filter((item) => item.status === 'offline').length
+
+  return (
+    <div className="vintraAdminHealthTimeline">
+      <div className="vintraAdminHealthMeter" aria-hidden="true">
+        {items.length ? (
+          items.map((item) => (
+            <span key={item.model} className={`vintraAdminHealthCell status-${item.status}`} />
+          ))
+        ) : (
+          <span className="vintraAdminHealthCell status-offline" />
+        )}
+      </div>
+      <div className="vintraAdminHealthMeta">
+        <strong>{Math.max(0, Math.min(100, uptimePercent))}%</strong>
+        <span>
+          {onlineCount} online, {degradedCount} degraded, {offlineCount} offline
+        </span>
+      </div>
+      <div className="vintraAdminHealthLabels">
+        {items.length ? (
+          items.map((item) => (
+            <span key={item.model} className={`vintraAdminStatus status-${item.status}`}>
+              {item.model}
+            </span>
+          ))
+        ) : (
+          <span className="vintraAdminStatus status-offline">No model data</span>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -594,7 +651,7 @@ export default function VintraAdminClient() {
           icon={<FiTool />}
           label="Gemini"
           value={summary?.health.model || 'Unknown'}
-          hint={summary?.health.status || 'offline'}
+          hint={getHealthLabel(summary?.health.status)}
         />
       </section>
 
@@ -986,8 +1043,8 @@ export default function VintraAdminClient() {
                 <h2>Gemini</h2>
                 <p>Live health, fallback chain, and AI usage across the database.</p>
               </div>
-              <span className={`vintraAdminStatus status-${summary?.health.status || 'offline'}`}>
-                {summary?.health.status || 'offline'}
+              <span className={`vintraAdminStatus ${getHealthTone(summary?.health.status)}`}>
+                {getHealthLabel(summary?.health.status)}
               </span>
             </div>
 
@@ -999,9 +1056,16 @@ export default function VintraAdminClient() {
                 <p>{summary?.health.detail || 'Gemini is reachable.'}</p>
                 <p>Latency: {summary?.health.latencyMs ? `${summary.health.latencyMs} ms` : 'No latency data'}</p>
                 <p>
+                  Status: <strong>{getHealthLabel(summary?.health.status)}</strong>
+                </p>
+                <p>
                   Auto fallback is enabled. If one Gemma model hits rate limit or quota, the API tries the next one in
                   order automatically.
                 </p>
+                <HealthTimeline
+                  items={summary?.health.fallbackModels || []}
+                  uptimePercent={summary?.health.uptimePercent || 0}
+                />
               </article>
 
               <article className="vintraAdminChartCard">

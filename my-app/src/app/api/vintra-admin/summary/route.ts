@@ -8,6 +8,7 @@ type GeminiHealth = {
   latencyMs?: number
   checkedAt: string
   detail?: string
+  uptimePercent: number
   fallbackModels: Array<{
     model: string
     status: 'online' | 'degraded' | 'offline'
@@ -106,6 +107,7 @@ async function checkGeminiHealth(): Promise<GeminiHealth> {
       model: primaryModel,
       checkedAt,
       detail: 'Missing GEMINI_API_KEY',
+      uptimePercent: 0,
       fallbackModels: fallbackModels.map((model) => ({
         model,
         status: 'offline' as const,
@@ -129,6 +131,10 @@ async function checkGeminiHealth(): Promise<GeminiHealth> {
     model: primaryModel,
     detail: 'No Gemini models configured',
   }
+  const onlineCount = modelChecks.filter((entry) => entry.status === 'online').length
+  const uptimePercent = modelChecks.length
+    ? Math.round((onlineCount / modelChecks.length) * 100)
+    : 0
 
   return {
     status: primaryCheck.status,
@@ -136,6 +142,7 @@ async function checkGeminiHealth(): Promise<GeminiHealth> {
     latencyMs: primaryCheck.latencyMs,
     checkedAt,
     detail: primaryCheck.detail,
+    uptimePercent,
     fallbackModels: modelChecks.map((entry) => ({
       model: entry.model,
       status: entry.status,
