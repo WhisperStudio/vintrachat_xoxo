@@ -14,7 +14,7 @@ function corsHeaders(origin?: string | null) {
     'Access-Control-Allow-Origin': origin || '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers':
-      'Content-Type, X-Vintra-Embed-Token, X-Vintra-Fingerprint, X-Vintra-Captcha-Token',
+      'Content-Type, X-Vintra-Embed-Token, X-Vintra-Fingerprint, X-Vintra-Captcha-Token, X-Vintra-Debug',
     Vary: 'Origin',
   }
 }
@@ -79,7 +79,17 @@ export async function GET(req: NextRequest) {
     const snap = await chatRef.get()
 
     if (!snap.exists) {
-      return NextResponse.json({ error: 'Support chat not found' }, { status: 404, headers })
+      return NextResponse.json(
+        {
+          sessionId,
+          status: 'none',
+          messageCount: 0,
+          visitorName: null,
+          countryCode: null,
+          messages: [],
+        },
+        { headers }
+      )
     }
 
     const data = snap.data() || {}
@@ -204,25 +214,36 @@ export async function POST(req: NextRequest) {
     const chatRef = adminDb.collection('businesses').doc(business.id).collection('supportChats').doc(sessionId)
     const snap = await chatRef.get()
 
-    if (!snap.exists) {
-      return NextResponse.json({ error: 'Support chat not found' }, { status: 404, headers })
-    }
-
     const data = snap.data() || {}
     const businessRef = adminDb.collection('businesses').doc(business.id)
 
-    await chatRef.update({
-      preview: message,
-      updatedAt: FieldValue.serverTimestamp(),
-      messageCount: FieldValue.increment(1),
-      countryCode: countryCode || data.countryCode || null,
-      messages: FieldValue.arrayUnion({
-        id: crypto.randomUUID(),
-        role: 'user',
-        text: message,
-        createdAt: new Date().toISOString(),
-      }),
-    })
+    const nextMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      text: message,
+      createdAt: new Date().toISOString(),
+    }
+
+    await chatRef.set(
+      {
+        sessionId,
+        businessId: business.id,
+        widgetKey,
+        status: data.status || 'needs-human',
+        source: 'widget',
+        preview: message,
+        visitorName: data.visitorName || null,
+        countryCode: countryCode || data.countryCode || null,
+        pageTitle: data.pageTitle || null,
+        pageUrl: data.pageUrl || null,
+        messageCount: FieldValue.increment(1),
+        messages: FieldValue.arrayUnion(nextMessage),
+        supportRequestedAt: data.supportRequestedAt || FieldValue.serverTimestamp(),
+        createdAt: data.createdAt || FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    )
 
     await businessRef.update({
       updatedAt: FieldValue.serverTimestamp(),

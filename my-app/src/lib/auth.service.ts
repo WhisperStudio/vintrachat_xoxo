@@ -370,6 +370,7 @@ const defaultAssistantConfig: ChatAssistantConfig = {
   replyInUserLanguage: true,
   responseStyle: 'Friendly, clear, and concise',
   extraInstructions: 'Always keep answers short unless the user asks for more detail.',
+  forceSelectedModelOnly: false,
 };
 
 const defaultChatAnalytics: ChatAnalytics = {

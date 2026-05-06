@@ -32,6 +32,7 @@ const defaultAssistantConfig: ChatAssistantConfig = {
   replyInUserLanguage: true,
   responseStyle: 'Friendly, clear, and concise',
   extraInstructions: 'Always keep answers short unless the user asks for more detail.',
+  forceSelectedModelOnly: false,
 }
 
 const allowedDomainSeed = ['chat.vintrastudio.com', 'http://localhost:3000/']
@@ -488,17 +489,10 @@ export default function WidgetAdminPanel() {
 
             <label className="widget-ai-field">
               <span>Gemini model</span>
-              <input
-                type="text"
-                value={assistantConfig.model}
-                onChange={(event) =>
-                  setAssistantConfig((prev) => ({
-                    ...prev,
-                    model: event.target.value,
-                  }))
-                }
-                placeholder="gemma-3-4b-it"
-              />
+              <div className="widget-ai-readonly">
+                <strong>{assistantConfig.model || 'gemma-3-4b-it'}</strong>
+                <span>Managed from Vintra Admin</span>
+              </div>
             </label>
 
             <label className="widget-ai-field widget-ai-field-full">

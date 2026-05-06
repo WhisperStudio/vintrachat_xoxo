@@ -151,6 +151,9 @@ export async function PATCH(
       if (typeof assistant.extraInstructions === 'string') {
         updates['chatAssistantConfig.extraInstructions'] = assistant.extraInstructions
       }
+      if (typeof assistant.forceSelectedModelOnly === 'boolean') {
+        updates['chatAssistantConfig.forceSelectedModelOnly'] = assistant.forceSelectedModelOnly
+      }
     }
 
     if (Object.keys(updates).length === 0) {

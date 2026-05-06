@@ -76,11 +76,15 @@ type VintraBusiness = {
     replyInUserLanguage?: boolean
     responseStyle?: string
     extraInstructions?: string
+    forceSelectedModelOnly?: boolean
   } | null
 }
 
 type VintraHealth = {
   status: 'online' | 'degraded' | 'offline'
+  primaryModel: string
+  activeFallbackModel: string | null
+  lastHealthyModel: string | null
   model: string
   latencyMs?: number
   checkedAt: string
@@ -117,6 +121,8 @@ type VintraSummary = {
   }
   health: VintraHealth
   latestActivity: string | null
+  requestedModel?: string | null
+  strictModelOnly?: boolean
   analytics: VintraAnalytics
   businesses: VintraBusiness[]
 }
@@ -137,6 +143,7 @@ type DraftState = {
   replyInUserLanguage: boolean
   responseStyle: string
   extraInstructions: string
+  forceSelectedModelOnly: boolean
 }
 
 type VintraTab = 'overview' | 'businesses' | 'gemini' | 'database'
@@ -153,6 +160,18 @@ const PLAN_OPTIONS = [
   { value: 'pro', label: 'Pro' },
   { value: 'business', label: 'Business' },
 ]
+
+const GEMINI_MODEL_OPTIONS = [
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
+  { value: 'gemma-3-27b-it', label: 'Gemma 3 27B IT' },
+  { value: 'gemma-3-12b-it', label: 'Gemma 3 12B IT' },
+  { value: 'gemma-3-4b-it', label: 'Gemma 3 4B IT' },
+  { value: 'gemma-3-1b-it', label: 'Gemma 3 1B IT' },
+]
+
+const RECOMMENDED_MODEL = 'gemini-2.5-flash'
 
 function formatDate(value?: string | null) {
   if (!value) return 'No data'
@@ -326,6 +345,7 @@ export default function VintraAdminClient() {
   const [confirmBusinessDelete, setConfirmBusinessDelete] = useState(false)
   const [confirmUserDelete, setConfirmUserDelete] = useState<Record<string, boolean>>({})
   const [confirmCategoryDelete, setConfirmCategoryDelete] = useState<Record<string, boolean>>({})
+  const [healthTestModel, setHealthTestModel] = useState(RECOMMENDED_MODEL)
 
   const vintraFetch = useVintraFetch(firebaseUser)
   const isAllowed = isVintraAdminEmail(firebaseUser?.email)
@@ -334,6 +354,15 @@ export default function VintraAdminClient() {
     if (!summary?.businesses.length) return null
     return summary.businesses.find((business) => business.id === selectedBusinessId) || summary.businesses[0]
   }, [selectedBusinessId, summary?.businesses])
+
+  const modelHealthMap = useMemo(() => {
+    return new Map((summary?.health.fallbackModels || []).map((entry) => [entry.model, entry.status] as const))
+  }, [summary?.health.fallbackModels])
+
+  useEffect(() => {
+    if (!summary?.health.primaryModel) return
+    setHealthTestModel((current) => current || summary.health.primaryModel)
+  }, [summary?.health.primaryModel])
 
   useEffect(() => {
     if (!loading && !firebaseUser) {
@@ -369,18 +398,28 @@ export default function VintraAdminClient() {
       replyInUserLanguage: selectedBusiness.assistantConfig?.replyInUserLanguage ?? true,
       responseStyle: selectedBusiness.assistantConfig?.responseStyle || '',
       extraInstructions: selectedBusiness.assistantConfig?.extraInstructions || '',
+      forceSelectedModelOnly: selectedBusiness.assistantConfig?.forceSelectedModelOnly ?? false,
     })
     setConfirmPlanChange(false)
     setConfirmBusinessDelete(false)
   }, [selectedBusiness])
 
-  const loadSummary = async () => {
+  const buildSummaryUrl = (model?: string | null, strictModelOnly = false) => {
+    const params = new URLSearchParams()
+    const nextModel = String(model || '').trim()
+    if (nextModel) params.set('model', nextModel)
+    if (strictModelOnly) params.set('strict', '1')
+    const query = params.toString()
+    return query ? `/api/vintra-admin/summary?${query}` : '/api/vintra-admin/summary'
+  }
+
+  const loadSummary = async (model?: string | null, strictModelOnly = false) => {
     if (!firebaseUser) return
     setBusy(true)
     setError('')
 
     try {
-      const response = await vintraFetch('/api/vintra-admin/summary')
+      const response = await vintraFetch(buildSummaryUrl(model, strictModelOnly))
       const payload = (await response.json()) as VintraSummary & { error?: string }
 
       if (!response.ok) {
@@ -439,6 +478,7 @@ export default function VintraAdminClient() {
             replyInUserLanguage: draft.replyInUserLanguage,
             responseStyle: draft.responseStyle,
             extraInstructions: draft.extraInstructions,
+            forceSelectedModelOnly: draft.forceSelectedModelOnly,
           },
         }),
       })
@@ -787,13 +827,50 @@ export default function VintraAdminClient() {
                     <label>
                       <span>Model</span>
                       <input
-                        list="vintra-gemini-models"
                         value={draft.assistantModel}
                         onChange={(event) =>
                           setDraft((prev) => (prev ? { ...prev, assistantModel: event.target.value } : prev))
                         }
+                        placeholder="gemini-2.5-flash"
+                      />
+                                            <small className="vintraAdminHint">
+                        Pick a model below to switch manually, or type a custom model id. Green means healthy,
+                        yellow means partial outage, and red means offline.
+                      </small>
+                      <div className="vintraAdminModelPills">
+                        {GEMINI_MODEL_OPTIONS.map((model) => (
+                          <button
+                            key={model.value}
+                            type="button"
+                            className={`vintraAdminButton secondary vintraAdminModelButton ${
+                              draft.assistantModel === model.value ? 'active' : ''
+                            } ${modelHealthMap.get(model.value) ? `status-${modelHealthMap.get(model.value)}` : ''}`}
+                            onClick={() =>
+                              setDraft((prev) => (prev ? { ...prev, assistantModel: model.value } : prev))
+                            }
+                          >
+                            {model.label}
+                            {model.value === RECOMMENDED_MODEL ? ' · Recommended' : ''}
+                          </button>
+                        ))}
+                      </div>
+                    </label>
+                    <label className="vintraAdminToggle">
+                      <span>Force selected model only</span>
+                      <input
+                        type="checkbox"
+                        checked={draft.forceSelectedModelOnly}
+                        onChange={(event) =>
+                          setDraft((prev) =>
+                            prev ? { ...prev, forceSelectedModelOnly: event.target.checked } : prev
+                          )
+                        }
                       />
                     </label>
+                    <small className="vintraAdminHint">
+                      Turn this on to disable fallback completely and test one model at a time. Best starting point is
+                      usually <strong>{RECOMMENDED_MODEL}</strong>.
+                    </small>
                     <label className="vintraAdminFull">
                       <span>System prompt</span>
                       <textarea
@@ -1051,7 +1128,51 @@ export default function VintraAdminClient() {
             <div className="vintraAdminTwoCol">
               <article className="vintraAdminChartCard">
                 <h3>API health</h3>
+                <div className="vintraAdminHealthControls">
+                  <div className="vintraAdminModelPills">
+                    {GEMINI_MODEL_OPTIONS.map((model) => (
+                      <button
+                        key={model.value}
+                        type="button"
+                        className={`vintraAdminButton secondary vintraAdminModelButton ${
+                          healthTestModel === model.value ? 'active' : ''
+                        } ${modelHealthMap.get(model.value) ? `status-${modelHealthMap.get(model.value)}` : ''}`}
+                        onClick={() => setHealthTestModel(model.value)}
+                      >
+                        {model.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="vintraAdminModelActions">
+                    <button
+                      type="button"
+                      className="vintraAdminButton primary vintraAdminModelButton"
+                      onClick={() => void loadSummary(healthTestModel, true)}
+                      disabled={busy}
+                    >
+                      Test selected model
+                    </button>
+                    <button
+                      type="button"
+                      className="vintraAdminButton secondary vintraAdminModelButton"
+                      onClick={() => void loadSummary()}
+                      disabled={busy}
+                    >
+                      Refresh default
+                    </button>
+                  </div>
+                </div>
                 <p>Model: {summary?.health.model || 'Unknown'}</p>
+                <p>Primary model: {summary?.health.primaryModel || 'Unknown'}</p>
+                <p>Testing model: {summary?.requestedModel || summary?.health.primaryModel || 'Unknown'}</p>
+                <p>
+                  Active fallback:{' '}
+                  <strong>{summary?.health.activeFallbackModel || 'None'}</strong>
+                </p>
+                <p>
+                  Last healthy model:{' '}
+                  <strong>{summary?.health.lastHealthyModel || summary?.health.model || 'Unknown'}</strong>
+                </p>
                 <p>Checked at: {summary?.health.checkedAt ? new Date(summary.health.checkedAt).toLocaleString() : 'Unknown'}</p>
                 <p>{summary?.health.detail || 'Gemini is reachable.'}</p>
                 <p>Latency: {summary?.health.latencyMs ? `${summary.health.latencyMs} ms` : 'No latency data'}</p>
@@ -1059,8 +1180,9 @@ export default function VintraAdminClient() {
                   Status: <strong>{getHealthLabel(summary?.health.status)}</strong>
                 </p>
                 <p>
-                  Auto fallback is enabled. If one Gemma model hits rate limit or quota, the API tries the next one in
-                  order automatically.
+                  {summary?.strictModelOnly
+                    ? 'Strict mode is enabled for this test. Only the selected model was checked.'
+                    : 'Auto fallback is enabled. If one model fails, the API tries the next one in order.'}
                 </p>
                 <HealthTimeline
                   items={summary?.health.fallbackModels || []}
@@ -1176,15 +1298,6 @@ export default function VintraAdminClient() {
           </div>
         </section>
       ) : null}
-
-      <datalist id="vintra-gemini-models">
-        {summary?.health.fallbackModels.map((entry) => (
-          <option key={entry.model} value={entry.model} />
-        ))}
-        {summary?.analytics.modelUsage.map((entry) => (
-          <option key={entry.model} value={entry.model} />
-        ))}
-      </datalist>
 
       {error ? <div className="vintraAdminBanner error">{error}</div> : null}
       {statusMessage ? <div className="vintraAdminBanner success">{statusMessage}</div> : null}

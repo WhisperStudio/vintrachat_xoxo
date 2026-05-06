@@ -14,7 +14,7 @@ function corsHeaders(origin?: string | null) {
     'Access-Control-Allow-Origin': origin || '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers':
-      'Content-Type, X-Vintra-Embed-Token, X-Vintra-Fingerprint, X-Vintra-Captcha-Token',
+      'Content-Type, X-Vintra-Embed-Token, X-Vintra-Fingerprint, X-Vintra-Captcha-Token, X-Vintra-Debug',
     Vary: 'Origin',
   }
 }

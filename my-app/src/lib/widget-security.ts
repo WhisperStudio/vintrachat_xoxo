@@ -1,5 +1,18 @@
 import type { NextRequest } from 'next/server'
 
+function isWidgetDebugAllowed() {
+  const envValue = String(process.env.VINTRA_WIDGET_DEBUG_MODE || '').trim().toLowerCase()
+  return process.env.NODE_ENV !== 'production' || ['1', 'true', 'yes', 'on'].includes(envValue)
+}
+
+export function isWidgetDebugRequest(req: NextRequest) {
+  if (!isWidgetDebugAllowed()) return false
+
+  const headerFlag = String(req.headers.get('x-vintra-debug') || '').trim() === '1'
+  const queryFlag = req.nextUrl.searchParams.get('debug') === '1'
+  return headerFlag || queryFlag
+}
+
 function normalizeSingleDomain(raw: string) {
   let value = String(raw || '').trim().toLowerCase()
   if (!value) return ''
@@ -133,6 +146,10 @@ export function isRequestOriginAllowed(
   req: NextRequest,
   allowedDomains: unknown
 ) {
+  if (isWidgetDebugRequest(req)) {
+    return { allowed: true as const, debug: true as const }
+  }
+
   const normalizedAllowedDomains = normalizeAllowedDomainList(allowedDomains)
   if (!normalizedAllowedDomains.length) {
     return {
@@ -159,6 +176,10 @@ export function isRequestOriginAllowed(
 }
 
 export function isWidgetOriginPermitted(req: NextRequest, allowedDomains: unknown) {
+  if (isWidgetDebugRequest(req)) {
+    return { allowed: true as const, internal: false as const, debug: true as const }
+  }
+
   if (isSameOriginRequest(req)) {
     return { allowed: true as const, internal: true as const }
   }

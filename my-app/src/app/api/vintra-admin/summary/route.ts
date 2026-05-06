@@ -4,6 +4,9 @@ import { requireVintraAdmin, VintraAdminAuthError } from '@/lib/vintra-admin.ser
 
 type GeminiHealth = {
   status: 'online' | 'degraded' | 'offline'
+  primaryModel: string
+  activeFallbackModel: string | null
+  lastHealthyModel: string | null
   model: string
   latencyMs?: number
   checkedAt: string
@@ -49,7 +52,15 @@ function parseModelList(value?: string | null) {
 
 function getGeminiModelCandidates(primaryModel: string) {
   const configuredFallbacks = parseModelList(process.env.GEMINI_MODEL_FALLBACKS)
-  const defaultFallbacks = ['gemma-3-27b-it', 'gemma-3-12b-it', 'gemma-3-4b-it', 'gemma-3-1b-it']
+  const defaultFallbacks = [
+    'gemini-2.5-flash',
+    'gemini-2.5-pro',
+    'gemini-2.5-flash-lite',
+    'gemma-3-27b-it',
+    'gemma-3-12b-it',
+    'gemma-3-4b-it',
+    'gemma-3-1b-it',
+  ]
   const preferredOrder = configuredFallbacks.length > 0 ? configuredFallbacks : defaultFallbacks
   return [primaryModel, ...preferredOrder].filter((model, index, self) => self.indexOf(model) === index)
 }
@@ -95,15 +106,22 @@ async function checkGeminiModel(modelApiKey: string, model: string): Promise<{
   }
 }
 
-async function checkGeminiHealth(): Promise<GeminiHealth> {
+async function checkGeminiHealth(options?: {
+  primaryModelOverride?: string | null
+  strictModelOnly?: boolean
+}): Promise<GeminiHealth> {
   const apiKey = process.env.GEMINI_API_KEY
-  const primaryModel = process.env.GEMINI_MODEL || 'gemma-3-4b-it'
+  const primaryModel = String(options?.primaryModelOverride || process.env.GEMINI_MODEL || 'gemma-3-4b-it').trim()
+  const strictModelOnly = Boolean(options?.strictModelOnly)
   const checkedAt = new Date().toISOString()
-  const fallbackModels = getGeminiModelCandidates(primaryModel)
+  const fallbackModels = strictModelOnly ? [primaryModel] : getGeminiModelCandidates(primaryModel)
 
   if (!apiKey) {
     return {
       status: 'offline',
+      primaryModel,
+      activeFallbackModel: null,
+      lastHealthyModel: null,
       model: primaryModel,
       checkedAt,
       detail: 'Missing GEMINI_API_KEY',
@@ -131,17 +149,31 @@ async function checkGeminiHealth(): Promise<GeminiHealth> {
     model: primaryModel,
     detail: 'No Gemini models configured',
   }
+  const firstOnlineIndex = modelChecks.findIndex((entry) => entry.status === 'online')
+  const recoveredWithFallback = firstOnlineIndex > 0
+  const selectedCheck =
+    firstOnlineIndex >= 0
+      ? modelChecks[firstOnlineIndex]
+      : primaryCheck
   const onlineCount = modelChecks.filter((entry) => entry.status === 'online').length
-  const uptimePercent = modelChecks.length
-    ? Math.round((onlineCount / modelChecks.length) * 100)
-    : 0
+  const uptimePercent = modelChecks.length ? Math.round((onlineCount / modelChecks.length) * 100) : 0
+  const selectedStatus =
+    firstOnlineIndex >= 0
+      ? (recoveredWithFallback ? 'degraded' : 'online')
+      : primaryCheck.status
+  const selectedDetail = recoveredWithFallback
+    ? `Primary model was unavailable; using fallback model ${selectedCheck.model}.`
+    : primaryCheck.detail
 
   return {
-    status: primaryCheck.status,
-    model: primaryCheck.model,
-    latencyMs: primaryCheck.latencyMs,
+    status: selectedStatus,
+    primaryModel: primaryCheck.model,
+    activeFallbackModel: recoveredWithFallback ? selectedCheck.model : null,
+    lastHealthyModel: selectedCheck.status === 'online' ? selectedCheck.model : null,
+    model: selectedCheck.model,
+    latencyMs: selectedCheck.latencyMs,
     checkedAt,
-    detail: primaryCheck.detail,
+    detail: selectedDetail,
     uptimePercent,
     fallbackModels: modelChecks.map((entry) => ({
       model: entry.model,
@@ -155,6 +187,10 @@ async function checkGeminiHealth(): Promise<GeminiHealth> {
 export async function GET(req: NextRequest) {
   try {
     const adminUser = await requireVintraAdmin(req)
+    const requestedModel = req.nextUrl.searchParams.get('model')?.trim() || null
+    const strictModelOnly =
+      req.nextUrl.searchParams.get('strict') === '1' ||
+      req.nextUrl.searchParams.get('strictModelOnly') === '1'
 
     const businessSnap = await adminDb.collection('businesses').get()
 
@@ -261,7 +297,10 @@ export async function GET(req: NextRequest) {
 
     const totalUsers = businesses.reduce((sum, business) => sum + business.userCount, 0)
     const totalChats = businesses.reduce((sum, business) => sum + business.chatCount, 0)
-    const health = await checkGeminiHealth()
+    const health = await checkGeminiHealth({
+      primaryModelOverride: requestedModel,
+      strictModelOnly,
+    })
     const latestActivity = businesses
       .map((business) => business.lastChatAt)
       .filter(Boolean)
@@ -301,6 +340,8 @@ export async function GET(req: NextRequest) {
       },
       health,
       latestActivity,
+      requestedModel,
+      strictModelOnly,
       analytics: {
         totalSessions: aggregateAnalytics.totalSessions,
         totalMessages: aggregateAnalytics.totalMessages,

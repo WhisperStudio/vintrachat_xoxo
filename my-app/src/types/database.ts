@@ -38,6 +38,7 @@ export interface ChatAssistantConfig {
   replyInUserLanguage: boolean;
   responseStyle: string;
   extraInstructions: string;
+  forceSelectedModelOnly: boolean;
 }
 
 export interface ChatAnalytics {

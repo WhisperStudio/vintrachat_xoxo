@@ -569,6 +569,10 @@ export async function GET(
       'X-Vintra-Fingerprint': FINGERPRINT_LIGHT
     };
 
+    if (DEBUG_MODE) {
+      headers['X-Vintra-Debug'] = '1';
+    }
+
     if (EMBED_TOKEN) {
       headers['X-Vintra-Embed-Token'] = EMBED_TOKEN;
     }
@@ -854,7 +858,8 @@ export async function GET(
           headers: {
             'X-Vintra-Embed-Token': EMBED_TOKEN,
             'X-Vintra-Fingerprint': FINGERPRINT_LIGHT,
-            ...(CAPTCHA_TOKEN ? { 'X-Vintra-Captcha-Token': CAPTCHA_TOKEN } : {})
+            ...(CAPTCHA_TOKEN ? { 'X-Vintra-Captcha-Token': CAPTCHA_TOKEN } : {}),
+            ...(DEBUG_MODE ? { 'X-Vintra-Debug': '1' } : {})
           }
         }
       );
@@ -941,7 +946,8 @@ export async function GET(
       method: 'GET',
       mode: 'cors',
       headers: {
-        'X-Vintra-Embed-Token': EMBED_TOKEN
+        'X-Vintra-Embed-Token': EMBED_TOKEN,
+        ...(DEBUG_MODE ? { 'X-Vintra-Debug': '1' } : {})
       }
     });
 
@@ -969,7 +975,8 @@ export async function GET(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Vintra-Fingerprint': FINGERPRINT_LIGHT
+        'X-Vintra-Fingerprint': FINGERPRINT_LIGHT,
+        ...(DEBUG_MODE ? { 'X-Vintra-Debug': '1' } : {})
       },
       mode: 'cors',
       body: JSON.stringify({
@@ -1238,7 +1245,8 @@ export async function GET(
         headers: {
           'X-Vintra-Embed-Token': EMBED_TOKEN,
           'X-Vintra-Fingerprint': FINGERPRINT_LIGHT,
-          ...(CAPTCHA_TOKEN ? { 'X-Vintra-Captcha-Token': CAPTCHA_TOKEN } : {})
+          ...(CAPTCHA_TOKEN ? { 'X-Vintra-Captcha-Token': CAPTCHA_TOKEN } : {}),
+          ...(DEBUG_MODE ? { 'X-Vintra-Debug': '1' } : {})
         }
       });
       var json = await response.json();

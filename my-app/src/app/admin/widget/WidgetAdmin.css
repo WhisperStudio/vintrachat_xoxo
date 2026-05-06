@@ -331,6 +331,26 @@
   resize: vertical;
 }
 
+.widget-ai-readonly {
+  display: grid;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.widget-ai-readonly strong {
+  color: #0f172a;
+  font-size: 0.98rem;
+}
+
+.widget-ai-readonly span {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
 .widget-ai-field-full {
   grid-column: 1 / -1;
 }

@@ -13,7 +13,7 @@ function corsHeaders(origin?: string | null) {
     'Access-Control-Allow-Origin': origin || '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers':
-      'Content-Type, X-Vintra-Embed-Token, X-Vintra-Fingerprint, X-Vintra-Captcha-Token',
+      'Content-Type, X-Vintra-Embed-Token, X-Vintra-Fingerprint, X-Vintra-Captcha-Token, X-Vintra-Debug',
     Vary: 'Origin',
   }
 }
@@ -136,7 +136,15 @@ function parseModelList(value?: string | null) {
 
 function getGeminiModelFallbacks(primaryModel: string) {
   const configuredFallbacks = parseModelList(process.env.GEMINI_MODEL_FALLBACKS)
-  const defaultFallbacks = ['gemma-3-27b-it', 'gemma-3-12b-it', 'gemma-3-4b-it', 'gemma-3-1b-it']
+  const defaultFallbacks = [
+    'gemini-2.5-flash',
+    'gemini-2.5-pro',
+    'gemini-2.5-flash-lite',
+    'gemma-3-27b-it',
+    'gemma-3-12b-it',
+    'gemma-3-4b-it',
+    'gemma-3-1b-it',
+  ]
   const preferredOrder = configuredFallbacks.length > 0 ? configuredFallbacks : defaultFallbacks
   return [primaryModel, ...preferredOrder].filter((model, index, self) => self.indexOf(model) === index)
 }
@@ -225,7 +233,11 @@ function buildNameRequestReply() {
   return 'To contact human support, please write your name first. Is there anything else I can help you with?'
 }
 
-async function generateGeminiReply(prompt: string, model: string): Promise<GeminiResult> {
+async function generateGeminiReply(
+  prompt: string,
+  model: string,
+  allowFallbacks = true
+): Promise<GeminiResult> {
   const apiKey = process.env.GEMINI_API_KEY
 
   if (!apiKey) {
@@ -238,7 +250,7 @@ async function generateGeminiReply(prompt: string, model: string): Promise<Gemin
   }
 
   const retryDelays = [800, 1600, 3000]
-  const modelCandidates = getGeminiModelFallbacks(model)
+  const modelCandidates = allowFallbacks ? getGeminiModelFallbacks(model) : [model]
 
   for (const candidate of modelCandidates) {
     const useNativeJsonMode = supportsNativeJsonMode(candidate)
@@ -473,6 +485,7 @@ export async function POST(req: NextRequest) {
       replyInUserLanguage: true,
       responseStyle: '',
       extraInstructions: '',
+      forceSelectedModelOnly: false,
     }
 
     if (requestFeedbackForm) {
@@ -616,6 +629,8 @@ export async function POST(req: NextRequest) {
 
     let aiReply = 'The AI assistant is currently disabled.'
     let aiWantsHumanSupport = false
+    let modelUsed = assistantConfig.model || process.env.GEMINI_MODEL || 'gemma-3-4b-it'
+    const allowFallbacks = !assistantConfig.forceSelectedModelOnly
 
     if (assistantConfig.enabled) {
       const prompt = buildPrompt({
@@ -639,12 +654,14 @@ export async function POST(req: NextRequest) {
       try {
         const result = await generateGeminiReply(
           prompt,
-          assistantConfig.model || process.env.GEMINI_MODEL || 'gemma-3-4b-it'
+          modelUsed,
+          allowFallbacks
         )
 
         aiReply = result.reply
         aiWantsHumanSupport = result.needsHumanSupport
         assistantConfig.model = result.modelUsed
+        modelUsed = result.modelUsed
       } catch (error) {
         if (error instanceof GeminiApiError && (error.status === 429 || error.status === 503)) {
           console.warn('Gemini temporarily unavailable:', error.message)
@@ -718,7 +735,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (assistantConfig.enabled) {
-      analyticsUpdates[`chatAnalytics.modelUsage.${assistantConfig.model || process.env.GEMINI_MODEL || 'gemma-3-4b-it'}`] =
+      analyticsUpdates[`chatAnalytics.modelUsage.${modelUsed}`] =
         FieldValue.increment(1)
     }
 
