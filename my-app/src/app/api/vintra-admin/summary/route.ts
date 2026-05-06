@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
 import { requireVintraAdmin, VintraAdminAuthError } from '@/lib/vintra-admin.server'
+import { getAllowedGemmaModels, getGemmaModelCandidates } from '@/lib/gemma-models.server'
 
 type GeminiHealth = {
   status: 'online' | 'degraded' | 'offline'
@@ -20,16 +21,10 @@ type GeminiHealth = {
   }>
 }
 
-const ALLOWED_GEMMA_MODELS = [
-  'gemma-3-4b-it',
-  'gemma-3-12b-it',
-  'gemma-3-27b-it',
-  'gemma-3-1b-it',
-]
-
 function normalizeGemmaModel(model: string | null | undefined) {
   const value = String(model || '').trim()
-  return ALLOWED_GEMMA_MODELS.includes(value) ? value : 'gemma-3-4b-it'
+  const allowed = getAllowedGemmaModels()
+  return allowed.includes(value) ? value : 'gemma-3-4b-it'
 }
 
 function toIso(value: any) {
@@ -53,23 +48,6 @@ function mapUsers(users: any[]) {
       lastLogin: toIso(data.lastLogin),
     }
   })
-}
-
-function parseModelList(value?: string | null) {
-  return String(value || '')
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter(Boolean)
-}
-
-function getGeminiModelCandidates(primaryModel: string) {
-  const configuredFallbacks = parseModelList(process.env.GEMINI_MODEL_FALLBACKS)
-  const defaultFallbacks = ALLOWED_GEMMA_MODELS
-  const preferredOrder = (configuredFallbacks.length > 0 ? configuredFallbacks : defaultFallbacks).filter((model) =>
-    ALLOWED_GEMMA_MODELS.includes(model)
-  )
-  const normalizedPrimary = normalizeGemmaModel(primaryModel)
-  return [normalizedPrimary, ...preferredOrder].filter((model, index, self) => self.indexOf(model) === index)
 }
 
 async function checkGeminiModel(modelApiKey: string, model: string): Promise<{
@@ -128,7 +106,9 @@ async function checkGeminiHealth(options?: {
   )
   const strictModelOnly = Boolean(options?.strictModelOnly)
   const checkedAt = new Date().toISOString()
-  const fallbackModels = strictModelOnly ? [primaryModel] : getGeminiModelCandidates(primaryModel)
+  const fallbackModels = strictModelOnly
+    ? [primaryModel]
+    : await getGemmaModelCandidates(primaryModel, apiKey)
 
   if (!apiKey) {
     return {
