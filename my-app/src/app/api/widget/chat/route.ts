@@ -7,7 +7,7 @@ import { countWords, getClientIp } from '@/lib/widget-security'
 import { enforceWidgetRateLimit } from '@/lib/widget-rate-limit.server'
 import { authorizeWidgetRequest, getOrCreateWidgetEmbedSecret } from '@/lib/widget-embed-token.server'
 import { createWidgetCaptchaChallenge, verifyWidgetCaptchaToken } from '@/lib/widget-captcha.server'
-import { getGemmaModelCandidates } from '@/lib/gemma-models.server'
+import { getGeminiModelCandidates } from '@/lib/gemini-models.server'
 
 function corsHeaders(origin?: string | null) {
   return {
@@ -65,10 +65,11 @@ const fallbackFeedbackKeywords = [
 ]
 
 const MAX_WIDGET_MESSAGE_WORDS = 400
-function normalizeGemmaModel(model: string | null | undefined) {
+function normalizeGeminiModel(model: string | null | undefined) {
   const value = String(model || '').trim()
-  const allowed = ['gemma-3-1b-it', 'gemma-3-4b-it', 'gemma-3-12b-it', 'gemma-3-27b-it']
-  return allowed.includes(value) ? value : 'gemma-3-4b-it'
+  const allowed = ['gemini-2.5-flash-lite']
+  const cleaned = value.startsWith('models/') ? value.slice('models/'.length) : value
+  return allowed.includes(cleaned) ? cleaned : 'gemini-2.5-flash-lite'
 }
 
 function trimHistory(history: unknown[]): IncomingMessage[] {
@@ -131,7 +132,7 @@ function sleep(ms: number) {
 
 function supportsNativeJsonMode(model: string) {
   const supportsJson = !model.toLowerCase().startsWith('gemma-')
-  console.log(`[Gemma Debug] Model: ${model}, supportsNativeJsonMode: ${supportsJson}`)
+  console.log(`[Gemini Debug] Model: ${model}, supportsNativeJsonMode: ${supportsJson}`)
   return supportsJson
 }
 
@@ -229,7 +230,7 @@ async function generateGeminiReply(
   if (!apiKey) {
     return {
       reply:
-        'AI is ready in the app, but Gemma is not configured yet. Add GEMINI_API_KEY to enable live answers.',
+        'AI is ready in the app, but Gemini is not configured yet. Add GEMINI_API_KEY to enable live answers.',
       needsHumanSupport: false,
       modelUsed: model,
     }
@@ -237,15 +238,15 @@ async function generateGeminiReply(
 
   const retryDelays = [800, 1600, 3000]
   const modelCandidates = allowFallbacks
-    ? await getGemmaModelCandidates(model, apiKey)
-    : [normalizeGemmaModel(model)]
+    ? await getGeminiModelCandidates(model, apiKey)
+    : [normalizeGeminiModel(model)]
   
-  console.log(`[Gemma Debug] Starting generateGeminiReply with primary model: ${model}, allowFallbacks: ${allowFallbacks}`)
-  console.log(`[Gemma Debug] Model candidates: ${modelCandidates.join(', ')}`)
+  console.log(`[Gemini Debug] Starting generateGeminiReply with primary model: ${model}, allowFallbacks: ${allowFallbacks}`)
+  console.log(`[Gemini Debug] Model candidates: ${modelCandidates.join(', ')}`)
 
   for (const candidate of modelCandidates) {
     const useNativeJsonMode = supportsNativeJsonMode(candidate)
-    console.log(`[Gemma Debug] Trying model: ${candidate}, useNativeJsonMode: ${useNativeJsonMode}`)
+    console.log(`[Gemini Debug] Trying model: ${candidate}, useNativeJsonMode: ${useNativeJsonMode}`)
 
     for (let attempt = 0; attempt <= retryDelays.length; attempt += 1) {
       const response = await fetch(
@@ -290,14 +291,14 @@ async function generateGeminiReply(
         const json = await response.json()
         const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text
         
-        console.log(`[Gemma Debug] Model ${candidate} response:`, { 
+        console.log(`[Gemini Debug] Model ${candidate} response:`, { 
           hasText: !!rawText, 
           textLength: rawText?.length,
           rawTextPreview: rawText?.substring(0, 100)
         })
 
         if (!rawText) {
-          throw new Error('Gemma returned no text')
+          throw new Error('Gemini returned no text')
         }
 
         return {
@@ -307,7 +308,7 @@ async function generateGeminiReply(
       }
 
       const errorText = await response.text()
-      console.log(`[Gemma Debug] Model ${candidate} error (${response.status}):`, errorText)
+      console.log(`[Gemini Debug] Model ${candidate} error (${response.status}):`, errorText)
       const retryable =
         response.status === 429 ||
         response.status === 503 ||
@@ -324,17 +325,17 @@ async function generateGeminiReply(
 
       if (isNonRetryableFallbackError(response.status)) {
         console.warn(
-          `Gemma model ${candidate} unavailable (${response.status}), trying next fallback if available.`
+          `Gemini model ${candidate} unavailable (${response.status}), trying next fallback if available.`
         )
         break
       }
 
-      throw new GeminiApiError(response.status, `Gemma request failed: ${response.status} ${errorText}`)
+      throw new GeminiApiError(response.status, `Gemini request failed: ${response.status} ${errorText}`)
     }
   }
 
-  console.log(`[Gemma Debug] All model candidates failed after retries`)
-  throw new Error('Gemma request failed after retries and model fallbacks')
+  console.log(`[Gemini Debug] All model candidates failed after retries`)
+  throw new Error('Gemini request failed after retries and model fallbacks')
 }
 
 export async function OPTIONS(req: NextRequest) {
@@ -472,7 +473,7 @@ export async function POST(req: NextRequest) {
     const assistantConfig = business.chatAssistantConfig || {
       enabled: true,
       provider: 'gemini' as const,
-      model: 'gemma-3-4b-it',
+      model: 'gemini-2.5-flash-lite',
       strictContextOnly: true,
       systemPrompt: '',
       businessContext: '',
@@ -629,7 +630,7 @@ export async function POST(req: NextRequest) {
 
     let aiReply = 'The AI assistant is currently disabled.'
     let aiWantsHumanSupport = false
-    let modelUsed = normalizeGemmaModel(assistantConfig.model || process.env.GEMINI_MODEL || 'gemma-3-4b-it')
+    let modelUsed = normalizeGeminiModel(assistantConfig.model || process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite')
     const allowFallbacks = !assistantConfig.forceSelectedModelOnly
 
     if (assistantConfig.enabled) {
@@ -664,10 +665,10 @@ export async function POST(req: NextRequest) {
         modelUsed = result.modelUsed
       } catch (error) {
         if (error instanceof GeminiApiError && (error.status === 429 || error.status === 503)) {
-          console.warn('Gemma temporarily unavailable:', error.message)
+          console.warn('Gemini temporarily unavailable:', error.message)
         } else {
           console.warn(
-            'Gemma fallback chain failed, using safe fallback reply:',
+            'Gemini fallback chain failed, using safe fallback reply:',
             error instanceof Error ? error.message : String(error)
           )
         }

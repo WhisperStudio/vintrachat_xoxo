@@ -13,7 +13,7 @@ import type { ChatAssistantConfig, ChatWidgetConfig } from '@/types/database'
 const defaultAssistantConfig: ChatAssistantConfig = {
   enabled: true,
   provider: 'gemini',
-  model: 'gemma-3-4b-it',
+  model: 'gemini-2.5-flash-lite',
   strictContextOnly: true,
   systemPrompt:
     'You are the company website assistant. Be helpful, concise, and honest.',
@@ -488,9 +488,9 @@ export default function WidgetAdminPanel() {
             </label>
 
             <label className="widget-ai-field">
-              <span>Gemma model</span>
+              <span>Gemini model</span>
               <div className="widget-ai-readonly">
-                <strong>{assistantConfig.model || 'gemma-3-4b-it'}</strong>
+                <strong>{assistantConfig.model || 'gemini-2.5-flash-lite'}</strong>
                 <span>Managed from Vintra Admin</span>
               </div>
             </label>

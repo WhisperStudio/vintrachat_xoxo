@@ -342,7 +342,7 @@ const defaultWidgetConfig: ChatWidgetConfig = {
 const defaultAssistantConfig: ChatAssistantConfig = {
   enabled: true,
   provider: "gemini",
-  model: "gemma-3-4b-it",
+  model: "gemini-2.5-flash-lite",
   strictContextOnly: true,
   systemPrompt:
     "You are the company's website assistant. Be helpful, concise, and honest. If the answer is not supported by the provided business context, say so clearly and ask the visitor to contact support.",

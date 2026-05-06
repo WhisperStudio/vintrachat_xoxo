@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase-admin'
 import { requireVintraAdmin, VintraAdminAuthError } from '@/lib/vintra-admin.server'
-import { getAllowedGemmaModels, getGemmaModelCandidates } from '@/lib/gemma-models.server'
+import { getAllowedGeminiModels, getGeminiModelCandidates } from '@/lib/gemini-models.server'
 
 type GeminiHealth = {
   status: 'online' | 'degraded' | 'offline'
@@ -21,10 +21,11 @@ type GeminiHealth = {
   }>
 }
 
-function normalizeGemmaModel(model: string | null | undefined) {
+function normalizeGeminiModel(model: string | null | undefined) {
   const value = String(model || '').trim()
-  const allowed = getAllowedGemmaModels()
-  return allowed.includes(value) ? value : 'gemma-3-4b-it'
+  const cleaned = value.startsWith('models/') ? value.slice('models/'.length) : value
+  const allowed = getAllowedGeminiModels()
+  return allowed.includes(cleaned) ? cleaned : 'gemini-2.5-flash-lite'
 }
 
 function toIso(value: any) {
@@ -82,14 +83,14 @@ async function checkGeminiModel(modelApiKey: string, model: string): Promise<{
       model,
       latencyMs: Date.now() - started,
       detail: errorSnippet
-        ? `Gemma responded with ${response.status}: ${errorSnippet}`
-        : `Gemma responded with ${response.status}`,
+        ? `Gemini responded with ${response.status}: ${errorSnippet}`
+        : `Gemini responded with ${response.status}`,
     }
   } catch (error) {
     return {
       status: 'offline' as const,
       model,
-      detail: error instanceof Error ? error.message : 'Unknown Gemma error',
+      detail: error instanceof Error ? error.message : 'Unknown Gemini error',
     }
   } finally {
     clearTimeout(timeout)
@@ -101,14 +102,14 @@ async function checkGeminiHealth(options?: {
   strictModelOnly?: boolean
 }): Promise<GeminiHealth> {
   const apiKey = process.env.GEMINI_API_KEY
-  const primaryModel = normalizeGemmaModel(
-    String(options?.primaryModelOverride || process.env.GEMINI_MODEL || 'gemma-3-4b-it').trim()
+  const primaryModel = normalizeGeminiModel(
+    String(options?.primaryModelOverride || process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite').trim()
   )
   const strictModelOnly = Boolean(options?.strictModelOnly)
   const checkedAt = new Date().toISOString()
   const fallbackModels = strictModelOnly
     ? [primaryModel]
-    : await getGemmaModelCandidates(primaryModel, apiKey)
+    : await getGeminiModelCandidates(primaryModel, apiKey)
 
   if (!apiKey) {
     return {
@@ -141,7 +142,7 @@ async function checkGeminiHealth(options?: {
   const primaryCheck = modelChecks[0] || {
     status: 'offline' as const,
     model: primaryModel,
-    detail: 'No Gemma models configured',
+    detail: 'No Gemini models configured',
   }
   const firstOnlineIndex = modelChecks.findIndex((entry) => entry.status === 'online')
   const recoveredWithFallback = firstOnlineIndex > 0
@@ -182,7 +183,7 @@ export async function GET(req: NextRequest) {
   try {
     const adminUser = await requireVintraAdmin(req)
     const requestedModelRaw = req.nextUrl.searchParams.get('model')?.trim() || null
-    const requestedModel = normalizeGemmaModel(requestedModelRaw)
+    const requestedModel = normalizeGeminiModel(requestedModelRaw)
     const strictModelOnly =
       req.nextUrl.searchParams.get('strict') === '1' ||
       req.nextUrl.searchParams.get('strictModelOnly') === '1'
@@ -245,11 +246,11 @@ export async function GET(req: NextRequest) {
           widgetKey: String(data.chatWidgetKey || ''),
           plan: data.chatWidgetConfig?.plan || 'free',
           assistantEnabled: Boolean(data.chatAssistantConfig?.enabled),
-          assistantModel: String(data.chatAssistantConfig?.model || process.env.GEMINI_MODEL || 'gemma-3-4b-it'),
+          assistantModel: String(data.chatAssistantConfig?.model || process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite'),
           assistantConfig: data.chatAssistantConfig
             ? {
                 enabled: Boolean(data.chatAssistantConfig.enabled),
-                model: String(data.chatAssistantConfig.model || process.env.GEMINI_MODEL || 'gemma-3-4b-it'),
+                model: String(data.chatAssistantConfig.model || process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite'),
                 systemPrompt: String(data.chatAssistantConfig.systemPrompt || ''),
                 businessContext: String(data.chatAssistantConfig.businessContext || ''),
                 restrictions: String(data.chatAssistantConfig.restrictions || ''),

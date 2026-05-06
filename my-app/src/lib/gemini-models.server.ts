@@ -1,14 +1,8 @@
-const ALLOWED_GEMMA_MODELS = [
-  'gemma-3-1b-it',
-  'gemma-3-4b-it',
-  'gemma-3-12b-it',
-  'gemma-3-27b-it',
-]
+const ALLOWED_GEMINI_MODELS = ['gemini-2.5-flash-lite']
 
 type ModelListResponse = {
   models?: Array<{
     name?: string
-    supportedGenerationMethods?: string[]
   }>
 }
 
@@ -24,7 +18,7 @@ function normalizeModelName(value: string | null | undefined) {
   const model = String(value || '').trim()
   if (!model) return null
   const cleaned = model.startsWith('models/') ? model.slice('models/'.length) : model
-  return ALLOWED_GEMMA_MODELS.includes(cleaned) ? cleaned : null
+  return ALLOWED_GEMINI_MODELS.includes(cleaned) ? cleaned : null
 }
 
 function parseModelList(value?: string | null) {
@@ -34,7 +28,7 @@ function parseModelList(value?: string | null) {
     .filter(Boolean)
 }
 
-async function fetchAvailableGemmaModels(apiKey: string) {
+async function fetchAvailableGeminiModels(apiKey: string) {
   const cacheKey = apiKey.slice(0, 12)
   const cached = modelCache.get(cacheKey)
   if (cached && cached.expiresAt > Date.now()) {
@@ -63,24 +57,24 @@ async function fetchAvailableGemmaModels(apiKey: string) {
   return models
 }
 
-export async function getGemmaModelCandidates(primaryModel: string, apiKey?: string | null) {
-  const normalizedPrimary = normalizeModelName(primaryModel) || 'gemma-3-4b-it'
+export async function getGeminiModelCandidates(primaryModel: string, apiKey?: string | null) {
+  const normalizedPrimary = normalizeModelName(primaryModel) || 'gemini-2.5-flash-lite'
   const configuredFallbacks = parseModelList(process.env.GEMINI_MODEL_FALLBACKS)
     .map((model) => normalizeModelName(model))
     .filter((model): model is string => Boolean(model))
-  const configuredOrder = configuredFallbacks.length > 0 ? configuredFallbacks : ALLOWED_GEMMA_MODELS
+  const configuredOrder = configuredFallbacks.length > 0 ? configuredFallbacks : ALLOWED_GEMINI_MODELS
 
   if (!apiKey) {
     return [normalizedPrimary, ...configuredOrder].filter((model, index, self) => self.indexOf(model) === index)
   }
 
-  const availableModels = await fetchAvailableGemmaModels(apiKey)
-  const modelPool = availableModels.length > 0 ? availableModels : ALLOWED_GEMMA_MODELS
+  const availableModels = await fetchAvailableGeminiModels(apiKey)
+  const modelPool = availableModels.length > 0 ? availableModels : ALLOWED_GEMINI_MODELS
   const preferredOrder = configuredOrder.filter((model) => modelPool.includes(model))
 
   return [normalizedPrimary, ...preferredOrder].filter((model, index, self) => self.indexOf(model) === index)
 }
 
-export function getAllowedGemmaModels() {
-  return [...ALLOWED_GEMMA_MODELS]
+export function getAllowedGeminiModels() {
+  return [...ALLOWED_GEMINI_MODELS]
 }

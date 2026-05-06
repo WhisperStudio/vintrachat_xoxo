@@ -151,7 +151,7 @@ type VintraTab = 'overview' | 'businesses' | 'gemini' | 'database'
 const TAB_LABELS: Array<{ id: VintraTab; label: string; icon: ReactElement }> = [
   { id: 'overview', label: 'Overview', icon: <FiBarChart2 /> },
   { id: 'businesses', label: 'Businesses', icon: <FiDatabase /> },
-  { id: 'gemini', label: 'Gemma', icon: <FiTool /> },
+  { id: 'gemini', label: 'Gemini', icon: <FiTool /> },
   { id: 'database', label: 'Database', icon: <FiUsers /> },
 ]
 
@@ -161,14 +161,9 @@ const PLAN_OPTIONS = [
   { value: 'business', label: 'Business' },
 ]
 
-const GEMINI_MODEL_OPTIONS = [
-  { value: 'gemma-3-4b-it', label: 'Gemma 3 4B IT' },
-  { value: 'gemma-3-12b-it', label: 'Gemma 3 12B IT' },
-  { value: 'gemma-3-27b-it', label: 'Gemma 3 27B IT' },
-  { value: 'gemma-3-1b-it', label: 'Gemma 3 1B IT' },
-]
+const GEMINI_MODEL_OPTIONS = [{ value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' }]
 
-const RECOMMENDED_MODEL = 'gemma-3-4b-it'
+const RECOMMENDED_MODEL = 'gemini-2.5-flash-lite'
 
 function formatDate(value?: string | null) {
   if (!value) return 'No data'
@@ -656,7 +651,7 @@ export default function VintraAdminClient() {
         <div>
           <p className="vintraAdminEyebrow">Internal control room</p>
           <h1>Vintra Admin</h1>
-          <p>Monitor database users, businesses, Gemma health, and AI usage from one place.</p>
+          <p>Monitor database users, businesses, Gemini health, and AI usage from one place.</p>
         </div>
         <div className="vintraAdminHeroActions">
           <button type="button" className="vintraAdminButton secondary" onClick={() => void loadSummary()} disabled={busy}>
@@ -686,7 +681,7 @@ export default function VintraAdminClient() {
         <SummaryStat icon={<FiActivity />} label="Chats" value={summary?.totals.chats ?? 0} />
         <SummaryStat
           icon={<FiTool />}
-          label="Gemma"
+              label="Gemini"
           value={summary?.health.model || 'Unknown'}
           hint={getHealthLabel(summary?.health.status)}
         />
@@ -711,7 +706,7 @@ export default function VintraAdminClient() {
             />
             <BarList
               title="AI activity"
-              subtitle="Gemma requests and model usage across the database."
+              subtitle="Gemini requests and model usage across the database."
               items={modelBars}
               emptyLabel="No AI usage yet."
             />
@@ -828,10 +823,10 @@ export default function VintraAdminClient() {
                         onChange={(event) =>
                           setDraft((prev) => (prev ? { ...prev, assistantModel: event.target.value } : prev))
                         }
-                        placeholder="gemma-3-4b-it"
+                        placeholder="gemini-2.5-flash-lite"
                       />
                                             <small className="vintraAdminHint">
-                        Pick a Gemma model below to switch manually, or type a custom model id. Green means healthy,
+                        Pick the Gemini model below to switch manually, or type a custom model id. Green means healthy,
                         yellow means partial outage, and red means offline.
                       </small>
                       <div className="vintraAdminModelPills">
@@ -1114,7 +1109,7 @@ export default function VintraAdminClient() {
           <div className="vintraAdminSection">
             <div className="vintraAdminSectionHeader">
               <div>
-                <h2>Gemma</h2>
+                <h2>Gemini</h2>
                 <p>Live health, fallback chain, and AI usage across the database.</p>
               </div>
               <span className={`vintraAdminStatus ${getHealthTone(summary?.health.status)}`}>
@@ -1171,14 +1166,14 @@ export default function VintraAdminClient() {
                   <strong>{summary?.health.lastHealthyModel || summary?.health.model || 'Unknown'}</strong>
                 </p>
                 <p>Checked at: {summary?.health.checkedAt ? new Date(summary.health.checkedAt).toLocaleString() : 'Unknown'}</p>
-                <p>{summary?.health.detail || 'Gemma is reachable.'}</p>
+                <p>{summary?.health.detail || 'Gemini is reachable.'}</p>
                 <p>Latency: {summary?.health.latencyMs ? `${summary.health.latencyMs} ms` : 'No latency data'}</p>
                 <p>
                   Status: <strong>{getHealthLabel(summary?.health.status)}</strong>
                 </p>
                 <p>
                   {summary?.strictModelOnly
-                    ? 'Strict mode is enabled for this test. Only the selected Gemma model was checked.'
+                    ? 'Strict mode is enabled for this test. Only the selected Gemini model was checked.'
                     : 'Auto fallback is enabled. If one model fails, the API tries the next one in order.'}
                 </p>
                 <HealthTimeline
