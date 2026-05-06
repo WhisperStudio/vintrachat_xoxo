@@ -205,6 +205,7 @@ export async function GET(
   var FORCE_OPEN = ${forceOpen ? 'true' : 'false'};
   var GLOBAL_KEY = '__vintraWidgetLoaded__' + WIDGET_KEY;
   var SESSION_STORAGE_KEY = '__vintraWidgetSession__' + WIDGET_KEY;
+  var SUPPORT_STATUS_STORAGE_KEY = '__vintraWidgetSupportStatus__' + WIDGET_KEY;
   var THEME_CLASS_BY_NAME = ${serializeForJs(WIDGET_THEME_CLASS)};
   var THEME_VARS_BY_NAME = ${serializeForJs(WIDGET_THEME_VARS)};
 
@@ -341,6 +342,34 @@ export async function GET(
     } catch (error) {}
   }
 
+  function readStoredSupportStatus() {
+    try {
+      var value = window.localStorage.getItem(SUPPORT_STATUS_STORAGE_KEY) || '';
+      return value === 'needs-human' || value === 'open' || value === 'ai-active' || value === 'closed'
+        ? value
+        : '';
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function writeStoredSupportStatus(value) {
+    try {
+      if (value) {
+        window.localStorage.setItem(SUPPORT_STATUS_STORAGE_KEY, value);
+      } else {
+        window.localStorage.removeItem(SUPPORT_STATUS_STORAGE_KEY);
+      }
+    } catch (error) {}
+  }
+
+  function hasResumableSupportStatus(value) {
+    return value === 'needs-human' || value === 'open';
+  }
+
+  var storedSessionId = readStoredSessionId();
+  var storedSupportStatus = storedSessionId ? readStoredSupportStatus() : '';
+
   function captchaStorageKey() {
     return '__vintraWidgetCaptcha__' + WIDGET_KEY;
   }
@@ -365,7 +394,7 @@ export async function GET(
 
   var state = {
     open: FORCE_OPEN,
-    sessionId: readStoredSessionId(),
+    sessionId: storedSessionId,
     sending: false,
     inputValue: '',
     error: '',
@@ -374,7 +403,7 @@ export async function GET(
     assistantConfig: null,
     configLoaded: false,
     messages: [],
-    supportStatus: '',
+    supportStatus: storedSupportStatus,
     supportPolling: false,
     supportSnapshot: '',
     awaitingVisitorName: false,
@@ -398,6 +427,11 @@ export async function GET(
   };
 
   CAPTCHA_TOKEN = readStoredCaptchaToken();
+
+  function setSupportStatus(value) {
+    state.supportStatus = value || '';
+    writeStoredSupportStatus(state.supportStatus);
+  }
 
   var icons = {
     message: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.75C4 4.784 4.784 4 5.75 4h12.5C19.216 4 20 4.784 20 5.75v8.5c0 .966-.784 1.75-1.75 1.75H12l-4 4v-4H5.75C4.784 16 4 15.216 4 14.25z"></path></svg>',
@@ -833,7 +867,7 @@ export async function GET(
   var MAX_WIDGET_MESSAGE_WORDS = 400;
 
   function clearSupportState() {
-    state.supportStatus = '';
+    setSupportStatus('');
     state.sessionId = '';
     state.supportSnapshot = '';
     writeStoredSessionId('');
@@ -914,15 +948,15 @@ export async function GET(
       });
 
       if (nextSnapshot === state.supportSnapshot) {
-        state.supportStatus = nextStatus;
+        setSupportStatus(nextStatus);
         return;
       }
 
       state.supportSnapshot = nextSnapshot;
-      state.supportStatus = nextStatus;
+      setSupportStatus(nextStatus);
       updateMessages(nextMessages);
 
-      if (state.supportStatus !== 'needs-human' && state.supportStatus !== 'open') {
+      if (!hasResumableSupportStatus(state.supportStatus)) {
         stopSupportPolling();
       }
 
@@ -1266,7 +1300,7 @@ export async function GET(
         state.hasUnreadWhileClosed = false;
       }
 
-      if (state.sessionId) {
+      if (state.sessionId && hasResumableSupportStatus(state.supportStatus)) {
         startSupportPolling();
         void syncSupportChat();
       }
@@ -1339,7 +1373,7 @@ export async function GET(
         state.awaitingVisitorName = false;
         state.pendingHumanSupportText = '';
         state.inputValue = '';
-        state.supportStatus = 'needs-human';
+        setSupportStatus('needs-human');
 
         updateMessages(state.messages.concat([
           {
@@ -1443,7 +1477,7 @@ export async function GET(
       state.countryCode = String(json.countryCode || state.countryCode || '').toUpperCase();
 
       if (inHumanSupportMode) {
-        state.supportStatus = json.status || state.supportStatus || 'needs-human';
+        setSupportStatus(json.status || state.supportStatus || 'needs-human');
         updateMessages(Array.isArray(json.messages) ? json.messages : state.messages);
         startSupportPolling();
       } else {
@@ -1470,7 +1504,7 @@ export async function GET(
         }
 
         if (json.supportRequested) {
-          state.supportStatus = 'needs-human';
+          setSupportStatus('needs-human');
           startSupportPolling();
           void syncSupportChat();
         } else if (state.supportStatus === 'ai-active') {
