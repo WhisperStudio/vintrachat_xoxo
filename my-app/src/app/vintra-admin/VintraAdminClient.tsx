@@ -161,7 +161,11 @@ const PLAN_OPTIONS = [
   { value: 'business', label: 'Business' },
 ]
 
-const GEMINI_MODEL_OPTIONS = [{ value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' }]
+const GEMINI_MODEL_OPTIONS = [
+  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
+  { value: 'gemma-4-26b-a4b-it', label: 'Gemma 4 26B A4B IT' },
+  { value: 'gemma-4-31b-it', label: 'Gemma 4 31B IT' },
+]
 
 const RECOMMENDED_MODEL = 'gemini-2.5-flash-lite'
 

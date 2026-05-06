@@ -207,6 +207,14 @@ export function countWords(text: string) {
     .filter(Boolean).length
 }
 
+export function countCharacters(text: string) {
+  return Array.from(String(text || '')).length
+}
+
+export function truncateTextByCharacters(text: string, maxChars: number) {
+  return Array.from(String(text || '')).slice(0, maxChars).join('')
+}
+
 export function truncateTextByWords(text: string, maxWords: number) {
   const words = String(text || '')
     .trim()

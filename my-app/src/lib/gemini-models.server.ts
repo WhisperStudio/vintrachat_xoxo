@@ -1,8 +1,13 @@
-const ALLOWED_GEMINI_MODELS = ['gemini-2.5-flash-lite']
+const ALLOWED_GEMINI_MODELS = [
+  'gemini-2.5-flash-lite',
+  'gemma-4-26b-a4b-it',
+  'gemma-4-31b-it',
+]
 
 type ModelListResponse = {
   models?: Array<{
     name?: string
+    supportedGenerationMethods?: string[]
   }>
 }
 

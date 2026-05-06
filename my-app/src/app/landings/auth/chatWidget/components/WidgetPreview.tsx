@@ -5,7 +5,6 @@ import { FiCheckCircle, FiCpu, FiLifeBuoy, FiMessageCircle, FiMessageSquare, FiP
 import GlassOrbAvatar from '../../../../../svgs/GlassOrbAvatar'
 import { getWidgetThemeClass, getWidgetThemeStyle, joinWidgetClasses } from '@/components/chat/widgetDesign'
 import FeedbackFormOverlay from '@/components/chat/FeedbackFormOverlay'
-import { truncateTextByWords } from '@/lib/widget-security'
 import './WidgetPreview.css'
 import type { BubbleIconChoice, OrbStyleConfig } from '@/types/database'
 
@@ -65,6 +64,7 @@ interface WidgetPreviewProps {
   previewMode?: 'desktop' | 'mobile'
   enablePreviewChat?: boolean
   previewReply?: string
+  keyboardOffset?: number
   faqSuggestionsEnabled?: boolean
   faqSuggestions?: string[]
   messagesOverride?: Message[]
@@ -97,10 +97,16 @@ interface Message {
   isBot: boolean
 }
 
-const MAX_WIDGET_MESSAGE_WORDS = 400
-
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
+}
+
+function countChars(text: string) {
+  return Array.from(String(text || '')).length
+}
+
+function truncateToChars(text: string, maxChars: number) {
+  return Array.from(String(text || '')).slice(0, maxChars).join('')
 }
 
 function normalizeLogoStyle(raw?: { zoom: number; focusX: number; focusY: number }) {
@@ -127,6 +133,7 @@ export default function WidgetPreview({
   previewMode = 'desktop',
   enablePreviewChat = false,
   previewReply = 'hi, this is only a test',
+  keyboardOffset = 0,
   faqSuggestionsEnabled = false,
   faqSuggestions = [],
   messagesOverride,
@@ -148,6 +155,8 @@ export default function WidgetPreview({
   const [orbActivityNonce, setOrbActivityNonce] = useState(0)
   const orbInactivityTimerRef = useRef<number | null>(null)
   const orbInactiveHoldTimerRef = useRef<number | null>(null)
+  const chatBodyRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const [internalMessages, setInternalMessages] = useState<Message[]>([
     {
       id: crypto.randomUUID(),
@@ -160,6 +169,7 @@ export default function WidgetPreview({
   const [internalFeedbackRating, setInternalFeedbackRating] = useState(5)
   const [internalFeedbackText, setInternalFeedbackText] = useState('')
   const [internalFeedbackSubmitting, setInternalFeedbackSubmitting] = useState(false)
+  const [internalErrorMessage, setInternalErrorMessage] = useState<string | null>(null)
   const [faqSuggestionNonce, setFaqSuggestionNonce] = useState(0)
 
   const isChatOpen = openOverride ?? internalIsChatOpen
@@ -205,6 +215,8 @@ export default function WidgetPreview({
       setInternalFeedbackRating(5)
     },
   }
+  const showFaqSuggestions = isChatOpen && faqSuggestionsEnabled && activeFaqSuggestions.length > 0
+  const visibleErrorMessage = errorMessage || internalErrorMessage
 
   const setIsChatOpen = (value: boolean | ((prev: boolean) => boolean)) => {
     const nextValue = typeof value === 'function' ? value(isChatOpen) : value
@@ -218,7 +230,8 @@ export default function WidgetPreview({
   }
 
   const setInputValue = (value: string) => {
-    const nextValue = truncateTextByWords(value, MAX_WIDGET_MESSAGE_WORDS)
+    const nextValue = truncateToChars(value, 300)
+    setInternalErrorMessage(null)
     if (onInputValueChange) {
       onInputValueChange(nextValue)
       setOrbInactiveActive(false)
@@ -239,9 +252,30 @@ export default function WidgetPreview({
     }
   }, [isChatOpen])
 
+  useEffect(() => {
+    if (!isChatOpen) return
+    const node = chatBodyRef.current
+    if (!node) return
+    window.requestAnimationFrame(() => {
+      node.scrollTop = node.scrollHeight
+    })
+  }, [messages, isChatOpen, showFaqSuggestions, keyboardOffset])
+
+  useEffect(() => {
+    const node = inputRef.current
+    if (!node) return
+    node.style.height = 'auto'
+    node.style.height = `${node.scrollHeight}px`
+  }, [inputValue])
+
   const handleSend = (messageOverride?: string) => {
-    const nextText = truncateTextByWords(String(messageOverride ?? inputValue ?? '').trim(), MAX_WIDGET_MESSAGE_WORDS)
+    const nextText = String(messageOverride ?? inputValue ?? '').trim()
     if (!nextText) return
+
+    if (countChars(nextText) > 300) {
+      setInternalErrorMessage('Message is too long. Max 300 characters.')
+      return
+    }
 
     if (!onSendMessage && internalRequestedFeedback(nextText)) {
       setInternalMessages((prev) => [
@@ -258,11 +292,13 @@ export default function WidgetPreview({
         },
       ])
       setInputValue('')
+      setInternalErrorMessage(null)
       setInternalFeedbackOpen(true)
       return
     }
 
     if (onSendMessage) {
+      setInternalErrorMessage(null)
       setOrbInactiveActive(false)
       setOrbActivityNonce((current) => current + 1)
       onSendMessage(nextText)
@@ -291,6 +327,7 @@ export default function WidgetPreview({
       }
 
       setInputValue('')
+      setInternalErrorMessage(null)
       setInternalIsReplying(false)
     }, enablePreviewChat ? 850 : 180)
   }
@@ -317,8 +354,6 @@ export default function WidgetPreview({
     `shadow-${footerStyle.shadowType}`,
     `input-${footerStyle.inputStyle}`
   )
-  const showFaqSuggestions = isChatOpen && faqSuggestionsEnabled && activeFaqSuggestions.length > 0
-
   const title = customBranding.title || 'Support Chat'
   const description = customBranding.description || 'Usually replies in a few minutes'
   const logoStyle = normalizeLogoStyle(customBranding.logoStyle)
@@ -419,6 +454,11 @@ export default function WidgetPreview({
   const previewContent = (
     <div
       className={`widget-viewport ${variant === 'embedded' ? 'widget-viewport-embedded' : ''} position-${position} preview-${previewMode}`}
+      style={
+        {
+          '--widget-keyboard-offset': `${Math.max(0, keyboardOffset)}px`,
+        } as CSSProperties
+      }
     >
       <div className={`floating-chat-preview ${themeClass}`} style={themeVars as CSSProperties}>
         <div className="widgetcontainer">
@@ -448,6 +488,8 @@ export default function WidgetPreview({
                   {headerStyle.showTitle && <h3>{title}</h3>}
                   <p>{description}</p>
                 </div>
+
+                {headerStyle.showStatus && <span className="header-status-dot" aria-hidden="true" />}
               </div>
 
               <div className="chat-header-actions">
@@ -465,7 +507,7 @@ export default function WidgetPreview({
               </div>
             </div>
 
-              <div className={bodyClasses}>
+              <div className={bodyClasses} ref={chatBodyRef}>
               {messages.map((msg) => (
                 <div
                   key={msg.id}
@@ -508,15 +550,20 @@ export default function WidgetPreview({
             )}
 
             <div className={footerClasses}>
-              <input
-                type="text"
+              <textarea
+                ref={inputRef}
                 placeholder={footerStyle.showPlaceholder ? 'Write a message...' : ''}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                maxLength={3500}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    handleSend()
+                  }
+                }}
                 aria-describedby="widget-message-limit"
                 disabled={disableInput}
+                rows={1}
               />
 
               {footerStyle.showSendButton && (
@@ -526,9 +573,9 @@ export default function WidgetPreview({
               )}
             </div>
 
-            {errorMessage && <div className="widget-inline-error">{errorMessage}</div>}
+            {visibleErrorMessage && <div className="widget-inline-error">{visibleErrorMessage}</div>}
             <div id="widget-message-limit" className="widget-input-limit-note">
-              Max {MAX_WIDGET_MESSAGE_WORDS} words
+              Max 300 characters. Shift+Enter for a new line.
             </div>
             <FeedbackFormOverlay
               open={Boolean(activeFeedbackOverlay.open)}

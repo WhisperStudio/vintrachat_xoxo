@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/firebase-admin'
 import { getBusinessByWidgetKey } from '@/lib/widget.server'
-import { countWords, getClientIp } from '@/lib/widget-security'
+import { countCharacters, getClientIp } from '@/lib/widget-security'
 import { enforceWidgetRateLimit } from '@/lib/widget-rate-limit.server'
 import { authorizeWidgetRequest, getOrCreateWidgetEmbedSecret } from '@/lib/widget-embed-token.server'
 import { createWidgetCaptchaChallenge, verifyWidgetCaptchaToken } from '@/lib/widget-captcha.server'
 
-const MAX_WIDGET_MESSAGE_WORDS = 400
+const MAX_WIDGET_MESSAGE_CHARS = 300
 
 function corsHeaders(origin?: string | null) {
   return {
@@ -204,9 +204,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    if (countWords(message) > MAX_WIDGET_MESSAGE_WORDS) {
+    if (countCharacters(message) > MAX_WIDGET_MESSAGE_CHARS) {
       return NextResponse.json(
-        { error: `Message is too long. Max ${MAX_WIDGET_MESSAGE_WORDS} words.` },
+        { error: `Message is too long. Max ${MAX_WIDGET_MESSAGE_CHARS} characters.` },
         { status: 400, headers }
       )
     }

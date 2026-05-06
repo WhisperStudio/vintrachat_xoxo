@@ -3,7 +3,7 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/firebase-admin'
 import { getBusinessByWidgetKey } from '@/lib/widget.server'
 import { getDailyConversationCount, getPlanLimits, getTodayUsageKey } from '@/lib/subscription'
-import { countWords, getClientIp } from '@/lib/widget-security'
+import { countCharacters, getClientIp } from '@/lib/widget-security'
 import { enforceWidgetRateLimit } from '@/lib/widget-rate-limit.server'
 import { authorizeWidgetRequest, getOrCreateWidgetEmbedSecret } from '@/lib/widget-embed-token.server'
 import { createWidgetCaptchaChallenge, verifyWidgetCaptchaToken } from '@/lib/widget-captcha.server'
@@ -64,10 +64,10 @@ const fallbackFeedbackKeywords = [
   'tilbakemelding',
 ]
 
-const MAX_WIDGET_MESSAGE_WORDS = 400
+const MAX_WIDGET_MESSAGE_CHARS = 300
 function normalizeGeminiModel(model: string | null | undefined) {
   const value = String(model || '').trim()
-  const allowed = ['gemini-2.5-flash-lite']
+  const allowed = ['gemini-2.5-flash-lite', 'gemma-4-26b-a4b-it', 'gemma-4-31b-it']
   const cleaned = value.startsWith('models/') ? value.slice('models/'.length) : value
   return allowed.includes(cleaned) ? cleaned : 'gemini-2.5-flash-lite'
 }
@@ -445,9 +445,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    if (message && countWords(message) > MAX_WIDGET_MESSAGE_WORDS) {
+    if (message && countCharacters(message) > MAX_WIDGET_MESSAGE_CHARS) {
       return NextResponse.json(
-        { error: `Message is too long. Max ${MAX_WIDGET_MESSAGE_WORDS} words.` },
+        { error: `Message is too long. Max ${MAX_WIDGET_MESSAGE_CHARS} characters.` },
         { status: 400, headers }
       )
     }
@@ -545,9 +545,9 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      if (countWords(supportRequestText) > MAX_WIDGET_MESSAGE_WORDS) {
+      if (countCharacters(supportRequestText) > MAX_WIDGET_MESSAGE_CHARS) {
         return NextResponse.json(
-          { error: `Support request is too long. Max ${MAX_WIDGET_MESSAGE_WORDS} words.` },
+          { error: `Support request is too long. Max ${MAX_WIDGET_MESSAGE_CHARS} characters.` },
           { status: 400, headers }
         )
       }

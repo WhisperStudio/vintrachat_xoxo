@@ -15,6 +15,7 @@ const widgetStyles = `
   --vintra-viewport-height: 100vh;
   --vintra-viewport-width: 100vw;
   --vintra-keyboard-offset: 0px;
+  --widget-keyboard-offset: 0px;
   position: fixed;
   inset: 0;
   z-index: 2147483647;
@@ -108,26 +109,58 @@ const widgetStyles = `
 }
 
 .vintra-root.viewport-mobile .chat-header {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.85rem;
-  padding: 0.95rem 0.95rem 0.8rem;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.82rem 0.85rem 0.72rem;
 }
 
-.vintra-root.viewport-mobile .chat-header-left,
-.vintra-root.viewport-mobile .chat-header-actions {
-  width: 100%;
+.vintra-root.viewport-mobile .chat-header-left {
+  width: auto;
+  gap: 0.65rem;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .vintra-root.viewport-mobile .chat-header-actions {
-  justify-content: space-between;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: auto;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.vintra-root.viewport-mobile .chat-header h3 {
+  font-size: 0.9rem;
+  line-height: 1.1;
+}
+
+.vintra-root.viewport-mobile .chat-header p {
+  font-size: 0.68rem;
+  line-height: 1.2;
+  max-width: 180px;
+}
+
+.vintra-root.viewport-mobile .avatar {
+  width: 34px;
+  height: 34px;
+}
+
+.vintra-root.viewport-mobile .status-pill {
+  display: none;
+}
+
+.vintra-root.viewport-mobile .header-status-dot {
+  display: inline-block;
 }
 
 .vintra-root.viewport-mobile .chat-body {
   height: auto;
   min-height: 220px;
   max-height: clamp(220px, calc(var(--vintra-viewport-height) - 310px - var(--vintra-keyboard-offset)), 52vh);
-  padding: 0.95rem;
+  padding: 0.95rem 0.95rem 11rem;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
@@ -149,20 +182,28 @@ const widgetStyles = `
 }
 
 .vintra-root.viewport-mobile .chat-footer {
-  align-items: center;
+  align-items: flex-end;
   gap: 0.65rem;
   padding: 0.85rem 0.95rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
 }
 
+.vintra-root.viewport-mobile .chat-footer textarea,
 .vintra-root.viewport-mobile .chat-footer input {
   min-height: 52px;
   font-size: 16px;
 }
 
+.vintra-root.viewport-mobile .chat-footer textarea {
+  resize: none;
+  overflow: hidden;
+}
+
 .vintra-root.viewport-mobile .chat-footer button {
+  width: 52px;
   min-width: 52px;
   min-height: 52px;
-  padding-inline: 1rem;
+  padding: 0;
+  flex: 0 0 auto;
 }
 
 .vintra-root.viewport-mobile .widget-icon {
@@ -298,9 +339,10 @@ export async function GET(
     state.compactViewport = metrics.width <= 640 || metrics.height <= 760;
     state.keyboardOffset = metrics.keyboardOffset;
 
-    host.style.setProperty('--vintra-viewport-width', metrics.width + 'px');
-    host.style.setProperty('--vintra-viewport-height', metrics.height + 'px');
-    host.style.setProperty('--vintra-keyboard-offset', metrics.keyboardOffset + 'px');
+  host.style.setProperty('--vintra-viewport-width', metrics.width + 'px');
+  host.style.setProperty('--vintra-viewport-height', metrics.height + 'px');
+  host.style.setProperty('--vintra-keyboard-offset', metrics.keyboardOffset + 'px');
+  host.style.setProperty('--widget-keyboard-offset', metrics.keyboardOffset + 'px');
 
     applyViewportStateToMount();
   }
@@ -618,6 +660,14 @@ export async function GET(
     return headers;
   }
 
+  function countCharacters(text) {
+    return Array.from(String(text || '')).length;
+  }
+
+  function truncateTextByCharacters(text, maxChars) {
+    return Array.from(String(text || '')).slice(0, maxChars).join('');
+  }
+
   function countWords(text) {
     return String(text || '')
       .trim()
@@ -864,7 +914,7 @@ export async function GET(
   }
 
   var supportPollTimer = null;
-  var MAX_WIDGET_MESSAGE_WORDS = 400;
+  var MAX_WIDGET_MESSAGE_CHARS = 300;
 
   function clearSupportState() {
     setSupportStatus('');
@@ -1168,7 +1218,7 @@ export async function GET(
               '</div>' +
             '</div>' +
             '<div class="chat-header-actions">' +
-              (headerStyle.showStatus ? '<span class="status-pill">' + icons.check + ' ' + escapeHtml(getStatusLabel()) + '</span>' : '') +
+              (headerStyle.showStatus ? '<span class="status-pill">' + icons.check + ' ' + escapeHtml(getStatusLabel()) + '</span><span class="header-status-dot" aria-hidden="true"></span>' : '') +
               (headerStyle.showCloseButton && state.open ? '<button type="button" class="close-btn" aria-label="Close chat">×</button>' : '') +
             '</div>' +
           '</div>' +
@@ -1182,10 +1232,10 @@ export async function GET(
             'shadow-' + (footerStyle.shadowType || 'none'),
             'input-' + (footerStyle.inputStyle || 'flat')
           ]) + '">' +
-            '<input type="text" ' +
+            '<textarea rows="1" ' +
               ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled ' : '') +
-              'value="' + escapeHtml(state.inputValue) + '" ' +
-              'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : (state.awaitingVisitorName ? 'Write your name to contact human support...' : (state.supportStatus === 'needs-human' ? 'Waiting for human support...' : 'Write a message...'))) + '" />' +
+              'value="' + escapeHtml(truncateTextByCharacters(String(state.inputValue || ''), MAX_WIDGET_MESSAGE_CHARS)) + '" ' +
+              'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : (state.awaitingVisitorName ? 'Write your name to contact human support...' : (state.supportStatus === 'needs-human' ? 'Waiting for human support...' : 'Write a message...'))) + '"></textarea>' +
             (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled' : '') + '>' + icons.send + '</button>') +
           '</div>' +
           (state.awaitingVisitorName ? '<div class="name-request-hint">Please write your name to connect with human support.</div>' : '') +
@@ -1226,7 +1276,7 @@ export async function GET(
     applyThemeVars(mount.querySelector('.vintra-stack'), theme);
 
     var bubbleButton = mount.querySelector('.widget-icon');
-    var input = mount.querySelector('input');
+    var input = mount.querySelector('textarea');
     var body = mount.querySelector('.chat-body');
 
     if (body) {
@@ -1245,18 +1295,22 @@ export async function GET(
 
     if (input) {
       input.addEventListener('input', function (event) {
-        var nextValue = String(event.target.value || '');
-        if (countWords(nextValue) > MAX_WIDGET_MESSAGE_WORDS) {
-          nextValue = truncateTextByWords(nextValue, MAX_WIDGET_MESSAGE_WORDS);
+        var nextValue = truncateTextByCharacters(String(event.target.value || ''), MAX_WIDGET_MESSAGE_CHARS);
+        if (event.target && event.target.value !== nextValue) {
+          event.target.value = nextValue;
         }
         state.inputValue = nextValue;
+        input.style.height = 'auto';
+        input.style.height = input.scrollHeight + 'px';
         markOrbActivity();
       });
 
       input.addEventListener('keydown', function (event) {
         if (event.key === 'Enter') {
-          event.preventDefault();
-          sendMessage();
+          if (!event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+          }
         }
       });
     }
@@ -1316,8 +1370,14 @@ export async function GET(
   }
 
   async function sendMessage() {
-    var text = truncateTextByWords(String(state.inputValue || '').trim(), MAX_WIDGET_MESSAGE_WORDS);
+    var text = String(state.inputValue || '').trim();
     if (!text || state.sending) return;
+
+    if (countCharacters(text) > MAX_WIDGET_MESSAGE_CHARS) {
+      state.error = 'Message is too long. Max ' + MAX_WIDGET_MESSAGE_CHARS + ' characters.';
+      render();
+      return;
+    }
 
     markOrbActivity();
 

@@ -48,6 +48,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
   const [rateLimitUntil, setRateLimitUntil] = useState(0)
   const [captchaToken, setCaptchaToken] = useState('')
+  const [keyboardOffset, setKeyboardOffset] = useState(0)
 
   useEffect(() => {
     window.parent.postMessage(
@@ -154,6 +155,33 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       setCaptchaToken(existingCaptchaToken)
     }
   }, [widgetKey])
+
+  useEffect(() => {
+    const viewport = window.visualViewport
+
+    const updateKeyboardOffset = () => {
+      if (!viewport) {
+        setKeyboardOffset(0)
+        return
+      }
+
+      const overlap = Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop))
+      setKeyboardOffset(overlap)
+    }
+
+    updateKeyboardOffset()
+    window.addEventListener('resize', updateKeyboardOffset)
+    window.addEventListener('orientationchange', updateKeyboardOffset)
+    viewport?.addEventListener('resize', updateKeyboardOffset)
+    viewport?.addEventListener('scroll', updateKeyboardOffset)
+
+    return () => {
+      window.removeEventListener('resize', updateKeyboardOffset)
+      window.removeEventListener('orientationchange', updateKeyboardOffset)
+      viewport?.removeEventListener('resize', updateKeyboardOffset)
+      viewport?.removeEventListener('scroll', updateKeyboardOffset)
+    }
+  }, [])
 
   useEffect(() => {
     if (!configResponse) return
@@ -437,6 +465,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
           logoStyle: config.customBranding?.logoStyle,
         }}
         variant="embedded"
+        keyboardOffset={keyboardOffset}
         messagesOverride={widgetMessages}
         inputValueOverride={inputValue}
         onInputValueChange={setInputValue}
