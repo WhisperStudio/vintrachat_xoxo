@@ -30,7 +30,7 @@ export default function AdminExportTestPanel() {
   }
 
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl)
-  const embedUrl = `${normalizedBaseUrl || window.location.origin}/widget/${business.chatWidgetKey}.js`
+  const embedUrl = `${normalizedBaseUrl || ''}/widget/${business.chatWidgetKey}.js`
   const testUrl = `/widget-test/${business.chatWidgetKey}`
 
   return (

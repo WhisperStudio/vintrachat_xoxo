@@ -666,16 +666,17 @@ export async function updateChatWidgetConfig(
       config?.allowedDomains !== undefined
         ? parseAllowedDomainsInput(config.allowedDomains)
         : parseAllowedDomainsInput(existingConfig.allowedDomains);
-    const nextConfig: Partial<ChatWidgetConfig> = {
+    const mergedConfig: Partial<ChatWidgetConfig> = {
+      ...existingConfig,
       ...config,
       allowedDomains,
       bubbleStyle: config?.bubbleStyle
         ? sanitizeBubbleStyleForPlan(config.bubbleStyle, plan)
-        : config?.bubbleStyle,
+        : existingConfig.bubbleStyle,
     };
     
     await updateDoc(businessRef, {
-      "chatWidgetConfig": nextConfig,
+      "chatWidgetConfig": mergedConfig,
       updatedAt: serverTimestamp(),
     });
     

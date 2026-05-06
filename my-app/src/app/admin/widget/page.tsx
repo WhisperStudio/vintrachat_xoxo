@@ -34,6 +34,8 @@ const defaultAssistantConfig: ChatAssistantConfig = {
   extraInstructions: 'Always keep answers short unless the user asks for more detail.',
 }
 
+const allowedDomainSeed = ['chat.vintrastudio.com', 'http://localhost:3000/']
+
 export default function WidgetAdminPanel() {
   const { business, dbUser, loading, refreshBusiness } = useAuth()
   const [config, setConfig] = useState<ChatWidgetConfig | null>(null)
@@ -160,22 +162,23 @@ export default function WidgetAdminPanel() {
     setDomainsStatus('idle')
 
     const parsedDomains = parseAllowedDomainsInput(allowedDomainsText)
-    const result = await updateChatWidgetConfig(dbUser.businessId, {
+    const nextConfig = {
+      ...(config || {}),
       allowedDomains: parsedDomains,
+    } as Partial<ChatWidgetConfig>
+    const result = await updateChatWidgetConfig(dbUser.businessId, {
+      ...nextConfig,
     })
 
     setDomainsSaving(false)
     setDomainsStatus(result.success ? 'saved' : 'error')
 
     if (result.success) {
-      setConfig((prev) => (prev ? { ...prev, allowedDomains: parsedDomains } : prev))
+      setConfig((prev) => (prev ? { ...prev, allowedDomains: parsedDomains } : ({ ...nextConfig } as ChatWidgetConfig)))
       setAllowedDomainsText(parsedDomains.join('\n'))
       if (typeof window !== 'undefined') {
         const storageKey = `widget-config-${dbUser.businessId}`
-        const nextConfigPayload = JSON.stringify({
-          ...(config || {}),
-          allowedDomains: parsedDomains,
-        })
+        const nextConfigPayload = JSON.stringify(nextConfig)
         localStorage.setItem(storageKey, nextConfigPayload)
         window.dispatchEvent(
           new CustomEvent('vintra-widget-config-updated', {
@@ -375,21 +378,23 @@ export default function WidgetAdminPanel() {
                 value={allowedDomainsText}
                 onChange={(event) => setAllowedDomainsText(event.target.value)}
                 rows={5}
-                placeholder={'chat.vintrastudio.com\nhttp://localhost:3000/'}
+                placeholder={allowedDomainSeed.join('\n')}
               />
               <p className="field-note">
-                Press Enter for a new line. You can paste full URLs like <code>http://localhost:3000/</code>, or plain domains like <code>chat.vintrastudio.com</code>.
+                Press Enter for a new line. You can paste full URLs like{' '}
+                <code>{allowedDomainSeed[1]}</code>, or plain domains like{' '}
+                <code>{allowedDomainSeed[0]}</code>.
               </p>
             </label>
 
             <div className="widget-domain-example">
               <span>Example seed</span>
-              <strong>chat.vintrastudio.com</strong>
-              <strong>http://localhost:3000/</strong>
+              <strong>{allowedDomainSeed[0]}</strong>
+              <strong>{allowedDomainSeed[1]}</strong>
               <button
                 type="button"
                 className="widget-domain-example-btn"
-                onClick={() => setAllowedDomainsText('chat.vintrastudio.com\nhttp://localhost:3000/')}
+                onClick={() => setAllowedDomainsText(allowedDomainSeed.join('\n'))}
               >
                 Use example
               </button>

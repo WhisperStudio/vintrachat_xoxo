@@ -3,6 +3,12 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { WIDGET_THEME_CLASS, WIDGET_THEME_VARS } from '@/components/chat/widgetDesign'
 
+function serializeForJs(value: unknown) {
+  return JSON.stringify(value)
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029')
+}
+
 const widgetStyles = `
 :host {
   all: initial;
@@ -193,14 +199,14 @@ export async function GET(
   const forceOpen = req.nextUrl.searchParams.get('open') === '1'
 
   const script = `(function () {
-  var WIDGET_KEY = ${JSON.stringify(widgetKey)};
-  var ORIGIN = ${JSON.stringify(origin)};
+  var WIDGET_KEY = ${serializeForJs(widgetKey)};
+  var ORIGIN = ${serializeForJs(origin)};
   var DEBUG_MODE = ${debugMode ? 'true' : 'false'};
   var FORCE_OPEN = ${forceOpen ? 'true' : 'false'};
   var GLOBAL_KEY = '__vintraWidgetLoaded__' + WIDGET_KEY;
   var SESSION_STORAGE_KEY = '__vintraWidgetSession__' + WIDGET_KEY;
-  var THEME_CLASS_BY_NAME = ${JSON.stringify(WIDGET_THEME_CLASS)};
-  var THEME_VARS_BY_NAME = ${JSON.stringify(WIDGET_THEME_VARS)};
+  var THEME_CLASS_BY_NAME = ${serializeForJs(WIDGET_THEME_CLASS)};
+  var THEME_VARS_BY_NAME = ${serializeForJs(WIDGET_THEME_VARS)};
 
   if (window[GLOBAL_KEY]) return;
   window[GLOBAL_KEY] = true;
@@ -234,7 +240,7 @@ export async function GET(
 
     shadowRoot = host.attachShadow({ mode: 'open' });
     var style = document.createElement('style');
-    style.textContent = ${JSON.stringify(widgetStyles)};
+    style.textContent = ${serializeForJs(widgetStyles)};
     shadowRoot.appendChild(style);
 
     mount = document.createElement('div');
@@ -954,7 +960,7 @@ export async function GET(
   }
 
   async function solveCaptchaChallenge(challengeQuestion, challengeToken) {
-    var answer = window.prompt(String(challengeQuestion || '') + '\n\nEnter the answer to continue:');
+    var answer = window.prompt(String(challengeQuestion || '') + '\\n\\nEnter the answer to continue:');
     if (!answer) {
       return false;
     }

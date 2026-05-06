@@ -87,7 +87,20 @@ export function getRequestHostWithPort(req: NextRequest) {
 
 export function isSameOriginRequest(req: NextRequest) {
   const origin = req.headers.get('origin')
-  return Boolean(origin && origin === req.nextUrl.origin)
+  if (origin && origin === req.nextUrl.origin) {
+    return true
+  }
+
+  const referer = req.headers.get('referer')
+  if (referer) {
+    try {
+      return new URL(referer).origin === req.nextUrl.origin
+    } catch {
+      return false
+    }
+  }
+
+  return false
 }
 
 export function matchesAllowedDomain(hostname: string, allowedDomain: string) {
