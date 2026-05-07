@@ -85,6 +85,8 @@ const widgetStyles = `
 }
 
 .vintra-root.viewport-mobile .chat-widget {
+  --chat-body-height: 350px;
+  --chat-footer-height: 86px;
   position: fixed;
   left: 10px;
   right: 10px;
@@ -106,6 +108,9 @@ const widgetStyles = `
   display: flex;
   flex-direction: column;
   min-height: 0;
+  height: calc(var(--chat-body-height) + var(--chat-footer-height));
+  max-height: calc(var(--chat-body-height) + var(--chat-footer-height));
+  overflow: hidden;
 }
 
 .vintra-root.viewport-mobile .chat-header {
@@ -157,15 +162,20 @@ const widgetStyles = `
 }
 
 .vintra-root.viewport-mobile .chat-body {
-  height: auto;
-  min-height: 220px;
-  max-height: clamp(220px, calc(var(--vintra-viewport-height) - 310px - var(--vintra-keyboard-offset)), 52vh);
-  padding: 0.95rem 0.95rem 11rem;
+  height: min(var(--chat-body-height), calc(var(--vintra-viewport-height) - 210px - var(--vintra-keyboard-offset)));
+  max-height: min(var(--chat-body-height), calc(var(--vintra-viewport-height) - 210px - var(--vintra-keyboard-offset)));
+  min-height: min(220px, var(--chat-body-height));
+  flex: 0 0 auto;
+  margin-bottom: var(--chat-footer-height);
+  padding: 0.95rem 0.95rem 1.2rem;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
 
 .vintra-root.viewport-mobile .widget-faq-suggestions {
+  left: 0.95rem;
+  right: 0.95rem;
+  bottom: calc(var(--chat-footer-height) + 0.45rem + env(safe-area-inset-bottom, 0px));
   flex-wrap: nowrap;
   overflow-x: auto;
   padding: 0;
@@ -182,6 +192,12 @@ const widgetStyles = `
 }
 
 .vintra-root.viewport-mobile .chat-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  flex: 0 0 var(--chat-footer-height);
+  min-height: var(--chat-footer-height);
   align-items: stretch;
   flex-direction: column;
   gap: 0.6rem;
@@ -206,22 +222,6 @@ const widgetStyles = `
 .vintra-root.viewport-mobile .chat-footer textarea {
   resize: none;
   overflow: hidden;
-}
-
-.vintra-root.viewport-mobile .chat-footer .widget-faq-suggestions {
-  display: none;
-  order: 0;
-  position: relative;
-  z-index: 3;
-  margin-bottom: 0.15rem;
-}
-
-.vintra-root.viewport-mobile .chat-footer.chat-footer--expanded .widget-faq-suggestions {
-  display: flex;
-}
-
-.vintra-root.viewport-mobile .chat-footer.chat-footer--has-value .widget-faq-suggestions {
-  display: none;
 }
 
 .vintra-root.viewport-mobile .chat-footer button {
@@ -836,7 +836,7 @@ export async function GET(
     var input = mount.querySelector('.chat-footer textarea');
     var suggestions = mount.querySelector('.chat-footer .widget-faq-suggestions');
     var hasValue = countCharacters(String(state.inputValue || '').trim()) > 0;
-    var expanded = Boolean(state.open && state.composerFocused && !hasValue);
+    var expanded = Boolean(state.open && !hasValue);
 
     if (footer) {
       footer.classList.toggle('chat-footer--focused', Boolean(state.composerFocused));
@@ -849,8 +849,13 @@ export async function GET(
     }
 
     if (input) {
-      input.style.height = expanded ? 'auto' : '52px';
-      if (expanded) {
+      if (!state.composerFocused) {
+        input.style.height = '52px';
+        return;
+      }
+
+      input.style.height = 'auto';
+      if (state.composerFocused) {
         input.style.height = Math.max(52, input.scrollHeight) + 'px';
       }
     }
@@ -1295,13 +1300,13 @@ export async function GET(
           '<div class="' + classes(['chat-body', 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '">' +
             getMessagesMarkup(config) +
           '</div>' +
+          getFaqSuggestionsMarkup() +
           '<div class="' + classes([
             'chat-footer',
             'border-' + (footerStyle.borderType || 'none'),
             'shadow-' + (footerStyle.shadowType || 'none'),
             'input-' + (footerStyle.inputStyle || 'flat')
           ]) + '">' +
-            getFaqSuggestionsMarkup() +
             '<div class="chat-footer-row">' +
               '<textarea rows="1" ' +
                 ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled ' : '') +

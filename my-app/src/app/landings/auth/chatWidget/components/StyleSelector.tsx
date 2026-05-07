@@ -30,7 +30,15 @@ import {
 import type { BubbleIconChoice, OrbStyleConfig } from '@/types/database'
 import './StyleSelector.css'
 
-type ColorTheme = 'modern' | 'chilling' | 'corporate' | 'luxury'
+type ColorTheme =
+  | 'modern'
+  | 'chilling'
+  | 'corporate'
+  | 'luxury'
+  | 'pink-blast'
+  | 'red-velvet'
+  | 'deep-blue'
+  | 'banana-bonanza'
 type Plan = 'free' | 'pro' | 'business'
 type Position = 'bottom-right' | 'bottom-left' 
 type BorderType = 'none' | 'solid' | 'rounded' | 'shadow'
@@ -128,6 +136,21 @@ const colorThemeInfo: Record<ColorTheme, { label: string; description: string }>
   chilling: { label: 'Chilling', description: 'Relaxed and friendly' },
   corporate: { label: 'Corporate', description: 'Professional and serious' },
   luxury: { label: 'Luxury', description: 'Exclusive and elegant' },
+  'pink-blast': { label: 'Pink Blast', description: 'Creamy rose and playful' },
+  'red-velvet': { label: 'Red Velvet', description: 'Calm red and soft' },
+  'deep-blue': { label: 'Deep Blue', description: 'Strong blue and focused' },
+  'banana-bonanza': { label: 'Banana Bonanza', description: 'Yellow-orange and bright' },
+}
+
+const colorThemeSwatches: Record<ColorTheme, string[]> = {
+  modern: ['#3b82f6', '#1e40af', '#ffffff', '#eef2ff'],
+  chilling: ['#10b981', '#047857', '#f0fdf4', '#c5ffe2'],
+  corporate: ['#6b7280', '#374151', '#f9fafb', '#efefef'],
+  luxury: ['#7c3aed', '#5b21b6', '#faf5ff', '#d8e4fb'],
+  'pink-blast': ['#f472b6', '#be185d', '#fff1f7', '#ffe0ef'],
+  'red-velvet': ['#b91c1c', '#7f1d1d', '#fff5f5', '#fee2e2'],
+  'deep-blue': ['#002fcf', '#001a75', '#eef4ff', '#dbe8ff'],
+  'banana-bonanza': ['#f59e0b', '#c2410c', '#fff8dc', '#fff0a8'],
 }
 
 const iconChoices: Array<{
@@ -190,7 +213,7 @@ function GlassRadioRow<T extends string>({
 }) {
   const rowRef = useRef<HTMLDivElement | null>(null)
   const buttonRefs = useRef<Partial<Record<T, HTMLButtonElement | null>>>({})
-  const [indicator, setIndicator] = useState<{ left: number; width: number; opacity: number } | null>(null)
+  const [indicator, setIndicator] = useState<{ left: number; top: number; width: number; height: number; opacity: number } | null>(null)
 
   useLayoutEffect(() => {
     const cleanup: Array<() => void> = []
@@ -206,7 +229,9 @@ function GlassRadioRow<T extends string>({
 
       setIndicator({
         left: activeButton.offsetLeft,
+        top: activeButton.offsetTop,
         width: activeButton.offsetWidth,
+        height: activeButton.offsetHeight,
         opacity: 1,
       })
     }
@@ -242,7 +267,9 @@ function GlassRadioRow<T extends string>({
         <span
           className="glassRadioIndicator"
           style={{
-            transform: `translateX(${indicator.left}px)`,
+            transform: `translate(${indicator.left}px, 0)`,
+            top: `${indicator.top}px`,
+            height: `${indicator.height}px`,
             width: `${indicator.width}px`,
             opacity: indicator.opacity,
           }}
@@ -1224,14 +1251,7 @@ export default function StyleSelector({
                 value: theme as ColorTheme,
                 label: info.label,
                 description: info.description,
-                swatches:
-                  theme === 'modern'
-                    ? ['#3b82f6', '#1e40af', '#ffffff', '#e5e7eb']
-                    : theme === 'chilling'
-                      ? ['#10b981', '#047857', '#f0fdf4', '#bbf7d0']
-                      : theme === 'corporate'
-                        ? ['#6b7280', '#374151', '#f9fafb', '#d1d5db']
-                        : ['#7c3aed', '#5b21b6', '#faf5ff', '#e9d5ff'],
+                swatches: colorThemeSwatches[theme as ColorTheme],
               }))}
               onChange={(nextValue) => onColorThemeChange(nextValue as ColorTheme)}
             />

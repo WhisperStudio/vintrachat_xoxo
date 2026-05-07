@@ -174,7 +174,15 @@ export interface ChatWidgetConfig {
   billingCycle: 'monthly' | 'yearly';
   
   // Color theme (only this affects colors)
-  colorTheme: 'modern' | 'chilling' | 'corporate' | 'luxury';
+  colorTheme:
+    | 'modern'
+    | 'chilling'
+    | 'corporate'
+    | 'luxury'
+    | 'pink-blast'
+    | 'red-velvet'
+    | 'deep-blue'
+    | 'banana-bonanza';
   
   // Position (affects widget placement)
   position: 'bottom-right' | 'bottom-left';

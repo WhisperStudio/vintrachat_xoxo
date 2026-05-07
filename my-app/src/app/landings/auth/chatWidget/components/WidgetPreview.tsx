@@ -48,7 +48,15 @@ interface WidgetPreviewProps {
     showPlaceholder: boolean
   }
   position: 'bottom-right' | 'bottom-left'
-  colorTheme: 'modern' | 'chilling' | 'corporate' | 'luxury'
+  colorTheme:
+    | 'modern'
+    | 'chilling'
+    | 'corporate'
+    | 'luxury'
+    | 'pink-blast'
+    | 'red-velvet'
+    | 'deep-blue'
+    | 'banana-bonanza'
   customBranding: {
     title?: string
     description?: string
@@ -218,8 +226,7 @@ export default function WidgetPreview({
   }
   const showFaqSuggestions = isChatOpen && faqSuggestionsEnabled && activeFaqSuggestions.length > 0
   const showComposerSuggestions =
-    showFaqSuggestions && isComposerFocused && countChars(String(inputValue ?? '').trim()) === 0
-  const composerHasText = countChars(String(inputValue ?? '').trim()) > 0
+    showFaqSuggestions && countChars(String(inputValue ?? '').trim()) === 0
   const visibleErrorMessage = errorMessage || internalErrorMessage
 
   const setIsChatOpen = (value: boolean | ((prev: boolean) => boolean)) => {
@@ -489,6 +496,9 @@ export default function WidgetPreview({
                   setIsComposerFocused(true)
                   return
                 }
+                if (target.closest('.widget-faq-suggestions')) {
+                  return
+                }
                 setIsComposerFocused(false)
               }}
             >
@@ -562,23 +572,23 @@ export default function WidgetPreview({
               ))}
             </div>
 
-            <div className={footerClasses}>
-              {showComposerSuggestions && (
-                <div className="widget-faq-suggestions" aria-label="Suggested questions">
-                  {activeFaqSuggestions.map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      type="button"
-                      className="widget-faq-chip"
-                      onClick={() => handleSend(suggestion)}
-                      disabled={disableInput}
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              )}
+            {showComposerSuggestions && (
+              <div className="widget-faq-suggestions" aria-label="Suggested questions">
+                {activeFaqSuggestions.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    className="widget-faq-chip"
+                    onClick={() => handleSend(suggestion)}
+                    disabled={disableInput}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
 
+            <div className={footerClasses}>
               <div className="chat-footer-row">
                 <textarea
                   id="widget-message-input"
@@ -595,7 +605,6 @@ export default function WidgetPreview({
                       handleSend()
                     }
                   }}
-                  aria-describedby="widget-message-limit"
                   disabled={disableInput}
                   rows={1}
                 />
@@ -609,9 +618,6 @@ export default function WidgetPreview({
             </div>
 
             {visibleErrorMessage && <div className="widget-inline-error">{visibleErrorMessage}</div>}
-            <div id="widget-message-limit" className="widget-input-limit-note">
-              Max 300 characters. Shift+Enter for a new line.
-            </div>
             <FeedbackFormOverlay
               open={Boolean(activeFeedbackOverlay.open)}
               title={feedbackOverlay?.title}

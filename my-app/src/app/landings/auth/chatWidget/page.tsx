@@ -15,7 +15,15 @@ import WidgetPreview from './components/WidgetPreview'
 
 type Plan = 'free' | 'pro' | 'business'
 type BillingCycle = 'monthly' | 'yearly'
-type ColorTheme = 'modern' | 'chilling' | 'corporate' | 'luxury'
+type ColorTheme =
+  | 'modern'
+  | 'chilling'
+  | 'corporate'
+  | 'luxury'
+  | 'pink-blast'
+  | 'red-velvet'
+  | 'deep-blue'
+  | 'banana-bonanza'
 type Position = 'bottom-right' | 'bottom-left'
 type PreviewMode = 'desktop' | 'mobile'
 
