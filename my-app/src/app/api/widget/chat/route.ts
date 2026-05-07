@@ -174,6 +174,7 @@ function buildPrompt(args: {
   strictContextOnly: boolean
   supportKeywords: string[]
   faqSuggestions: string[]
+  startLanguage: string
   replyInUserLanguage: boolean
   responseStyle: string
   extraInstructions: string
@@ -192,8 +193,8 @@ function buildPrompt(args: {
     : 'No FAQ suggestions configured.'
 
   const languageRule = args.replyInUserLanguage
-    ? 'Reply in the same language as the latest user message. Match Norwegian with Norwegian and English with English.'
-    : 'Reply in the language that best fits the conversation and business context.'
+    ? `For the first assistant reply in a conversation, start in ${args.startLanguage || 'English'}. After that, reply in the same language as the latest user message.`
+    : `Reply in ${args.startLanguage || 'English'} unless the business context explicitly requires another language.`
 
   return [
     `You are the website assistant for ${args.businessName}.`,
@@ -483,6 +484,7 @@ export async function POST(req: NextRequest) {
         'I understand. I am putting you through to a human assistant now. Please hold on while I connect you with someone available.',
       faqSuggestionsEnabled: false,
       faqSuggestions: [],
+      startLanguage: 'English',
       replyInUserLanguage: true,
       responseStyle: '',
       extraInstructions: '',
@@ -645,6 +647,7 @@ export async function POST(req: NextRequest) {
           assistantConfig.faqSuggestionsEnabled && Array.isArray(assistantConfig.faqSuggestions)
             ? assistantConfig.faqSuggestions
             : [],
+        startLanguage: assistantConfig.startLanguage || 'English',
         replyInUserLanguage: assistantConfig.replyInUserLanguage !== false,
         responseStyle: assistantConfig.responseStyle || '',
         extraInstructions: assistantConfig.extraInstructions || '',

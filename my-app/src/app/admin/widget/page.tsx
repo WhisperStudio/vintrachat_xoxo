@@ -1,12 +1,24 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { FiCopy, FiCode, FiLayout, FiCreditCard, FiMapPin } from 'react-icons/fi'
+import { useEffect, useRef, useState, type ReactNode, type SVGProps, type TextareaHTMLAttributes } from 'react'
+import {
+  FiBriefcase,
+  FiChevronDown,
+  FiCopy,
+  FiCpu,
+  FiGlobe,
+  FiHelpCircle,
+  FiMessageSquare,
+  FiSearch,
+  FiShield,
+  FiZap,
+} from 'react-icons/fi'
 import WidgetPreview from '@/app/landings/auth/chatWidget/components/WidgetPreview'
 import '@/app/landings/auth/chatWidget/ChatWidget.css'
 import './WidgetAdmin.css'
 import { useAuth } from '@/context/AuthContext'
-import { updateChatAssistantConfig, updateChatWidgetConfig } from '@/lib/auth.service'
+import { createChatWidget, deleteChatWidget, setActiveChatWidget, updateChatAssistantConfig, updateChatWidgetConfig } from '@/lib/auth.service'
+import { getPlanLimits } from '@/lib/subscription'
 import { parseAllowedDomainsInput } from '@/lib/widget-security'
 import type { ChatAssistantConfig, ChatWidgetConfig } from '@/types/database'
 
@@ -29,6 +41,7 @@ const defaultAssistantConfig: ChatAssistantConfig = {
     'How do I contact support?',
     'What services do you offer?',
   ],
+  startLanguage: 'English',
   replyInUserLanguage: true,
   responseStyle: 'Friendly, clear, and concise',
   extraInstructions: 'Always keep answers short unless the user asks for more detail.',
@@ -37,29 +50,201 @@ const defaultAssistantConfig: ChatAssistantConfig = {
 
 const allowedDomainSeed = ['chat.vintrastudio.com', 'http://localhost:3000/']
 
+type LanguageOption = {
+  value: string
+  label: string
+  aliases: string[]
+}
+
+const LANGUAGE_OPTIONS: LanguageOption[] = [
+  { value: 'English', label: 'English', aliases: ['english', 'eng'] },
+  { value: 'Norwegian', label: 'Norwegian', aliases: ['norsk', 'norwegian', 'bokmål', 'bokmal', 'nynorsk'] },
+  { value: 'Swedish', label: 'Swedish', aliases: ['svensk', 'swedish'] },
+  { value: 'Danish', label: 'Danish', aliases: ['dansk', 'danish'] },
+  { value: 'Finnish', label: 'Finnish', aliases: ['finsk', 'finnish'] },
+  { value: 'Icelandic', label: 'Icelandic', aliases: ['islandsk', 'icelandic'] },
+  { value: 'German', label: 'German', aliases: ['tysk', 'german'] },
+  { value: 'Polish', label: 'Polish', aliases: ['polsk', 'polish'] },
+  { value: 'French', label: 'French', aliases: ['fransk', 'french'] },
+  { value: 'Dutch (Belgium)', label: 'Dutch (Belgium)', aliases: ['belgisk', 'belgian', 'flemish', 'dutch belgium'] },
+  { value: 'Spanish', label: 'Spanish', aliases: ['spansk', 'spanish'] },
+  { value: 'Portuguese', label: 'Portuguese', aliases: ['portugisisk', 'portuguese'] },
+  { value: 'Greek', label: 'Greek', aliases: ['gresk', 'greek'] },
+  { value: 'Italian', label: 'Italian', aliases: ['italiensk', 'italian'] },
+  { value: 'Japanese', label: 'Japanese', aliases: ['japansk', 'japanese'] },
+  { value: 'Chinese', label: 'Chinese', aliases: ['kinesisk', 'chinese'] },
+  { value: 'Korean (South Korea)', label: 'Korean (South Korea)', aliases: ['sør-koreansk', 'south korean', 'korean'] },
+  { value: 'Ukrainian', label: 'Ukrainian', aliases: ['ukrainsk', 'ukrainian'] },
+  { value: 'Turkish', label: 'Turkish', aliases: ['tyrkisk', 'turkish'] },
+  { value: 'Arabic', label: 'Arabic', aliases: ['arabisk', 'arabic'] },
+  { value: 'Urdu', label: 'Urdu', aliases: ['urdu'] },
+  { value: 'Spanish (Mexico)', label: 'Spanish (Mexico)', aliases: ['mexikansk', 'mexican', 'mexico'] },
+]
+
+function getLanguageMatches(query: string) {
+  const normalizedQuery = query.trim().toLowerCase()
+  if (!normalizedQuery) return LANGUAGE_OPTIONS
+
+  return LANGUAGE_OPTIONS
+    .map((option) => {
+      const haystack = [option.label, ...option.aliases].join(' ').toLowerCase()
+      let score = 10
+
+      if (option.label.toLowerCase() === normalizedQuery) score = 0
+      else if (option.label.toLowerCase().startsWith(normalizedQuery)) score = 1
+      else if (option.aliases.some((alias) => alias.toLowerCase() === normalizedQuery)) score = 1
+      else if (haystack.includes(normalizedQuery)) score = 2
+
+      return { option, score }
+    })
+    .filter(({ score }) => score < 10)
+    .sort((left, right) => left.score - right.score || left.option.label.localeCompare(right.option.label))
+    .map(({ option }) => option)
+}
+
+type AiFieldId =
+  | 'systemPrompt'
+  | 'businessContext'
+  | 'extraInstructions'
+  | 'faqSuggestions'
+  | 'startLanguage'
+  | 'restrictions'
+  | 'handoffMessage'
+
+type IconComponent = (props: SVGProps<SVGSVGElement>) => ReactNode
+
+function CollapsibleAiField({
+  id,
+  title,
+  description,
+  icon: Icon,
+  openField,
+  setOpenField,
+  children,
+}: {
+  id: AiFieldId
+  title: string
+  description?: string
+  icon: IconComponent
+  openField: AiFieldId | null
+  setOpenField: (field: AiFieldId | null) => void
+  children: ReactNode
+}) {
+  const isOpen = openField === id
+
+  return (
+    <label className={`widget-ai-field widget-ai-field-full widget-admin-field-accordion ${isOpen ? 'open' : ''}`}>
+      <div className="widget-admin-field-accordion__header">
+        <div className="widget-admin-field-accordion__titleWrap">
+          <span className="widget-admin-field-accordion__title">
+            <span className="widget-admin-field-accordion__icon">
+              <Icon />
+            </span>
+            <span>
+              {title}
+              {description ? <small>{description}</small> : null}
+            </span>
+          </span>
+        </div>
+
+        <button
+          type="button"
+          className={`widget-admin-field-accordion__chevron ${isOpen ? 'open' : ''}`}
+          onClick={() => setOpenField(isOpen ? null : id)}
+          aria-label={isOpen ? `Collapse ${title}` : `Expand ${title}`}
+        >
+          <FiChevronDown />
+        </button>
+      </div>
+
+      {isOpen ? <div className="widget-admin-field-accordion__body">{children}</div> : null}
+    </label>
+  )
+}
+
+function AutoGrowTextarea({
+  minRows = 3,
+  className = '',
+  onInput,
+  ...props
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & { minRows?: number }) {
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+
+  const resizeTextarea = () => {
+    const element = textareaRef.current
+    if (!element) return
+
+    element.style.height = 'auto'
+    element.style.height = `${element.scrollHeight}px`
+  }
+
+  useEffect(() => {
+    resizeTextarea()
+  }, [props.value, minRows])
+
+  return (
+    <textarea
+      {...props}
+      ref={textareaRef}
+      rows={minRows}
+      className={`widget-admin-autogrow ${className}`.trim()}
+      onInput={(event) => {
+        resizeTextarea()
+        onInput?.(event)
+      }}
+    />
+  )
+}
+
 export default function WidgetAdminPanel() {
   const { business, dbUser, loading, refreshBusiness } = useAuth()
   const [config, setConfig] = useState<ChatWidgetConfig | null>(null)
   const [assistantConfig, setAssistantConfig] = useState<ChatAssistantConfig>(defaultAssistantConfig)
+  const [openAiField, setOpenAiField] = useState<AiFieldId | null>('systemPrompt')
+  const [languageSearch, setLanguageSearch] = useState('')
+  const [selectedWidgetKey, setSelectedWidgetKey] = useState('')
   const [copied, setCopied] = useState(false)
   const [lastConfigUpdate, setLastConfigUpdate] = useState<string | null>(null)
-  const [embedBaseUrl, setEmbedBaseUrl] = useState(process.env.NEXT_PUBLIC_APP_URL || '')
   const [allowedDomainsText, setAllowedDomainsText] = useState('')
   const [domainsSaving, setDomainsSaving] = useState(false)
   const [domainsStatus, setDomainsStatus] = useState<'idle' | 'saved' | 'error'>('idle')
   const [assistantSaving, setAssistantSaving] = useState(false)
   const [assistantStatus, setAssistantStatus] = useState<'idle' | 'saved' | 'error'>('idle')
+  const [deleteWidgetChecked, setDeleteWidgetChecked] = useState(false)
+  const [widgetActionStatus, setWidgetActionStatus] = useState<'idle' | 'saved' | 'error'>('idle')
+  const [newWidgetName, setNewWidgetName] = useState('')
+
+  const widgetList = business?.chatWidgets || []
+  const currentPlan = (config?.plan || business?.chatWidgetConfig?.plan || widgetList[0]?.config?.plan || 'free') as ChatWidgetConfig['plan']
+  const widgetLimit = getPlanLimits(currentPlan).maxWidgets
+
+  const applyWidgetConfig = (widgetConfig: ChatWidgetConfig | undefined) => {
+    if (!widgetConfig) return
+    setConfig(widgetConfig)
+    setAllowedDomainsText(
+      Array.isArray(widgetConfig.allowedDomains) ? widgetConfig.allowedDomains.join('\n') : ''
+    )
+    setLastConfigUpdate(JSON.stringify(widgetConfig))
+  }
 
   useEffect(() => {
-    if (business?.chatWidgetConfig) {
-      const serializedConfig = JSON.stringify(business.chatWidgetConfig)
+    const widget =
+      widgetList.find((entry) => entry.widgetKey === selectedWidgetKey) ||
+      widgetList.find((entry) => entry.widgetKey === business?.activeChatWidgetKey) ||
+      widgetList[0]
+
+    if (widget?.config) {
+      setSelectedWidgetKey(widget.widgetKey)
+      applyWidgetConfig(widget.config)
+    } else if (business?.chatWidgetConfig) {
       setConfig(business.chatWidgetConfig as ChatWidgetConfig)
-      setLastConfigUpdate(serializedConfig)
+      setLastConfigUpdate(JSON.stringify(business.chatWidgetConfig))
       setAllowedDomainsText(
         Array.isArray(business.chatWidgetConfig.allowedDomains)
           ? business.chatWidgetConfig.allowedDomains.join('\n')
           : ''
       )
+      setSelectedWidgetKey(business.activeChatWidgetKey || business.chatWidgetKey || '')
     }
 
     if (business?.chatAssistantConfig) {
@@ -68,7 +253,7 @@ export default function WidgetAdminPanel() {
         ...(business.chatAssistantConfig as ChatAssistantConfig),
       })
     }
-  }, [business])
+  }, [business, widgetList, selectedWidgetKey])
 
   useEffect(() => {
     if (!dbUser?.businessId) return
@@ -121,22 +306,67 @@ export default function WidgetAdminPanel() {
     }
   }, [dbUser?.businessId, lastConfigUpdate, refreshBusiness])
 
-  useEffect(() => {
-    if (!embedBaseUrl && typeof window !== 'undefined') {
-      setEmbedBaseUrl(window.location.origin)
-    }
-  }, [embedBaseUrl])
-
   const handleCopy = async () => {
-    if (!business?.chatWidgetKey) return
+    if (!activeWidgetKey) return
 
-    const code = `<!-- Chat Widget -->
-<script src="${embedBaseUrl}/widget/${business.chatWidgetKey}.js"></script>
-<!-- End Chat Widget -->`
-
-    await navigator.clipboard.writeText(code)
+    await navigator.clipboard.writeText(embedCode)
     setCopied(true)
     setTimeout(() => setCopied(false), 1800)
+  }
+
+  const handleWidgetChange = async (nextWidgetKey: string) => {
+    if (!dbUser?.businessId || !nextWidgetKey) return
+    const nextWidget = widgetList.find((widget) => widget.widgetKey === nextWidgetKey)
+    if (!nextWidget) return
+
+    setSelectedWidgetKey(nextWidgetKey)
+    setDeleteWidgetChecked(false)
+    applyWidgetConfig(nextWidget.config)
+    await setActiveChatWidget(dbUser.businessId, nextWidgetKey)
+    await refreshBusiness()
+  }
+
+  const handleCreateWidget = async () => {
+    if (!dbUser?.businessId) return
+
+    setWidgetActionStatus('idle')
+    const result = await createChatWidget(
+      dbUser.businessId,
+      newWidgetName.trim() || undefined,
+      selectedWidgetKey || business?.activeChatWidgetKey || business?.chatWidgetKey || undefined
+    )
+
+    if (!result.success || !result.widgetKey) {
+      setWidgetActionStatus('error')
+      return
+    }
+
+    setWidgetActionStatus('saved')
+    setNewWidgetName('')
+    setSelectedWidgetKey(result.widgetKey)
+    await refreshBusiness()
+    setTimeout(() => setWidgetActionStatus('idle'), 2000)
+  }
+
+  const handleDeleteWidget = async () => {
+    if (!dbUser?.businessId || !selectedWidgetKey || !deleteWidgetChecked) return
+
+    setWidgetActionStatus('idle')
+    const result = await deleteChatWidget(dbUser.businessId, selectedWidgetKey)
+
+    if (!result.success) {
+      setWidgetActionStatus('error')
+      return
+    }
+
+    setDeleteWidgetChecked(false)
+    setSelectedWidgetKey('')
+    setConfig(null)
+    setAllowedDomainsText('')
+    setLastConfigUpdate(null)
+    setWidgetActionStatus('saved')
+    await refreshBusiness()
+    setTimeout(() => setWidgetActionStatus('idle'), 2000)
   }
 
   const saveAssistantConfig = async () => {
@@ -169,7 +399,7 @@ export default function WidgetAdminPanel() {
     } as Partial<ChatWidgetConfig>
     const result = await updateChatWidgetConfig(dbUser.businessId, {
       ...nextConfig,
-    })
+    }, selectedWidgetKey || undefined)
 
     setDomainsSaving(false)
     setDomainsStatus(result.success ? 'saved' : 'error')
@@ -213,18 +443,63 @@ export default function WidgetAdminPanel() {
     )
   }
 
-  if (!config) {
-    return (
-      <div className="widget-admin-empty">
-        <h2>Ingen widget-konfigurasjon</h2>
-        <p>Du har ikke satt opp en widget ennå.</p>
-      </div>
-    )
+  const activeConfig: ChatWidgetConfig = config || {
+    plan: 'free',
+    billingCycle: 'monthly',
+    colorTheme: 'modern',
+    position: 'bottom-right',
+    bubbleStyle: {
+      showStatus: true,
+      iconChoice: 'chat',
+      borderType: 'rounded',
+      shadowType: 'medium',
+      animationType: 'fade',
+      sizeType: 'medium',
+    },
+    headerStyle: {
+      showStatus: true,
+      showCloseButton: true,
+      borderType: 'rounded',
+      shadowType: 'light',
+      showAvatar: true,
+      showTitle: true,
+    },
+    bodyStyle: {
+      borderType: 'none',
+      shadowType: 'none',
+      messageStyle: 'bubble',
+      showTimestamps: true,
+      showReadReceipts: false,
+    },
+    footerStyle: {
+      showSendButton: true,
+      borderType: 'none',
+      shadowType: 'none',
+      inputStyle: 'rounded',
+      showPlaceholder: true,
+    },
+    customBranding: {
+      title: business.name || 'Support Chat',
+      description: 'Usually replies in a few minutes',
+      logoStyle: {
+        zoom: 100,
+        focusX: 50,
+        focusY: 50,
+      },
+    },
+    settings: {
+      autoOpen: false,
+      delayMs: 3000,
+    },
+    allowedDomains: [],
   }
-
-  const embedCode = `<!-- Chat Widget -->
-<script src="${embedBaseUrl}/widget/${business.chatWidgetKey}.js"></script>
-<!-- End Chat Widget -->`
+  const activeWidgetKey = selectedWidgetKey || business.activeChatWidgetKey || business.chatWidgetKey || ''
+  const activeWidgetName =
+    widgetList.find((widget) => widget.widgetKey === activeWidgetKey)?.name || 'Widget'
+  const embedCode = `<!-- VintraSolutions Chat Widget -->
+<script src="https://chat.vintrastudio.com/widget/${activeWidgetKey}.js"></script>
+<!-- End VintraSolutions Chat Widget -->`
+  const filteredLanguageOptions = getLanguageMatches(languageSearch)
 
   return (
     <div className="widget-admin-shell">
@@ -240,94 +515,162 @@ export default function WidgetAdminPanel() {
         </div>
       </div>
 
+      <section className="widget-admin-card widget-admin-widget-manager">
+        <div className="widget-admin-widget-manager__header">
+          <div>
+            <h3>Chat widgets</h3>
+            <p>
+              {widgetList.length
+                ? `${widgetList.length} widget${widgetList.length === 1 ? '' : 's'} saved for this business.`
+                : 'No widgets yet.'}
+            </p>
+          </div>
+          <div className="widget-admin-widget-manager__actions">
+            <button
+              type="button"
+              className="widget-admin-action-button"
+              onClick={() => void handleCreateWidget()}
+              disabled={!dbUser?.businessId || (widgetLimit !== null && widgetList.length >= widgetLimit)}
+            >
+              Add widget
+            </button>
+            {widgetActionStatus === 'saved' && <span className="widget-admin-status saved">Saved</span>}
+            {widgetActionStatus === 'error' && <span className="widget-admin-status error">Action failed</span>}
+          </div>
+        </div>
+
+        <div className="widget-admin-widget-manager__body">
+          <label className="widget-admin-field">
+            <span>New widget name</span>
+            <input
+              type="text"
+              value={newWidgetName}
+              onChange={(event) => setNewWidgetName(event.target.value)}
+              placeholder="Homepage widget, Support widget, Footer widget..."
+            />
+          </label>
+
+          <label className="widget-admin-field">
+            <span>Select widget</span>
+            <select
+              value={activeWidgetKey}
+              onChange={(event) => void handleWidgetChange(event.target.value)}
+              disabled={!widgetList.length}
+            >
+              {widgetList.map((widget) => (
+                <option key={widget.widgetKey} value={widget.widgetKey}>
+                  {widget.name}
+                  {widget.isDefault ? ' (default)' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {widgetList.length > 0 && (
+            <div className="widget-admin-widget-list">
+              {widgetList.map((widget) => {
+                const isActive = widget.widgetKey === activeWidgetKey
+                return (
+                  <button
+                    key={widget.widgetKey}
+                    type="button"
+                    className={`widget-admin-widget-card ${isActive ? 'active' : ''}`}
+                    onClick={() => void handleWidgetChange(widget.widgetKey)}
+                  >
+                    <strong>{widget.name}</strong>
+                    <span>{widget.widgetKey}</span>
+                    <small>{widget.isDefault ? 'Default widget' : 'Custom widget'}</small>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          <div className="widget-admin-widget-manager__summary">
+            <div>
+              <strong>{activeWidgetName}</strong>
+              <span>Current widget</span>
+            </div>
+            <div>
+              <strong>{(config?.plan || 'free').toUpperCase()}</strong>
+              <span>Plan</span>
+            </div>
+            <div>
+              <strong>{activeWidgetKey}</strong>
+              <span>Widget key</span>
+            </div>
+          </div>
+
+          <div className="widget-admin-delete-box">
+            <label className="widget-admin-check">
+              <input
+                type="checkbox"
+                checked={deleteWidgetChecked}
+                onChange={(event) => setDeleteWidgetChecked(event.target.checked)}
+              />
+              <span>I understand this permanently deletes the selected widget.</span>
+            </label>
+            <button
+              type="button"
+              className="widget-admin-danger-button"
+              onClick={() => void handleDeleteWidget()}
+              disabled={!deleteWidgetChecked || !selectedWidgetKey}
+            >
+              Delete widget
+            </button>
+          </div>
+          <p className="widget-admin-widget-manager__note">
+            {currentPlan === 'free'
+              ? 'Free plan users can keep one widget.'
+              : `Unlimited widgets available on ${currentPlan === 'business' ? 'Enterprise' : 'Pro'}.`}
+          </p>
+        </div>
+      </section>
+
       <div className="widget-admin-grid">
-        <section className="widget-admin-card widget-admin-overview">
-          <h3>Widget Overview</h3>
-
-          <div className="widget-stat-grid">
-            <div className="widget-stat">
-              <div className="widget-stat-icon">
-                <FiCreditCard />
-              </div>
-              <div>
-                <strong>{config.plan}</strong>
-                <span>Plan</span>
-              </div>
-            </div>
-
-            <div className="widget-stat">
-              <div className="widget-stat-icon">
-                <FiLayout />
-              </div>
-              <div>
-                <strong>{config.colorTheme}</strong>
-                <span>Theme</span>
-              </div>
-            </div>
-
-            <div className="widget-stat">
-              <div className="widget-stat-icon">
-                <FiMapPin />
-              </div>
-              <div>
-                <strong>{config.position}</strong>
-                <span>Position</span>
-              </div>
-            </div>
-
-            <div className="widget-stat">
-              <div className="widget-stat-icon">
-                <FiCode />
-              </div>
-              <div>
-                <strong>{config.billingCycle}</strong>
-                <span>Billing cycle</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="widget-key-box">
-            <span className="widget-key-label">Widget key</span>
-            <code>{business.chatWidgetKey}</code>
-          </div>
-        </section>
-
         <section className="widget-admin-card widget-admin-preview">
           <div className="widget-card-header">
-            <h3>Live Preview</h3>
-            <span className="widget-preview-tag">Interactive</span>
+            <div className="widget-preview-heading">
+              <h3>Live Preview</h3>
+              <span className="widget-preview-tag">Interactive</span>
+            </div>
+            <div className="widget-preview-key">
+              <span>Widget key</span>
+              <code>{activeWidgetKey}</code>
+            </div>
           </div>
 
-          <div className={`widget-preview-stage theme-${config.colorTheme}`}>
+          <div className={`widget-preview-stage theme-${activeConfig.colorTheme}`}>
             <WidgetPreview
-              bubbleStyle={config.bubbleStyle}
-              headerStyle={config.headerStyle}
-              bodyStyle={config.bodyStyle}
-              footerStyle={config.footerStyle}
-              position={config.position}
-              colorTheme={config.colorTheme}
-              customBranding={config.customBranding}
+              bubbleStyle={activeConfig.bubbleStyle}
+              headerStyle={activeConfig.headerStyle}
+              bodyStyle={activeConfig.bodyStyle}
+              footerStyle={activeConfig.footerStyle}
+              position={activeConfig.position}
+              colorTheme={activeConfig.colorTheme}
+              customBranding={activeConfig.customBranding}
               initialOpen={true}
               variant="embedded"
               enablePreviewChat={true}
               previewReply="hi, this is only a test"
               faqSuggestionsEnabled={assistantConfig.faqSuggestionsEnabled}
               faqSuggestions={assistantConfig.faqSuggestions}
-            />
-          </div>
-        </section>
+              />
+            </div>
+          </section>
 
         <section className="widget-admin-card widget-admin-code">
           <div className="widget-card-header">
-            <h3>Embed Code</h3>
-            <button type="button" className="copy-btn" onClick={handleCopy}>
+            <h3>Selected Widget Script</h3>
+            <button type="button" className="widget-admin-save-button" onClick={handleCopy}>
               <FiCopy />
-              {copied ? 'Copied!' : 'Copy code'}
+              {copied ? 'Copied!' : 'Copy script'}
             </button>
           </div>
 
           <p className="widget-card-desc">
-            Lim inn denne koden på nettsiden din for å laste inn widgeten.
+            Copy the script for the currently selected widget. Use this on
+            https://chat.vintrastudio.com for production.
           </p>
 
           <div className="widget-code-block">
@@ -335,35 +678,10 @@ export default function WidgetAdminPanel() {
           </div>
         </section>
 
-        <section className="widget-admin-card widget-admin-branding">
-          <h3>Branding</h3>
-
-          <div className="widget-detail-list">
-            <div className="widget-detail-row">
-              <span>Tittel</span>
-              <strong>{config.customBranding?.title || 'Support Chat'}</strong>
-            </div>
-            <div className="widget-detail-row">
-              <span>Beskrivelse</span>
-              <strong>
-                {config.customBranding?.description || 'Usually replies in a few minutes'}
-              </strong>
-            </div>
-            <div className="widget-detail-row">
-              <span>Auto-open</span>
-              <strong>{config.settings?.autoOpen ? 'Enabled' : 'Disabled'}</strong>
-            </div>
-            <div className="widget-detail-row">
-              <span>Delay</span>
-              <strong>{config.settings?.delayMs || 3000} ms</strong>
-            </div>
-          </div>
-        </section>
-
         <section className="widget-admin-card widget-admin-security">
-          <div className="widget-card-header">
-            <h3>Allowed domains</h3>
-            <button type="button" className="copy-btn" onClick={saveAllowedDomains} disabled={domainsSaving}>
+          <div className="widget-card-header widget-card-header--compact">
+            <span className="widget-admin-section-label">Domain allowlist</span>
+            <button type="button" className="widget-admin-save-button" onClick={saveAllowedDomains} disabled={domainsSaving}>
               {domainsSaving ? 'Saving...' : domainsStatus === 'saved' ? 'Saved!' : 'Save domains'}
             </button>
           </div>
@@ -375,10 +693,10 @@ export default function WidgetAdminPanel() {
           <div className="widget-ai-grid">
             <label className="widget-ai-field widget-ai-field-full">
               <span>Allowed domains</span>
-              <textarea
+              <AutoGrowTextarea
                 value={allowedDomainsText}
                 onChange={(event) => setAllowedDomainsText(event.target.value)}
-                rows={5}
+                minRows={5}
                 placeholder={allowedDomainSeed.join('\n')}
               />
               <p className="field-note">
@@ -387,28 +705,15 @@ export default function WidgetAdminPanel() {
                 <code>{allowedDomainSeed[0]}</code>.
               </p>
             </label>
-
-            <div className="widget-domain-example">
-              <span>Example seed</span>
-              <strong>{allowedDomainSeed[0]}</strong>
-              <strong>{allowedDomainSeed[1]}</strong>
-              <button
-                type="button"
-                className="widget-domain-example-btn"
-                onClick={() => setAllowedDomainsText(allowedDomainSeed.join('\n'))}
-              >
-                Use example
-              </button>
-            </div>
           </div>
         </section>
 
         <section className="widget-admin-card widget-admin-ai">
-          <div className="widget-card-header">
-            <h3>AI Assistant</h3>
+          <div className="widget-card-header widget-card-header--compact">
+            <span className="widget-admin-section-label">AI settings</span>
             <button
               type="button"
-              className="copy-btn"
+              className="widget-admin-save-button"
               onClick={saveAssistantConfig}
               disabled={assistantSaving}
             >
@@ -421,13 +726,12 @@ export default function WidgetAdminPanel() {
           </div>
 
           <p className="widget-card-desc">
-            Configure how the assistant answers, what context it may use, and when a
-            chat should be flagged for human support.
+            Configure how the assistant answers, what context it may use, and when a chat should be flagged for human support.
           </p>
 
-          <div className="widget-ai-grid">
+          <div className="widget-ai-grid widget-ai-grid--top">
             <label className="widget-ai-field widget-ai-toggle">
-              <span>Enable AI replies</span>
+              <span><FiCpu /> Enable AI replies</span>
               <input
                 type="checkbox"
                 checked={assistantConfig.enabled}
@@ -441,7 +745,7 @@ export default function WidgetAdminPanel() {
             </label>
 
             <label className="widget-ai-field widget-ai-toggle">
-              <span>Strict context only</span>
+              <span><FiShield /> Strict context only</span>
               <input
                 type="checkbox"
                 checked={assistantConfig.strictContextOnly}
@@ -455,7 +759,7 @@ export default function WidgetAdminPanel() {
             </label>
 
             <label className="widget-ai-field widget-ai-toggle">
-              <span>Reply in user language</span>
+              <span><FiGlobe /> Reply in user language</span>
               <input
                 type="checkbox"
                 checked={assistantConfig.replyInUserLanguage}
@@ -469,7 +773,7 @@ export default function WidgetAdminPanel() {
             </label>
 
             <label className="widget-ai-field widget-ai-toggle">
-              <span>FAQ suggestions enabled</span>
+              <span><FiHelpCircle /> FAQ suggestions</span>
               <input
                 type="checkbox"
                 checked={assistantConfig.faqSuggestionsEnabled}
@@ -483,21 +787,78 @@ export default function WidgetAdminPanel() {
             </label>
 
             <label className="widget-ai-field">
-              <span>Provider</span>
+              <span><FiBriefcase /> Provider</span>
               <input type="text" value={assistantConfig.provider} disabled />
             </label>
 
             <label className="widget-ai-field">
-              <span>Gemini model</span>
+              <span><FiMessageSquare /> Model</span>
               <div className="widget-ai-readonly">
                 <strong>{assistantConfig.model || 'gemini-2.5-flash-lite'}</strong>
                 <span>Managed from Vintra Admin</span>
               </div>
             </label>
+          </div>
 
-            <label className="widget-ai-field widget-ai-field-full">
-              <span>System prompt</span>
-              <textarea
+          <div className="widget-admin-field-accordion-stack">
+            <CollapsibleAiField
+              id="startLanguage"
+              title="Start language"
+              description="Choose the first language the assistant should use."
+              icon={FiGlobe}
+              openField={openAiField}
+              setOpenField={setOpenAiField}
+            >
+              <label className="widget-ai-field widget-ai-field-full">
+                <span>
+                  <FiSearch />
+                  Search language
+                </span>
+                <input
+                  type="text"
+                  value={languageSearch}
+                  onChange={(event) => setLanguageSearch(event.target.value)}
+                  placeholder="Search English, Norwegian, Spanish, Korean..."
+                />
+              </label>
+
+              <div className="widget-language-grid">
+                {filteredLanguageOptions.map((option) => {
+                  const isActive = assistantConfig.startLanguage === option.value
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`widget-language-button ${isActive ? 'active' : ''}`}
+                      onClick={() =>
+                        setAssistantConfig((prev) => ({
+                          ...prev,
+                          startLanguage: option.value,
+                        }))
+                      }
+                    >
+                      <strong>{option.label}</strong>
+                      <span>{isActive ? 'Selected' : 'Use this language'}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <p className="field-note">
+                When <strong>Reply in user language</strong> is on, this language is used for the first answer and then the assistant switches to the user's language.
+              </p>
+            </CollapsibleAiField>
+
+            <CollapsibleAiField
+              id="systemPrompt"
+              title="System prompt"
+              description="Guide for how the assistant should behave."
+              icon={FiCpu}
+              openField={openAiField}
+              setOpenField={setOpenAiField}
+            >
+              <AutoGrowTextarea
                 value={assistantConfig.systemPrompt}
                 onChange={(event) =>
                   setAssistantConfig((prev) => ({
@@ -505,28 +866,19 @@ export default function WidgetAdminPanel() {
                     systemPrompt: event.target.value,
                   }))
                 }
-                rows={4}
+                minRows={5}
               />
-            </label>
+            </CollapsibleAiField>
 
-            <label className="widget-ai-field widget-ai-field-full">
-              <span>Response style</span>
-              <input
-                type="text"
-                value={assistantConfig.responseStyle}
-                onChange={(event) =>
-                  setAssistantConfig((prev) => ({
-                    ...prev,
-                    responseStyle: event.target.value,
-                  }))
-                }
-                placeholder="Friendly, short, and direct"
-              />
-            </label>
-
-            <label className="widget-ai-field widget-ai-field-full">
-              <span>Business context</span>
-              <textarea
+            <CollapsibleAiField
+              id="businessContext"
+              title="Business context"
+              description="Facts, services, and company details."
+              icon={FiBriefcase}
+              openField={openAiField}
+              setOpenField={setOpenAiField}
+            >
+              <AutoGrowTextarea
                 value={assistantConfig.businessContext}
                 onChange={(event) =>
                   setAssistantConfig((prev) => ({
@@ -534,47 +886,20 @@ export default function WidgetAdminPanel() {
                     businessContext: event.target.value,
                   }))
                 }
-                rows={6}
+                minRows={6}
                 placeholder="Products, opening hours, services, refund policy, contact info, FAQs..."
               />
-            </label>
+            </CollapsibleAiField>
 
-            <label className="widget-ai-field widget-ai-field-full">
-              <span>FAQ suggestions</span>
-              <textarea
-                value={assistantConfig.faqSuggestions.join('\n')}
-                onChange={(event) =>
-                  setAssistantConfig((prev) => ({
-                    ...prev,
-                    faqSuggestions: event.target.value
-                      .split(/\n|,/)
-                      .map((entry) => entry.trim())
-                      .filter(Boolean),
-                  }))
-                }
-                rows={4}
-                placeholder={'What are your opening hours?\nHow do I contact support?\nWhat services do you offer?'}
-              />
-            </label>
-
-            <label className="widget-ai-field widget-ai-field-full">
-              <span>Restrictions</span>
-              <textarea
-                value={assistantConfig.restrictions}
-                onChange={(event) =>
-                  setAssistantConfig((prev) => ({
-                    ...prev,
-                    restrictions: event.target.value,
-                  }))
-                }
-                rows={4}
-                placeholder="Topics the AI should avoid or rules it must follow."
-              />
-            </label>
-
-            <label className="widget-ai-field widget-ai-field-full">
-              <span>Extra instructions</span>
-              <textarea
+            <CollapsibleAiField
+              id="extraInstructions"
+              title="Extra instructions"
+              description="Optional style notes and guardrails."
+              icon={FiZap}
+              openField={openAiField}
+              setOpenField={setOpenAiField}
+            >
+              <AutoGrowTextarea
                 value={assistantConfig.extraInstructions}
                 onChange={(event) =>
                   setAssistantConfig((prev) => ({
@@ -582,32 +907,65 @@ export default function WidgetAdminPanel() {
                     extraInstructions: event.target.value,
                   }))
                 }
-                rows={3}
+                minRows={3}
                 placeholder="Optional guardrails, style notes, or support routing instructions."
               />
-            </label>
+            </CollapsibleAiField>
 
-            <label className="widget-ai-field widget-ai-field-full">
-              <span>Support trigger keywords</span>
-              <input
-                type="text"
-                value={assistantConfig.supportTriggerKeywords.join(', ')}
+            <CollapsibleAiField
+              id="faqSuggestions"
+              title="FAQ suggestions"
+              description="Suggested questions shown above the chat input."
+              icon={FiHelpCircle}
+              openField={openAiField}
+              setOpenField={setOpenAiField}
+            >
+              <AutoGrowTextarea
+                value={assistantConfig.faqSuggestions.join('\n')}
                 onChange={(event) =>
                   setAssistantConfig((prev) => ({
                     ...prev,
-                    supportTriggerKeywords: event.target.value
-                      .split(',')
-                      .map((value) => value.trim())
+                    faqSuggestions: event.target.value
+                      .split(/\n|,/) 
+                      .map((entry) => entry.trim())
                       .filter(Boolean),
                   }))
                 }
-                placeholder="support, human, contact, call me"
+                minRows={4}
+                placeholder={'What are your opening hours?\nHow do I contact support?\nWhat services do you offer?'}
               />
-            </label>
+            </CollapsibleAiField>
 
-            <label className="widget-ai-field widget-ai-field-full">
-              <span>Human handoff message</span>
-              <textarea
+            <CollapsibleAiField
+              id="restrictions"
+              title="Restrictions"
+              description="Topics and rules the assistant should avoid."
+              icon={FiShield}
+              openField={openAiField}
+              setOpenField={setOpenAiField}
+            >
+              <AutoGrowTextarea
+                value={assistantConfig.restrictions}
+                onChange={(event) =>
+                  setAssistantConfig((prev) => ({
+                    ...prev,
+                    restrictions: event.target.value,
+                  }))
+                }
+                minRows={4}
+                placeholder="Topics the AI should avoid or rules it must follow."
+              />
+            </CollapsibleAiField>
+
+            <CollapsibleAiField
+              id="handoffMessage"
+              title="Human handoff message"
+              description="What users see when support is handed off."
+              icon={FiMessageSquare}
+              openField={openAiField}
+              setOpenField={setOpenAiField}
+            >
+              <AutoGrowTextarea
                 value={assistantConfig.handoffMessage}
                 onChange={(event) =>
                   setAssistantConfig((prev) => ({
@@ -615,12 +973,13 @@ export default function WidgetAdminPanel() {
                     handoffMessage: event.target.value,
                   }))
                 }
-                rows={3}
+                minRows={3}
               />
-            </label>
+            </CollapsibleAiField>
           </div>
         </section>
       </div>
     </div>
   )
 }
+

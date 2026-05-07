@@ -262,6 +262,7 @@ export async function GET(req: NextRequest) {
                 faqSuggestions: Array.isArray(data.chatAssistantConfig.faqSuggestions)
                   ? data.chatAssistantConfig.faqSuggestions
                   : [],
+                startLanguage: String(data.chatAssistantConfig.startLanguage || 'English'),
                 replyInUserLanguage: Boolean(data.chatAssistantConfig.replyInUserLanguage ?? true),
                 responseStyle: String(data.chatAssistantConfig.responseStyle || ''),
                 extraInstructions: String(data.chatAssistantConfig.extraInstructions || ''),

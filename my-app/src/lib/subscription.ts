@@ -5,6 +5,7 @@ export type SubscriptionPlan = ChatWidgetConfig['plan']
 export interface PlanLimits {
   maxDailyConversations: number | null
   maxTeamMembers: number | null
+  maxWidgets: number | null
   orbAvailable: boolean
   extendedDesignOptions: boolean
 }
@@ -13,18 +14,21 @@ const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
   free: {
     maxDailyConversations: 200,
     maxTeamMembers: 1,
+    maxWidgets: 1,
     orbAvailable: false,
     extendedDesignOptions: false,
   },
   pro: {
     maxDailyConversations: null,
     maxTeamMembers: 5,
+    maxWidgets: null,
     orbAvailable: true,
     extendedDesignOptions: true,
   },
   business: {
     maxDailyConversations: null,
     maxTeamMembers: null,
+    maxWidgets: null,
     orbAvailable: true,
     extendedDesignOptions: true,
   },

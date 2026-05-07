@@ -8,11 +8,13 @@ export interface Business {
   email: string;
   ownerId: string;
   chatWidgetKey: string;
+  activeChatWidgetKey?: string;
   createdAt: Date;
   updatedAt: Date;
   
   // Chat Widget spesifikt
   chatWidgetConfig?: ChatWidgetConfig;
+  chatWidgets?: ChatWidgetRecord[];
   chatAssistantConfig?: ChatAssistantConfig;
   chatAnalytics?: ChatAnalytics;
   supportTaskCategories?: SupportTaskCategory[];
@@ -35,6 +37,7 @@ export interface ChatAssistantConfig {
   handoffMessage: string;
   faqSuggestionsEnabled: boolean;
   faqSuggestions: string[];
+  startLanguage: string;
   replyInUserLanguage: boolean;
   responseStyle: string;
   extraInstructions: string;
@@ -232,6 +235,16 @@ export interface ChatWidgetConfig {
 
   // Security settings
   allowedDomains: string[];
+}
+
+export interface ChatWidgetRecord {
+  id: string;
+  widgetKey: string;
+  name: string;
+  config: ChatWidgetConfig;
+  isDefault: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // User - under businesses/{id}/users/{userId}

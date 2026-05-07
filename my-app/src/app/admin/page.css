@@ -14,8 +14,7 @@
 }
 
 .adminSidebar {
-  position: sticky;
-  top: 0;
+  position: relative;
   align-self: stretch;
   min-height: 100%;
   border-right: 1px solid rgba(148, 163, 184, 0.22);
@@ -25,6 +24,15 @@
   flex-direction: column;
   gap: 18px;
   overflow: visible;
+}
+
+.adminSidebarFollowScreen {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  min-height: 100vh;
+  z-index: 2;
 }
 
 .adminSidebarCollapsed {

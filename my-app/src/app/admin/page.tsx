@@ -9,7 +9,6 @@ import { FiArrowLeft, FiArrowRight, FiArrowUpRight, FiChevronLeft, FiChevronRigh
 import AdminAnalyticsPanel from './components/AdminAnalyticsPanel'
 import AdminChatsPanel from './components/AdminChatsPanel'
 import AdminFeedbackPanel from './components/AdminFeedbackPanel'
-import AdminExportTestPanel from './components/AdminExportTestPanel'
 import AdminUserManagementPanel from './components/AdminUserManagementPanel'
 import AdminTasksPanel from './components/AdminTasksPanel'
 import WidgetAdminPanel from './widget/page'
@@ -24,7 +23,6 @@ type AdminTab =
   | 'websites'
   | 'widgets'
   | 'feedback'
-  | 'export-test'
   | 'settings'
 
 type TutorialStep = {
@@ -67,7 +65,6 @@ export default function AdminPage() {
   const supportItems: Array<{ tab: AdminTab; label: string }> = [
     { tab: 'chats', label: 'Chats' },
     { tab: 'tasks', label: 'Tasks' },
-    { tab: 'export-test', label: 'Export Test' },
   ]
 
   const feedbackItems: Array<{ tab: AdminTab; label: string }> = [
@@ -97,7 +94,6 @@ export default function AdminPage() {
       'feedback',
       'chats',
       'tasks',
-      'export-test',
     ]
   }, [dbUser])
   const visibleSupportItems = supportItems.filter((item) => visibleTabs.includes(item.tab))
@@ -319,6 +315,7 @@ export default function AdminPage() {
           sidebarCollapsed ? 'adminPageSidebarCollapsed' : ''
         }`}
       >
+        <div className="adminSidebarFollowScreen">
         <aside className={`adminSidebar ${sidebarCollapsed ? 'adminSidebarCollapsed' : ''}`} ref={sidebarRef}>
           <button
             type="button"
@@ -408,6 +405,7 @@ export default function AdminPage() {
           </div>
           ) : null}
         </aside>
+        </div>
 
         <section className="adminContent">
           {activeTab === 'overview' && (
@@ -516,8 +514,6 @@ export default function AdminPage() {
               <WidgetAdminPanel />
             </div>
           )}
-
-          {activeTab === 'export-test' && <AdminExportTestPanel />}
 
           {activeTab === 'settings' && (
             <div className="infoCard">

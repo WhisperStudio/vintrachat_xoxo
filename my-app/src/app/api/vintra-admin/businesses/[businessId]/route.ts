@@ -28,6 +28,7 @@ export async function GET(
       businessRef.collection('users').get(),
       businessRef.collection('supportChats').orderBy('updatedAt', 'desc').limit(10).get(),
     ])
+    const widgetsSnap = await businessRef.collection('chatWidgets').orderBy('updatedAt', 'desc').get()
 
     return NextResponse.json({
       business: {
@@ -40,6 +41,17 @@ export async function GET(
         assistantConfig: data.chatAssistantConfig || null,
         analytics: data.chatAnalytics || null,
         categories: Array.isArray(data.supportTaskCategories) ? data.supportTaskCategories : [],
+        widgets: widgetsSnap.docs.map((docSnap) => {
+          const widget = docSnap.data()
+          return {
+            id: docSnap.id,
+            widgetKey: String(widget.widgetKey || docSnap.id),
+            name: String(widget.name || 'Chat Widget'),
+            isDefault: Boolean(widget.isDefault),
+            updatedAt: toIso(widget.updatedAt),
+            createdAt: toIso(widget.createdAt),
+          }
+        }),
         updatedAt: toIso(data.updatedAt),
         createdAt: toIso(data.createdAt),
       },
@@ -142,6 +154,9 @@ export async function PATCH(
           .map((value: string) => String(value).trim())
           .filter(Boolean)
       }
+      if (typeof assistant.startLanguage === 'string') {
+        updates['chatAssistantConfig.startLanguage'] = assistant.startLanguage.trim()
+      }
       if (typeof assistant.replyInUserLanguage === 'boolean') {
         updates['chatAssistantConfig.replyInUserLanguage'] = assistant.replyInUserLanguage
       }
@@ -197,11 +212,13 @@ export async function DELETE(
     const usersSnap = await businessRef.collection('users').get()
     const chatsSnap = await businessRef.collection('supportChats').get()
     const tasksSnap = await businessRef.collection('supportTasks').get()
+    const widgetsSnap = await businessRef.collection('chatWidgets').get()
 
     const batch = adminDb.batch()
     usersSnap.docs.forEach((docSnap) => batch.delete(docSnap.ref))
     chatsSnap.docs.forEach((docSnap) => batch.delete(docSnap.ref))
     tasksSnap.docs.forEach((docSnap) => batch.delete(docSnap.ref))
+    widgetsSnap.docs.forEach((docSnap) => batch.delete(docSnap.ref))
     batch.delete(businessRef)
 
     await batch.commit()

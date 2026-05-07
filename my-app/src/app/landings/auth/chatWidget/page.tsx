@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { FiCheck, FiCreditCard, FiRefreshCw, FiSave, FiSliders, FiMonitor, FiSmartphone } from 'react-icons/fi'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
-import { updateChatWidgetConfig } from '@/lib/auth.service'
+import { setActiveChatWidget, updateChatWidgetConfig } from '@/lib/auth.service'
 import { sanitizeBubbleStyleForPlan } from '@/lib/subscription'
-import type { BubbleIconChoice, OrbStyleConfig } from '@/types/database'
+import type { BubbleIconChoice, ChatWidgetConfig, OrbStyleConfig } from '@/types/database'
 import './ChatWidget.css'
 
 import PlanSelector from './components/PlanSelector'
@@ -146,6 +146,7 @@ export default function ChatWidgetBuilderPage() {
   const [inputs, setInputs] = useState<InputsState>(defaultInputs)
   const [hasLoadedDbConfig, setHasLoadedDbConfig] = useState(false)
   const [previewMode, setPreviewMode] = useState<PreviewMode>('desktop')
+  const [selectedWidgetKey, setSelectedWidgetKey] = useState('')
 
   const [openSections, setOpenSections] = useState({
     plan: false,
@@ -167,13 +168,21 @@ export default function ChatWidgetBuilderPage() {
     () => planPrices[inputs.plan][inputs.billingCycle],
     [inputs.plan, inputs.billingCycle]
   )
+  const widgetList = business?.chatWidgets || []
+  const selectedWidget = useMemo(() => {
+    if (!widgetList.length) return null
+    return (
+      widgetList.find((widget) => widget.widgetKey === selectedWidgetKey) ||
+      widgetList.find((widget) => widget.widgetKey === business?.activeChatWidgetKey) ||
+      widgetList[0] ||
+      null
+    )
+  }, [business?.activeChatWidgetKey, selectedWidgetKey, widgetList])
 
-  useEffect(() => {
-    if (!isAuthenticated || !business?.chatWidgetConfig || hasLoadedDbConfig) return
+  const applyWidgetConfig = (config: ChatWidgetConfig | undefined) => {
+    if (!config) return
 
-    const config = business.chatWidgetConfig
     const bubbleStyle = config.bubbleStyle || defaultInputs.bubbleStyle
-
     setInputs({
       plan: config.plan || defaultInputs.plan,
       billingCycle: config.billingCycle || defaultInputs.billingCycle,
@@ -201,9 +210,20 @@ export default function ChatWidgetBuilderPage() {
       },
       settings: config.settings || defaultInputs.settings,
     })
+  }
+
+  useEffect(() => {
+    if (!isAuthenticated || hasLoadedDbConfig) return
+
+    const widget = selectedWidget
+    const config = widget?.config || business?.chatWidgetConfig
+    if (!config) return
+    applyWidgetConfig(config)
+
+    setSelectedWidgetKey(widget?.widgetKey || business?.activeChatWidgetKey || business?.chatWidgetKey || '')
 
     setHasLoadedDbConfig(true)
-  }, [isAuthenticated, business, hasLoadedDbConfig])
+  }, [isAuthenticated, business, hasLoadedDbConfig, selectedWidget])
 
   useEffect(() => {
     if (inputs.plan !== 'free') return
@@ -243,6 +263,22 @@ export default function ChatWidgetBuilderPage() {
     resetBuilder()
   }
 
+  const handleSelectWidget = async (nextWidgetKey: string) => {
+    if (!dbUser?.businessId || !nextWidgetKey || nextWidgetKey === selectedWidgetKey) {
+      setSelectedWidgetKey(nextWidgetKey)
+      return
+    }
+
+    const widget = widgetList.find((entry) => entry.widgetKey === nextWidgetKey)
+    if (!widget) return
+
+    setSelectedWidgetKey(nextWidgetKey)
+    applyWidgetConfig(widget.config)
+
+    await setActiveChatWidget(dbUser.businessId, nextWidgetKey)
+    await refreshBusiness()
+  }
+
   const saveConfig = async () => {
     if (!isAuthenticated || !dbUser?.businessId) {
       router.push('/auth/login')
@@ -266,7 +302,7 @@ export default function ChatWidgetBuilderPage() {
         settings: inputs.settings,
       }
 
-      const result = await updateChatWidgetConfig(dbUser.businessId, newConfig)
+      const result = await updateChatWidgetConfig(dbUser.businessId, newConfig, selectedWidgetKey || undefined)
 
       if (result.success) {
         await refreshBusiness()
@@ -316,6 +352,34 @@ export default function ChatWidgetBuilderPage() {
             </span>{' '}
             and customize the chat bubble, header, body and footer styles.
           </p>
+
+          <div className="chatbuilder-widget-switcher">
+            <label htmlFor="builder-widget-select">Active widget</label>
+            <select
+              id="builder-widget-select"
+              value={selectedWidgetKey || business?.activeChatWidgetKey || business?.chatWidgetKey || ''}
+              onChange={(event) => void handleSelectWidget(event.target.value)}
+              disabled={!widgetList.length}
+            >
+              {widgetList.length ? (
+                widgetList.map((widget) => (
+                  <option key={widget.widgetKey} value={widget.widgetKey}>
+                    {widget.name}
+                    {widget.isDefault ? ' (default)' : ''}
+                  </option>
+                ))
+              ) : (
+                <option value="">No widgets yet</option>
+              )}
+            </select>
+            <span className="chatbuilder-widget-switcher-hint">
+              {widgetList.length > 1
+                ? `Editing ${widgetList.length} widgets.`
+                : inputs.plan === 'free'
+                  ? 'Free plans keep a single widget.'
+                  : 'Pro and Enterprise can add more widgets.'}
+            </span>
+          </div>
 
         </section>
 
