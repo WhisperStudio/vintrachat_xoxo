@@ -389,6 +389,12 @@ export default function WidgetAdminPanel() {
   const saveAllowedDomains = async () => {
     if (!dbUser?.businessId) return
 
+    const targetWidgetKey = selectedWidgetKey || business?.activeChatWidgetKey || business?.chatWidgetKey || ''
+    if (!targetWidgetKey) {
+      setDomainsStatus('error')
+      return
+    }
+
     setDomainsSaving(true)
     setDomainsStatus('idle')
 
@@ -397,14 +403,19 @@ export default function WidgetAdminPanel() {
       ...(config || {}),
       allowedDomains: parsedDomains,
     } as Partial<ChatWidgetConfig>
-    const result = await updateChatWidgetConfig(dbUser.businessId, {
-      ...nextConfig,
-    }, selectedWidgetKey || undefined)
+    const result = await updateChatWidgetConfig(
+      dbUser.businessId,
+      {
+        ...nextConfig,
+      },
+      targetWidgetKey
+    )
 
     setDomainsSaving(false)
     setDomainsStatus(result.success ? 'saved' : 'error')
 
     if (result.success) {
+      setSelectedWidgetKey(targetWidgetKey)
       setConfig((prev) => (prev ? { ...prev, allowedDomains: parsedDomains } : ({ ...nextConfig } as ChatWidgetConfig)))
       setAllowedDomainsText(parsedDomains.join('\n'))
       if (typeof window !== 'undefined') {
@@ -543,6 +554,8 @@ export default function WidgetAdminPanel() {
           <label className="widget-admin-field">
             <span>New widget name</span>
             <input
+              id="new-widget-name"
+              name="new-widget-name"
               type="text"
               value={newWidgetName}
               onChange={(event) => setNewWidgetName(event.target.value)}
@@ -553,6 +566,8 @@ export default function WidgetAdminPanel() {
           <label className="widget-admin-field">
             <span>Select widget</span>
             <select
+              id="select-widget"
+              name="select-widget"
               value={activeWidgetKey}
               onChange={(event) => void handleWidgetChange(event.target.value)}
               disabled={!widgetList.length}
@@ -694,6 +709,8 @@ export default function WidgetAdminPanel() {
             <label className="widget-ai-field widget-ai-field-full">
               <span>Allowed domains</span>
               <AutoGrowTextarea
+                id="allowed-domains"
+                name="allowed-domains"
                 value={allowedDomainsText}
                 onChange={(event) => setAllowedDomainsText(event.target.value)}
                 minRows={5}
@@ -733,6 +750,8 @@ export default function WidgetAdminPanel() {
             <label className="widget-ai-field widget-ai-toggle">
               <span><FiCpu /> Enable AI replies</span>
               <input
+                id="assistant-enabled"
+                name="assistant-enabled"
                 type="checkbox"
                 checked={assistantConfig.enabled}
                 onChange={(event) =>
@@ -747,6 +766,8 @@ export default function WidgetAdminPanel() {
             <label className="widget-ai-field widget-ai-toggle">
               <span><FiShield /> Strict context only</span>
               <input
+                id="assistant-strict-context"
+                name="assistant-strict-context"
                 type="checkbox"
                 checked={assistantConfig.strictContextOnly}
                 onChange={(event) =>
@@ -761,6 +782,8 @@ export default function WidgetAdminPanel() {
             <label className="widget-ai-field widget-ai-toggle">
               <span><FiGlobe /> Reply in user language</span>
               <input
+                id="assistant-reply-user-language"
+                name="assistant-reply-user-language"
                 type="checkbox"
                 checked={assistantConfig.replyInUserLanguage}
                 onChange={(event) =>
@@ -775,6 +798,8 @@ export default function WidgetAdminPanel() {
             <label className="widget-ai-field widget-ai-toggle">
               <span><FiHelpCircle /> FAQ suggestions</span>
               <input
+                id="assistant-faq-suggestions"
+                name="assistant-faq-suggestions"
                 type="checkbox"
                 checked={assistantConfig.faqSuggestionsEnabled}
                 onChange={(event) =>
@@ -815,6 +840,8 @@ export default function WidgetAdminPanel() {
                   Search language
                 </span>
                 <input
+                  id="language-search"
+                  name="language-search"
                   type="text"
                   value={languageSearch}
                   onChange={(event) => setLanguageSearch(event.target.value)}
@@ -859,6 +886,8 @@ export default function WidgetAdminPanel() {
               setOpenField={setOpenAiField}
             >
               <AutoGrowTextarea
+                id="system-prompt"
+                name="system-prompt"
                 value={assistantConfig.systemPrompt}
                 onChange={(event) =>
                   setAssistantConfig((prev) => ({
@@ -879,6 +908,8 @@ export default function WidgetAdminPanel() {
               setOpenField={setOpenAiField}
             >
               <AutoGrowTextarea
+                id="business-context"
+                name="business-context"
                 value={assistantConfig.businessContext}
                 onChange={(event) =>
                   setAssistantConfig((prev) => ({
@@ -900,6 +931,8 @@ export default function WidgetAdminPanel() {
               setOpenField={setOpenAiField}
             >
               <AutoGrowTextarea
+                id="extra-instructions"
+                name="extra-instructions"
                 value={assistantConfig.extraInstructions}
                 onChange={(event) =>
                   setAssistantConfig((prev) => ({
@@ -921,6 +954,8 @@ export default function WidgetAdminPanel() {
               setOpenField={setOpenAiField}
             >
               <AutoGrowTextarea
+                id="faq-suggestions"
+                name="faq-suggestions"
                 value={assistantConfig.faqSuggestions.join('\n')}
                 onChange={(event) =>
                   setAssistantConfig((prev) => ({
@@ -945,6 +980,8 @@ export default function WidgetAdminPanel() {
               setOpenField={setOpenAiField}
             >
               <AutoGrowTextarea
+                id="restrictions"
+                name="restrictions"
                 value={assistantConfig.restrictions}
                 onChange={(event) =>
                   setAssistantConfig((prev) => ({
@@ -966,6 +1003,8 @@ export default function WidgetAdminPanel() {
               setOpenField={setOpenAiField}
             >
               <AutoGrowTextarea
+                id="handoff-message"
+                name="handoff-message"
                 value={assistantConfig.handoffMessage}
                 onChange={(event) =>
                   setAssistantConfig((prev) => ({

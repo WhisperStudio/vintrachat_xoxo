@@ -62,6 +62,8 @@ export default function FeedbackFormOverlay({
         <label className="widget-feedback-field">
           <span>Your feedback</span>
           <textarea
+            id="widget-feedback-text"
+            name="widget-feedback-text"
             value={text}
             onChange={(event) => onTextChange(event.target.value)}
             rows={5}

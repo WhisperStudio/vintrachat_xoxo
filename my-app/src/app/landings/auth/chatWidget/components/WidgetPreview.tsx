@@ -549,12 +549,14 @@ export default function WidgetPreview({
               </div>
             )}
 
-            <div className={footerClasses}>
-              <textarea
-                ref={inputRef}
-                placeholder={footerStyle.showPlaceholder ? 'Write a message...' : ''}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
+              <div className={footerClasses}>
+                <textarea
+                  id="widget-message-input"
+                  name="widget-message-input"
+                  ref={inputRef}
+                  placeholder={footerStyle.showPlaceholder ? 'Write a message...' : ''}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault()
