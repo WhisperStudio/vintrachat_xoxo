@@ -168,7 +168,7 @@ const widgetStyles = `
 .vintra-root.viewport-mobile .widget-faq-suggestions {
   flex-wrap: nowrap;
   overflow-x: auto;
-  padding: 0 0.95rem 0.25rem;
+  padding: 0;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
@@ -182,9 +182,19 @@ const widgetStyles = `
 }
 
 .vintra-root.viewport-mobile .chat-footer {
-  align-items: flex-end;
-  gap: 0.65rem;
+  align-items: stretch;
+  flex-direction: column;
+  gap: 0.6rem;
   padding: 0.85rem 0.95rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
+}
+
+.vintra-root.viewport-mobile .chat-footer-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+  order: 1;
+  position: relative;
+  z-index: 2;
 }
 
 .vintra-root.viewport-mobile .chat-footer textarea,
@@ -196,6 +206,22 @@ const widgetStyles = `
 .vintra-root.viewport-mobile .chat-footer textarea {
   resize: none;
   overflow: hidden;
+}
+
+.vintra-root.viewport-mobile .chat-footer .widget-faq-suggestions {
+  display: none;
+  order: 0;
+  position: relative;
+  z-index: 3;
+  margin-bottom: 0.15rem;
+}
+
+.vintra-root.viewport-mobile .chat-footer.chat-footer--expanded .widget-faq-suggestions {
+  display: flex;
+}
+
+.vintra-root.viewport-mobile .chat-footer.chat-footer--has-value .widget-faq-suggestions {
+  display: none;
 }
 
 .vintra-root.viewport-mobile .chat-footer button {
@@ -459,6 +485,7 @@ export async function GET(
     feedbackText: '',
     feedbackSubmitting: false,
     faqSuggestions: [],
+    composerFocused: false,
     compactViewport: false,
     keyboardOffset: 0,
     orbInactiveActive: false,
@@ -804,6 +831,31 @@ export async function GET(
     });
   }
 
+  function syncComposerMode() {
+    var footer = mount.querySelector('.chat-footer');
+    var input = mount.querySelector('.chat-footer textarea');
+    var suggestions = mount.querySelector('.chat-footer .widget-faq-suggestions');
+    var hasValue = countCharacters(String(state.inputValue || '').trim()) > 0;
+    var expanded = Boolean(state.open && state.composerFocused && !hasValue);
+
+    if (footer) {
+      footer.classList.toggle('chat-footer--focused', Boolean(state.composerFocused));
+      footer.classList.toggle('chat-footer--expanded', expanded);
+      footer.classList.toggle('chat-footer--has-value', hasValue);
+    }
+
+    if (suggestions) {
+      suggestions.hidden = !expanded || !state.faqSuggestions.length;
+    }
+
+    if (input) {
+      input.style.height = expanded ? 'auto' : '52px';
+      if (expanded) {
+        input.style.height = Math.max(52, input.scrollHeight) + 'px';
+      }
+    }
+  }
+
   function getPosition(config) {
     return config && config.position === 'bottom-left' ? 'bottom-left' : 'bottom-right';
   }
@@ -1087,6 +1139,19 @@ export async function GET(
     if (widgetActionsBound) return;
     widgetActionsBound = true;
 
+    mount.addEventListener('pointerdown', function (event) {
+      var target = event.target;
+      if (!target || !target.closest) return;
+
+      if (target.closest('.chat-footer')) {
+        state.composerFocused = true;
+      } else {
+        state.composerFocused = false;
+      }
+
+      syncComposerMode();
+    });
+
     mount.addEventListener('click', function (event) {
       var target = event.target;
       if (!target || !target.closest) return;
@@ -1100,6 +1165,10 @@ export async function GET(
           state.hasOpenedOnce = true;
           state.hasUnreadWhileClosed = false;
           refreshFaqSuggestions();
+          state.composerFocused = false;
+        }
+        if (!state.open) {
+          state.composerFocused = false;
         }
         render();
         return;
@@ -1107,6 +1176,7 @@ export async function GET(
 
       if (button.classList.contains('close-btn')) {
         state.open = false;
+        state.composerFocused = false;
         render();
         return;
       }
@@ -1207,7 +1277,7 @@ export async function GET(
           'border-' + (headerStyle.borderType || 'none'),
           'shadow-' + (headerStyle.shadowType || 'none'),
           'messages-' + (bodyStyle.messageStyle || 'bubble')
-        ]) + '">' +
+        ]) + '"' + (shouldShowWidget ? '' : ' hidden aria-hidden="true"') + '>' +
           '<div class="chat-content">' +
           '<div class="chat-header">' +
             '<div class="chat-header-left">' +
@@ -1225,18 +1295,20 @@ export async function GET(
           '<div class="' + classes(['chat-body', 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '">' +
             getMessagesMarkup(config) +
           '</div>' +
-          getFaqSuggestionsMarkup() +
           '<div class="' + classes([
             'chat-footer',
             'border-' + (footerStyle.borderType || 'none'),
             'shadow-' + (footerStyle.shadowType || 'none'),
             'input-' + (footerStyle.inputStyle || 'flat')
           ]) + '">' +
-            '<textarea rows="1" ' +
-              ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled ' : '') +
-              'value="' + escapeHtml(truncateTextByCharacters(String(state.inputValue || ''), MAX_WIDGET_MESSAGE_CHARS)) + '" ' +
-              'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : (state.awaitingVisitorName ? 'Write your name to contact human support...' : (state.supportStatus === 'needs-human' ? 'Waiting for human support...' : 'Write a message...'))) + '"></textarea>' +
-            (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled' : '') + '>' + icons.send + '</button>') +
+            getFaqSuggestionsMarkup() +
+            '<div class="chat-footer-row">' +
+              '<textarea rows="1" ' +
+                ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled ' : '') +
+                'value="' + escapeHtml(truncateTextByCharacters(String(state.inputValue || ''), MAX_WIDGET_MESSAGE_CHARS)) + '" ' +
+                'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : (state.awaitingVisitorName ? 'Write your name to contact human support...' : (state.supportStatus === 'needs-human' ? 'Waiting for human support...' : 'Write a message...'))) + '"></textarea>' +
+              (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled' : '') + '>' + icons.send + '</button>') +
+            '</div>' +
           '</div>' +
           (state.awaitingVisitorName ? '<div class="name-request-hint">Please write your name to connect with human support.</div>' : '') +
           (state.error ? '<div class="widget-inline-error">' + escapeHtml(state.error) + '</div>' : '') +
@@ -1274,6 +1346,7 @@ export async function GET(
       '</div>';
 
     applyThemeVars(mount.querySelector('.vintra-stack'), theme);
+    syncComposerMode();
 
     var bubbleButton = mount.querySelector('.widget-icon');
     var input = mount.querySelector('textarea');
@@ -1294,14 +1367,23 @@ export async function GET(
     }
 
     if (input) {
+      input.addEventListener('focus', function () {
+        state.composerFocused = true;
+        syncComposerMode();
+      });
+
+      input.addEventListener('blur', function () {
+        state.composerFocused = false;
+        syncComposerMode();
+      });
+
       input.addEventListener('input', function (event) {
         var nextValue = truncateTextByCharacters(String(event.target.value || ''), MAX_WIDGET_MESSAGE_CHARS);
         if (event.target && event.target.value !== nextValue) {
           event.target.value = nextValue;
         }
         state.inputValue = nextValue;
-        input.style.height = 'auto';
-        input.style.height = input.scrollHeight + 'px';
+        syncComposerMode();
         markOrbActivity();
       });
 

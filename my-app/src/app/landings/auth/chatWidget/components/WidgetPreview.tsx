@@ -171,6 +171,7 @@ export default function WidgetPreview({
   const [internalFeedbackSubmitting, setInternalFeedbackSubmitting] = useState(false)
   const [internalErrorMessage, setInternalErrorMessage] = useState<string | null>(null)
   const [faqSuggestionNonce, setFaqSuggestionNonce] = useState(0)
+  const [isComposerFocused, setIsComposerFocused] = useState(false)
 
   const isChatOpen = openOverride ?? internalIsChatOpen
   const messages = messagesOverride ?? internalMessages
@@ -216,6 +217,9 @@ export default function WidgetPreview({
     },
   }
   const showFaqSuggestions = isChatOpen && faqSuggestionsEnabled && activeFaqSuggestions.length > 0
+  const showComposerSuggestions =
+    showFaqSuggestions && isComposerFocused && countChars(String(inputValue ?? '').trim()) === 0
+  const composerHasText = countChars(String(inputValue ?? '').trim()) > 0
   const visibleErrorMessage = errorMessage || internalErrorMessage
 
   const setIsChatOpen = (value: boolean | ((prev: boolean) => boolean)) => {
@@ -259,14 +263,21 @@ export default function WidgetPreview({
     window.requestAnimationFrame(() => {
       node.scrollTop = node.scrollHeight
     })
-  }, [messages, isChatOpen, showFaqSuggestions, keyboardOffset])
+  }, [messages, isChatOpen, showComposerSuggestions, keyboardOffset])
 
   useEffect(() => {
     const node = inputRef.current
     if (!node) return
+    const baseHeight = 52
+
+    if (!isComposerFocused) {
+      node.style.height = `${baseHeight}px`
+      return
+    }
+
     node.style.height = 'auto'
-    node.style.height = `${node.scrollHeight}px`
-  }, [inputValue])
+    node.style.height = `${Math.max(baseHeight, node.scrollHeight)}px`
+  }, [inputValue, isComposerFocused])
 
   const handleSend = (messageOverride?: string) => {
     const nextText = String(messageOverride ?? inputValue ?? '').trim()
@@ -393,6 +404,12 @@ export default function WidgetPreview({
   }, [bubbleStyle.iconChoice, orbSettings.hoverEnabled])
 
   useEffect(() => {
+    if (!isChatOpen) {
+      setIsComposerFocused(false)
+    }
+  }, [isChatOpen])
+
+  useEffect(() => {
     if (bubbleStyle.iconChoice !== 'orb' || !orbSettings.inactiveEnabled) {
       setOrbInactiveActive(false)
       return
@@ -462,7 +479,19 @@ export default function WidgetPreview({
     >
       <div className={`floating-chat-preview ${themeClass}`} style={themeVars as CSSProperties}>
         <div className="widgetcontainer">
-          <div className={`chat-widget ${isChatOpen ? 'open' : ''}`}>
+          <div className={`chat-widget ${isChatOpen ? 'open' : ''}`} hidden={!isChatOpen} aria-hidden={!isChatOpen}>
+            <div
+              className="chat-widget-interaction-surface"
+              onPointerDownCapture={(event) => {
+                const target = event.target as HTMLElement | null
+                if (!target) return
+                if (target.closest('.chat-footer')) {
+                  setIsComposerFocused(true)
+                  return
+                }
+                setIsComposerFocused(false)
+              }}
+            >
             <div className="chat-header">
               <div className="chat-header-left">
                 {headerStyle.showAvatar && (
@@ -533,46 +562,50 @@ export default function WidgetPreview({
               ))}
             </div>
 
-            {showFaqSuggestions && (
-              <div className="widget-faq-suggestions" aria-label="Suggested questions">
-                {activeFaqSuggestions.map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    type="button"
-                    className="widget-faq-chip"
-                    onClick={() => handleSend(suggestion)}
-                    disabled={disableInput}
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className={footerClasses}>
+              {showComposerSuggestions && (
+                <div className="widget-faq-suggestions" aria-label="Suggested questions">
+                  {activeFaqSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      className="widget-faq-chip"
+                      onClick={() => handleSend(suggestion)}
+                      disabled={disableInput}
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-              <div className={footerClasses}>
+              <div className="chat-footer-row">
                 <textarea
                   id="widget-message-input"
                   name="widget-message-input"
                   ref={inputRef}
                   placeholder={footerStyle.showPlaceholder ? 'Write a message...' : ''}
                   value={inputValue}
+                  onFocus={() => setIsComposerFocused(true)}
+                  onBlur={() => setIsComposerFocused(false)}
                   onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    handleSend()
-                  }
-                }}
-                aria-describedby="widget-message-limit"
-                disabled={disableInput}
-                rows={1}
-              />
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      handleSend()
+                    }
+                  }}
+                  aria-describedby="widget-message-limit"
+                  disabled={disableInput}
+                  rows={1}
+                />
 
-              {footerStyle.showSendButton && (
-                <button type="button" onClick={() => handleSend()} disabled={disableInput}>
-                  <FiSend />
-                </button>
-              )}
+                {footerStyle.showSendButton && (
+                  <button type="button" onClick={() => handleSend()} disabled={disableInput}>
+                    <FiSend />
+                  </button>
+                )}
+              </div>
             </div>
 
             {visibleErrorMessage && <div className="widget-inline-error">{visibleErrorMessage}</div>}
@@ -591,6 +624,7 @@ export default function WidgetPreview({
               onSubmit={activeFeedbackOverlay.onSubmit}
               onClose={activeFeedbackOverlay.onClose}
             />
+            </div>
           </div>
 
           <div

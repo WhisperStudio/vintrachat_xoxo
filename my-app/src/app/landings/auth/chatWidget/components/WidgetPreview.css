@@ -342,12 +342,14 @@
 .chat-widget {
   --widget-scale: 1;
   position: relative;
+  display: none;
   overflow: hidden;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 24px;
   background: #fff;
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
   opacity: 0;
+  visibility: hidden;
   transform: translateY(10px) scale(var(--widget-scale));
   transform-origin: bottom right;
   transition:
@@ -357,7 +359,22 @@
     border-radius 0.25s ease,
     background 0.25s ease;
   will-change: transform, opacity;
-  pointer-events: auto;
+  pointer-events: none;
+}
+
+.chat-widget[hidden],
+.chat-widget:not(.open) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  max-width: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  z-index: -1 !important;
 }
 
 .chat-content {
@@ -388,8 +405,16 @@
 }
 
 .chat-widget.open {
+  display: block;
+  visibility: visible;
   opacity: 1;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
   transform: translateY(calc(-110px - var(--widget-keyboard-offset, 0px))) scale(var(--widget-scale));
+  pointer-events: auto;
+  z-index: 1;
 }
 
 .chat-header {
@@ -514,7 +539,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  padding: 0 1rem 0.25rem;
+  padding: 0;
 }
 
 .widget-faq-chip {
@@ -582,10 +607,36 @@
   right: 0;
   bottom: 0;
   display: flex;
-  gap: 0.7rem;
-  align-items: flex-end;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: stretch;
   padding: 1rem;
   pointer-events: none;
+  z-index: 2;
+}
+
+.chat-footer .widget-faq-suggestions {
+  display: none;
+  order: 0;
+  position: relative;
+  z-index: 3;
+  margin-bottom: 0.15rem;
+}
+
+.chat-footer.chat-footer--expanded .widget-faq-suggestions {
+  display: flex;
+}
+
+.chat-footer.chat-footer--has-value .widget-faq-suggestions {
+  display: none;
+}
+
+.chat-footer-row {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-end;
+  order: 1;
+  position: relative;
   z-index: 2;
 }
 
@@ -608,6 +659,7 @@
   line-height: 1.45;
   min-height: 48px;
   background: transparent;
+  transition: height 0.18s ease, min-height 0.18s ease, padding 0.18s ease;
 }
 
 .chat-footer button {
@@ -1000,7 +1052,7 @@
   .chat-footer {
     gap: 0.55rem;
     padding: 0.8rem;
-    align-items: flex-end;
+    align-items: stretch;
   }
 
   .chat-footer textarea,
@@ -1011,6 +1063,10 @@
 
   .chat-footer textarea {
     overflow: hidden;
+  }
+
+  .chat-footer-row {
+    gap: 0.6rem;
   }
 }
 
@@ -1487,7 +1543,7 @@
   }
 
   .chat-footer {
-    align-items: flex-end;
+    align-items: stretch;
     padding-top: 0.85rem;
   }
 
