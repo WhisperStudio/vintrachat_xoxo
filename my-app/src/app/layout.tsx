@@ -77,6 +77,7 @@ export default function RootLayout({
         <AuthProvider>
           <AppShell>{children}</AppShell>
         </AuthProvider>
+        <script src="https://chat.vintrastudio.com/widget/GIN6CPbnBnbTOoEPU3wctBqr.js"></script>
       </body>
     </html>
   )

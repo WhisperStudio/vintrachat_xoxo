@@ -1029,8 +1029,8 @@ export async function GET(
     var response = await fetch(ORIGIN + '/api/widget/embed-token?key=' + encodeURIComponent(WIDGET_KEY), {
       method: 'GET',
       mode: 'cors',
+      cache: 'no-store',
       headers: {
-        'X-Vintra-Embed-Token': EMBED_TOKEN,
         ...(DEBUG_MODE ? { 'X-Vintra-Debug': '1' } : {})
       }
     });
