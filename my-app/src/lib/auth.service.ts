@@ -646,20 +646,20 @@ export async function signInWithEmail(email: string, password: string) {
 // ----------------------
 export async function requestPasswordReset(email: string) {
   try {
-    const token = generateToken();
-    
-    // Lagre token i pending_password_resets
-    await setDoc(doc(collection(db, "pending_password_resets")), {
-      email,
-      token,
-      createdAt: serverTimestamp(),
-      expiresAt: new Date(Date.now() + 3600000), // 1 hour
+    const response = await fetch("/api/auth/request-password-reset", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email }),
     });
-    
-    // Send email (implementer senere)
-    console.log(`Password reset token for ${email}: ${token}`);
-    
-    return { success: true };
+
+    const data = await response.json();
+
+    return {
+      success: Boolean(response.ok && data.success),
+      message: data.message,
+    };
   } catch (err: any) {
     return { success: false, message: err.message };
   }
@@ -670,6 +670,21 @@ export async function requestPasswordReset(email: string) {
 // ----------------------
 export async function resetPassword(token: string, newPassword: string) {
   try {
+    const response = await fetch("/api/auth/reset-password", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token, newPassword }),
+    });
+
+    const data = await response.json();
+
+    return {
+      success: Boolean(response.ok && data.success),
+      message: data.message,
+    };
+
     const q = query(
       collection(db, "pending_password_resets"),
       where("token", "==", token),

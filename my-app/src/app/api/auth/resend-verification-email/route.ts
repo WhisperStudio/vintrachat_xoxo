@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { adminDb } from "@/lib/firebase-admin";
+import { buildVerificationEmail } from "@/lib/auth-email";
 
 function generateToken(length: number = 30): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -13,51 +14,52 @@ export async function POST(req: NextRequest) {
   try {
     const { email } = await req.json();
 
-    if (!email) return NextResponse.json({ success: true });
-
-    const userQuery = await adminDb
-      .collection("users")
-      .where("email", "==", email)
-      .get();
-
-    if (userQuery.empty) return NextResponse.json({ success: true });
-
-    const userDoc = userQuery.docs[0];
-    const user = userDoc.data();
-
-    if (user.emailVerified) {
-      return NextResponse.json({
-        success: false,
-        message: "Email allerede verifisert",
-      });
+    if (!email) {
+      return NextResponse.json({ success: true });
     }
 
+    const pendingQuery = await adminDb
+      .collection("pending_auth")
+      .where("email", "==", String(email).trim())
+      .limit(1)
+      .get();
+
+    if (pendingQuery.empty) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "No pending verification was found for this email.",
+        },
+        { status: 404 }
+      );
+    }
+
+    const pendingDoc = pendingQuery.docs[0];
+    const pendingUser = pendingDoc.data();
     const token = generateToken();
 
-    await userDoc.ref.update({
-      emailVerificationToken: token,
-      emailVerificationTokenExpiry: new Date(
-        Date.now() + 24 * 60 * 60 * 1000
-      ),
-    });
+    await pendingDoc.ref.update({ token });
 
     const resend = new Resend(process.env.RESEND_API_KEY!);
-
     const link = `${process.env.NEXT_PUBLIC_APP_URL}/auth/verify-email?token=${token}`;
+    const message = buildVerificationEmail({
+      verificationLink: link,
+      recipientName: pendingUser.displayName,
+    });
 
     await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL!,
-      to: email,
-      subject: "Verifiser email",
-      html: `
-        <h2>Verifiser email</h2>
-        <a href="${link}">Klikk her for å verifisere</a>
-      `,
+      to: String(email).trim(),
+      subject: message.subject,
+      html: message.html,
     });
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error("Resend verification error:", err);
-    return NextResponse.json({ success: false }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: "Could not resend verification email." },
+      { status: 500 }
+    );
   }
 }

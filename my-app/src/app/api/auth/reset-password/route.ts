@@ -1,72 +1,79 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb, adminAuth } from "@/lib/firebase-admin";
+import { adminAuth, adminDb } from "@/lib/firebase-admin";
+
+function toDate(value: unknown) {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "toDate" in value &&
+    typeof (value as { toDate?: unknown }).toDate === "function"
+  ) {
+    return (value as { toDate: () => Date }).toDate();
+  }
+
+  const parsed = new Date(String(value));
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const { uid, token, newPassword } = await req.json();
+    const { token, newPassword } = await req.json();
 
-    if (!uid || !token || !newPassword) {
+    if (!token || !newPassword) {
       return NextResponse.json(
         { success: false, message: "Missing fields" },
         { status: 400 }
       );
     }
 
-    const userDoc = await adminDb.collection("users").doc(uid).get();
-
-    if (!userDoc.exists) {
+    if (String(newPassword).length < 6) {
       return NextResponse.json(
-        { success: false, message: "User not found" },
+        { success: false, message: "Password must be at least 6 characters." },
+        { status: 400 }
+      );
+    }
+
+    const resetQuery = await adminDb
+      .collection("pending_password_resets")
+      .where("token", "==", String(token))
+      .limit(1)
+      .get();
+
+    if (resetQuery.empty) {
+      return NextResponse.json(
+        { success: false, message: "Invalid or expired reset link." },
         { status: 404 }
       );
     }
 
-    const user = userDoc.data();
+    const resetDoc = resetQuery.docs[0];
+    const resetData = resetDoc.data();
+    const expiry = toDate(resetData.expiresAt);
 
-    // 🔥 FIX: check user exists
-    if (!user) {
+    if (!expiry || new Date() > expiry) {
+      await resetDoc.ref.delete();
       return NextResponse.json(
-        { success: false, message: "User data missing" },
-        { status: 500 }
-      );
-    }
-
-    if (user.passwordResetToken !== token) {
-      return NextResponse.json(
-        { success: false, message: "Invalid token" },
+        { success: false, message: "Invalid or expired reset link." },
         { status: 400 }
       );
     }
 
-    // 🔥 FIX: safe handling of expiry
-    if (!user.passwordResetTokenExpiry) {
-      return NextResponse.json(
-        { success: false, message: "Token missing expiry" },
-        { status: 400 }
-      );
-    }
-
-    const expiry = new Date(user.passwordResetTokenExpiry);
-
-    if (new Date() > expiry) {
-      return NextResponse.json(
-        { success: false, message: "Token expired" },
-        { status: 400 }
-      );
-    }
+    const uid =
+      typeof resetData.uid === "string" && resetData.uid
+        ? resetData.uid
+        : (await adminAuth.getUserByEmail(String(resetData.email))).uid;
 
     await adminAuth.updateUser(uid, {
-      password: newPassword,
+      password: String(newPassword),
     });
 
-    await userDoc.ref.update({
-      passwordResetToken: "",
-      passwordResetTokenExpiry: null,
-    });
+    await resetDoc.ref.delete();
 
     return NextResponse.json({
       success: true,
-      message: "Password updated",
+      message: "Password updated.",
     });
   } catch (err: any) {
     console.error("Reset password error:", err);

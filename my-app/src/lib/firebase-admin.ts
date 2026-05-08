@@ -4,7 +4,7 @@ const projectId = process.env.FIREBASE_PROJECT_ID;
 const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
 const privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-function getAdminApp() {
+function requireAdminApp() {
   if (!projectId || !clientEmail || !privateKey) {
     throw new Error("Missing Firebase environment variables");
   }
@@ -22,7 +22,22 @@ function getAdminApp() {
   return admin.app();
 }
 
-const app = getAdminApp();
+export function getAdminAuth() {
+  return admin.auth(requireAdminApp());
+}
 
-export const adminAuth = admin.auth(app);
-export const adminDb = admin.firestore(app);
+export function getAdminDb() {
+  return admin.firestore(requireAdminApp());
+}
+
+export const adminAuth = new Proxy({} as admin.auth.Auth, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getAdminAuth() as object, prop, receiver);
+  },
+});
+
+export const adminDb = new Proxy({} as admin.firestore.Firestore, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getAdminDb() as object, prop, receiver);
+  },
+});

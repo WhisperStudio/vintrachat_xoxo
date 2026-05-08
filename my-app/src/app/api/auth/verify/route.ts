@@ -1,20 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { initializeApp, cert, getApps } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
-
-if (!getApps().length) {
-  initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-    }),
-  });
-}
-
-const auth = getAuth();
-const db = getFirestore();
+import { adminAuth, adminDb } from "@/lib/firebase-admin";
 
 export async function GET(req: NextRequest) {
   try {
@@ -27,7 +12,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/error`);
     }
 
-    const querySnap = await db
+    const querySnap = await adminDb
       .collection("pendingUsers")
       .where("token", "==", token)
       .get();
@@ -44,13 +29,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/rejected`);
     }
 
-    const userRecord = await auth.createUser({
+    const userRecord = await adminAuth.createUser({
       email: data.email,
       password: data.password,
       displayName: data.displayName,
     });
 
-    await db.collection("users").doc(userRecord.uid).set({
+    await adminDb.collection("users").doc(userRecord.uid).set({
       ...data,
       id: userRecord.uid,
       emailVerified: true,
