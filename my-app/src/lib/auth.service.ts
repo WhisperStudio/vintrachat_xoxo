@@ -17,11 +17,8 @@ import {
   updateDoc,
   serverTimestamp,
   collection,
-  collectionGroup,
   query,
   where,
-  orderBy,
-  limit,
   getDocs,
   deleteDoc,
 } from "firebase/firestore";
@@ -284,10 +281,23 @@ function mapWidgetRecord(docSnap: { id: string; data: () => any }): ChatWidgetRe
     widgetKey: String(data.widgetKey || docSnap.id),
     name: String(data.name || 'Chat Widget'),
     config: (data.config || data.chatWidgetConfig || buildDefaultWidgetConfig(String(data.name || 'Chat Widget'))) as ChatWidgetConfig,
+    assistantConfig: data.assistantConfig as ChatAssistantConfig | undefined,
     isDefault: Boolean(data.isDefault),
-    createdAt: data.createdAt?.toDate?.() || new Date(),
-    updatedAt: data.updatedAt?.toDate?.() || new Date(),
+    createdAt: data.createdAt?.toDate?.() || new Date(0),
+    updatedAt: data.updatedAt?.toDate?.() || new Date(0),
   }
+}
+
+function sortChatWidgetsByCreation(widgets: ChatWidgetRecord[]) {
+  return [...widgets].sort((left, right) => {
+    const leftTime = left.createdAt?.getTime?.() || 0
+    const rightTime = right.createdAt?.getTime?.() || 0
+
+    if (leftTime !== rightTime) return leftTime - rightTime
+    if (left.isDefault !== right.isDefault) return left.isDefault ? -1 : 1
+
+    return left.name.localeCompare(right.name)
+  })
 }
 
 // ----------------------
@@ -587,6 +597,7 @@ export async function createBusinessWithWidgets(
     widgetKey,
     name: 'Main widget',
     config: widgetConfig,
+    assistantConfig,
     isDefault: true,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -777,10 +788,8 @@ export async function getBusinessInfo(
 
   if (snap.exists()) {
     const data = snap.data();
-    const widgetSnap = await getDocs(
-      query(collection(db, `businesses/${businessId}/chatWidgets`), orderBy('updatedAt', 'desc'))
-    )
-    const widgets = widgetSnap.docs.map(mapWidgetRecord)
+    const widgetSnap = await getDocs(collection(db, `businesses/${businessId}/chatWidgets`))
+    const widgets = sortChatWidgetsByCreation(widgetSnap.docs.map(mapWidgetRecord))
     const activeChatWidgetKey = String(data.activeChatWidgetKey || data.chatWidgetKey || widgets[0]?.widgetKey || '')
     const activeWidget =
       widgets.find((widget) => widget.widgetKey === activeChatWidgetKey) ||
@@ -788,6 +797,9 @@ export async function getBusinessInfo(
       null
     const chatWidgetConfig = activeWidget?.config || data.chatWidgetConfig || undefined
     const chatWidgetKey = activeWidget?.widgetKey || data.chatWidgetKey || ''
+    const chatAssistantConfig =
+      activeWidget?.assistantConfig ||
+      (activeWidget?.isDefault ? data.chatAssistantConfig : undefined)
 
     return {
       id: snap.id,
@@ -807,12 +819,13 @@ export async function getBusinessInfo(
               widgetKey: chatWidgetKey || String(data.chatWidgetKey || 'default-widget'),
               name: 'Main widget',
               config: chatWidgetConfig,
+              assistantConfig: data.chatAssistantConfig,
               isDefault: true,
               createdAt: data.createdAt?.toDate() || new Date(),
               updatedAt: data.updatedAt?.toDate() || new Date(),
             }]
           : [],
-      chatAssistantConfig: data.chatAssistantConfig,
+      chatAssistantConfig,
       chatAnalytics: data.chatAnalytics
         ? {
             ...data.chatAnalytics,
@@ -920,10 +933,8 @@ export async function listChatWidgets(businessId: string) {
   const businessRef = doc(db, 'businesses', businessId)
   const businessSnap = await getDoc(businessRef)
   const businessData = businessSnap.exists() ? businessSnap.data() || {} : {}
-  const widgetSnap = await getDocs(
-    query(collection(db, `businesses/${businessId}/chatWidgets`), orderBy('updatedAt', 'desc'))
-  )
-  const widgets = widgetSnap.docs.map(mapWidgetRecord)
+  const widgetSnap = await getDocs(collection(db, `businesses/${businessId}/chatWidgets`))
+  const widgets = sortChatWidgetsByCreation(widgetSnap.docs.map(mapWidgetRecord))
 
   if (widgets.length > 0) {
     return widgets
@@ -938,6 +949,7 @@ export async function listChatWidgets(businessId: string) {
     widgetKey: legacyWidgetKey,
     name: 'Main widget',
     config: legacyConfig as ChatWidgetConfig,
+    assistantConfig: businessData.chatAssistantConfig as ChatAssistantConfig | undefined,
     isDefault: true,
     createdAt: businessData.createdAt?.toDate?.() || new Date(),
     updatedAt: businessData.updatedAt?.toDate?.() || new Date(),
@@ -999,6 +1011,10 @@ export async function createChatWidget(
         title: name || sourceWidget.config.customBranding?.title || widgetName,
       },
     },
+    assistantConfig:
+      sourceWidget.assistantConfig ||
+      (businessData.chatAssistantConfig as ChatAssistantConfig | undefined) ||
+      buildDefaultAssistantConfig(),
     isDefault: false,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -1025,6 +1041,7 @@ export async function setActiveChatWidget(
     chatWidgetKey: widgetKey,
     activeChatWidgetKey: widgetKey,
     chatWidgetConfig: widgetData.config || null,
+    chatAssistantConfig: widgetData.assistantConfig || null,
     updatedAt: serverTimestamp(),
   })
 
@@ -1055,6 +1072,7 @@ export async function deleteChatWidget(
       chatWidgetKey: nextActive.widgetKey,
       activeChatWidgetKey: nextActive.widgetKey,
       chatWidgetConfig: nextActive.config,
+      chatAssistantConfig: nextActive.assistantConfig || null,
       updatedAt: serverTimestamp(),
     })
   } else {
@@ -1062,6 +1080,7 @@ export async function deleteChatWidget(
       chatWidgetKey: '',
       activeChatWidgetKey: '',
       chatWidgetConfig: null,
+      chatAssistantConfig: null,
       updatedAt: serverTimestamp(),
     })
   }
@@ -1071,13 +1090,29 @@ export async function deleteChatWidget(
 
 export async function updateChatAssistantConfig(
   businessId: string,
-  config: Partial<ChatAssistantConfig>
+  config: Partial<ChatAssistantConfig>,
+  widgetKey?: string
 ) {
   try {
     const businessRef = doc(db, "businesses", businessId);
+    const businessSnap = await getDoc(businessRef)
+    const businessData = businessSnap.exists() ? businessSnap.data() || {} : {}
+    const targetWidgetKey = String(widgetKey || businessData.activeChatWidgetKey || businessData.chatWidgetKey || '')
+
+    if (targetWidgetKey) {
+      const widgetRef = doc(db, `businesses/${businessId}/chatWidgets/${targetWidgetKey}`)
+      const widgetSnap = await getDoc(widgetRef)
+      await setDoc(widgetRef, {
+        widgetKey: targetWidgetKey,
+        assistantConfig: config,
+        createdAt: widgetSnap.exists() ? widgetSnap.data()?.createdAt || serverTimestamp() : serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true })
+    }
 
     await updateDoc(businessRef, {
       chatAssistantConfig: config,
+      ...(targetWidgetKey ? { activeChatWidgetKey: targetWidgetKey } : {}),
       updatedAt: serverTimestamp(),
     });
 

@@ -1272,7 +1272,7 @@ export async function GET(
 
     mount.className = 'vintra-root position-' + position;
     applyViewportStateToMount();
-    var shouldShowWidget = state.configLoaded && state.open;
+    var shouldShowWidget = state.open;
     mount.innerHTML =
       '<div class="vintra-stack ' + themeClass + '">' +
         '<div class="' + classes([

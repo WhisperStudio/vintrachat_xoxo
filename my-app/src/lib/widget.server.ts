@@ -28,6 +28,7 @@ export async function getBusinessByWidgetKey(
       const widgetData = widgetDoc.data() || {}
       const businessSnap = await businessDoc.ref.get()
       const businessData = businessSnap.data() || {}
+      const isDefaultWidget = Boolean(widgetData.isDefault)
 
       return {
         id: businessDoc.id,
@@ -35,7 +36,9 @@ export async function getBusinessByWidgetKey(
         chatWidgetKey: String(widgetData.widgetKey || widgetDoc.id),
         chatWidgetName: String(widgetData.name || 'Chat Widget'),
         chatWidgetConfig: widgetData.config || businessData.chatWidgetConfig,
-        chatAssistantConfig: businessData.chatAssistantConfig,
+        chatAssistantConfig:
+          widgetData.assistantConfig ||
+          (isDefaultWidget ? businessData.chatAssistantConfig : undefined),
         chatAnalytics: businessData.chatAnalytics,
         chatWidgetEmbedSecret: businessData.chatWidgetEmbedSecret,
       }

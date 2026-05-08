@@ -250,6 +250,7 @@ export interface ChatWidgetRecord {
   widgetKey: string;
   name: string;
   config: ChatWidgetConfig;
+  assistantConfig?: ChatAssistantConfig;
   isDefault: boolean;
   createdAt: Date;
   updatedAt: Date;
