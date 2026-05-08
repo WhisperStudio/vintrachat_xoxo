@@ -8,6 +8,7 @@ import {
   User as FirebaseUser,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  type AuthError,
 } from "firebase/auth";
 
 import {
@@ -19,6 +20,7 @@ import {
   collection,
   query,
   where,
+  limit,
   getDocs,
   deleteDoc,
 } from "firebase/firestore";
@@ -610,8 +612,32 @@ export async function createBusinessWithWidgets(
 // SIGN IN
 // ----------------------
 export async function signInWithEmail(email: string, password: string) {
+  const trimmedEmail = String(email || "").trim()
+  const normalizedEmail = normalizeEmail(email)
+
   try {
-    const cred = await signInWithEmailAndPassword(auth, email, password);
+    let cred
+
+    try {
+      cred = await signInWithEmailAndPassword(auth, trimmedEmail, password);
+    } catch (firstErr: any) {
+      const firstCode = String(firstErr?.code || "")
+
+      if (
+        normalizedEmail &&
+        normalizedEmail !== trimmedEmail &&
+        (
+          firstCode === "auth/invalid-credential" ||
+          firstCode === "auth/invalid-login-credentials" ||
+          firstCode === "auth/user-not-found" ||
+          firstCode === "auth/wrong-password"
+        )
+      ) {
+        cred = await signInWithEmailAndPassword(auth, normalizedEmail, password);
+      } else {
+        throw firstErr
+      }
+    }
 
     const pendingRef = doc(db, "pending_users", cred.user.uid);
     const pendingSnap = await getDoc(pendingRef);
@@ -624,7 +650,7 @@ export async function signInWithEmail(email: string, password: string) {
       };
     }
 
-    const signedInEmail = normalizeEmail(cred.user.email || email)
+    const signedInEmail = normalizeEmail(cred.user.email || normalizedEmail)
     if (isVintraAdminEmail(signedInEmail)) {
       return {
         success: true,
@@ -648,7 +674,59 @@ export async function signInWithEmail(email: string, password: string) {
       redirectTo: "/admin",
     };
   } catch (err: any) {
-    return { success: false, message: err.message };
+    const authError = err as AuthError
+    const code = authError.code || ""
+
+    if (
+      code === "auth/invalid-credential" ||
+      code === "auth/invalid-login-credentials" ||
+      code === "auth/user-not-found" ||
+      code === "auth/wrong-password"
+    ) {
+      try {
+        const emailCandidates = Array.from(new Set([trimmedEmail, normalizedEmail].filter(Boolean)))
+
+        for (const candidateEmail of emailCandidates) {
+          const pendingQuery = query(
+            collection(db, "pending_auth"),
+            where("email", "==", candidateEmail),
+            limit(1)
+          )
+          const pendingSnap = await getDocs(pendingQuery)
+
+          if (pendingSnap.empty) continue
+
+          return {
+            success: false,
+            message:
+              "Kontoen din er ikke ferdig verifisert ennå. Sjekk verifikasjonsmailen eller be om å få den sendt på nytt.",
+          }
+        }
+      } catch (pendingErr) {
+        console.error("Pending auth lookup failed:", pendingErr)
+      }
+
+      return {
+        success: false,
+        message: "Feil email eller passord. Prøv igjen eller nullstill passordet ditt.",
+      }
+    }
+
+    if (code === "auth/invalid-email") {
+      return {
+        success: false,
+        message: "Emailadressen er ugyldig.",
+      }
+    }
+
+    if (code === "auth/too-many-requests") {
+      return {
+        success: false,
+        message: "For mange innloggingsforsøk. Vent litt og prøv igjen.",
+      }
+    }
+
+    return { success: false, message: authError.message || "Innlogging feilet" };
   }
 }
 
