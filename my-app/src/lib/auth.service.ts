@@ -313,13 +313,14 @@ export async function signUpWithEmail(
   businessName?: string
 ) {
   try {
+    const normalizedEmail = normalizeEmail(email)
     const normalizedAccountType = accountType || 'user';
     const normalizedBusinessName =
       normalizedAccountType === 'business' ? businessName?.trim() || undefined : undefined;
 
     const cred = await createUserWithEmailAndPassword(
       auth,
-      email,
+      normalizedEmail,
       password
     );
 
@@ -329,8 +330,11 @@ export async function signUpWithEmail(
 
     await fetch("/api/auth/send-verification-email", {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
-        email,
+        email: normalizedEmail,
         token,
         displayName,
         accountType: normalizedAccountType,
@@ -340,7 +344,8 @@ export async function signUpWithEmail(
 
     // Lagre midlertidig verification token i pending_auth
     await setDoc(doc(db, "pending_auth", cred.user.uid), {
-      email,
+      email: normalizedEmail,
+      normalizedEmail,
       displayName,
       token,
       accountType: normalizedAccountType,
