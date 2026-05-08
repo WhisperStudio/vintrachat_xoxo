@@ -227,6 +227,19 @@ export default function WidgetAdminPanel() {
     setLastConfigUpdate(JSON.stringify(widgetConfig))
   }
 
+  const applyWidgetAssistantConfig = (widget?: (typeof widgetList)[number] | null) => {
+    const legacyBusinessConfig =
+      !widget || widget.isDefault
+        ? (business?.chatAssistantConfig as ChatAssistantConfig | undefined)
+        : undefined
+
+    setAssistantConfig({
+      ...defaultAssistantConfig,
+      ...(legacyBusinessConfig || {}),
+      ...(widget?.assistantConfig || {}),
+    })
+  }
+
   useEffect(() => {
     const widget =
       widgetList.find((entry) => entry.widgetKey === selectedWidgetKey) ||
@@ -236,6 +249,7 @@ export default function WidgetAdminPanel() {
     if (widget?.config) {
       setSelectedWidgetKey(widget.widgetKey)
       applyWidgetConfig(widget.config)
+      applyWidgetAssistantConfig(widget)
     } else if (business?.chatWidgetConfig) {
       setConfig(business.chatWidgetConfig as ChatWidgetConfig)
       setLastConfigUpdate(JSON.stringify(business.chatWidgetConfig))
@@ -245,13 +259,7 @@ export default function WidgetAdminPanel() {
           : ''
       )
       setSelectedWidgetKey(business.activeChatWidgetKey || business.chatWidgetKey || '')
-    }
-
-    if (business?.chatAssistantConfig) {
-      setAssistantConfig({
-        ...defaultAssistantConfig,
-        ...(business.chatAssistantConfig as ChatAssistantConfig),
-      })
+      applyWidgetAssistantConfig(null)
     }
   }, [business, widgetList, selectedWidgetKey])
 
@@ -322,6 +330,7 @@ export default function WidgetAdminPanel() {
     setSelectedWidgetKey(nextWidgetKey)
     setDeleteWidgetChecked(false)
     applyWidgetConfig(nextWidget.config)
+    applyWidgetAssistantConfig(nextWidget)
     await setActiveChatWidget(dbUser.businessId, nextWidgetKey)
     await refreshBusiness()
   }
@@ -375,7 +384,8 @@ export default function WidgetAdminPanel() {
     setAssistantSaving(true)
     setAssistantStatus('idle')
 
-    const result = await updateChatAssistantConfig(dbUser.businessId, assistantConfig)
+    const targetWidgetKey = selectedWidgetKey || business?.activeChatWidgetKey || business?.chatWidgetKey || ''
+    const result = await updateChatAssistantConfig(dbUser.businessId, assistantConfig, targetWidgetKey)
 
     setAssistantSaving(false)
     setAssistantStatus(result.success ? 'saved' : 'error')
