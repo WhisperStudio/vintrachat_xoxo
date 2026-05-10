@@ -80,6 +80,279 @@ const websites = [
   },
 ]
 
+type Language = 'no' | 'en'
+
+const languageLabels: Record<Language, string> = {
+  no: 'Norsk',
+  en: 'English',
+}
+
+const detectPreferredLanguage = (): Language => {
+  if (typeof window === 'undefined') return 'en'
+
+  const savedLanguage = window.localStorage.getItem('vintra-main-language')
+  if (savedLanguage === 'no' || savedLanguage === 'en') return savedLanguage
+
+  const languages = window.navigator.languages?.length ? window.navigator.languages : [window.navigator.language]
+  const usesNorwegian = languages.some((language) => language?.toLowerCase().startsWith('no') || language?.toLowerCase().startsWith('nb') || language?.toLowerCase().startsWith('nn'))
+  const isInNorwayTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone === 'Europe/Oslo'
+
+  return usesNorwegian || isInNorwayTimeZone ? 'no' : 'en'
+}
+
+const copy = {
+  en: {
+    languageSwitchLabel: 'Choose language',
+    badgeStatus: 'Official site',
+    heroTitleStart: 'Vintra builds',
+    heroTitleMiddle: 'websites and chatbots',
+    heroTitleEnd: 'that are easy to find.',
+    heroBody: 'Vintra is the official site for website design, AI chatbots, pricing, support, phone, and email in one place.',
+    heroWebsiteCta: 'Try website builder',
+    heroChatbotCta: 'Test chatbot for free',
+    heroBenefits: ['No credit card', 'No account', 'Instant prices'],
+    productEyebrow: 'Choose your starting point',
+    productTitleStart: 'We build the site.',
+    productTitleEnd: 'handles the rest.',
+    websiteCardTitle: 'Website',
+    websiteCardBody: "Don't waste weeks on templates. We build your professional presence for you, ensuring the perfect structure and look from day one.",
+    websiteCardFeatures: ['Done-for-you construction', 'Strategic layout & copywriting', 'Transparent upfront pricing'],
+    websiteCardCta: 'Get my website',
+    chatbotCardTitle: 'AI Chatbot',
+    chatbotCardBody: 'Instantly capture leads and answer visitor questions 24/7. Fully customizable behavior that matches your brand perfectly.',
+    chatbotCardFeatures: ['Automated first conversations', 'Custom tone & personality', 'Live testing & instant embed'],
+    chatbotCardCta: 'Open chatbot builder',
+    selfService: 'Self-Service',
+    togetherLead: 'The best part?',
+    togetherStrong: 'They work even better together.',
+    carouselTitle: 'Websites for all industries',
+    carouselBody: 'Each concept gets a larger preview in the middle before the next one takes over',
+    alwaysOn: 'Always on',
+    chatbotShowcaseTitle: 'The chatbot that never sleeps',
+    chatbotShowcaseBody: 'Built to answer faster, book smarter and guide customers to the right next step without making your team do repetitive work all day.',
+    useCases: ['E-commerce', 'Hotel', 'Clinic', 'Salon', 'Course', 'Business'],
+    chatbotFeatureTitle: 'Answer questions. Book appointments. Sell more.',
+    chatbotFeatureBody: 'Our AI chatbot learns about your business and answers your customers 24/7. You set the rules, the tone and the next step. It handles the routine work while your team focuses on what matters.',
+    chatbotFeatures: ['Answer common questions automatically', 'Book appointments and meetings directly in chat', 'Direct traffic to the right page or person', 'Integrate with existing tools'],
+    pricingTitle: 'Transparent prices. No surprises.',
+    pricingBody: 'Use our free calculator and see exactly what your solution costs before you decide.',
+    pricingCards: [
+      { label: 'Simple website', from: '2 990', desc: 'Personal / CV / Portfolio', color: '#1A6BFF' },
+      { label: 'Business website', from: '6 490', desc: 'Professional profile + contact form', color: '#0C9E6A' },
+      { label: 'Chatbot', from: '0', desc: 'Free to start, scale as needed', color: '#7C3AED' },
+    ],
+    from: 'from',
+    free: 'Free',
+    pricingCta: 'Calculate your price now',
+    bottomTitle: 'Ready to try?',
+    bottomBody: 'Start today, completely free, no card, no account. See what we can create for you.',
+    bottomWebsiteCta: 'Design website',
+    bottomChatbotCta: 'Test chatbot',
+    contactEyebrow: 'Contact Vintra',
+    contactTitle: 'Easy for visitors and Google to find',
+    contactBody: 'Reach us directly for website projects, chatbot setup, pricing questions, or support.',
+    email: 'Email',
+    emailDescription: 'Best for project questions and written follow-up.',
+    phone: 'Phone',
+    phoneDescription: 'Call for quick questions about websites, chatbots, and setup.',
+    websiteDescription: 'Main site for product demos, pricing, and contact details.',
+    footerRights: 'All rights reserved.',
+    contact: 'Contact',
+    chatTitle: 'Vintra Assistant',
+    chatSubtitle: 'Live help and support',
+    online: 'Online',
+    writeMessage: 'Write a message...',
+    sendPreview: 'Send preview message',
+    closePreview: 'Close preview chat',
+    today: 'Today',
+    heroChatMessages: [
+      { from: 'bot', text: 'Hi! I can help with questions, prices, or the next step.' },
+      { from: 'user', text: 'Can you help me today?' },
+      { from: 'bot', text: 'Yes. Tell me what you need and I will guide you from here.' },
+    ],
+    showcaseChatMessages: [
+      { from: 'bot', text: 'Hi! I can help with opening hours, prices, or send you to the right place.' },
+      { from: 'user', text: 'Can you help me tomorrow?' },
+      { from: 'bot', text: 'Yes, I can check availability and find the next step for you.' },
+    ],
+    preview: {
+      restaurant: {
+        eyebrow: 'Fine dining booking',
+        title: 'Tasting menu with instant reservations',
+        body: 'Elegant hero, course highlights, chef spotlight and a strong reserve-now focus.',
+        special: "Chef's 7-course tasting",
+        note: 'Wine pairing available tonight',
+        stats: ['4.9 rating', '320 bookings', 'Open today'],
+        primary: 'Reserve table',
+        secondary: 'See menu',
+      },
+      portfolio: {
+        eyebrow: 'Creative portfolio',
+        title: 'Case studies that feel premium and deliberate',
+        chips: ['Brand identity', 'UX systems', 'Web design'],
+        cta: 'View selected work',
+      },
+      shop: {
+        eyebrow: 'Campaign storefront',
+        title: 'Bestsellers, fast checkout and shipping trust',
+        body: 'Shop preview with real promo hierarchy instead of a generic landing card.',
+        products: [['Nordic wool set', '799 kr'], ['Autumn jacket', '1 290 kr']],
+        shipping: 'Free shipping over 499 kr',
+        badge: 'Today only',
+      },
+      startup: {
+        eyebrow: 'SaaS launch',
+        title: 'Clear product story with demand capture built in',
+        body: 'Waitlist, feature proof and pricing blocks that look much closer to a real startup landing.',
+        stats: ['8.4k waitlist', '31% demo', '4 plans'],
+        features: ['Live analytics dashboard', 'Workflow automation builder', 'CRM and Slack integrations'],
+        cta: 'Join waitlist',
+      },
+      salon: {
+        eyebrow: 'Beauty booking',
+        title: 'Calm service preview with booking times and treatments',
+        available: 'Available today',
+        services: ['Hair styling', 'Relax massage', 'Skin treatment'],
+        book: 'Book',
+      },
+      business: {
+        eyebrow: 'Corporate trust',
+        title: 'Company front page with clearer credibility signals',
+        body: 'Service summary, client logos and contact-first structure for B2B confidence.',
+        stats: ['Since 1998', '42 clients', '1 day response'],
+        features: ['Operations consulting', 'Project delivery', 'Support and maintenance'],
+        primary: 'Book meeting',
+        secondary: 'View services',
+      },
+    },
+  },
+  no: {
+    languageSwitchLabel: 'Velg språk',
+    badgeStatus: 'Offisiell side',
+    heroTitleStart: 'Vintra bygger',
+    heroTitleMiddle: 'nettsider og chatboter',
+    heroTitleEnd: 'som er enkle å finne.',
+    heroBody: 'Vintra er den offisielle siden for nettsidedesign, AI-chatboter, priser, support, telefon og e-post på ett sted.',
+    heroWebsiteCta: 'Prøv nettsidebyggeren',
+    heroChatbotCta: 'Test chatbot gratis',
+    heroBenefits: ['Ingen kort kreves', 'Ingen konto', 'Priser med en gang'],
+    productEyebrow: 'Velg hvor du vil starte',
+    productTitleStart: 'Vi bygger nettsiden.',
+    productTitleEnd: 'tar resten.',
+    websiteCardTitle: 'Nettside',
+    websiteCardBody: 'Ikke bruk uker på maler. Vi bygger en profesjonell tilstedeværelse for deg, med riktig struktur og uttrykk fra første dag.',
+    websiteCardFeatures: ['Ferdig bygget for deg', 'Strategisk oppsett og tekst', 'Tydelige priser på forhånd'],
+    websiteCardCta: 'Få min nettside',
+    chatbotCardTitle: 'AI-chatbot',
+    chatbotCardBody: 'Fang leads og svar på spørsmål fra besøkende døgnet rundt. Fullt tilpassbar oppførsel som matcher merkevaren din.',
+    chatbotCardFeatures: ['Automatiske første samtaler', 'Egen tone og personlighet', 'Live testing og enkel innbygging'],
+    chatbotCardCta: 'Åpne chatbot-byggeren',
+    selfService: 'Selvbetjening',
+    togetherLead: 'Det beste?',
+    togetherStrong: 'De fungerer enda bedre sammen.',
+    carouselTitle: 'Nettsider for alle bransjer',
+    carouselBody: 'Hvert konsept får en større forhåndsvisning i midten før neste tar over',
+    alwaysOn: 'Alltid på',
+    chatbotShowcaseTitle: 'Chatboten som aldri sover',
+    chatbotShowcaseBody: 'Bygget for å svare raskere, booke smartere og hjelpe kunder til riktig neste steg uten at teamet ditt må gjøre repeterende arbeid hele dagen.',
+    useCases: ['Nettbutikk', 'Hotell', 'Klinikk', 'Salong', 'Kurs', 'Bedrift'],
+    chatbotFeatureTitle: 'Svar på spørsmål. Book timer. Selg mer.',
+    chatbotFeatureBody: 'AI-chatboten vår lærer om bedriften din og svarer kundene dine 24/7. Du setter reglene, tonen og neste steg. Den tar rutinearbeidet mens teamet ditt fokuserer på det som betyr mest.',
+    chatbotFeatures: ['Svar automatisk på vanlige spørsmål', 'Book timer og møter direkte i chat', 'Send trafikk til riktig side eller person', 'Koble til eksisterende verktøy'],
+    pricingTitle: 'Tydelige priser. Ingen overraskelser.',
+    pricingBody: 'Bruk vår gratis kalkulator og se nøyaktig hva løsningen din koster før du bestemmer deg.',
+    pricingCards: [
+      { label: 'Enkel nettside', from: '2 990', desc: 'Personlig / CV / Portefølje', color: '#1A6BFF' },
+      { label: 'Bedriftsnettside', from: '6 490', desc: 'Profesjonell profil + kontaktskjema', color: '#0C9E6A' },
+      { label: 'Chatbot', from: '0', desc: 'Gratis å starte, skaler ved behov', color: '#7C3AED' },
+    ],
+    from: 'fra',
+    free: 'Gratis',
+    pricingCta: 'Beregn prisen din nå',
+    bottomTitle: 'Klar for å prøve?',
+    bottomBody: 'Start i dag, helt gratis, uten kort og uten konto. Se hva vi kan lage for deg.',
+    bottomWebsiteCta: 'Design nettside',
+    bottomChatbotCta: 'Test chatbot',
+    contactEyebrow: 'Kontakt Vintra',
+    contactTitle: 'Enkelt for besøkende og Google å finne',
+    contactBody: 'Kontakt oss direkte for nettsideprosjekter, chatbot-oppsett, prisspørsmål eller support.',
+    email: 'E-post',
+    emailDescription: 'Best for prosjektspørsmål og skriftlig oppfølging.',
+    phone: 'Telefon',
+    phoneDescription: 'Ring for raske spørsmål om nettsider, chatboter og oppsett.',
+    websiteDescription: 'Hovedsiden for produktdemoer, priser og kontaktinformasjon.',
+    footerRights: 'Alle rettigheter reservert.',
+    contact: 'Kontakt',
+    chatTitle: 'Vintra-assistenten',
+    chatSubtitle: 'Live hjelp og support',
+    online: 'På nett',
+    writeMessage: 'Skriv en melding...',
+    sendPreview: 'Send forhåndsvisningsmelding',
+    closePreview: 'Lukk chat-forhåndsvisning',
+    today: 'I dag',
+    heroChatMessages: [
+      { from: 'bot', text: 'Hei! Jeg kan hjelpe med spørsmål, priser eller neste steg.' },
+      { from: 'user', text: 'Kan du hjelpe meg i dag?' },
+      { from: 'bot', text: 'Ja. Fortell hva du trenger, så guider jeg deg videre.' },
+    ],
+    showcaseChatMessages: [
+      { from: 'bot', text: 'Hei! Jeg kan hjelpe med åpningstider, priser eller sende deg riktig sted.' },
+      { from: 'user', text: 'Kan dere hjelpe meg i morgen?' },
+      { from: 'bot', text: 'Ja, jeg kan sjekke tilgjengelighet og finne neste steg for deg.' },
+    ],
+    preview: {
+      restaurant: {
+        eyebrow: 'Restaurantbooking',
+        title: 'Smaksmeny med umiddelbar bordbestilling',
+        body: 'Elegant førsteseksjon, menyhøydepunkter, kokkepresentasjon og tydelig bookingfokus.',
+        special: 'Kokkens 7-retters meny',
+        note: 'Vinpakke tilgjengelig i kveld',
+        stats: ['4.9 vurdering', '320 bookinger', 'Åpent i dag'],
+        primary: 'Reserver bord',
+        secondary: 'Se meny',
+      },
+      portfolio: {
+        eyebrow: 'Kreativ portefølje',
+        title: 'Case-studier som føles premium og gjennomtenkte',
+        chips: ['Visuell identitet', 'UX-systemer', 'Webdesign'],
+        cta: 'Se utvalgte arbeider',
+      },
+      shop: {
+        eyebrow: 'Kampanjebutikk',
+        title: 'Bestselgere, rask utsjekk og trygg frakt',
+        body: 'Butikkvisning med ekte kampanjehierarki i stedet for en generisk landingsside.',
+        products: [['Nordisk ullsett', '799 kr'], ['Høstjakke', '1 290 kr']],
+        shipping: 'Fri frakt over 499 kr',
+        badge: 'Kun i dag',
+      },
+      startup: {
+        eyebrow: 'SaaS-lansering',
+        title: 'Tydelig produkthistorie med etterspørsel bygget inn',
+        body: 'Venteliste, funksjonsbevis og prisblokker som ligner en ekte startup-side.',
+        stats: ['8.4k på venteliste', '31% demo', '4 planer'],
+        features: ['Live analysedashboard', 'Bygger for arbeidsflyter', 'CRM- og Slack-integrasjoner'],
+        cta: 'Bli med på ventelisten',
+      },
+      salon: {
+        eyebrow: 'Beauty-booking',
+        title: 'Rolig tjenestevisning med timer og behandlinger',
+        available: 'Ledig i dag',
+        services: ['Hårstyling', 'Avslappende massasje', 'Hudbehandling'],
+        book: 'Book',
+      },
+      business: {
+        eyebrow: 'Bedriftstillit',
+        title: 'Bedriftsforside med tydeligere troverdighet',
+        body: 'Tjenesteoppsummering, kundelogoer og kontaktfokusert struktur for B2B-tillit.',
+        stats: ['Siden 1998', '42 kunder', 'Svar innen 1 dag'],
+        features: ['Driftsrådgivning', 'Prosjektleveranse', 'Support og vedlikehold'],
+        primary: 'Book møte',
+        secondary: 'Se tjenester',
+      },
+    },
+  },
+} as const
+
 const organizationId = `${siteConfig.url}/#organization`
 const websiteId = `${siteConfig.url}/#website`
 const emailHref = `mailto:${siteConfig.contact.email}`
@@ -162,7 +435,8 @@ function MiniSiteMockup({ site }: { site: typeof websites[0] }) {
   )
 }
 
-function DetailedSitePreview({ site }: { site: typeof websites[0] }) {
+function DetailedSitePreview({ site, language }: { site: typeof websites[0]; language: Language }) {
+  const preview = copy[language].preview
   const browserBar = (
     <div style={{ background: '#F5F5F5', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid #E8E8E8' }}>
       <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#FF5F57', display: 'inline-block' }} />
@@ -182,45 +456,47 @@ function DetailedSitePreview({ site }: { site: typeof websites[0] }) {
   let content: React.ReactNode = null
 
   if (site.label === 'Restaurant') {
+    const text = preview.restaurant
     content = (
       <>
         <div style={heroBase}>
-          <div style={{ color: 'rgba(255,255,255,0.72)', fontSize: 10, fontWeight: 800, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 10 }}>Fine dining booking</div>
-          <div style={{ color: '#fff', fontWeight: 900, fontSize: 22, lineHeight: 1.05 }}>Tasting menu with instant reservations</div>
-          <div style={{ color: 'rgba(255,255,255,0.84)', fontSize: 11, lineHeight: 1.55, marginTop: 8 }}>Elegant hero, course highlights, chef spotlight and a strong reserve-now focus.</div>
+          <div style={{ color: 'rgba(255,255,255,0.72)', fontSize: 10, fontWeight: 800, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 10 }}>{text.eyebrow}</div>
+          <div style={{ color: '#fff', fontWeight: 900, fontSize: 22, lineHeight: 1.05 }}>{text.title}</div>
+          <div style={{ color: 'rgba(255,255,255,0.84)', fontSize: 11, lineHeight: 1.55, marginTop: 8 }}>{text.body}</div>
         </div>
         <div style={{ padding: '14px 16px 16px', background: '#fff' }}>
           <div style={{ background: '#FFF8F2', borderRadius: 12, padding: '10px 12px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 800 }}>Chef&apos;s 7-course tasting</div>
-              <div style={{ fontSize: 10, color: '#7A5A46', marginTop: 3 }}>Wine pairing available tonight</div>
+              <div style={{ fontSize: 11, fontWeight: 800 }}>{text.special}</div>
+              <div style={{ fontSize: 10, color: '#7A5A46', marginTop: 3 }}>{text.note}</div>
             </div>
             <div style={{ color: site.color, fontWeight: 900, fontSize: 12 }}>1 290 kr</div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
-            {['4.9 rating', '320 bookings', 'Open today'].map((item) => (
+            {text.stats.map((item) => (
               <div key={item} style={{ background: site.accent, borderRadius: 10, padding: '10px 6px', textAlign: 'center', fontSize: 10, fontWeight: 800 }}>{item}</div>
             ))}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{ flex: 1, background: site.color, color: '#fff', borderRadius: 10, padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 800 }}>Reserve table</div>
-            <div style={{ flex: 1, background: '#111', color: '#fff', borderRadius: 10, padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 800 }}>See menu</div>
+            <div style={{ flex: 1, background: site.color, color: '#fff', borderRadius: 10, padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 800 }}>{text.primary}</div>
+            <div style={{ flex: 1, background: '#111', color: '#fff', borderRadius: 10, padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 800 }}>{text.secondary}</div>
           </div>
         </div>
       </>
     )
   } else if (site.label === 'Portfolio') {
+    const text = preview.portfolio
     content = (
       <>
         <div style={heroBase}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ width: 36, height: 36, borderRadius: 12, background: 'rgba(255,255,255,0.18)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 18 }}>✦</div>
             <div>
-              <div style={{ color: 'rgba(255,255,255,0.74)', fontSize: 10, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase' }}>Creative portfolio</div>
+              <div style={{ color: 'rgba(255,255,255,0.74)', fontSize: 10, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase' }}>{text.eyebrow}</div>
               <div style={{ color: '#fff', fontWeight: 900, fontSize: 18 }}>Ola Nordmann Studio</div>
             </div>
           </div>
-          <div style={{ color: '#fff', fontWeight: 900, fontSize: 21, lineHeight: 1.05 }}>Case studies that feel premium and deliberate</div>
+          <div style={{ color: '#fff', fontWeight: 900, fontSize: 21, lineHeight: 1.05 }}>{text.title}</div>
         </div>
         <div style={{ padding: 16, background: '#fff' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 0.75fr', gap: 8, marginBottom: 12 }}>
@@ -231,28 +507,26 @@ function DetailedSitePreview({ site }: { site: typeof websites[0] }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-            {['Brand identity', 'UX systems', 'Web design'].map((chip) => (
+            {text.chips.map((chip) => (
               <span key={chip} style={{ borderRadius: 999, background: '#F3F4F6', padding: '6px 10px', fontSize: 10, fontWeight: 700 }}>{chip}</span>
             ))}
           </div>
-          <div style={{ background: site.color, color: '#fff', borderRadius: 10, padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 800 }}>View selected work</div>
+          <div style={{ background: site.color, color: '#fff', borderRadius: 10, padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 800 }}>{text.cta}</div>
         </div>
       </>
     )
   } else if (site.label === 'Nettbutikk') {
+    const text = preview.shop
     content = (
       <>
         <div style={heroBase}>
-          <div style={{ color: 'rgba(255,255,255,0.74)', fontSize: 10, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 10 }}>Campaign storefront</div>
-          <div style={{ color: '#fff', fontWeight: 900, fontSize: 22, lineHeight: 1.05 }}>Bestsellers, fast checkout and shipping trust</div>
-          <div style={{ color: 'rgba(255,255,255,0.84)', fontSize: 11, lineHeight: 1.55, marginTop: 8 }}>Shop preview with real promo hierarchy instead of a generic landing card.</div>
+          <div style={{ color: 'rgba(255,255,255,0.74)', fontSize: 10, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 10 }}>{text.eyebrow}</div>
+          <div style={{ color: '#fff', fontWeight: 900, fontSize: 22, lineHeight: 1.05 }}>{text.title}</div>
+          <div style={{ color: 'rgba(255,255,255,0.84)', fontSize: 11, lineHeight: 1.55, marginTop: 8 }}>{text.body}</div>
         </div>
         <div style={{ padding: 16, background: '#fff' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 12 }}>
-            {[
-              ['Nordic wool set', '799 kr'],
-              ['Autumn jacket', '1 290 kr'],
-            ].map(([title, price]) => (
+            {text.products.map(([title, price]) => (
               <div key={title} style={{ borderRadius: 12, background: '#F8FAF9', padding: 10 }}>
                 <div style={{ height: 56, borderRadius: 10, background: '#EAF7F1', marginBottom: 8 }} />
                 <div style={{ fontSize: 10, fontWeight: 800 }}>{title}</div>
@@ -261,45 +535,47 @@ function DetailedSitePreview({ site }: { site: typeof websites[0] }) {
             ))}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: site.accent, borderRadius: 12, padding: '10px 12px' }}>
-            <span style={{ fontSize: 10, fontWeight: 800 }}>Free shipping over 499 kr</span>
-            <span style={{ fontSize: 10, color: site.color, fontWeight: 900 }}>Today only</span>
+            <span style={{ fontSize: 10, fontWeight: 800 }}>{text.shipping}</span>
+            <span style={{ fontSize: 10, color: site.color, fontWeight: 900 }}>{text.badge}</span>
           </div>
         </div>
       </>
     )
   } else if (site.label === 'Startup') {
+    const text = preview.startup
     content = (
       <>
         <div style={heroBase}>
-          <div style={{ color: 'rgba(255,255,255,0.74)', fontSize: 10, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 10 }}>SaaS launch</div>
-          <div style={{ color: '#fff', fontWeight: 900, fontSize: 22, lineHeight: 1.05 }}>Clear product story with demand capture built in</div>
-          <div style={{ color: 'rgba(255,255,255,0.84)', fontSize: 11, lineHeight: 1.55, marginTop: 8 }}>Waitlist, feature proof and pricing blocks that look much closer to a real startup landing.</div>
+          <div style={{ color: 'rgba(255,255,255,0.74)', fontSize: 10, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 10 }}>{text.eyebrow}</div>
+          <div style={{ color: '#fff', fontWeight: 900, fontSize: 22, lineHeight: 1.05 }}>{text.title}</div>
+          <div style={{ color: 'rgba(255,255,255,0.84)', fontSize: 11, lineHeight: 1.55, marginTop: 8 }}>{text.body}</div>
         </div>
         <div style={{ padding: 16, background: '#fff' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
-            {['8.4k waitlist', '31% demo', '4 plans'].map((item) => (
+            {text.stats.map((item) => (
               <div key={item} style={{ background: '#F5F0FF', borderRadius: 12, padding: '12px 8px', textAlign: 'center', fontSize: 10, fontWeight: 800 }}>{item}</div>
             ))}
           </div>
           <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
-            {['Live analytics dashboard', 'Workflow automation builder', 'CRM and Slack integrations'].map((line) => (
+            {text.features.map((line) => (
               <div key={line} style={{ borderRadius: 10, border: '1px solid #EEE7FF', padding: '9px 10px', fontSize: 10, fontWeight: 700 }}>{line}</div>
             ))}
           </div>
-          <div style={{ background: site.color, color: '#fff', borderRadius: 10, padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 800 }}>Join waitlist</div>
+          <div style={{ background: site.color, color: '#fff', borderRadius: 10, padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 800 }}>{text.cta}</div>
         </div>
       </>
     )
   } else if (site.label === 'Frisør / Spa') {
+    const text = preview.salon
     content = (
       <>
         <div style={{ ...heroBase, background: `linear-gradient(135deg, ${site.color}, #F1A7CF)` }}>
-          <div style={{ color: 'rgba(255,255,255,0.76)', fontSize: 10, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 10 }}>Beauty booking</div>
-          <div style={{ color: '#fff', fontWeight: 900, fontSize: 22, lineHeight: 1.05 }}>Calm service preview with booking times and treatments</div>
+          <div style={{ color: 'rgba(255,255,255,0.76)', fontSize: 10, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 10 }}>{text.eyebrow}</div>
+          <div style={{ color: '#fff', fontWeight: 900, fontSize: 22, lineHeight: 1.05 }}>{text.title}</div>
         </div>
         <div style={{ padding: 16, background: '#fff' }}>
           <div style={{ background: '#FDF4F9', borderRadius: 12, padding: '10px 12px', marginBottom: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, marginBottom: 6 }}>Available today</div>
+            <div style={{ fontSize: 11, fontWeight: 800, marginBottom: 6 }}>{text.available}</div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {['12:00', '13:30', '15:00', '17:15'].map((slot) => (
                 <span key={slot} style={{ background: '#fff', borderRadius: 999, padding: '6px 9px', fontSize: 10, fontWeight: 700 }}>{slot}</span>
@@ -307,10 +583,10 @@ function DetailedSitePreview({ site }: { site: typeof websites[0] }) {
             </div>
           </div>
           <div style={{ display: 'grid', gap: 8 }}>
-            {['Hair styling', 'Relax massage', 'Skin treatment'].map((service) => (
+            {text.services.map((service) => (
               <div key={service} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 10, background: site.accent, padding: '10px 12px' }}>
                 <span style={{ fontSize: 10, fontWeight: 800 }}>{service}</span>
-                <span style={{ fontSize: 10, color: site.color, fontWeight: 900 }}>Book</span>
+                <span style={{ fontSize: 10, color: site.color, fontWeight: 900 }}>{text.book}</span>
               </div>
             ))}
           </div>
@@ -318,27 +594,28 @@ function DetailedSitePreview({ site }: { site: typeof websites[0] }) {
       </>
     )
   } else {
+    const text = preview.business
     content = (
       <>
         <div style={{ ...heroBase, background: `linear-gradient(135deg, ${site.color}, #365B84)` }}>
-          <div style={{ color: 'rgba(255,255,255,0.74)', fontSize: 10, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 10 }}>Corporate trust</div>
-          <div style={{ color: '#fff', fontWeight: 900, fontSize: 22, lineHeight: 1.05 }}>Company front page with clearer credibility signals</div>
-          <div style={{ color: 'rgba(255,255,255,0.84)', fontSize: 11, lineHeight: 1.55, marginTop: 8 }}>Service summary, client logos and contact-first structure for B2B confidence.</div>
+          <div style={{ color: 'rgba(255,255,255,0.74)', fontSize: 10, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 10 }}>{text.eyebrow}</div>
+          <div style={{ color: '#fff', fontWeight: 900, fontSize: 22, lineHeight: 1.05 }}>{text.title}</div>
+          <div style={{ color: 'rgba(255,255,255,0.84)', fontSize: 11, lineHeight: 1.55, marginTop: 8 }}>{text.body}</div>
         </div>
         <div style={{ padding: 16, background: '#fff' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
-            {['Since 1998', '42 clients', '1 day response'].map((item) => (
+            {text.stats.map((item) => (
               <div key={item} style={{ background: '#F2F5F8', borderRadius: 12, padding: '11px 8px', textAlign: 'center', fontSize: 10, fontWeight: 800 }}>{item}</div>
             ))}
           </div>
           <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
-            {['Operations consulting', 'Project delivery', 'Support and maintenance'].map((line) => (
+            {text.features.map((line) => (
               <div key={line} style={{ borderRadius: 10, border: '1px solid #E3EAF1', padding: '9px 10px', fontSize: 10, fontWeight: 700 }}>{line}</div>
             ))}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{ flex: 1, background: site.color, color: '#fff', borderRadius: 10, padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 800 }}>Book meeting</div>
-            <div style={{ flex: 1, background: '#EFF3F8', color: '#1E3A5F', borderRadius: 10, padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 800 }}>View services</div>
+            <div style={{ flex: 1, background: site.color, color: '#fff', borderRadius: 10, padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 800 }}>{text.primary}</div>
+            <div style={{ flex: 1, background: '#EFF3F8', color: '#1E3A5F', borderRadius: 10, padding: '10px 0', textAlign: 'center', fontSize: 11, fontWeight: 800 }}>{text.secondary}</div>
           </div>
         </div>
       </>
@@ -363,12 +640,9 @@ function DetailedSitePreview({ site }: { site: typeof websites[0] }) {
 
 // ─── Chat widget preview ─────────────────────────────────────────────────────
 
-function ChatWidgetPreview() {
-  const messages = [
-    { from: 'bot', text: 'Hi! I can help with questions, prices, or the next step.' },
-    { from: 'user', text: 'Can you help me today?' },
-    { from: 'bot', text: 'Yes. Tell me what you need and I will guide you from here.' },
-  ]
+function ChatWidgetPreview({ language }: { language: Language }) {
+  const text = copy[language]
+  const messages = text.heroChatMessages
 
   return (
     <div style={{
@@ -382,11 +656,11 @@ function ChatWidgetPreview() {
       <div style={{ minHeight: 74, background: 'linear-gradient(135deg,#5b3df5,#1d4ed8)', padding: '16px 17px', display: 'flex', alignItems: 'center', gap: 11 }}>
         <div style={{ width: 42, height: 42, borderRadius: 14, background: 'rgba(255,255,255,0.18)', color: '#fff', display: 'grid', placeItems: 'center', fontSize: 18, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18)' }}>✦</div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ color: '#fff', fontWeight: 850, fontSize: 14, lineHeight: 1.15 }}>Vintra Assistant</div>
-          <div style={{ color: 'rgba(255,255,255,0.78)', fontSize: 11, marginTop: 3 }}>Live help and support</div>
+          <div style={{ color: '#fff', fontWeight: 850, fontSize: 14, lineHeight: 1.15 }}>{text.chatTitle}</div>
+          <div style={{ color: 'rgba(255,255,255,0.78)', fontSize: 11, marginTop: 3 }}>{text.chatSubtitle}</div>
         </div>
         <div style={{ marginLeft: 'auto', borderRadius: 999, background: 'rgba(255,255,255,0.16)', color: '#fff', padding: '6px 10px', fontSize: 10, fontWeight: 800, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.12)' }}>
-          Online
+          {text.online}
         </div>
         <div style={{ width: 30, height: 30, borderRadius: 999, background: 'rgba(255,255,255,0.15)', color: '#fff', display: 'grid', placeItems: 'center', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.12)' }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -413,7 +687,7 @@ function ChatWidgetPreview() {
       </div>
       <div style={{ padding: '13px 14px 15px', display: 'flex', gap: 9, borderTop: '1px solid rgba(15,23,42,0.07)', background: 'rgba(255,255,255,0.98)' }}>
         <div style={{ flex: 1, minWidth: 0, height: 44, border: '1px solid rgba(15,23,42,0.11)', borderRadius: 999, background: '#fff', display: 'flex', alignItems: 'center', paddingLeft: 15, boxShadow: 'inset 0 1px 2px rgba(15,23,42,0.04)' }}>
-          <span style={{ fontSize: 12, color: '#7b8494' }}>Write a message...</span>
+          <span style={{ fontSize: 12, color: '#7b8494' }}>{text.writeMessage}</span>
         </div>
         <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg,#2352e8,#1d4ed8)', color: '#fff', display: 'grid', placeItems: 'center', boxShadow: '0 12px 22px rgba(29,78,216,0.22)' }}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -465,7 +739,7 @@ function Reveal({ children, delay = 0, className = '' }: { children: React.React
 
 // ─── Auto showcase carousel ──────────────────────────────────────────────────
 
-function WebsiteCarousel() {
+function WebsiteCarousel({ language }: { language: Language }) {
   const moveDurationMs = 1400
   const pauseDurationMs = 2600
   const visibleOffsets = [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
@@ -578,7 +852,7 @@ function WebsiteCarousel() {
               transformOrigin: 'center center',
             }}
           >
-            <DetailedSitePreview site={activeSite} />
+            <DetailedSitePreview site={activeSite} language={language} />
           </div>
         ) : null}
         <div
@@ -590,7 +864,7 @@ function WebsiteCarousel() {
             transformOrigin: 'center center',
           }}
         >
-          <DetailedSitePreview site={isTransitioning ? incomingSite : activeSite} />
+          <DetailedSitePreview site={isTransitioning ? incomingSite : activeSite} language={language} />
         </div>
       </div>
       <style>{`
@@ -608,19 +882,16 @@ function WebsiteCarousel() {
   )
 }
 
-function ChatbotShowcasePreview() {
-  const messages = [
-    { from: 'bot', text: 'Hei! Jeg kan hjelpe med åpningstider, priser eller sende deg riktig sted.' },
-    { from: 'user', text: 'Kan dere hjelpe meg i morgen?' },
-    { from: 'bot', text: 'Ja, jeg kan sjekke tilgjengelighet og finne neste steg for deg.' },
-  ]
+function ChatbotShowcasePreview({ language }: { language: Language }) {
+  const text = copy[language]
+  const messages = text.showcaseChatMessages
 
   return (
     <div className="chatbotPreviewShell">
       <div className="chatbotPreviewGlow" />
       <div className="chatbotScheduleCard">
         <div className="chatbotScheduleLabel">
-          Today
+          {text.today}
         </div>
         <div className="chatbotScheduleSlots">
           {['13:30', '15:00', '17:15'].map((slot) => (
@@ -637,13 +908,13 @@ function ChatbotShowcasePreview() {
             ✦
           </div>
           <div className="chatbotWidgetTitleGroup">
-            <div className="chatbotWidgetTitle">Vintra Assistant</div>
-            <div className="chatbotWidgetSubtitle">Live help and support</div>
+            <div className="chatbotWidgetTitle">{text.chatTitle}</div>
+            <div className="chatbotWidgetSubtitle">{text.chatSubtitle}</div>
           </div>
           <div className="chatbotWidgetStatus">
-            Online
+            {text.online}
           </div>
-          <button type="button" className="chatbotWidgetClose" aria-label="Close preview chat">
+          <button type="button" className="chatbotWidgetClose" aria-label={text.closePreview}>
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M18 6 6 18" />
               <path d="m6 6 12 12" />
@@ -664,8 +935,8 @@ function ChatbotShowcasePreview() {
         </div>
 
         <div className="chatbotWidgetFooter">
-          <div className="chatbotWidgetInput">Write a message...</div>
-          <button type="button" className="chatbotWidgetSend" aria-label="Send preview message">
+          <div className="chatbotWidgetInput">{text.writeMessage}</div>
+          <button type="button" className="chatbotWidgetSend" aria-label={text.sendPreview}>
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="m22 2-7 20-4-9-9-4Z" />
               <path d="M22 2 11 13" />
@@ -679,7 +950,19 @@ function ChatbotShowcasePreview() {
 
 export default function MainLanding() {
   const [heroMounted, setHeroMounted] = useState(false)
-  useEffect(() => { setTimeout(() => setHeroMounted(true), 80) }, [])
+  const [language, setLanguage] = useState<Language>('en')
+  const text = copy[language]
+
+  useEffect(() => {
+    setTimeout(() => setHeroMounted(true), 80)
+    setLanguage(detectPreferredLanguage())
+  }, [])
+
+  const changeLanguage = (nextLanguage: Language) => {
+    setLanguage(nextLanguage)
+    window.localStorage.setItem('vintra-main-language', nextLanguage)
+  }
+
   const currentYear = new Date().getFullYear()
 
   return (
@@ -693,6 +976,38 @@ export default function MainLanding() {
         * { box-sizing: border-box; margin: 0; padding: 0 }
         body { background: var(--bg); font-family: -apple-system, 'Helvetica Neue', sans-serif; color: #111 }
         .page { max-width: 1100px; margin: 0 auto; padding: 0 24px }
+        .language-switch {
+          display: flex;
+          justify-content: flex-end;
+          padding: 18px 24px 0;
+        }
+        .language-switch__inner {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px;
+          border-radius: 999px;
+          border: 1px solid rgba(15,23,42,0.1);
+          background: rgba(255,255,255,0.82);
+          box-shadow: 0 10px 24px rgba(15,23,42,0.06);
+        }
+        .language-switch button {
+          min-width: 48px;
+          border: 0;
+          border-radius: 999px;
+          padding: 8px 12px;
+          background: transparent;
+          color: #64748b;
+          font-size: 13px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+        }
+        .language-switch button[aria-pressed="true"] {
+          background: #111;
+          color: #fff;
+          box-shadow: 0 8px 18px rgba(15,23,42,0.14);
+        }
         @keyframes float-slow {
           0%,100% { transform: translateY(0) rotate(-2deg) }
           50%      { transform: translateY(-12px) rotate(2deg) }
@@ -1324,7 +1639,23 @@ export default function MainLanding() {
         }
       `}</style>
 
-      <main>
+      <main lang={language}>
+        <div className="language-switch" aria-label={text.languageSwitchLabel}>
+          <div className="language-switch__inner">
+            {(['no', 'en'] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={language === option}
+                aria-label={languageLabels[option]}
+                onClick={() => changeLanguage(option)}
+              >
+                {option.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* ── HERO ───────────────────────────────────────── */}
         <section className="page" style={{ paddingTop: 80, paddingBottom: 80 }}>
           <div className="hero-grid" style={{ display: 'flex', gap: 48, alignItems: 'center' }}>
@@ -1349,7 +1680,7 @@ export default function MainLanding() {
               }}>
                 <span>Vintra</span>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E' }} />
-                <span>Official site</span>
+                <span>{text.badgeStatus}</span>
               </div>
 
               <h1 style={{
@@ -1359,9 +1690,9 @@ export default function MainLanding() {
                 opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateY(20px)',
                 transition: 'all 0.6s ease 0.1s',
               }}>
-                <span style={{ display: 'block' }}>Vintra builds</span>
-                websites and chatbots<br />
-                <span style={{ color: '#1A6BFF' }}>that are easy to find.</span>
+                <span style={{ display: 'block' }}>{text.heroTitleStart}</span>
+                {text.heroTitleMiddle}<br />
+                <span style={{ color: '#1A6BFF' }}>{text.heroTitleEnd}</span>
               </h1>
 
               <p style={{
@@ -1369,7 +1700,7 @@ export default function MainLanding() {
                 opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateY(20px)',
                 transition: 'all 0.6s ease 0.2s',
               }}>
-                Vintra is the official site for website design, AI chatbots, pricing, support, phone, and email in one place.
+                {text.heroBody}
               </p>
 
               <div style={{
@@ -1378,10 +1709,10 @@ export default function MainLanding() {
                 transition: 'all 0.6s ease 0.3s',
               }}>
                 <Link href="/landings/guest/websites" className="cta-primary">
-                  Try website builder <ArrowRight />
+                  {text.heroWebsiteCta} <ArrowRight />
                 </Link>
                 <Link href="/landings/auth/chatWidget" className="cta-secondary">
-                  Test chatbot for free
+                  {text.heroChatbotCta}
                 </Link>
               </div>
 
@@ -1389,7 +1720,7 @@ export default function MainLanding() {
                 display: 'flex', gap: 20, marginTop: 32, flexWrap: 'wrap',
                 opacity: heroMounted ? 1 : 0, transition: 'all 0.7s ease 0.4s',
               }}>
-                {['No credit card', 'No account', 'Instant prices'].map(t => (
+                {text.heroBenefits.map(t => (
                   <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#777' }}>
                     <CheckIcon /> {t}
                   </div>
@@ -1408,7 +1739,7 @@ export default function MainLanding() {
                 <MiniSiteMockup site={websites[1]} />
               </div>
               <div className="float-b" style={{ position: 'absolute', bottom: 20, left: 0, transform: 'scale(0.85)' }}>
-                <ChatWidgetPreview />
+                <ChatWidgetPreview language={language} />
               </div>
             </div>
           </div>
@@ -1453,7 +1784,7 @@ export default function MainLanding() {
           marginBottom: '28px'
         }}>
           <span style={{ width: '6px', height: '6px', background: '#6366f1', borderRadius: '50%', display: 'inline-block' }}></span>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>Choose your starting point</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>{text.productEyebrow}</span>
         </div>
         
         <h2 style={{ 
@@ -1464,8 +1795,16 @@ export default function MainLanding() {
           lineHeight: 0.95,
           marginBottom: '32px'
         }}>
-          We build the site. <br/> 
-          The <span style={{ color: '#6366f1' }}>chatbot</span> handles the rest.
+          {text.productTitleStart} <br/> 
+          {language === 'no' ? (
+            <>
+              <span style={{ color: '#6366f1' }}>Chatboten</span> {text.productTitleEnd}
+            </>
+          ) : (
+            <>
+              The <span style={{ color: '#6366f1' }}>chatbot</span> {text.productTitleEnd}
+            </>
+          )}
         </h2>
       </div>
     </Reveal>
@@ -1514,13 +1853,13 @@ export default function MainLanding() {
             <GlobeIcon size={38} color="#000" />
           </div>
 
-          <h3 style={{ color: '#fff', fontSize: '32px', fontWeight: 800, marginBottom: '20px' }}>Website</h3>
+          <h3 style={{ color: '#fff', fontSize: '32px', fontWeight: 800, marginBottom: '20px' }}>{text.websiteCardTitle}</h3>
           <p style={{ color: '#94a3b8', fontSize: '18px', lineHeight: '1.6', marginBottom: '40px' }}>
-            Don't waste weeks on templates. We build your professional presence for you, ensuring the perfect structure and look from day one.
+            {text.websiteCardBody}
           </p>
 
           <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 50px 0', flexGrow: 1 }}>
-            {['Done-for-you construction', 'Strategic layout & copywriting', 'Transparent upfront pricing'].map((item) => (
+            {text.websiteCardFeatures.map((item) => (
               <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#cbd5e1', marginBottom: '16px', fontSize: '15px' }}>
                 <div style={{ color: '#6366f1' }}><CheckIcon size={18} /></div> {item}
               </li>
@@ -1541,7 +1880,7 @@ export default function MainLanding() {
             textDecoration: 'none',
             transition: '0.3s'
           }}>
-            Get my website <ArrowRight size={20} />
+            {text.websiteCardCta} <ArrowRight size={20} />
           </Link>
         </div>
       </Reveal>
@@ -1580,13 +1919,13 @@ export default function MainLanding() {
             <BotIcon size={38} color="#fff" />
           </div>
 
-          <h3 style={{ color: '#fff', fontSize: '32px', fontWeight: 800, marginBottom: '20px' }}>AI Chatbot</h3>
+          <h3 style={{ color: '#fff', fontSize: '32px', fontWeight: 800, marginBottom: '20px' }}>{text.chatbotCardTitle}</h3>
           <p style={{ color: '#94a3b8', fontSize: '18px', lineHeight: '1.6', marginBottom: '40px' }}>
-            Instantly capture leads and answer visitor questions 24/7. Fully customizable behavior that matches your brand perfectly.
+            {text.chatbotCardBody}
           </p>
 
           <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 50px 0', flexGrow: 1 }}>
-            {['Automated first conversations', 'Custom tone & personality', 'Live testing & instant embed'].map((item) => (
+            {text.chatbotCardFeatures.map((item) => (
               <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#cbd5e1', marginBottom: '16px', fontSize: '15px' }}>
                 <div style={{ color: '#a855f7' }}><CheckIcon size={18} /></div> {item}
               </li>
@@ -1607,7 +1946,7 @@ export default function MainLanding() {
             textDecoration: 'none',
             transition: '0.3s'
           }}>
-            Open chatbot builder <ArrowRight size={20} />
+            {text.chatbotCardCta} <ArrowRight size={20} />
           </Link>
           
           <div style={{
@@ -1623,7 +1962,7 @@ export default function MainLanding() {
             color: '#fff',
             textTransform: 'uppercase',
             border: '1px solid rgba(255,255,255,0.1)'
-          }}>Self-Service</div>
+          }}>{text.selfService}</div>
         </div>
       </Reveal>
     </div>
@@ -1640,7 +1979,7 @@ export default function MainLanding() {
         margin: '80px auto 0 auto'
       }}>
         <p style={{ margin: 0, color: '#64748b', fontWeight: 500 }}>
-          The best part? <span style={{ color: '#fff' }}>They work even better together.</span>
+          {text.togetherLead} <span style={{ color: '#fff' }}>{text.togetherStrong}</span>
         </p>
       </div>
     </Reveal>
@@ -1652,14 +1991,14 @@ export default function MainLanding() {
           <Reveal>
             <div className="page">
               <h2 style={{ fontSize: 'clamp(26px,3.5vw,40px)', color: '#fff', fontWeight: 900, textAlign: 'center', letterSpacing: -0.8, marginBottom: 8 }}>
-                Websites for all industries
+                {text.carouselTitle}
               </h2>
               <p style={{ textAlign: 'center', color: '#e0e0e0', fontSize: 16, marginBottom: 48 }}>
-                Each concept gets a larger preview in the middle before the next one takes over
+                {text.carouselBody}
               </p>
             </div>
           </Reveal>
-          <WebsiteCarousel />
+          <WebsiteCarousel language={language} />
         </section>
 
         {/* ── CHATBOT SHOWCASE ──────────────────────────── */}
@@ -1683,15 +2022,15 @@ export default function MainLanding() {
                   letterSpacing: 0.6,
                   marginBottom: 16,
                 }}>
-                  <span>AI Chatbot</span>
+                  <span>{text.chatbotCardTitle}</span>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E' }} />
-                  <span>Always on</span>
+                  <span>{text.alwaysOn}</span>
                 </div>
                 <h2 style={{ fontSize: 'clamp(30px,4vw,46px)', fontWeight: 900, letterSpacing: -1, marginBottom: 16 }}>
-                  The chatbot that never sleeps
+                  {text.chatbotShowcaseTitle}
                 </h2>
                 <p style={{ color: '#5B6472', fontSize: 17, lineHeight: 1.8 }}>
-                  Built to answer faster, book smarter and guide customers to the right next step without making your team do repetitive work all day.
+                  {text.chatbotShowcaseBody}
                 </p>
               </div>
             </Reveal>
@@ -1701,12 +2040,12 @@ export default function MainLanding() {
                 <div className="chatbotContentPanel">
                   <div className="chatbotUseCaseGrid">
                     {[
-                      { icon: '🛒', label: 'E-commerce', color: '#EEF4FF' },
-                      { icon: '🏨', label: 'Hotel', color: '#FFF4EE' },
-                      { icon: '🏥', label: 'Clinic', color: '#EEFAF4' },
-                      { icon: '✂️', label: 'Salon', color: '#FDF0F8' },
-                      { icon: '🎓', label: 'Course', color: '#F5F0FF' },
-                      { icon: '🏢', label: 'Business', color: '#F5F5F5' },
+                      { icon: '🛒', label: text.useCases[0], color: '#EEF4FF' },
+                      { icon: '🏨', label: text.useCases[1], color: '#FFF4EE' },
+                      { icon: '🏥', label: text.useCases[2], color: '#EEFAF4' },
+                      { icon: '✂️', label: text.useCases[3], color: '#FDF0F8' },
+                      { icon: '🎓', label: text.useCases[4], color: '#F5F0FF' },
+                      { icon: '🏢', label: text.useCases[5], color: '#F5F5F5' },
                     ].map(({ icon, label, color }) => (
                       <div
                         key={label}
@@ -1724,19 +2063,16 @@ export default function MainLanding() {
                   <div style={{ display: 'grid', gap: 22 }}>
                     <div>
                       <h3 style={{ fontSize: 'clamp(26px,3vw,34px)', fontWeight: 900, letterSpacing: -0.7, marginBottom: 12 }}>
-                        Answer questions. Book appointments. Sell more.
+                        {text.chatbotFeatureTitle}
                       </h3>
                       <p style={{ color: '#5B6472', fontSize: 16, lineHeight: 1.8 }}>
-                        Our AI chatbot learns about your business and answers your customers 24/7. You set the rules, the tone and the next step. It handles the routine work while your team focuses on what matters.
+                        {text.chatbotFeatureBody}
                       </p>
                     </div>
 
                     <div className="chatbotFeatureList">
                       {[
-                        'Answer common questions automatically',
-                        'Book appointments and meetings directly in chat',
-                        'Direct traffic to the right page or person',
-                        'Integrate with existing tools',
+                        ...text.chatbotFeatures,
                       ].map((item) => (
                         <div
                           key={item}
@@ -1755,7 +2091,7 @@ export default function MainLanding() {
 
               <Reveal delay={160}>
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <ChatbotShowcasePreview />
+                  <ChatbotShowcasePreview language={language} />
                 </div>
               </Reveal>
             </div>
@@ -1767,18 +2103,16 @@ export default function MainLanding() {
           <div className="page">
             <Reveal>
               <h2 style={{ fontSize: 'clamp(26px,3.5vw,40px)', fontWeight: 900, textAlign: 'center', color: '#fff', letterSpacing: -0.8, marginBottom: 16 }}>
-                Transparent prices. No surprises.
+                {text.pricingTitle}
               </h2>
               <p style={{ textAlign: 'center', color: '#999', fontSize: 16, marginBottom: 56, maxWidth: 480, margin: '0 auto 56px' }}>
-                Use our free calculator and see exactly what your solution costs — before you decide.
+                {text.pricingBody}
               </p>
             </Reveal>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20, marginBottom: 48 }}>
               {[
-                { label: 'Simple website', from: '2 990', desc: 'Personal / CV / Portfolio', color: '#1A6BFF' },
-                { label: 'Business website', from: '6 490', desc: 'Professional profile + contact form', color: '#0C9E6A' },
-                { label: 'Chatbot', from: '0', desc: 'Free to start — scale as needed', color: '#7C3AED' },
+                ...text.pricingCards,
               ].map(({ label, from, desc, color }) => (
                 <Reveal key={label} delay={100}>
                   <div style={{
@@ -1787,8 +2121,8 @@ export default function MainLanding() {
                   }}>
                     <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>{label}</div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 8 }}>
-                      <span style={{ fontSize: 12, color: '#666' }}>from</span>
-                      <span style={{ fontSize: 36, fontWeight: 900, color: '#fff', letterSpacing: -1 }}>{from === '0' ? 'Free' : `${from} kr`}</span>
+                      <span style={{ fontSize: 12, color: '#666' }}>{text.from}</span>
+                      <span style={{ fontSize: 36, fontWeight: 900, color: '#fff', letterSpacing: -1 }}>{from === '0' ? text.free : `${from} kr`}</span>
                     </div>
                     <div style={{ fontSize: 14, color: '#666', marginBottom: 20 }}>{desc}</div>
                     <div style={{ height: 3, borderRadius: 2, background: color }} />
@@ -1799,7 +2133,7 @@ export default function MainLanding() {
 
             <div style={{ textAlign: 'center' }}>
               <Link href="/landings/guest/websites" className="cta-primary" style={{ background: '#fff', color: '#111' }}>
-                Calculate your price now <ArrowRight />
+                {text.pricingCta} <ArrowRight />
               </Link>
             </div>
           </div>
@@ -1810,17 +2144,17 @@ export default function MainLanding() {
           <Reveal>
             <div style={{ fontSize: 64, marginBottom: 24 }}>👋</div>
             <h2 style={{ fontSize: 'clamp(28px,4vw,48px)', fontWeight: 900, letterSpacing: -1, marginBottom: 16 }}>
-              Ready to try?
+              {text.bottomTitle}
             </h2>
             <p style={{ color: '#666', fontSize: 17, marginBottom: 40, maxWidth: 420, margin: '0 auto 40px' }}>
-              Start today — completely free, no card, no account. See what we can create for you.
+              {text.bottomBody}
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link href="/landings/guest/websites" className="cta-primary">
-                Design website <ArrowRight />
+                {text.bottomWebsiteCta} <ArrowRight />
               </Link>
               <Link href="/landings/auth/chatWidget" className="cta-secondary">
-                Test chatbot
+                {text.bottomChatbotCta}
               </Link>
             </div>
           </Reveal>
@@ -1831,40 +2165,40 @@ export default function MainLanding() {
             <Reveal>
               <div style={{ maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
                 <div style={{ display: 'inline-block', padding: '8px 14px', borderRadius: 999, background: '#E8F0FF', color: '#1A6BFF', fontSize: 12, fontWeight: 800, letterSpacing: 0.5, marginBottom: 18 }}>
-                  Contact Vintra
+                  {text.contactEyebrow}
                 </div>
                 <h2 style={{ fontSize: 'clamp(28px,4vw,42px)', fontWeight: 900, letterSpacing: -0.9, marginBottom: 14 }}>
-                  Easy for visitors and Google to find
+                  {text.contactTitle}
                 </h2>
                 <p style={{ color: '#5B6472', fontSize: 17, lineHeight: 1.8, marginBottom: 34 }}>
-                  Reach us directly for website projects, chatbot setup, pricing questions, or support.
+                  {text.contactBody}
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, textAlign: 'left' }}>
                   <a
                     href={emailHref}
                     style={{ background: '#fff', borderRadius: 18, padding: '22px 20px', textDecoration: 'none', color: '#111', border: '1px solid #E6EAF0', boxShadow: '0 12px 28px rgba(15,23,42,0.06)' }}
                   >
-                    <div style={{ fontSize: 12, fontWeight: 800, color: '#1A6BFF', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>Email</div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: '#1A6BFF', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{text.email}</div>
                     <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>{siteConfig.contact.email}</div>
-                    <div style={{ color: '#5B6472', fontSize: 14, lineHeight: 1.6 }}>Best for project questions and written follow-up.</div>
+                    <div style={{ color: '#5B6472', fontSize: 14, lineHeight: 1.6 }}>{text.emailDescription}</div>
                   </a>
                   {phoneHref ? (
                     <a
                       href={phoneHref}
                       style={{ background: '#fff', borderRadius: 18, padding: '22px 20px', textDecoration: 'none', color: '#111', border: '1px solid #E6EAF0', boxShadow: '0 12px 28px rgba(15,23,42,0.06)' }}
                     >
-                      <div style={{ fontSize: 12, fontWeight: 800, color: '#0C9E6A', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>Phone</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: '#0C9E6A', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{text.phone}</div>
                       <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>{siteConfig.contact.phoneDisplay}</div>
-                      <div style={{ color: '#5B6472', fontSize: 14, lineHeight: 1.6 }}>Call for quick questions about websites, chatbots, and setup.</div>
+                      <div style={{ color: '#5B6472', fontSize: 14, lineHeight: 1.6 }}>{text.phoneDescription}</div>
                     </a>
                   ) : null}
                   <a
                     href={siteConfig.url}
                     style={{ background: '#fff', borderRadius: 18, padding: '22px 20px', textDecoration: 'none', color: '#111', border: '1px solid #E6EAF0', boxShadow: '0 12px 28px rgba(15,23,42,0.06)' }}
                   >
-                    <div style={{ fontSize: 12, fontWeight: 800, color: '#7C3AED', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>Website</div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: '#7C3AED', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{text.websiteCardTitle}</div>
                     <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>chat.vintrastudio.com</div>
-                    <div style={{ color: '#5B6472', fontSize: 14, lineHeight: 1.6 }}>Main site for product demos, pricing, and contact details.</div>
+                    <div style={{ color: '#5B6472', fontSize: 14, lineHeight: 1.6 }}>{text.websiteDescription}</div>
                   </a>
                 </div>
               </div>
@@ -1876,13 +2210,13 @@ export default function MainLanding() {
         <footer style={{ borderTop: '1px solid #F0F0F0', padding: '32px 24px' }}>
           <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
             <span style={{ fontWeight: 900, fontSize: 18 }}>vintra</span>
-            <span style={{ color: '#999', fontSize: 13 }}>© {currentYear} Vintra. All rights reserved.</span>
+            <span style={{ color: '#999', fontSize: 13 }}>© {currentYear} Vintra. {text.footerRights}</span>
             <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
               <a href={emailHref} style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>{siteConfig.contact.email}</a>
               {phoneHref ? (
                 <a href={phoneHref} style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>{siteConfig.contact.phoneDisplay}</a>
               ) : null}
-              <a href="#contact" style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>Contact</a>
+              <a href="#contact" style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>{text.contact}</a>
             </div>
           </div>
         </footer>
