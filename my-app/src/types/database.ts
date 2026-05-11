@@ -34,6 +34,7 @@ export interface ChatAssistantConfig {
   businessContext: string;
   restrictions: string;
   supportTriggerKeywords: string[];
+  humanSupportEnabled: boolean;
   handoffMessage: string;
   faqSuggestionsEnabled: boolean;
   faqSuggestions: string[];
@@ -80,6 +81,7 @@ export interface ChatAnalyticsEvent {
     | 'support-open'
     | 'support-returned';
   sessionId: string;
+  widgetKey?: string;
   countryCode?: string;
   createdAt: Date;
 }
@@ -132,6 +134,7 @@ export interface SupportTaskCategory {
 export interface SupportTask {
   id: string;
   businessId: string;
+  widgetKey?: string;
   chatId?: string;
   sessionId?: string;
   visitorName?: string;

@@ -27,7 +27,7 @@ function StarRow({ rating }: { rating: number }) {
   )
 }
 
-export default function AdminFeedbackPanel() {
+export default function AdminFeedbackPanel({ selectedWidgetKey = '' }: { selectedWidgetKey?: string }) {
   const { dbUser } = useAuth()
   const [loading, setLoading] = useState(true)
   const [feedback, setFeedback] = useState<BusinessFeedback[]>([])
@@ -58,17 +58,22 @@ export default function AdminFeedbackPanel() {
     }
   }, [dbUser?.businessId])
 
+  const visibleFeedback = useMemo(
+    () => (selectedWidgetKey ? feedback.filter((entry) => entry.widgetKey === selectedWidgetKey) : feedback),
+    [feedback, selectedWidgetKey]
+  )
+
   const summary = useMemo(() => {
-    const count = feedback.length
+    const count = visibleFeedback.length
     const average = count
-      ? feedback.reduce((total, item) => total + Number(item.rating || 0), 0) / count
+      ? visibleFeedback.reduce((total, item) => total + Number(item.rating || 0), 0) / count
       : 0
 
     return {
       count,
       average,
     }
-  }, [feedback])
+  }, [visibleFeedback])
 
   if (loading) {
     return (
@@ -85,6 +90,11 @@ export default function AdminFeedbackPanel() {
         <div>
           <h1>Feedback</h1>
           <p>Collect customer feedback and track how people rate the experience.</p>
+          {selectedWidgetKey ? (
+            <p className="adminDataHint">
+              Showing feedback for widget <strong>{selectedWidgetKey}</strong>.
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -108,10 +118,10 @@ export default function AdminFeedbackPanel() {
       </section>
 
       <div className="adminFeedbackList">
-        {feedback.length === 0 ? (
+        {visibleFeedback.length === 0 ? (
           <p className="adminFeedbackEmpty">No feedback has been submitted yet.</p>
         ) : (
-          feedback.map((entry) => (
+          visibleFeedback.map((entry) => (
             <article key={entry.id} className="adminFeedbackCard">
               <div className="adminFeedbackCardTop">
                 <div>

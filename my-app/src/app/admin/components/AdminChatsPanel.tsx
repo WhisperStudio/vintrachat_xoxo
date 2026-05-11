@@ -42,8 +42,9 @@ function formatMessageTime(value: Date) {
   }).format(new Date(value))
 }
 
-export default function AdminChatsPanel() {
+export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWidgetKey?: string }) {
   const { dbUser, business } = useAuth()
+  const humanSupportEnabled = business?.chatAssistantConfig?.humanSupportEnabled !== false
   const [chats, setChats] = useState<SupportChatSession[]>([])
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -121,10 +122,18 @@ export default function AdminChatsPanel() {
     }
   }, [business?.supportTaskCategories, dbUser?.businessId])
 
-  const selectedChat = useMemo(
-    () => chats.find((chat) => chat.id === selectedChatId) || chats[0] || null,
-    [chats, selectedChatId]
+  const visibleChats = useMemo(
+    () =>
+      selectedWidgetKey
+        ? chats.filter((chat) => chat.widgetKey === selectedWidgetKey)
+        : chats,
+    [chats, selectedWidgetKey]
   )
+  const visibleSelectedChat = useMemo(
+    () => visibleChats.find((chat) => chat.id === selectedChatId) || visibleChats[0] || null,
+    [selectedChatId, visibleChats]
+  )
+  const selectedChat = visibleSelectedChat
 
   useLayoutEffect(() => {
     const el = messagesRef.current
@@ -170,8 +179,11 @@ export default function AdminChatsPanel() {
       <div className="infoCard adminDataCard">
         <h1>Chats</h1>
         <p>
-          No support chats have been saved yet. AI-only conversations are counted in
-          analytics, but only human-support requests appear here.
+          {humanSupportEnabled
+            ? selectedWidgetKey
+              ? 'No support chats were found for the selected widget.'
+              : 'No support chats have been saved yet. AI-only conversations are counted in analytics, but only human-support requests appear here.'
+            : 'Human handoff is turned off. Turn it on to see chats created from support requests here.'}
         </p>
       </div>
     )
@@ -242,6 +254,7 @@ export default function AdminChatsPanel() {
     setTaskSaving(true)
     try {
       await createSupportTask(dbUser.businessId, {
+        widgetKey: selectedChat.widgetKey,
         chatId: selectedChat.id,
         sessionId: selectedChat.sessionId,
         visitorName: selectedChat.visitorName,
@@ -276,13 +289,23 @@ export default function AdminChatsPanel() {
       <div className="adminChatsLayout">
         <div>
           <h1>Chats</h1>
+          {selectedWidgetKey ? (
+            <p className="adminDataHint">
+              Showing chats for widget <strong>{selectedWidgetKey}</strong>.
+            </p>
+          ) : null}
+          {!humanSupportEnabled ? (
+            <p className="adminDataHint">
+              Human handoff is turned off. Turn it on to see support chats here.
+            </p>
+          ) : null}
           <div className="adminChatList">
-            {chats.map((chat) => (
+            {visibleChats.map((chat) => (
               <button
                 key={chat.id}
                 type="button"
                 className={`adminChatListItem ${
-                  chat.id === selectedChat.id ? 'adminChatListItemActive ' : ''
+                  chat.id === visibleSelectedChat?.id ? 'adminChatListItemActive ' : ''
                 }${chat.status === 'needs-human'
                   ? 'adminChatListItemWaiting '
                   : chat.status === 'open'
@@ -303,14 +326,14 @@ export default function AdminChatsPanel() {
           </div>
         <div className="adminChatTranscript">
           <div className="adminChatMeta">
-            <strong>{selectedChat.pageTitle || 'Website visitor'}</strong>
-            <span>{selectedChat.pageUrl || 'Unknown page'}</span>
-            <span>{selectedChat.visitorName ? `Visitor: ${selectedChat.visitorName}` : 'Visitor: unnamed'}</span>
-            <span>Status: {selectedChat.status}</span>
+            <strong>{visibleSelectedChat?.pageTitle || 'Website visitor'}</strong>
+            <span>{visibleSelectedChat?.pageUrl || 'Unknown page'}</span>
+            <span>{visibleSelectedChat?.visitorName ? `Visitor: ${visibleSelectedChat.visitorName}` : 'Visitor: unnamed'}</span>
+            <span>Status: {visibleSelectedChat?.status || 'Unknown'}</span>
           </div>
 
           <div className="adminChatActions">
-            {canReturnToAi ? (
+            {visibleSelectedChat?.status === 'ai-active' ? (
               <button
                 type="button"
                 className="secondaryBtn"
@@ -320,7 +343,7 @@ export default function AdminChatsPanel() {
                 Return to AI
               </button>
             ) : null}
-            {canReturnToHuman ? (
+            {visibleSelectedChat?.status === 'open' ? (
               <button
                 type="button"
                 className="secondaryBtn"
@@ -330,12 +353,12 @@ export default function AdminChatsPanel() {
                 Return to human
               </button>
             ) : null}
-            {selectedChat.status === 'open' ? (
+            {visibleSelectedChat?.status === 'open' ? (
               <button type="button" className="dangerBtn" onClick={handleClose} disabled={actionBusy}>
                 Close chat
               </button>
             ) : null}
-            {selectedChat.status === 'ai-active' ? (
+            {visibleSelectedChat?.status === 'ai-active' ? (
               <button type="button" className="dangerBtn" onClick={handleClose} disabled={actionBusy}>
                 Close chat
               </button>
@@ -344,7 +367,7 @@ export default function AdminChatsPanel() {
 
           <div className={`adminChatTranscriptStack ${awaitingAcceptance ? 'adminChatTranscriptLocked' : ''}`}>
             <div className="adminChatMessages" ref={messagesRef}>
-              {selectedChat.messages.map((message) => (
+              {visibleSelectedChat?.messages.map((message) => (
                 <div
                   key={message.id}
                   className={`adminTranscriptBubble ${

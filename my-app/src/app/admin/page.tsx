@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { FiArrowLeft, FiArrowRight, FiArrowUpRight, FiChevronLeft, FiChevronRight, FiPlay, FiZap } from 'react-icons/fi'
+import AdminDropdown from './components/AdminDropdown'
 import AdminAnalyticsPanel from './components/AdminAnalyticsPanel'
 import AdminChatsPanel from './components/AdminChatsPanel'
 import AdminFeedbackPanel from './components/AdminFeedbackPanel'
@@ -56,6 +57,7 @@ export default function AdminPage() {
   const [tutorialActive, setTutorialActive] = useState(false)
   const [tutorialStepIndex, setTutorialStepIndex] = useState(0)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [selectedWidgetKey, setSelectedWidgetKey] = useState('')
   const [tutorialSpotlight, setTutorialSpotlight] = useState<{
     top: number
     left: number
@@ -99,6 +101,13 @@ export default function AdminPage() {
   const visibleSupportItems = supportItems.filter((item) => visibleTabs.includes(item.tab))
   const visibleFeedbackItems = feedbackItems.filter((item) => visibleTabs.includes(item.tab))
   const visibleAdminItems = adminItems.filter((item) => visibleTabs.includes(item.tab))
+  const widgetList = business?.chatWidgets || []
+  const selectedWidget =
+    widgetList.find((widget) => widget.widgetKey === selectedWidgetKey) ||
+    widgetList.find((widget) => widget.widgetKey === business?.activeChatWidgetKey) ||
+    widgetList[0] ||
+    null
+  const resolvedWidgetKey = selectedWidget?.widgetKey || ''
   const showTutorial = useMemo(() => {
     if (!dbUser?.businessId || tutorialDismissed) return false
 
@@ -223,6 +232,22 @@ export default function AdminPage() {
       updatedAt: serverTimestamp(),
     })
   }
+
+  useEffect(() => {
+    if (!widgetList.length) {
+      setSelectedWidgetKey('')
+      return
+    }
+
+    const isValid = widgetList.some((widget) => widget.widgetKey === selectedWidgetKey)
+    if (!selectedWidgetKey || !isValid) {
+      const fallbackKey =
+        widgetList.find((widget) => widget.widgetKey === business?.activeChatWidgetKey)?.widgetKey ||
+        widgetList[0]?.widgetKey ||
+        ''
+      setSelectedWidgetKey(fallbackKey)
+    }
+  }, [business?.activeChatWidgetKey, selectedWidgetKey, widgetList])
 
   useEffect(() => {
     if (!loading && !isAuthenticated) router.push('/auth/login')
@@ -427,6 +452,27 @@ export default function AdminPage() {
                   <span>Tutorial</span>
                 </button>
               </div>
+              <section className="adminOverviewWidgetSwitch">
+                <div className="adminOverviewWidgetSwitchCopy">
+                  <span className="adminSidebarEyebrow">Widget scope</span>
+                  <h2>Select the widget this overview should show</h2>
+                  <p>
+                    This selection is shared with Chats, Tasks, Feedback, Analytics, and Chat Widgets.
+                    It does not affect Users, Websites, or Settings.
+                  </p>
+                </div>
+                <AdminDropdown
+                  value={resolvedWidgetKey}
+                  placeholder="Select widget"
+                  options={widgetList.map((widget) => ({
+                    value: widget.widgetKey,
+                    label: widget.name,
+                    description: widget.isDefault ? 'Default widget' : 'Custom widget',
+                  }))}
+                  onChange={(nextValue) => setSelectedWidgetKey(nextValue)}
+                  disabled={!widgetList.length}
+                />
+              </section>
               {showTutorial ? (
                 <section className="adminTutorialCard">
                   <div className="adminTutorialHeader">
@@ -474,25 +520,25 @@ export default function AdminPage() {
 
           {activeTab === 'analytics' && (
             <div ref={analyticsPanelRef}>
-              <AdminAnalyticsPanel />
+              <AdminAnalyticsPanel selectedWidgetKey={resolvedWidgetKey} />
             </div>
           )}
 
           {activeTab === 'chats' && (
             <div ref={chatsPanelRef}>
-              <AdminChatsPanel />
+              <AdminChatsPanel selectedWidgetKey={resolvedWidgetKey} />
             </div>
           )}
 
           {activeTab === 'tasks' && (
             <div ref={tasksPanelRef}>
-              <AdminTasksPanel />
+              <AdminTasksPanel selectedWidgetKey={resolvedWidgetKey} />
             </div>
           )}
 
           {activeTab === 'feedback' && (
             <div ref={feedbackPanelRef}>
-              <AdminFeedbackPanel />
+              <AdminFeedbackPanel selectedWidgetKey={resolvedWidgetKey} />
             </div>
           )}
 
@@ -511,7 +557,10 @@ export default function AdminPage() {
 
           {activeTab === 'widgets' && (
             <div ref={widgetsPanelRef}>
-              <WidgetAdminPanel />
+              <WidgetAdminPanel
+                selectedWidgetKey={resolvedWidgetKey}
+                onWidgetSelected={setSelectedWidgetKey}
+              />
             </div>
           )}
 

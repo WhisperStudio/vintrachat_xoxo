@@ -66,6 +66,7 @@ function mapAnalyticsEvent(event: any): ChatAnalyticsEvent {
     id: String(event.id || crypto.randomUUID()),
     kind: event.kind || 'visitor-message',
     sessionId: String(event.sessionId || ''),
+    widgetKey: event.widgetKey || undefined,
     countryCode: event.countryCode || undefined,
     createdAt: toDate(event.createdAt),
   }
@@ -104,12 +105,14 @@ function createSupportMessage(
 function createAnalyticsEvent(
   kind: ChatAnalyticsEvent['kind'],
   sessionId: string,
-  countryCode?: string
+  countryCode?: string,
+  widgetKey?: string
 ): ChatAnalyticsEvent {
   return {
     id: crypto.randomUUID(),
     kind,
     sessionId,
+    widgetKey,
     countryCode,
     createdAt: new Date(),
   }
@@ -172,8 +175,10 @@ export async function getBusinessChatAnalytics(
 export async function acceptSupportChat(businessId: string, chatId: string) {
   const chatRef = doc(db, `businesses/${businessId}/supportChats/${chatId}`)
   const businessRef = doc(db, 'businesses', businessId)
+  const chatSnap = await getDoc(chatRef)
+  const chatData = chatSnap.exists() ? chatSnap.data() || {} : {}
   const systemMessage = createSupportMessage('system', 'The chat has been handed over to human support.')
-  const analyticsEvent = createAnalyticsEvent('support-open', chatId)
+  const analyticsEvent = createAnalyticsEvent('support-open', chatId, undefined, chatData.widgetKey || undefined)
 
   await updateDoc(chatRef, {
     status: 'open',
@@ -191,11 +196,18 @@ export async function acceptSupportChat(businessId: string, chatId: string) {
 export async function returnSupportChatToAi(businessId: string, chatId: string) {
   const chatRef = doc(db, `businesses/${businessId}/supportChats/${chatId}`)
   const businessRef = doc(db, 'businesses', businessId)
+  const chatSnap = await getDoc(chatRef)
+  const chatData = chatSnap.exists() ? chatSnap.data() || {} : {}
   const systemMessage = createSupportMessage(
     'system',
     'The chat has been returned to the AI assistant.'
   )
-  const analyticsEvent = createAnalyticsEvent('support-returned', chatId)
+  const analyticsEvent = createAnalyticsEvent(
+    'support-returned',
+    chatId,
+    undefined,
+    chatData.widgetKey || undefined
+  )
 
   await updateDoc(chatRef, {
     status: 'ai-active',
@@ -221,8 +233,15 @@ export async function sendSupportReply(
 
   const chatRef = doc(db, `businesses/${businessId}/supportChats/${chatId}`)
   const businessRef = doc(db, 'businesses', businessId)
+  const chatSnap = await getDoc(chatRef)
+  const chatData = chatSnap.exists() ? chatSnap.data() || {} : {}
   const supportMessage = createSupportMessage('support', trimmed)
-  const analyticsEvent = createAnalyticsEvent('support-message', chatId, countryCode)
+  const analyticsEvent = createAnalyticsEvent(
+    'support-message',
+    chatId,
+    countryCode,
+    chatData.widgetKey || undefined
+  )
 
   await updateDoc(chatRef, {
     status: 'open',
@@ -336,6 +355,7 @@ export async function getSupportTasks(businessId: string): Promise<SupportTask[]
 export async function createSupportTask(
   businessId: string,
   params: {
+    widgetKey?: string
     chatId?: string
     sessionId?: string
     visitorName?: string
@@ -357,6 +377,7 @@ export async function createSupportTask(
 
   await setDoc(taskRef, {
     businessId,
+    widgetKey: params.widgetKey || null,
     chatId: params.chatId || params.sessionId || null,
     sessionId: params.sessionId || params.chatId || null,
     visitorName: params.visitorName || null,

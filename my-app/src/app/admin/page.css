@@ -260,6 +260,41 @@ backdrop-filter: blur(7px);
   line-height: 1.55;
 }
 
+.adminOverviewWidgetSwitch {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-end;
+  margin-top: 18px;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(99, 102, 241, 0.14);
+  background:
+    radial-gradient(circle at top right, rgba(99, 102, 241, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.95));
+  box-shadow:
+    0 16px 30px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.adminOverviewWidgetSwitchCopy {
+  display: grid;
+  gap: 8px;
+  max-width: 680px;
+}
+
+.adminOverviewWidgetSwitchCopy h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #0f172a;
+}
+
+.adminOverviewWidgetSwitchCopy p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.55;
+}
+
 .adminTutorialOrb {
   width: 88px;
   height: 88px;
@@ -628,6 +663,11 @@ backdrop-filter: blur(7px);
 
   .adminOverviewHero {
     flex-direction: column;
+  }
+
+  .adminOverviewWidgetSwitch {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .adminTutorialOrb {

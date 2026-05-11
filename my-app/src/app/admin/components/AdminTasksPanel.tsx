@@ -92,8 +92,9 @@ function formatMessageTime(value?: Date) {
   }).format(new Date(value))
 }
 
-export default function AdminTasksPanel() {
+export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWidgetKey?: string }) {
   const { dbUser, business } = useAuth()
+  const humanSupportEnabled = business?.chatAssistantConfig?.humanSupportEnabled !== false
   const [loading, setLoading] = useState(true)
   const [tasks, setTasks] = useState<SupportTask[]>([])
   const [chats, setChats] = useState<SupportChatSession[]>([])
@@ -164,6 +165,8 @@ export default function AdminTasksPanel() {
 
   const filteredTasks = useMemo(() => {
     const nextTasks = tasks.filter((task) => {
+      if (selectedWidgetKey && task.widgetKey && task.widgetKey !== selectedWidgetKey) return false
+      if (selectedWidgetKey && !task.widgetKey) return false
       if (filters.status !== 'all' && task.status !== filters.status) return false
       if (filters.priority !== 'all' && task.priority !== filters.priority) return false
       if (filters.categoryId !== 'all' && task.categoryId !== filters.categoryId) return false
@@ -175,7 +178,7 @@ export default function AdminTasksPanel() {
       const bTime = new Date(b.createdAt).getTime()
       return filters.sortBy === 'newest' ? bTime - aTime : aTime - bTime
     })
-  }, [filters.categoryId, filters.priority, filters.sortBy, filters.status, tasks])
+  }, [filters.categoryId, filters.priority, filters.sortBy, filters.status, selectedWidgetKey, tasks])
 
   useEffect(() => {
     let mounted = true
@@ -314,6 +317,7 @@ export default function AdminTasksPanel() {
     setCreatorBusy(true)
     try {
       await createSupportTask(dbUser.businessId, {
+        widgetKey: selectedWidgetKey || business?.activeChatWidgetKey || business?.chatWidgetKey || undefined,
         title: creatorDraft.title,
         description: creatorDraft.description,
         categoryId: category.id,
@@ -393,6 +397,16 @@ export default function AdminTasksPanel() {
         <div>
           <h1>Tasks</h1>
           <p>Track follow-ups from chats, sort by urgency, and keep support work organized.</p>
+          {selectedWidgetKey ? (
+            <p className="adminDataHint">
+              Showing tasks for widget <strong>{selectedWidgetKey}</strong>.
+            </p>
+          ) : null}
+          {!humanSupportEnabled ? (
+            <p className="adminDataHint">
+              Human handoff is turned off. Turn it on to see tasks created from support chats here.
+            </p>
+          ) : null}
         </div>
 
         <div className="adminTasksHeaderActions">
@@ -665,7 +679,13 @@ export default function AdminTasksPanel() {
       <div className="adminTasksWorkspace">
         <section className="adminTaskList">
           {filteredTasks.length === 0 ? (
-            <p>No tasks match the current filters.</p>
+            <p>
+              {selectedWidgetKey
+                ? 'No tasks found for the selected widget.'
+                : humanSupportEnabled
+                  ? 'No tasks match the current filters.'
+                  : 'Human handoff is turned off. Turn it on to see tasks created from support chats here.'}
+            </p>
           ) : (
             filteredTasks.map((task) => {
               const isSelected = task.id === selectedTask?.id

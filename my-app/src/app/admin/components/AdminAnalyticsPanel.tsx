@@ -214,7 +214,7 @@ function eventLabel(kind: ChatAnalyticsEvent['kind']) {
   }
 }
 
-export default function AdminAnalyticsPanel() {
+export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { selectedWidgetKey?: string }) {
   const { dbUser } = useAuth()
   const [analytics, setAnalytics] = useState<ChatAnalytics>(emptyAnalytics)
   const [loading, setLoading] = useState(true)
@@ -281,9 +281,13 @@ export default function AdminAnalyticsPanel() {
   const timelineEvents = useMemo(() => {
     const start = getRangeStart(range)
     return [...(analytics.timeline || [])]
+      .filter((event) => {
+        if (!selectedWidgetKey) return true
+        return event.widgetKey ? event.widgetKey === selectedWidgetKey : false
+      })
       .filter((event) => new Date(event.createdAt) >= start)
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-  }, [analytics.timeline, range])
+  }, [analytics.timeline, range, selectedWidgetKey])
 
   const rangeAnalytics = useMemo(() => buildRangeAnalytics(timelineEvents), [timelineEvents])
 
@@ -532,6 +536,11 @@ export default function AdminAnalyticsPanel() {
         <div>
           <h1>Analytics</h1>
           <p>Live widget activity, support handovers, geography, and timeline trends.</p>
+          {selectedWidgetKey ? (
+            <p className="adminDataHint">
+              Showing analytics for widget <strong>{selectedWidgetKey}</strong>.
+            </p>
+          ) : null}
         </div>
         <div className="adminAnalyticsBadge">
           {rangeAnalytics.lastActivityAt

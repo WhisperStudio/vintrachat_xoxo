@@ -246,6 +246,7 @@ function buildDefaultAssistantConfig(): ChatAssistantConfig {
       'ring me',
       'email me',
     ],
+    humanSupportEnabled: true,
     handoffMessage:
       'I can help with that. I will flag this conversation for human follow-up so the team can contact you.',
     faqSuggestionsEnabled: true,
@@ -503,6 +504,7 @@ const defaultAssistantConfig: ChatAssistantConfig = {
     "ring me",
     "email me",
   ],
+  humanSupportEnabled: true,
   handoffMessage:
     "I can help with that. I will flag this conversation for human follow-up so the team can contact you.",
   faqSuggestionsEnabled: true,

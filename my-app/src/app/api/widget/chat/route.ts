@@ -115,12 +115,14 @@ function getRequestCountryCode(req: NextRequest) {
 function createAnalyticsEvent(
   kind: string,
   sessionId: string,
-  countryCode?: string
+  countryCode?: string,
+  widgetKey?: string
 ) {
   return {
     id: crypto.randomUUID(),
     kind,
     sessionId,
+    widgetKey,
     countryCode,
     createdAt: new Date(),
   }
@@ -480,6 +482,7 @@ export async function POST(req: NextRequest) {
       businessContext: '',
       restrictions: '',
       supportTriggerKeywords: fallbackSupportKeywords,
+      humanSupportEnabled: true,
       handoffMessage:
         'I understand. I am putting you through to a human assistant now. Please hold on while I connect you with someone available.',
       faqSuggestionsEnabled: false,
@@ -490,14 +493,19 @@ export async function POST(req: NextRequest) {
       extraInstructions: '',
       forceSelectedModelOnly: false,
     }
+    const humanSupportEnabled = assistantConfig.humanSupportEnabled !== false
 
     if (requestFeedbackForm) {
       const businessRef = adminDb.collection('businesses').doc(business.id)
       const todayKey = getTodayUsageKey()
-      const analyticsTimelineEvents = [createAnalyticsEvent('visitor-message', sessionId, countryCode)]
+      const analyticsTimelineEvents = [
+        createAnalyticsEvent('visitor-message', sessionId, countryCode, widgetKey),
+      ]
 
       if (!body.sessionId) {
-        analyticsTimelineEvents.unshift(createAnalyticsEvent('session-start', sessionId, countryCode))
+        analyticsTimelineEvents.unshift(
+          createAnalyticsEvent('session-start', sessionId, countryCode, widgetKey)
+        )
       }
 
       const finalReply = 'Absolutely. I opened a quick feedback form for you.'
@@ -527,6 +535,19 @@ export async function POST(req: NextRequest) {
     }
 
     if (requestHumanSupport) {
+      if (!humanSupportEnabled) {
+        return NextResponse.json(
+          {
+            sessionId,
+            reply:
+              'Human support is currently turned off for this website. Please continue with the AI assistant or try again later.',
+            supportRequested: false,
+            countryCode,
+          },
+          { headers }
+        )
+      }
+
       if (!visitorName) {
         return NextResponse.json(
           {
@@ -606,7 +627,7 @@ export async function POST(req: NextRequest) {
         'chatAnalytics.savedSupportChats': FieldValue.increment(isNewSupportChat ? 1 : 0),
         [`chatAnalytics.countryCounts.${countryCode}`]: FieldValue.increment(1),
         'chatAnalytics.timeline': FieldValue.arrayUnion(
-          createAnalyticsEvent('support-request', sessionId, countryCode)
+          createAnalyticsEvent('support-request', sessionId, countryCode, widgetKey)
         ),
       }
 
@@ -682,7 +703,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const needsHumanSupport = heuristicsTriggered || aiWantsHumanSupport
+    const needsHumanSupport = humanSupportEnabled && (heuristicsTriggered || aiWantsHumanSupport)
     const requiresName = needsHumanSupport && !visitorName
     const finalReply =
       requiresName
@@ -714,14 +735,20 @@ export async function POST(req: NextRequest) {
     const existingSupportChat = supportChatSnap.exists ? supportChatSnap.data() || {} : null
     const isNewSupportChat = needsHumanSupport && !requiresName && !supportChatSnap.exists
 
-    const analyticsTimelineEvents = [createAnalyticsEvent('visitor-message', sessionId, countryCode)]
+    const analyticsTimelineEvents = [
+      createAnalyticsEvent('visitor-message', sessionId, countryCode, widgetKey),
+    ]
 
     if (!body.sessionId) {
-      analyticsTimelineEvents.unshift(createAnalyticsEvent('session-start', sessionId, countryCode))
+      analyticsTimelineEvents.unshift(
+        createAnalyticsEvent('session-start', sessionId, countryCode, widgetKey)
+      )
     }
 
     if (needsHumanSupport && !requiresName) {
-      analyticsTimelineEvents.push(createAnalyticsEvent('support-request', sessionId, countryCode))
+      analyticsTimelineEvents.push(
+        createAnalyticsEvent('support-request', sessionId, countryCode, widgetKey)
+      )
     }
 
     const analyticsUpdates: Record<string, unknown> = {

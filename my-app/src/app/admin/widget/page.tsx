@@ -8,6 +8,7 @@ import {
   FiCpu,
   FiGlobe,
   FiHelpCircle,
+  FiLoader,
   FiMessageSquare,
   FiSearch,
   FiShield,
@@ -33,6 +34,7 @@ const defaultAssistantConfig: ChatAssistantConfig = {
   restrictions:
     'Do not invent company policies, prices, or guarantees that are not in the configured context.',
   supportTriggerKeywords: ['support', 'human', 'agent', 'contact'],
+  humanSupportEnabled: true,
   handoffMessage:
     'I will flag this conversation for human follow-up so the team can contact you.',
   faqSuggestionsEnabled: true,
@@ -112,6 +114,33 @@ type AiFieldId =
   | 'handoffMessage'
 
 type IconComponent = (props: SVGProps<SVGSVGElement>) => ReactNode
+
+function getRootWebsiteUrl(input: string) {
+  const trimmed = input.trim()
+  if (!trimmed) return ''
+
+  const withProtocol =
+    trimmed.startsWith('http://') || trimmed.startsWith('https://')
+      ? trimmed
+      : `https://${trimmed}`
+
+  try {
+    const parsed = new URL(withProtocol)
+    return parsed.origin
+  } catch {
+    return ''
+  }
+}
+
+function getFirstAllowedWebsiteUrl(domainsText: string) {
+  const domains = parseAllowedDomainsInput(domainsText)
+  for (const domain of domains) {
+    const root = getRootWebsiteUrl(domain)
+    if (root) return root
+  }
+
+  return ''
+}
 
 function CollapsibleAiField({
   id,
@@ -196,7 +225,13 @@ function AutoGrowTextarea({
   )
 }
 
-export default function WidgetAdminPanel() {
+export default function WidgetAdminPanel({
+  selectedWidgetKey: externalSelectedWidgetKey,
+  onWidgetSelected,
+}: {
+  selectedWidgetKey?: string
+  onWidgetSelected?: (widgetKey: string) => void
+} = {}) {
   const { business, dbUser, loading, refreshBusiness } = useAuth()
   const [config, setConfig] = useState<ChatWidgetConfig | null>(null)
   const [assistantConfig, setAssistantConfig] = useState<ChatAssistantConfig>(defaultAssistantConfig)
@@ -213,6 +248,22 @@ export default function WidgetAdminPanel() {
   const [deleteWidgetChecked, setDeleteWidgetChecked] = useState(false)
   const [widgetActionStatus, setWidgetActionStatus] = useState<'idle' | 'saved' | 'error'>('idle')
   const [newWidgetName, setNewWidgetName] = useState('')
+  const [autoContextOpen, setAutoContextOpen] = useState(false)
+  const [autoContextUrl, setAutoContextUrl] = useState('')
+  const [autoContextUrlIsSeeded, setAutoContextUrlIsSeeded] = useState(false)
+  const [autoContextUrlWasEdited, setAutoContextUrlWasEdited] = useState(false)
+  const [autoContextStatus, setAutoContextStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
+  const [autoContextGeneratedSnapshot, setAutoContextGeneratedSnapshot] = useState<{
+    businessContext: string
+    faqSuggestionsText: string
+  } | null>(null)
+  const [autoContextDirtyFields, setAutoContextDirtyFields] = useState<{
+    businessContext: boolean
+    faqSuggestions: boolean
+  }>({
+    businessContext: false,
+    faqSuggestions: false,
+  })
 
   const widgetList = business?.chatWidgets || []
   const currentPlan = (config?.plan || business?.chatWidgetConfig?.plan || widgetList[0]?.config?.plan || 'free') as ChatWidgetConfig['plan']
@@ -240,7 +291,62 @@ export default function WidgetAdminPanel() {
     })
   }
 
+  const setAssistantField = <K extends keyof ChatAssistantConfig>(field: K, value: ChatAssistantConfig[K]) => {
+    setAssistantConfig((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+  }
+
+  const setAutoContextField = (field: 'businessContext' | 'faqSuggestions', nextValue: string) => {
+    if (autoContextGeneratedSnapshot) {
+      const generatedValue =
+        field === 'businessContext'
+          ? autoContextGeneratedSnapshot.businessContext
+          : autoContextGeneratedSnapshot.faqSuggestionsText
+
+      if (!autoContextDirtyFields[field] && nextValue !== generatedValue) {
+        setAutoContextDirtyFields((prev) => ({
+          ...prev,
+          [field]: true,
+        }))
+      }
+    }
+
+    if (field === 'businessContext') {
+      setAssistantField('businessContext', nextValue)
+    } else {
+      setAssistantField(
+        'faqSuggestions',
+        nextValue
+          .split(/\n|,/) 
+          .map((entry) => entry.trim())
+          .filter(Boolean)
+      )
+    }
+  }
+
+  const persistAssistantConfig = async (nextConfig: ChatAssistantConfig) => {
+    if (!dbUser?.businessId) return { success: false }
+
+    const targetWidgetKey = selectedWidgetKey || business?.activeChatWidgetKey || business?.chatWidgetKey || ''
+    const result = await updateChatAssistantConfig(dbUser.businessId, nextConfig, targetWidgetKey)
+
+    if (result.success) {
+      void refreshBusiness()
+    }
+
+    return result
+  }
+
   useEffect(() => {
+    if (externalSelectedWidgetKey) {
+      setSelectedWidgetKey((prev) =>
+        prev === externalSelectedWidgetKey ? prev : externalSelectedWidgetKey
+      )
+      return
+    }
+
     const widget =
       widgetList.find((entry) => entry.widgetKey === selectedWidgetKey) ||
       widgetList.find((entry) => entry.widgetKey === business?.activeChatWidgetKey) ||
@@ -261,7 +367,19 @@ export default function WidgetAdminPanel() {
       setSelectedWidgetKey(business.activeChatWidgetKey || business.chatWidgetKey || '')
       applyWidgetAssistantConfig(null)
     }
-  }, [business, widgetList, selectedWidgetKey])
+  }, [business, widgetList, selectedWidgetKey, externalSelectedWidgetKey])
+
+  useEffect(() => {
+    if (!autoContextOpen) return
+    if (autoContextUrlWasEdited) return
+    if (autoContextUrlIsSeeded && autoContextUrl) return
+
+    const nextSeed = getFirstAllowedWebsiteUrl(allowedDomainsText)
+    if (!nextSeed) return
+
+    setAutoContextUrl(nextSeed)
+    setAutoContextUrlIsSeeded(true)
+  }, [allowedDomainsText, autoContextOpen, autoContextUrl, autoContextUrlIsSeeded, autoContextUrlWasEdited])
 
   useEffect(() => {
     if (!dbUser?.businessId) return
@@ -328,7 +446,18 @@ export default function WidgetAdminPanel() {
     if (!nextWidget) return
 
     setSelectedWidgetKey(nextWidgetKey)
+    onWidgetSelected?.(nextWidgetKey)
     setDeleteWidgetChecked(false)
+    setAutoContextGeneratedSnapshot(null)
+    setAutoContextDirtyFields({
+      businessContext: false,
+      faqSuggestions: false,
+    })
+    setAutoContextOpen(false)
+    setAutoContextUrl('')
+    setAutoContextUrlIsSeeded(false)
+    setAutoContextUrlWasEdited(false)
+    setAutoContextStatus('idle')
     applyWidgetConfig(nextWidget.config)
     applyWidgetAssistantConfig(nextWidget)
     await setActiveChatWidget(dbUser.businessId, nextWidgetKey)
@@ -353,6 +482,7 @@ export default function WidgetAdminPanel() {
     setWidgetActionStatus('saved')
     setNewWidgetName('')
     setSelectedWidgetKey(result.widgetKey)
+    onWidgetSelected?.(result.widgetKey)
     await refreshBusiness()
     setTimeout(() => setWidgetActionStatus('idle'), 2000)
   }
@@ -373,6 +503,17 @@ export default function WidgetAdminPanel() {
     setConfig(null)
     setAllowedDomainsText('')
     setLastConfigUpdate(null)
+    onWidgetSelected?.('')
+    setAutoContextOpen(false)
+    setAutoContextUrl('')
+    setAutoContextUrlIsSeeded(false)
+    setAutoContextUrlWasEdited(false)
+    setAutoContextStatus('idle')
+    setAutoContextGeneratedSnapshot(null)
+    setAutoContextDirtyFields({
+      businessContext: false,
+      faqSuggestions: false,
+    })
     setWidgetActionStatus('saved')
     await refreshBusiness()
     setTimeout(() => setWidgetActionStatus('idle'), 2000)
@@ -384,8 +525,7 @@ export default function WidgetAdminPanel() {
     setAssistantSaving(true)
     setAssistantStatus('idle')
 
-    const targetWidgetKey = selectedWidgetKey || business?.activeChatWidgetKey || business?.chatWidgetKey || ''
-    const result = await updateChatAssistantConfig(dbUser.businessId, assistantConfig, targetWidgetKey)
+    const result = await persistAssistantConfig(assistantConfig)
 
     setAssistantSaving(false)
     setAssistantStatus(result.success ? 'saved' : 'error')
@@ -395,6 +535,83 @@ export default function WidgetAdminPanel() {
       setTimeout(() => setAssistantStatus('idle'), 2000)
     }
   }
+
+  const handleAutoContextStart = async () => {
+    const trimmedUrl = autoContextUrl.trim()
+    if (!trimmedUrl || autoContextStatus === 'running') return
+
+    setAutoContextStatus('running')
+
+    try {
+      const response = await fetch('/api/scan-website', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: trimmedUrl }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data?.success || !data?.result) {
+        throw new Error(data?.error || 'Website scan failed')
+      }
+
+      const nextBusinessContext = String(data.result.businessContext || '')
+      const nextFaqSuggestions = Array.isArray(data.result.faqSuggestions)
+        ? data.result.faqSuggestions.map((entry: string) => String(entry).trim()).filter(Boolean)
+        : []
+
+      const nextAssistantConfig: ChatAssistantConfig = {
+        ...assistantConfig,
+        businessContext: nextBusinessContext,
+        faqSuggestions: nextFaqSuggestions,
+      }
+
+      setAssistantConfig(nextAssistantConfig)
+      setAutoContextGeneratedSnapshot({
+        businessContext: nextBusinessContext,
+        faqSuggestionsText: nextFaqSuggestions.join('\n'),
+      })
+      setAutoContextDirtyFields({
+        businessContext: false,
+        faqSuggestions: false,
+      })
+      setOpenAiField('businessContext')
+
+      const saveResult = await persistAssistantConfig(nextAssistantConfig)
+
+      if (!saveResult.success) {
+        throw new Error('Failed to save auto context')
+      }
+
+      setAutoContextStatus('done')
+    } catch (error) {
+      console.error('Auto context scan failed:', error)
+      setAutoContextStatus('error')
+      return
+    }
+  }
+
+  const autoContextSeedUrl = getFirstAllowedWebsiteUrl(allowedDomainsText)
+  const autoContextButtonLabel =
+    autoContextStatus === 'running'
+      ? ''
+      : autoContextStatus === 'done'
+        ? 'Done'
+        : autoContextOpen
+          ? 'Start auto context'
+          : 'Auto context'
+  const autoContextButtonDisabled =
+    autoContextStatus === 'running' ||
+    autoContextStatus === 'done' ||
+    (autoContextOpen && !autoContextUrl.trim())
+  const autoContextShouldShowSeedNote =
+    autoContextOpen &&
+    autoContextUrlIsSeeded &&
+    !!autoContextSeedUrl &&
+    autoContextUrl.trim() === autoContextSeedUrl &&
+    autoContextGeneratedSnapshot === null
 
   const saveAllowedDomains = async () => {
     if (!dbUser?.businessId) return
@@ -521,6 +738,15 @@ export default function WidgetAdminPanel() {
 <script src="https://chat.vintrastudio.com/widget/${activeWidgetKey}.js"></script>
 <!-- End VintraSolutions Chat Widget -->`
   const filteredLanguageOptions = getLanguageMatches(languageSearch)
+  const businessContextGenerated =
+    !!autoContextGeneratedSnapshot &&
+    !autoContextDirtyFields.businessContext &&
+    assistantConfig.businessContext === autoContextGeneratedSnapshot.businessContext
+  const faqSuggestionsGenerated =
+    !!autoContextGeneratedSnapshot &&
+    !autoContextDirtyFields.faqSuggestions &&
+    assistantConfig.faqSuggestions.join('\n') === autoContextGeneratedSnapshot.faqSuggestionsText
+  const humanSupportEnabled = assistantConfig.humanSupportEnabled !== false
 
   return (
     <div className="widget-admin-shell">
@@ -737,12 +963,41 @@ export default function WidgetAdminPanel() {
 
         <section className="widget-admin-card widget-admin-ai">
           <div className="widget-card-header widget-card-header--compact">
-            <span className="widget-admin-section-label">AI settings</span>
+            <div className="widget-admin-ai-header">
+              <button
+                type="button"
+                className={`widget-admin-auto-context-button ${autoContextStatus === 'running' ? 'widget-admin-auto-context-button--compact' : ''}`.trim()}
+                onClick={() => {
+                  if (!autoContextOpen) {
+                    setAutoContextOpen(true)
+                    if (!autoContextUrl.trim() && autoContextSeedUrl) {
+                      setAutoContextUrl(autoContextSeedUrl)
+                      setAutoContextUrlIsSeeded(true)
+                      setAutoContextUrlWasEdited(false)
+                    }
+                    return
+                  }
+
+                  void handleAutoContextStart()
+                }}
+                disabled={autoContextStatus === 'running' || autoContextStatus === 'done' || (autoContextOpen && !autoContextUrl.trim())}
+                aria-busy={autoContextStatus === 'running'}
+              >
+                {autoContextStatus === 'running' ? (
+                  <span className="widget-admin-auto-context-button__spinner" aria-hidden="true">
+                    <FiLoader />
+                  </span>
+                ) : (
+                  <span>{autoContextButtonLabel}</span>
+                )}
+              </button>
+              <span className="widget-admin-section-label">AI settings</span>
+            </div>
             <button
               type="button"
               className="widget-admin-save-button"
               onClick={saveAssistantConfig}
-              disabled={assistantSaving}
+              disabled={assistantSaving || autoContextStatus === 'running'}
             >
               {assistantSaving
                 ? 'Saving...'
@@ -755,6 +1010,45 @@ export default function WidgetAdminPanel() {
           <p className="widget-card-desc">
             Configure how the assistant answers, what context it may use, and when a chat should be flagged for human support.
           </p>
+
+          {autoContextOpen ? (
+            <div className="widget-auto-context-panel">
+              <label className="widget-ai-field widget-ai-field-full">
+                <span>Website URL</span>
+                <input
+                  id="auto-context-url"
+                  name="auto-context-url"
+                  type="url"
+                  value={autoContextUrl}
+                  onChange={(event) => {
+                    const nextValue = event.target.value
+                    setAutoContextUrl(nextValue)
+
+                    if (autoContextUrlIsSeeded && autoContextSeedUrl && nextValue !== autoContextSeedUrl) {
+                      setAutoContextUrlIsSeeded(false)
+                      setAutoContextUrlWasEdited(true)
+                    }
+
+                    if (!nextValue.trim()) {
+                      setAutoContextUrlWasEdited(true)
+                    }
+                  }}
+                  placeholder="https://example.com"
+                />
+                {autoContextShouldShowSeedNote ? (
+                  <p className="field-note widget-auto-context-note">
+                    is this url correct to your website?
+                  </p>
+                ) : (
+                  <p className="field-note widget-auto-context-note">
+                    {autoContextSeedUrl
+                      ? 'We found a root website URL from your allowed domains. If it looks right, start auto context.'
+                      : 'Enter your website root URL and start auto context to scan the site.'}
+                  </p>
+                )}
+              </label>
+            </div>
+          ) : null}
 
           <div className="widget-ai-grid widget-ai-grid--top">
             <label className="widget-ai-field widget-ai-toggle">
@@ -806,6 +1100,22 @@ export default function WidgetAdminPanel() {
             </label>
 
             <label className="widget-ai-field widget-ai-toggle">
+              <span><FiMessageSquare /> Human support</span>
+              <input
+                id="assistant-human-support"
+                name="assistant-human-support"
+                type="checkbox"
+                checked={humanSupportEnabled}
+                onChange={(event) =>
+                  setAssistantConfig((prev) => ({
+                    ...prev,
+                    humanSupportEnabled: event.target.checked,
+                  }))
+                }
+              />
+            </label>
+
+            <label className="widget-ai-field widget-ai-toggle">
               <span><FiHelpCircle /> FAQ suggestions</span>
               <input
                 id="assistant-faq-suggestions"
@@ -818,7 +1128,7 @@ export default function WidgetAdminPanel() {
                     faqSuggestionsEnabled: event.target.checked,
                   }))
                 }
-              />
+                />
             </label>
 
             <label className="widget-ai-field">
@@ -921,12 +1231,8 @@ export default function WidgetAdminPanel() {
                 id="business-context"
                 name="business-context"
                 value={assistantConfig.businessContext}
-                onChange={(event) =>
-                  setAssistantConfig((prev) => ({
-                    ...prev,
-                    businessContext: event.target.value,
-                  }))
-                }
+                className={businessContextGenerated ? 'widget-ai-generated-context' : ''}
+                onChange={(event) => setAutoContextField('businessContext', event.target.value)}
                 minRows={6}
                 placeholder="Products, opening hours, services, refund policy, contact info, FAQs..."
               />
@@ -967,15 +1273,8 @@ export default function WidgetAdminPanel() {
                 id="faq-suggestions"
                 name="faq-suggestions"
                 value={assistantConfig.faqSuggestions.join('\n')}
-                onChange={(event) =>
-                  setAssistantConfig((prev) => ({
-                    ...prev,
-                    faqSuggestions: event.target.value
-                      .split(/\n|,/) 
-                      .map((entry) => entry.trim())
-                      .filter(Boolean),
-                  }))
-                }
+                className={faqSuggestionsGenerated ? 'widget-ai-generated-context' : ''}
+                onChange={(event) => setAutoContextField('faqSuggestions', event.target.value)}
                 minRows={4}
                 placeholder={'What are your opening hours?\nHow do I contact support?\nWhat services do you offer?'}
               />
@@ -1007,7 +1306,7 @@ export default function WidgetAdminPanel() {
             <CollapsibleAiField
               id="handoffMessage"
               title="Human handoff message"
-              description="What users see when support is handed off."
+              description={humanSupportEnabled ? 'What users see when support is handed off.' : 'Disabled while human support is turned off.'}
               icon={FiMessageSquare}
               openField={openAiField}
               setOpenField={setOpenAiField}
@@ -1016,6 +1315,8 @@ export default function WidgetAdminPanel() {
                 id="handoff-message"
                 name="handoff-message"
                 value={assistantConfig.handoffMessage}
+                className={humanSupportEnabled ? '' : 'widget-ai-generated-context widget-ai-generated-context--disabled'}
+                disabled={!humanSupportEnabled}
                 onChange={(event) =>
                   setAssistantConfig((prev) => ({
                     ...prev,
@@ -1024,6 +1325,11 @@ export default function WidgetAdminPanel() {
                 }
                 minRows={3}
               />
+              {!humanSupportEnabled ? (
+                <p className="field-note">
+                  Human handoff is turned off. Turn it on to use this message and to see chats and tasks created from human support requests.
+                </p>
+              ) : null}
             </CollapsibleAiField>
           </div>
         </section>
