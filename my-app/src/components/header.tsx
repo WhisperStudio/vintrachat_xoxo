@@ -6,7 +6,7 @@ import styled, { css, keyframes } from 'styled-components'
 import { useAuth } from '@/context/AuthContext'
 import { usePathname, useRouter } from 'next/navigation'
 import { getInvitationsForEmail } from '@/lib/invitation.service'
-import { headerI18n, languageLabels, languageOptions, useVintraLanguage } from '@/lib/i18n'
+import { headerI18n, languageLabels, languageOptions, useVintraLanguage, type VintraLanguage } from '@/lib/i18n'
 import { isVintraAdminEmail } from '@/lib/vintra-admin'
 import type { BusinessInvitation } from '@/types/database'
 import {
@@ -272,7 +272,7 @@ const ActionRow = styled.div`
   gap: 10px;
 `
 
-const LanguageSwitch = styled.div`
+const LanguageSwitcher = styled.div`
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -283,30 +283,6 @@ const LanguageSwitch = styled.div`
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 `
 
-const LanguageButton = styled.button<{ $active?: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 34px;
-  padding: 7px 10px;
-  border: 0;
-  border-radius: 11px;
-  background: ${({ $active }) => ($active ? '#0f172a' : 'transparent')};
-  color: ${({ $active }) => ($active ? '#f8fafc' : '#475569')};
-  font-size: 0.78rem;
-  font-weight: 900;
-  cursor: pointer;
-  transition:
-    transform 0.18s ease,
-    background 0.18s ease,
-    color 0.18s ease;
-
-  &:hover {
-    transform: translateY(-1px);
-    background: ${({ $active }) => ($active ? '#0f172a' : 'rgba(15, 23, 42, 0.06)')};
-    color: ${({ $active }) => ($active ? '#f8fafc' : '#0f172a')};
-  }
-`
 
 const BaseButtonStyles = css`
   display: inline-flex;
@@ -492,12 +468,142 @@ const MobileActionStack = styled.div`
   gap: 10px;
 `
 
+const MobileLanguageSwitch = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+`
+
+const MobileLanguageButton = styled.button<{ $active?: boolean }>`
+  min-width: 42px;
+  height: 34px;
+  border: 0;
+  border-radius: 11px;
+  background: ${({ $active }) => ($active ? '#0f172a' : 'transparent')};
+  color: ${({ $active }) => ($active ? '#ffffff' : '#475569')};
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+`
+
+const LanguageSwitch = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+`
+
+const LanguageButton = styled.button<{ $active?: boolean }>`
+  min-width: 42px;
+  height: 34px;
+  border: 0;
+  border-radius: 11px;
+  background: ${({ $active }) => ($active ? '#0f172a' : 'transparent')};
+  color: ${({ $active }) => ($active ? '#ffffff' : '#475569')};
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    color: ${({ $active }) => ($active ? '#ffffff' : '#0f172a')};
+  }
+`
+
+const headerCopy: Record<VintraLanguage, {
+  nav: {
+    websites: string
+    chatWidget: string
+    invitations: string
+    dashboard: string
+    myWebsites: string
+    myChatWidgets: string
+    adminPanel: string
+    vintraAdmin: string
+  }
+  actions: {
+    login: string
+    startFree: string
+    createBusiness: string
+    logout: string
+    language: string
+  }
+  menu: {
+    open: string
+    close: string
+  }
+}> = {
+  en: {
+    nav: {
+      websites: 'Websites',
+      chatWidget: 'Chat Widget',
+      invitations: 'Invitations',
+      dashboard: 'Dashboard',
+      myWebsites: 'My Websites',
+      myChatWidgets: 'My Chat Widgets',
+      adminPanel: 'Admin Panel',
+      vintraAdmin: 'Vintra Admin',
+    },
+    actions: {
+      login: 'Log In',
+      startFree: 'Start Free',
+      createBusiness: 'Create Business',
+      logout: 'Log Out',
+      language: 'Choose language',
+    },
+    menu: {
+      open: 'Open menu',
+      close: 'Close menu',
+    },
+  },
+  no: {
+    nav: {
+      websites: 'Nettsider',
+      chatWidget: 'Chatbot',
+      invitations: 'Invitasjoner',
+      dashboard: 'Dashboard',
+      myWebsites: 'Mine nettsider',
+      myChatWidgets: 'Mine chatboter',
+      adminPanel: 'Adminpanel',
+      vintraAdmin: 'Vintra Admin',
+    },
+    actions: {
+      login: 'Logg inn',
+      startFree: 'Start gratis',
+      createBusiness: 'Opprett bedrift',
+      logout: 'Logg ut',
+      language: 'Velg språk',
+    },
+    menu: {
+      open: 'Åpne meny',
+      close: 'Lukk meny',
+    },
+  },
+}
+
 export default function Header() {
   const { firebaseUser, dbUser, logout } = useAuth()
-  const router = useRouter()
-  const pathname = usePathname()
   const { language, setLanguage } = useVintraLanguage()
   const text = headerI18n[language]
+  const router = useRouter()
+  const pathname = usePathname()
   const [pendingInvites, setPendingInvites] = useState<BusinessInvitation[]>([])
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
@@ -652,7 +758,7 @@ export default function Header() {
 
           <RightSide>
             <ActionRow>
-              <LanguageSwitch aria-label={text.languageSwitchLabel}>
+              <LanguageSwitcher aria-label={text.languageSwitchLabel}>
                 {languageOptions.map((option) => (
                   <LanguageButton
                     key={option}
@@ -666,13 +772,15 @@ export default function Header() {
                     <span>{option.toUpperCase()}</span>
                   </LanguageButton>
                 ))}
-              </LanguageSwitch>
+              </LanguageSwitcher>
 
               {!firebaseUser ? (
                 <>
                   <SecondaryAction href="/auth/login">{text.actions.login}</SecondaryAction>
+                  <SecondaryAction href="/auth/login">{text.actions.login}</SecondaryAction>
                   <PrimaryAction href="/auth/signup">
                     <FiArrowRight />
+                    <span>{text.actions.startFree}</span>
                     <span>{text.actions.startFree}</span>
                   </PrimaryAction>
                 </>
@@ -681,13 +789,16 @@ export default function Header() {
                   <SecondaryAction href="/invite">
                     <FiUserPlus />
                     <span>{text.nav.invitations}</span>
+                    <span>{text.nav.invitations}</span>
                   </SecondaryAction>
                   <PrimaryAction href="/auth/signup">
                     <FiPlusCircle />
                     <span>{text.actions.createBusiness}</span>
+                    <span>{text.actions.createBusiness}</span>
                   </PrimaryAction>
                   <ActionButton type="button" onClick={handleLogout}>
                     <FiLogOut />
+                    <span>{text.actions.logout}</span>
                     <span>{text.actions.logout}</span>
                   </ActionButton>
                 </>
@@ -695,6 +806,7 @@ export default function Header() {
                 <>
                   <ActionButton type="button" onClick={handleLogout}>
                     <FiLogOut />
+                    <span>{text.actions.logout}</span>
                     <span>{text.actions.logout}</span>
                   </ActionButton>
                 </>
@@ -726,9 +838,9 @@ export default function Header() {
           </MobileNav>
 
           <MobileActionStack>
-            <LanguageSwitch aria-label={text.languageSwitchLabel}>
+            <MobileLanguageSwitch aria-label={text.languageSwitchLabel}>
               {languageOptions.map((option) => (
-                <LanguageButton
+                <MobileLanguageButton
                   key={option}
                   type="button"
                   $active={language === option}
@@ -738,15 +850,17 @@ export default function Header() {
                 >
                   {option === 'no' ? <FiGlobe /> : null}
                   <span>{option.toUpperCase()}</span>
-                </LanguageButton>
+                </MobileLanguageButton>
               ))}
-            </LanguageSwitch>
+            </MobileLanguageSwitch>
 
             {!firebaseUser ? (
               <>
                 <SecondaryAction href="/auth/login">{text.actions.login}</SecondaryAction>
+                <SecondaryAction href="/auth/login">{text.actions.login}</SecondaryAction>
                 <PrimaryAction href="/auth/signup">
                   <FiArrowRight />
+                  <span>{text.actions.startFree}</span>
                   <span>{text.actions.startFree}</span>
                 </PrimaryAction>
               </>
@@ -755,13 +869,16 @@ export default function Header() {
                 <SecondaryAction href="/invite">
                   <FiUserPlus />
                   <span>{text.nav.invitations}</span>
+                  <span>{text.nav.invitations}</span>
                 </SecondaryAction>
                 <PrimaryAction href="/auth/signup">
                   <FiPlusCircle />
                   <span>{text.actions.createBusiness}</span>
+                  <span>{text.actions.createBusiness}</span>
                 </PrimaryAction>
                 <ActionButton type="button" onClick={handleLogout}>
                   <FiLogOut />
+                  <span>{text.actions.logout}</span>
                   <span>{text.actions.logout}</span>
                 </ActionButton>
               </>
@@ -770,6 +887,7 @@ export default function Header() {
                
                 <ActionButton type="button" onClick={handleLogout}>
                   <FiLogOut />
+                  <span>{text.actions.logout}</span>
                   <span>{text.actions.logout}</span>
                 </ActionButton>
               </>

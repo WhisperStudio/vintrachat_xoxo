@@ -563,15 +563,12 @@
 }
 
 .widget-faq-suggestions {
-  position: absolute;
-  left: 1rem;
-  right: 1rem;
-  bottom: calc(var(--chat-footer-height) + 0.45rem);
-  z-index: 7;
+  position: static;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  padding: 0;
+  padding: 0.15rem 0 0.25rem;
   pointer-events: auto;
 }
 
@@ -1093,9 +1090,9 @@
   }
 
   .widget-faq-suggestions {
-    left: 0.8rem;
-    right: 0.8rem;
-    bottom: 5.15rem;
+    left: auto;
+    right: auto;
+    bottom: auto;
   }
 }
 
@@ -1671,9 +1668,9 @@
   }
 
   .widget-faq-suggestions {
-    left: 1rem;
-    right: 1rem;
-    bottom: 5.35rem;
+    left: auto;
+    right: auto;
+    bottom: auto;
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;

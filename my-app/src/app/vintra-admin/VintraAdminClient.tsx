@@ -337,7 +337,6 @@ export default function VintraAdminClient() {
   const [error, setError] = useState('')
   const [statusMessage, setStatusMessage] = useState('')
   const [activeTab, setActiveTab] = useState<VintraTab>('overview')
-  const [confirmPlanChange, setConfirmPlanChange] = useState(false)
   const [confirmBusinessDelete, setConfirmBusinessDelete] = useState(false)
   const [confirmUserDelete, setConfirmUserDelete] = useState<Record<string, boolean>>({})
   const [confirmCategoryDelete, setConfirmCategoryDelete] = useState<Record<string, boolean>>({})
@@ -396,7 +395,6 @@ export default function VintraAdminClient() {
       extraInstructions: selectedBusiness.assistantConfig?.extraInstructions || '',
       forceSelectedModelOnly: selectedBusiness.assistantConfig?.forceSelectedModelOnly ?? false,
     })
-    setConfirmPlanChange(false)
     setConfirmBusinessDelete(false)
   }, [selectedBusiness])
 
@@ -445,6 +443,7 @@ export default function VintraAdminClient() {
     if (!selectedBusiness || !draft) return
     setBusy(true)
     setStatusMessage('')
+    setError('')
 
     try {
       const planChanged = draft.plan !== selectedBusiness.plan
@@ -454,7 +453,6 @@ export default function VintraAdminClient() {
           name: draft.name,
           email: draft.email,
           plan: planChanged ? draft.plan : undefined,
-          confirmPlanChange: planChanged ? confirmPlanChange : undefined,
           assistantConfig: {
             enabled: draft.assistantEnabled,
             model: draft.assistantModel,
@@ -482,7 +480,6 @@ export default function VintraAdminClient() {
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'Could not save business')
 
-      setConfirmPlanChange(false)
       setStatusMessage('Business settings saved')
       await loadSummary()
     } catch (saveError) {
@@ -917,17 +914,10 @@ export default function VintraAdminClient() {
                       />
                     </label>
                     {draft.plan !== selectedBusiness.plan ? (
-                      <label className="vintraAdminFull vintraAdminConfirmRow">
-                        <input
-                          type="checkbox"
-                          checked={confirmPlanChange}
-                          onChange={(event) => setConfirmPlanChange(event.target.checked)}
-                        />
-                        <span>
-                          Confirm plan change from <strong>{selectedBusiness.plan}</strong> to{' '}
-                          <strong>{draft.plan}</strong>
-                        </span>
-                      </label>
+                      <small className="vintraAdminHint vintraAdminFull">
+                        Saving will change this business from <strong>{selectedBusiness.plan}</strong> to{' '}
+                        <strong>{draft.plan}</strong>.
+                      </small>
                     ) : null}
                   </div>
                 </div>

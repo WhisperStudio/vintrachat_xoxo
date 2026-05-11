@@ -7,6 +7,9 @@ const projectRoot = dirname(fileURLToPath(import.meta.url));
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
+  compiler: {
+    styledComponents: true,
+  },
   devIndicators: false,
   turbopack: {
     root: projectRoot,

@@ -2,6 +2,7 @@
 
 import { CSSProperties, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useLanguage, type Language } from '@/context/LanguageContext'
 import {
   FiArrowRight,
   FiCopy,
@@ -160,9 +161,148 @@ const demoProducts: Product[] = [
   { id: 3, name: 'Product Three', price: 699, priceLabel: 'NOK 699', c1: '#dbeafe', c2: '#bfdbfe' },
 ]
 
+<<<<<<< HEAD
 export default function GuestWebsites() {
   const { language } = useVintraLanguage()
   const t = websiteBuilderI18n[language]
+=======
+const translations: Record<Language, Translation> = {
+  en: {
+    heroTitle: 'From idea to launch.',
+    heroSubtitle: 'Configure a custom, fast and user-friendly website with us.',
+    heroMeta: 'Try and make a mockup of your idea with estimated pricing, visual preview and flexible feature options.',
+    configureProject: 'Configure your project',
+    pageCount: 'Number of pages',
+    designComplexity: 'Design level',
+    colorStyle: 'Color style',
+    addons: 'Add-ons',
+    configuration: 'Core configuration',
+    extraFeatures: 'Extra features',
+    ecommerceTitle: 'E-commerce',
+    ecommerceDesc: 'Sell products or services online.',
+    seoTitle: 'SEO & Analytics',
+    seoDesc: 'Get found on Google and track performance.',
+    careTitle: 'Care & Maintenance',
+    careDesc: 'Monthly updates and support.',
+    adminTitle: 'Admin Panel',
+    adminDesc: 'Manage content, data and users.',
+    databaseTitle: 'Database',
+    databaseDesc: 'Store and manage dynamic data.',
+    databaseDescRequired: 'Required for e-commerce.',
+    databaseComplexity: 'Database complexity',
+    aiTitle: 'AI Assistant',
+    aiDesc: 'Smart chatbot and simple automation.',
+    galleryTitle: 'Gallery',
+    galleryDesc: 'Image gallery with categories and zoom.',
+    galleryComplexity: 'Gallery complexity',
+    viewer3DTitle: '3D Viewer',
+    viewer3DDesc: 'Interactive 3D product or model preview.',
+    viewer3DComplexity: '3D viewer complexity',
+    customDesignTitle: 'Custom Design',
+    customDesignDesc: 'Tailored visuals and creative layout ideas.',
+    contactFormTitle: 'Contact Form',
+    contactFormDesc: 'Professional lead and contact form.',
+    blogTitle: 'Blog',
+    blogDesc: 'CMS-powered blog section.',
+    bookingTitle: 'Booking System',
+    bookingDesc: 'Appointments and calendar booking.',
+    ecommerceComplexity: 'E-commerce complexity',
+    adminComplexity: 'Admin panel complexity',
+    basic: 'Basic',
+    advanced: 'Advanced',
+    priceDisclaimer:
+      'Prices may vary based on scope and project complexity. This calculator is meant as a realistic estimate.',
+    estimateNote: 'This is an estimated price',
+    estimateTitle: 'Your price estimate',
+    estimatedCost: 'Estimated cost',
+    estimatedWaitTime: 'Estimated timeline',
+    monthlyLabel: 'Monthly cost',
+    perMonth: '/mo',
+    weeks: 'weeks',
+    startProject: 'Start project',
+    copy: 'Copy',
+    reset: 'Reset',
+    costBreakdown: 'Cost breakdown',
+    selectCountry: 'Select country for VAT calculation:',
+    priceBeforeVat: 'Price before VAT:',
+    vat: 'VAT',
+    totalInclVat: 'Total incl. VAT:',
+    exVat: 'ex. VAT',
+    website: 'Website',
+    adminPanel: 'Admin Panel',
+    loginForAccess: 'Log in for full access',
+  },
+  no: {
+    heroTitle: 'Fra idé til lansering.',
+    heroSubtitle: 'Sett opp en rask, brukervennlig og skreddersydd nettside sammen med oss.',
+    heroMeta: 'Lag en mockup av ideen din med prisestimat, visuell forhåndsvisning og fleksible funksjonsvalg.',
+    configureProject: 'Konfigurer prosjektet',
+    pageCount: 'Antall sider',
+    designComplexity: 'Designnivå',
+    colorStyle: 'Fargestil',
+    addons: 'Tillegg',
+    configuration: 'Grunnoppsett',
+    extraFeatures: 'Ekstra funksjoner',
+    ecommerceTitle: 'Nettbutikk',
+    ecommerceDesc: 'Selg produkter eller tjenester på nett.',
+    seoTitle: 'SEO og analyse',
+    seoDesc: 'Bli funnet på Google og mål resultatene.',
+    careTitle: 'Drift og vedlikehold',
+    careDesc: 'Månedlige oppdateringer og support.',
+    adminTitle: 'Adminpanel',
+    adminDesc: 'Administrer innhold, data og brukere.',
+    databaseTitle: 'Database',
+    databaseDesc: 'Lagre og administrer dynamiske data.',
+    databaseDescRequired: 'Påkrevd for nettbutikk.',
+    databaseComplexity: 'Databasekompleksitet',
+    aiTitle: 'AI-assistent',
+    aiDesc: 'Smart chatbot og enkel automasjon.',
+    galleryTitle: 'Galleri',
+    galleryDesc: 'Bildegalleri med kategorier og zoom.',
+    galleryComplexity: 'Gallerikompleksitet',
+    viewer3DTitle: '3D-visning',
+    viewer3DDesc: 'Interaktiv produkt- eller modellvisning i 3D.',
+    viewer3DComplexity: '3D-kompleksitet',
+    customDesignTitle: 'Eget design',
+    customDesignDesc: 'Skreddersydd uttrykk og kreative layoutideer.',
+    contactFormTitle: 'Kontaktskjema',
+    contactFormDesc: 'Profesjonelt skjema for leads og henvendelser.',
+    blogTitle: 'Blogg',
+    blogDesc: 'Bloggseksjon med publiseringssystem.',
+    bookingTitle: 'Bookingsystem',
+    bookingDesc: 'Timebestilling og kalenderbooking.',
+    ecommerceComplexity: 'Nettbutikk-kompleksitet',
+    adminComplexity: 'Adminpanel-kompleksitet',
+    basic: 'Enkel',
+    advanced: 'Avansert',
+    priceDisclaimer:
+      'Priser kan variere med omfang og kompleksitet. Kalkulatoren er ment som et realistisk estimat.',
+    estimateNote: 'Dette er et estimert prisnivå',
+    estimateTitle: 'Ditt prisestimat',
+    estimatedCost: 'Estimert kostnad',
+    estimatedWaitTime: 'Estimert tidslinje',
+    monthlyLabel: 'Månedlig kostnad',
+    perMonth: '/mnd',
+    weeks: 'uker',
+    startProject: 'Start prosjekt',
+    copy: 'Kopier',
+    reset: 'Tilbakestill',
+    costBreakdown: 'Prisoversikt',
+    selectCountry: 'Velg land for MVA-beregning:',
+    priceBeforeVat: 'Pris før MVA:',
+    vat: 'MVA',
+    totalInclVat: 'Totalt inkl. MVA:',
+    exVat: 'eks. MVA',
+    website: 'Nettside',
+    adminPanel: 'Adminpanel',
+    loginForAccess: 'Logg inn for full tilgang',
+  },
+}
+
+export default function GuestWebsites() {
+  const { language } = useLanguage()
+  const t = translations[language]
+>>>>>>> 1990b134908bc77b6c363c357bfc4bcd30b41515
 
   const [country, setCountry] = useState<Country>('NO')
   const [showBreakdown, setShowBreakdown] = useState(false)
@@ -422,7 +562,13 @@ export default function GuestWebsites() {
   )
 
   const copyEstimate = async () => {
+<<<<<<< HEAD
     const text = `${t.estimateTitle}
+=======
+    const yes = language === 'no' ? 'Ja' : 'Yes'
+    const no = language === 'no' ? 'Nei' : 'No'
+    const text = `${language === 'no' ? 'Nettsideestimat' : 'Website estimate'}
+>>>>>>> 1990b134908bc77b6c363c357bfc4bcd30b41515
 -----------------------------
 ${t.estimatedCost}: ${formatCurrency(breakdown.oneTimeCost)} ${t.exVat}
 ${t.totalInclVat} ${formatCurrency(breakdown.totalWithVat)}
@@ -433,6 +579,7 @@ ${t.configuration}:
 - ${t.pageCount}: ${inputs.pages}
 - ${t.designComplexity}: ${inputs.design}
 - ${t.colorStyle}: ${inputs.colorTheme}
+<<<<<<< HEAD
 - ${t.ecommerceTitle}: ${inputs.ecommerce ? t.yes : t.no}
 - ${t.seoTitle}: ${inputs.seo ? t.yes : t.no}
 - ${t.adminTitle}: ${inputs.admin ? t.yes : t.no}
@@ -445,6 +592,20 @@ ${t.configuration}:
       alert(t.copiedAlert)
     } catch {
       alert(t.copyFailedAlert)
+=======
+- ${t.ecommerceTitle}: ${inputs.ecommerce ? yes : no}
+- ${t.seoTitle}: ${inputs.seo ? yes : no}
+- ${t.adminTitle}: ${inputs.admin ? yes : no}
+- ${t.databaseTitle}: ${inputs.database ? yes : no}
+- ${t.aiTitle}: ${inputs.ai ? yes : no}
+- ${t.careTitle}: ${inputs.carePlan ? yes : no}`
+
+    try {
+      await navigator.clipboard.writeText(text.trim())
+      alert(language === 'no' ? 'Estimat kopiert.' : 'Estimate copied to clipboard.')
+    } catch {
+      alert(language === 'no' ? 'Kunne ikke kopiere akkurat nå.' : 'Could not copy right now.')
+>>>>>>> 1990b134908bc77b6c363c357bfc4bcd30b41515
     }
   }
 

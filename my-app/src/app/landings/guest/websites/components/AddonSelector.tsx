@@ -1,6 +1,7 @@
 'use client'
 
 import { FiPackage, FiZap, FiCheck, FiChevronDown, FiChevronUp } from 'react-icons/fi'
+import { useLanguage } from '@/context/LanguageContext'
 import type { InputsState } from '../types'
 import './AddonSelector.css'
 
@@ -17,6 +18,27 @@ export default function AddonSelector({
   onToggle,
   onInputChange
 }: AddonSelectorProps) {
+  const { language } = useLanguage()
+  const text = language === 'no'
+    ? {
+        addons: 'Tillegg',
+        ecommerce: 'Nettbutikk',
+        ecommerceDesc: 'Selg produkter eller tjenester på nett.',
+        seo: 'SEO og analyse',
+        seoDesc: 'Bli funnet på Google og mål resultatene.',
+        care: 'Drift og vedlikehold',
+        careDesc: 'Månedlige oppdateringer og support.',
+      }
+    : {
+        addons: 'Add-ons',
+        ecommerce: 'E-commerce',
+        ecommerceDesc: 'Sell products or services online.',
+        seo: 'SEO & Analytics',
+        seoDesc: 'Get found on Google and track performance.',
+        care: 'Care & Maintenance',
+        careDesc: 'Monthly updates and support.',
+      }
+
   return (
     <div className="addon-group group">
       <button
@@ -24,7 +46,7 @@ export default function AddonSelector({
         className={`dropbtn ${isOpen ? 'open' : ''}`}
         onClick={onToggle}
       >
-        <span className="label">Add-ons</span>
+        <span className="label">{text.addons}</span>
         <span className="dropbtn-icon">
           {isOpen ? <FiChevronUp /> : <FiChevronDown />}
         </span>
@@ -38,9 +60,9 @@ export default function AddonSelector({
             onChange={(e) => onInputChange('ecommerce', e.target.checked)}
           />
           <span className="toggle-title">
-            E-commerce <FiPackage />
+            {text.ecommerce} <FiPackage />
           </span>
-          <span className="toggle-desc">Sell products or services online.</span>
+          <span className="toggle-desc">{text.ecommerceDesc}</span>
         </label>
 
         <label className={`toggle ${inputs.seo ? 'checked' : ''}`}>
@@ -50,9 +72,9 @@ export default function AddonSelector({
             onChange={(e) => onInputChange('seo', e.target.checked)}
           />
           <span className="toggle-title">
-            SEO & Analytics <FiZap />
+            {text.seo} <FiZap />
           </span>
-          <span className="toggle-desc">Get found on Google and track performance.</span>
+          <span className="toggle-desc">{text.seoDesc}</span>
         </label>
 
         <label className={`toggle ${inputs.carePlan ? 'checked' : ''}`}>
@@ -62,9 +84,9 @@ export default function AddonSelector({
             onChange={(e) => onInputChange('carePlan', e.target.checked)}
           />
           <span className="toggle-title">
-            Care & Maintenance <FiCheck />
+            {text.care} <FiCheck />
           </span>
-          <span className="toggle-desc">Monthly updates and support.</span>
+          <span className="toggle-desc">{text.careDesc}</span>
         </label>
       </div>
     </div>

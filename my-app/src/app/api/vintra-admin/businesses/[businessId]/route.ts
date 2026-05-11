@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/firebase-admin'
 import { requireVintraAdmin, VintraAdminAuthError } from '@/lib/vintra-admin.server'
+
+const VALID_PLANS = new Set(['free', 'pro', 'business'])
 
 function toIso(value: any) {
   if (!value) return null
@@ -111,15 +114,16 @@ export async function PATCH(
 
     if (typeof body.name === 'string') updates.name = body.name.trim()
     if (typeof body.email === 'string') updates.email = body.email.trim().toLowerCase()
-    if (typeof body.plan === 'string') {
-      if (body.confirmPlanChange !== true) {
+    const nextPlan = typeof body.plan === 'string' ? body.plan.trim().toLowerCase() : ''
+    if (nextPlan) {
+      if (!VALID_PLANS.has(nextPlan)) {
         return NextResponse.json(
-          { error: 'Plan changes require confirmation' },
+          { error: 'Invalid plan. Use free, pro, or business.' },
           { status: 400 }
         )
       }
 
-      updates['chatWidgetConfig.plan'] = body.plan.trim()
+      updates['chatWidgetConfig.plan'] = nextPlan
     }
     if (body.assistantConfig) {
       const assistant = body.assistantConfig
@@ -175,8 +179,22 @@ export async function PATCH(
       return NextResponse.json({ error: 'No updates provided' }, { status: 400 })
     }
 
-    updates.updatedAt = new Date()
-    await businessRef.update(updates)
+    updates.updatedAt = FieldValue.serverTimestamp()
+
+    const batch = adminDb.batch()
+    batch.update(businessRef, updates)
+
+    if (nextPlan) {
+      const widgetsSnap = await businessRef.collection('chatWidgets').get()
+      widgetsSnap.docs.forEach((widgetDoc) => {
+        batch.update(widgetDoc.ref, {
+          'config.plan': nextPlan,
+          updatedAt: FieldValue.serverTimestamp(),
+        })
+      })
+    }
+
+    await batch.commit()
 
     return NextResponse.json({ success: true })
   } catch (error) {

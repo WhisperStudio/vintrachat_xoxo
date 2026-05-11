@@ -2,12 +2,25 @@
 
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
 export default function UserLanding() {
   const { isAuthenticated, dbUser, loading } = useAuth()
+  const { language } = useLanguage()
   const router = useRouter()
+  const text = language === 'no'
+    ? {
+        badge: 'Logget inn',
+        title: 'Velkommen tilbake',
+        admin: 'Adminpanel',
+      }
+    : {
+        badge: 'Logged in',
+        title: 'Welcome back',
+        admin: 'Admin Panel',
+      }
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -22,12 +35,12 @@ export default function UserLanding() {
     <>
       <main className="page">
         <section className="hero">
-          <span className="badge success">Logged in</span>
-          <h1>Velkommen tilbake, {dbUser?.displayName}</h1>
+          <span className="badge success">{text.badge}</span>
+          <h1>{text.title}, {dbUser?.displayName}</h1>
 
           <div className="heroActions">
             <Link href="/admin">
-              <button className="primaryBtn">Admin Panel</button>
+              <button className="primaryBtn">{text.admin}</button>
             </Link>
           </div>
         </section>
