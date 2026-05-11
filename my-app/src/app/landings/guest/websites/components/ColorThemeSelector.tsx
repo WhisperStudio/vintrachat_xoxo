@@ -1,6 +1,7 @@
 'use client'
 
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi'
+import { useLanguage } from '@/context/LanguageContext'
 import type { ColorTheme } from '../types'
 import './ColorThemeSelector.css'
 
@@ -78,6 +79,39 @@ const themePalettes: Record<ColorTheme, ThemePalette> = {
   },
 }
 
+const themeText = {
+  en: {
+    label: 'Color style',
+    themes: themePalettes,
+  },
+  no: {
+    label: 'Fargestil',
+    themes: {
+      ...themePalettes,
+      modern: {
+        ...themePalettes.modern,
+        name: 'Moderne',
+        description: 'Sterke, rene og levende farger for moderne digitale merkevarer.',
+      },
+      chilling: {
+        ...themePalettes.chilling,
+        name: 'Rolig',
+        description: 'Pastell og avslappede farger for mykere nettsider.',
+      },
+      corporate: {
+        ...themePalettes.corporate,
+        name: 'Bedrift',
+        description: 'Profesjonelle og tillitsbyggende toner for seriøse nettsider.',
+      },
+      luxury: {
+        ...themePalettes.luxury,
+        name: 'Luksus',
+        description: 'Elegant premiumfølelse for high-end merkevarer og presentasjoner.',
+      },
+    },
+  },
+}
+
 interface ColorThemeSelectorProps {
   colorTheme: ColorTheme
   isOpen: boolean
@@ -91,6 +125,9 @@ export default function ColorThemeSelector({
   onToggle,
   onColorThemeChange
 }: ColorThemeSelectorProps) {
+  const { language } = useLanguage()
+  const text = themeText[language]
+
   return (
     <div className="color-theme-group group">
       <button
@@ -98,7 +135,7 @@ export default function ColorThemeSelector({
         className={`dropbtn ${isOpen ? 'open' : ''}`}
         onClick={onToggle}
       >
-        <span className="label">Color style</span>
+        <span className="label">{text.label}</span>
         <span className="dropbtn-icon">
           {isOpen ? <FiChevronUp /> : <FiChevronDown />}
         </span>
@@ -106,7 +143,7 @@ export default function ColorThemeSelector({
 
       <div className={`theme-grid dropdown-content ${isOpen ? 'open' : ''}`}>
         {(Object.keys(themePalettes) as ColorTheme[]).map((themeKey) => {
-          const theme = themePalettes[themeKey]
+          const theme = text.themes[themeKey]
           const isActive = colorTheme === themeKey
 
           return (

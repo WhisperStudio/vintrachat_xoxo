@@ -7,10 +7,12 @@ import { useAuth } from '@/context/AuthContext'
 import { usePathname, useRouter } from 'next/navigation'
 import { getInvitationsForEmail } from '@/lib/invitation.service'
 import { isVintraAdminEmail } from '@/lib/vintra-admin'
+import { languageLabels, useLanguage, type Language } from '@/context/LanguageContext'
 import type { BusinessInvitation } from '@/types/database'
 import {
   FiArrowRight,
   FiBriefcase,
+  FiGlobe,
   FiGrid,
   FiLayers,
   FiLogOut,
@@ -454,8 +456,113 @@ const MobileActionStack = styled.div`
   gap: 10px;
 `
 
+const LanguageSwitch = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+`
+
+const LanguageButton = styled.button<{ $active?: boolean }>`
+  min-width: 42px;
+  height: 34px;
+  border: 0;
+  border-radius: 11px;
+  background: ${({ $active }) => ($active ? '#0f172a' : 'transparent')};
+  color: ${({ $active }) => ($active ? '#ffffff' : '#475569')};
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    color: ${({ $active }) => ($active ? '#ffffff' : '#0f172a')};
+  }
+`
+
+const headerCopy: Record<Language, {
+  nav: {
+    websites: string
+    chatWidget: string
+    invitations: string
+    dashboard: string
+    myWebsites: string
+    myChatWidgets: string
+    adminPanel: string
+    vintraAdmin: string
+  }
+  actions: {
+    login: string
+    startFree: string
+    createBusiness: string
+    logout: string
+    language: string
+  }
+  menu: {
+    open: string
+    close: string
+  }
+}> = {
+  en: {
+    nav: {
+      websites: 'Websites',
+      chatWidget: 'Chat Widget',
+      invitations: 'Invitations',
+      dashboard: 'Dashboard',
+      myWebsites: 'My Websites',
+      myChatWidgets: 'My Chat Widgets',
+      adminPanel: 'Admin Panel',
+      vintraAdmin: 'Vintra Admin',
+    },
+    actions: {
+      login: 'Log In',
+      startFree: 'Start Free',
+      createBusiness: 'Create Business',
+      logout: 'Log Out',
+      language: 'Choose language',
+    },
+    menu: {
+      open: 'Open menu',
+      close: 'Close menu',
+    },
+  },
+  no: {
+    nav: {
+      websites: 'Nettsider',
+      chatWidget: 'Chatbot',
+      invitations: 'Invitasjoner',
+      dashboard: 'Dashboard',
+      myWebsites: 'Mine nettsider',
+      myChatWidgets: 'Mine chatboter',
+      adminPanel: 'Adminpanel',
+      vintraAdmin: 'Vintra Admin',
+    },
+    actions: {
+      login: 'Logg inn',
+      startFree: 'Start gratis',
+      createBusiness: 'Opprett bedrift',
+      logout: 'Logg ut',
+      language: 'Velg språk',
+    },
+    menu: {
+      open: 'Åpne meny',
+      close: 'Lukk meny',
+    },
+  },
+}
+
 export default function Header() {
   const { firebaseUser, dbUser, logout } = useAuth()
+  const { language, setLanguage } = useLanguage()
+  const text = headerCopy[language]
   const router = useRouter()
   const pathname = usePathname()
   const [pendingInvites, setPendingInvites] = useState<BusinessInvitation[]>([])
@@ -510,13 +617,13 @@ export default function Header() {
   const navItems = useMemo<NavItem[]>(() => {
     if (showGuestLinks) {
       return [
-        { href: '/landings/guest/websites', label: 'Websites', icon: <FiLayers /> },
-        { href: '/landings/auth/chatWidget', label: 'Chat Widget', icon: <FiMessageSquare /> },
+        { href: '/landings/guest/websites', label: text.nav.websites, icon: <FiLayers /> },
+        { href: '/landings/auth/chatWidget', label: text.nav.chatWidget, icon: <FiMessageSquare /> },
         ...(showInvitationCenter
           ? [
               {
                 href: '/invite',
-                label: 'Invitations',
+                label: text.nav.invitations,
                 icon: <FiUserPlus />,
                 badge: pendingInvites.length > 0 ? String(pendingInvites.length) : undefined,
               },
@@ -526,16 +633,16 @@ export default function Header() {
     }
 
     const authenticatedItems: NavItem[] = [
-      { href: '/landings/user', label: 'Dashboard', icon: <FiGrid /> },
-      { href: '/landings/auth/websites', label: 'My Websites', icon: <FiLayers /> },
-      { href: '/landings/auth/chatWidget', label: 'My Chat Widgets', icon: <FiMessageSquare /> },
-      { href: '/admin', label: 'Admin Panel', icon: <FiBriefcase /> },
+      { href: '/landings/user', label: text.nav.dashboard, icon: <FiGrid /> },
+      { href: '/landings/auth/websites', label: text.nav.myWebsites, icon: <FiLayers /> },
+      { href: '/landings/auth/chatWidget', label: text.nav.myChatWidgets, icon: <FiMessageSquare /> },
+      { href: '/admin', label: text.nav.adminPanel, icon: <FiBriefcase /> },
     ]
 
     return showVintraAdmin
-      ? [...authenticatedItems, { href: '/vintra-admin', label: 'Vintra Admin', icon: <FiBriefcase /> }]
+      ? [...authenticatedItems, { href: '/vintra-admin', label: text.nav.vintraAdmin, icon: <FiBriefcase /> }]
       : authenticatedItems
-  }, [pendingInvites.length, showGuestLinks, showInvitationCenter, showVintraAdmin])
+  }, [pendingInvites.length, showGuestLinks, showInvitationCenter, showVintraAdmin, text])
 
   const isActivePath = (href: string) => {
     if (!pathname) return false
@@ -612,34 +719,49 @@ export default function Header() {
 
           <RightSide>
             <ActionRow>
+              <LanguageSwitch aria-label={text.actions.language}>
+                <FiGlobe aria-hidden="true" />
+                {(['no', 'en'] as const).map((option) => (
+                  <LanguageButton
+                    key={option}
+                    type="button"
+                    $active={language === option}
+                    aria-pressed={language === option}
+                    aria-label={languageLabels[option]}
+                    onClick={() => setLanguage(option)}
+                  >
+                    {option.toUpperCase()}
+                  </LanguageButton>
+                ))}
+              </LanguageSwitch>
               {!firebaseUser ? (
                 <>
-                  <SecondaryAction href="/auth/login">Log In</SecondaryAction>
+                  <SecondaryAction href="/auth/login">{text.actions.login}</SecondaryAction>
                   <PrimaryAction href="/auth/signup">
                     <FiArrowRight />
-                    <span>Start Free</span>
+                    <span>{text.actions.startFree}</span>
                   </PrimaryAction>
                 </>
               ) : showInvitationCenter ? (
                 <>
                   <SecondaryAction href="/invite">
                     <FiUserPlus />
-                    <span>Invitations</span>
+                    <span>{text.nav.invitations}</span>
                   </SecondaryAction>
                   <PrimaryAction href="/auth/signup">
                     <FiPlusCircle />
-                    <span>Create Business</span>
+                    <span>{text.actions.createBusiness}</span>
                   </PrimaryAction>
                   <ActionButton type="button" onClick={handleLogout}>
                     <FiLogOut />
-                    <span>Log Out</span>
+                    <span>{text.actions.logout}</span>
                   </ActionButton>
                 </>
               ) : (
                 <>
                   <ActionButton type="button" onClick={handleLogout}>
                     <FiLogOut />
-                    <span>Log Out</span>
+                    <span>{text.actions.logout}</span>
                   </ActionButton>
                 </>
               )}
@@ -648,7 +770,7 @@ export default function Header() {
 
           <MobileToggle
             type="button"
-            aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-label={isMenuOpen ? text.menu.close : text.menu.open}
             aria-expanded={isMenuOpen}
             onClick={() => setIsMenuOpen((current) => !current)}
           >
@@ -670,27 +792,42 @@ export default function Header() {
           </MobileNav>
 
           <MobileActionStack>
+            <LanguageSwitch aria-label={text.actions.language}>
+              <FiGlobe aria-hidden="true" />
+              {(['no', 'en'] as const).map((option) => (
+                <LanguageButton
+                  key={option}
+                  type="button"
+                  $active={language === option}
+                  aria-pressed={language === option}
+                  aria-label={languageLabels[option]}
+                  onClick={() => setLanguage(option)}
+                >
+                  {option.toUpperCase()}
+                </LanguageButton>
+              ))}
+            </LanguageSwitch>
             {!firebaseUser ? (
               <>
-                <SecondaryAction href="/auth/login">Log In</SecondaryAction>
+                <SecondaryAction href="/auth/login">{text.actions.login}</SecondaryAction>
                 <PrimaryAction href="/auth/signup">
                   <FiArrowRight />
-                  <span>Start Free</span>
+                  <span>{text.actions.startFree}</span>
                 </PrimaryAction>
               </>
             ) : showInvitationCenter ? (
               <>
                 <SecondaryAction href="/invite">
                   <FiUserPlus />
-                  <span>Invitations</span>
+                  <span>{text.nav.invitations}</span>
                 </SecondaryAction>
                 <PrimaryAction href="/auth/signup">
                   <FiPlusCircle />
-                  <span>Create Business</span>
+                  <span>{text.actions.createBusiness}</span>
                 </PrimaryAction>
                 <ActionButton type="button" onClick={handleLogout}>
                   <FiLogOut />
-                  <span>Log Out</span>
+                  <span>{text.actions.logout}</span>
                 </ActionButton>
               </>
             ) : (
@@ -698,7 +835,7 @@ export default function Header() {
                
                 <ActionButton type="button" onClick={handleLogout}>
                   <FiLogOut />
-                  <span>Log Out</span>
+                  <span>{text.actions.logout}</span>
                 </ActionButton>
               </>
             )}

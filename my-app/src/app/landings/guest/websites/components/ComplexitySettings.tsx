@@ -1,6 +1,7 @@
 'use client'
 
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi'
+import { useLanguage } from '@/context/LanguageContext'
 import type { InputsState } from '../types'
 import './ComplexitySettings.css'
 
@@ -29,6 +30,29 @@ export default function ComplexitySettings({
   dyn,
   priceMap
 }: ComplexitySettingsProps) {
+  const { language } = useLanguage()
+  const text = language === 'no'
+    ? {
+        label: 'Kompleksitet',
+        ecommerce: 'Nettbutikk-kompleksitet',
+        admin: 'Adminpanel-kompleksitet',
+        database: 'Databasekompleksitet',
+        gallery: 'Gallerikompleksitet',
+        viewer3D: '3D-kompleksitet',
+        basic: 'Enkel',
+        advanced: 'Avansert',
+      }
+    : {
+        label: 'Complexity settings',
+        ecommerce: 'E-commerce complexity',
+        admin: 'Admin panel complexity',
+        database: 'Database complexity',
+        gallery: 'Gallery complexity',
+        viewer3D: '3D viewer complexity',
+        basic: 'Basic',
+        advanced: 'Advanced',
+      }
+
   return (
     <div className="complexity-group group">
       <button
@@ -36,7 +60,7 @@ export default function ComplexitySettings({
         className={`dropbtn ${isOpen ? 'open' : ''}`}
         onClick={onToggle}
       >
-        <span className="label">Complexity settings</span>
+        <span className="label">{text.label}</span>
         <span className="dropbtn-icon">
           {isOpen ? <FiChevronUp /> : <FiChevronDown />}
         </span>
@@ -46,7 +70,7 @@ export default function ComplexitySettings({
         {inputs.ecommerce && (
           <div className="mini-group">
             <label className="label">
-              E-commerce complexity
+              {text.ecommerce}
               <span className="value">
                 {formatCurrency(
                   dyn(priceMap.ecommerce.min, priceMap.ecommerce.max, inputs.ecommerceLevel)
@@ -64,8 +88,8 @@ export default function ComplexitySettings({
               }
             />
             <div className="scale-row">
-              <span>Basic</span>
-              <span>Advanced</span>
+              <span>{text.basic}</span>
+              <span>{text.advanced}</span>
             </div>
           </div>
         )}
@@ -73,7 +97,7 @@ export default function ComplexitySettings({
         {inputs.admin && (
           <div className="mini-group">
             <label className="label">
-              Admin panel complexity
+              {text.admin}
               <span className="value">
                 {formatCurrency(dyn(priceMap.admin.min, priceMap.admin.max, inputs.adminLevel))}
               </span>
@@ -87,8 +111,8 @@ export default function ComplexitySettings({
               onChange={(e) => onInputChange('adminLevel', parseInt(e.target.value, 10))}
             />
             <div className="scale-row">
-              <span>Basic</span>
-              <span>Advanced</span>
+              <span>{text.basic}</span>
+              <span>{text.advanced}</span>
             </div>
           </div>
         )}
@@ -96,7 +120,7 @@ export default function ComplexitySettings({
         {inputs.database && !inputs.ecommerce && (
           <div className="mini-group">
             <label className="label">
-              Database complexity
+              {text.database}
               <span className="value">
                 {formatCurrency(
                   dyn(priceMap.database.min, priceMap.database.max, inputs.databaseLevel)
@@ -114,8 +138,8 @@ export default function ComplexitySettings({
               }
             />
             <div className="scale-row">
-              <span>Basic</span>
-              <span>Advanced</span>
+              <span>{text.basic}</span>
+              <span>{text.advanced}</span>
             </div>
           </div>
         )}
@@ -123,7 +147,7 @@ export default function ComplexitySettings({
         {inputs.gallery && (
           <div className="mini-group">
             <label className="label">
-              Gallery complexity
+              {text.gallery}
               <span className="value">
                 {formatCurrency(
                   dyn(priceMap.gallery.min, priceMap.gallery.max, inputs.galleryLevel)
@@ -141,8 +165,8 @@ export default function ComplexitySettings({
               }
             />
             <div className="scale-row">
-              <span>Basic</span>
-              <span>Advanced</span>
+              <span>{text.basic}</span>
+              <span>{text.advanced}</span>
             </div>
           </div>
         )}
@@ -150,7 +174,7 @@ export default function ComplexitySettings({
         {inputs.viewer3D && (
           <div className="mini-group">
             <label className="label">
-              3D viewer complexity
+              {text.viewer3D}
               <span className="value">
                 {formatCurrency(
                   dyn(priceMap.viewer3D.min, priceMap.viewer3D.max, inputs.viewer3DLevel)
@@ -168,8 +192,8 @@ export default function ComplexitySettings({
               }
             />
             <div className="scale-row">
-              <span>Basic</span>
-              <span>Advanced</span>
+              <span>{text.basic}</span>
+              <span>{text.advanced}</span>
             </div>
           </div>
         )}

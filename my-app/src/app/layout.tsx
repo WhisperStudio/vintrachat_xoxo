@@ -1,8 +1,10 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/context/AuthContext'
+import { LanguageProvider } from '@/context/LanguageContext'
 import AppShell from '@/components/AppShell'
 import { absoluteUrl, siteConfig } from '@/lib/site-config'
+import StyledComponentsRegistry from '@/lib/styled-components-registry'
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -74,10 +76,16 @@ export default function RootLayout({
   return (
     <html lang="no">
       <body>
-        <AuthProvider>
-          <AppShell>{children}</AppShell>
-        </AuthProvider>
+        <StyledComponentsRegistry>
+          <AuthProvider>
+            <LanguageProvider>
+              <AppShell>{children}</AppShell>
+            </LanguageProvider>
+          </AuthProvider>
+        </StyledComponentsRegistry>
+        {/* VintraSolutions Chat Widget */}
         <script src="https://chat.vintrastudio.com/widget/GIN6CPbnBnbTOoEPU3wctBqr.js"></script>
+        {/* End VintraSolutions Chat Widget */}
       </body>
     </html>
   )

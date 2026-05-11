@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useLanguage, type Language } from '@/context/LanguageContext'
 import { absoluteUrl, siteConfig } from '@/lib/site-config'
 
 // ─── Minimal inline SVG icons ───────────────────────────────────────────────
@@ -79,26 +80,6 @@ const websites = [
     img: '🏢',
   },
 ]
-
-type Language = 'no' | 'en'
-
-const languageLabels: Record<Language, string> = {
-  no: 'Norsk',
-  en: 'English',
-}
-
-const detectPreferredLanguage = (): Language => {
-  if (typeof window === 'undefined') return 'en'
-
-  const savedLanguage = window.localStorage.getItem('vintra-main-language')
-  if (savedLanguage === 'no' || savedLanguage === 'en') return savedLanguage
-
-  const languages = window.navigator.languages?.length ? window.navigator.languages : [window.navigator.language]
-  const usesNorwegian = languages.some((language) => language?.toLowerCase().startsWith('no') || language?.toLowerCase().startsWith('nb') || language?.toLowerCase().startsWith('nn'))
-  const isInNorwayTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone === 'Europe/Oslo'
-
-  return usesNorwegian || isInNorwayTimeZone ? 'no' : 'en'
-}
 
 const copy = {
   en: {
@@ -950,18 +931,13 @@ function ChatbotShowcasePreview({ language }: { language: Language }) {
 
 export default function MainLanding() {
   const [heroMounted, setHeroMounted] = useState(false)
-  const [language, setLanguage] = useState<Language>('en')
+  const { language } = useLanguage()
   const text = copy[language]
 
   useEffect(() => {
-    setTimeout(() => setHeroMounted(true), 80)
-    setLanguage(detectPreferredLanguage())
+    const timeout = setTimeout(() => setHeroMounted(true), 80)
+    return () => clearTimeout(timeout)
   }, [])
-
-  const changeLanguage = (nextLanguage: Language) => {
-    setLanguage(nextLanguage)
-    window.localStorage.setItem('vintra-main-language', nextLanguage)
-  }
 
   const currentYear = new Date().getFullYear()
 
@@ -976,38 +952,6 @@ export default function MainLanding() {
         * { box-sizing: border-box; margin: 0; padding: 0 }
         body { background: var(--bg); font-family: -apple-system, 'Helvetica Neue', sans-serif; color: #111 }
         .page { max-width: 1100px; margin: 0 auto; padding: 0 24px }
-        .language-switch {
-          display: flex;
-          justify-content: flex-end;
-          padding: 18px 24px 0;
-        }
-        .language-switch__inner {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          padding: 4px;
-          border-radius: 999px;
-          border: 1px solid rgba(15,23,42,0.1);
-          background: rgba(255,255,255,0.82);
-          box-shadow: 0 10px 24px rgba(15,23,42,0.06);
-        }
-        .language-switch button {
-          min-width: 48px;
-          border: 0;
-          border-radius: 999px;
-          padding: 8px 12px;
-          background: transparent;
-          color: #64748b;
-          font-size: 13px;
-          font-weight: 800;
-          cursor: pointer;
-          transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
-        }
-        .language-switch button[aria-pressed="true"] {
-          background: #111;
-          color: #fff;
-          box-shadow: 0 8px 18px rgba(15,23,42,0.14);
-        }
         @keyframes float-slow {
           0%,100% { transform: translateY(0) rotate(-2deg) }
           50%      { transform: translateY(-12px) rotate(2deg) }
@@ -1640,22 +1584,6 @@ export default function MainLanding() {
       `}</style>
 
       <main lang={language}>
-        <div className="language-switch" aria-label={text.languageSwitchLabel}>
-          <div className="language-switch__inner">
-            {(['no', 'en'] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={language === option}
-                aria-label={languageLabels[option]}
-                onClick={() => changeLanguage(option)}
-              >
-                {option.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* ── HERO ───────────────────────────────────────── */}
         <section className="page" style={{ paddingTop: 80, paddingBottom: 80 }}>
           <div className="hero-grid" style={{ display: 'flex', gap: 48, alignItems: 'center' }}>

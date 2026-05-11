@@ -1,6 +1,7 @@
 'use client'
 
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi'
+import { useLanguage } from '@/context/LanguageContext'
 import type { InputsState } from '../types'
 import './ExtraFeaturesSelector.css'
 
@@ -17,14 +18,30 @@ export default function ExtraFeaturesSelector({
   onToggle,
   onInputChange
 }: ExtraFeaturesSelectorProps) {
-  const features = [
-    ['gallery', 'Gallery', 'Image gallery with categories and zoom.'],
-    ['viewer3D', '3D Viewer', 'Interactive 3D product or model preview.'],
-    ['customDesign', 'Custom Design', 'Tailored visuals and creative layout ideas.'],
-    ['contactForm', 'Contact Form', 'Professional lead and contact form.'],
-    ['blog', 'Blog', 'CMS-powered blog section.'],
-    ['booking', 'Booking System', 'Appointments and calendar booking.'],
-  ] as const
+  const { language } = useLanguage()
+  const text = language === 'no'
+    ? {
+        label: 'Ekstra funksjoner',
+        features: [
+          ['gallery', 'Galleri', 'Bildegalleri med kategorier og zoom.'],
+          ['viewer3D', '3D-visning', 'Interaktiv produkt- eller modellvisning i 3D.'],
+          ['customDesign', 'Eget design', 'Skreddersydd uttrykk og kreative layoutideer.'],
+          ['contactForm', 'Kontaktskjema', 'Profesjonelt skjema for leads og henvendelser.'],
+          ['blog', 'Blogg', 'Bloggseksjon med publiseringssystem.'],
+          ['booking', 'Bookingsystem', 'Timebestilling og kalenderbooking.'],
+        ] as const,
+      }
+    : {
+        label: 'Extra features',
+        features: [
+          ['gallery', 'Gallery', 'Image gallery with categories and zoom.'],
+          ['viewer3D', '3D Viewer', 'Interactive 3D product or model preview.'],
+          ['customDesign', 'Custom Design', 'Tailored visuals and creative layout ideas.'],
+          ['contactForm', 'Contact Form', 'Professional lead and contact form.'],
+          ['blog', 'Blog', 'CMS-powered blog section.'],
+          ['booking', 'Booking System', 'Appointments and calendar booking.'],
+        ] as const,
+      }
 
   return (
     <div className="extra-features-group group">
@@ -33,14 +50,14 @@ export default function ExtraFeaturesSelector({
         className={`dropbtn ${isOpen ? 'open' : ''}`}
         onClick={onToggle}
       >
-        <span className="label">Extra features</span>
+        <span className="label">{text.label}</span>
         <span className="dropbtn-icon">
           {isOpen ? <FiChevronUp /> : <FiChevronDown />}
         </span>
       </button>
 
       <div className={`toggle-grid dropdown-content ${isOpen ? 'open' : ''}`}>
-        {features.map(([key, title, desc]) => {
+        {text.features.map(([key, title, desc]) => {
           const checked = Boolean(inputs[key as keyof typeof inputs])
 
           return (
