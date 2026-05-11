@@ -356,7 +356,8 @@ function DetailedSitePreview({ site, language }: { site: typeof websites[0]; lan
 
   return (
     <div style={{
-      width: 360,
+      width: '100%',
+      maxWidth: 360,
       borderRadius: 20,
       overflow: 'hidden',
       border: '1px solid rgba(255,255,255,0.18)',
@@ -378,7 +379,8 @@ function ChatWidgetPreview({ language }: { language: Language }) {
 
   return (
     <div style={{
-      width: 330,
+      width: '100%',
+      maxWidth: 330,
       borderRadius: 24,
       overflow: 'hidden',
       boxShadow: '0 28px 72px rgba(2,6,23,0.2)',
@@ -702,6 +704,61 @@ export default function MainLanding() {
         * { box-sizing: border-box; margin: 0; padding: 0 }
         body { background: var(--bg); font-family: -apple-system, 'Helvetica Neue', sans-serif; color: #111 }
         .page { max-width: 1100px; margin: 0 auto; padding: 0 24px }
+        .solutionsSection {
+          position: relative;
+          overflow: hidden;
+          padding: 0 0 110px;
+          background: #0d1220;
+          color: #fff;
+          font-family: "Inter", system-ui, sans-serif;
+        }
+        .solutionsCurve {
+          position: relative;
+          width: min(1280px, calc(100vw - 48px));
+          margin: 0 auto;
+          border-radius: 45% 45% 0 0;
+          background:
+            radial-gradient(circle at top left, rgba(99, 102, 241, 0.18), transparent 34%),
+            radial-gradient(circle at top right, rgba(168, 85, 247, 0.14), transparent 30%),
+            linear-gradient(180deg, #111827 0%, #0d1220 56%, #0c111d 100%);
+          box-shadow: 0 -24px 60px rgba(15, 23, 42, 0.22);
+          overflow: hidden;
+        }
+        .solutionsShell {
+          position: relative;
+          z-index: 1;
+          padding: 118px 0 104px;
+        }
+        .solutionsGlow {
+          position: absolute;
+          top: -12%;
+          right: -8%;
+          width: 540px;
+          height: 540px;
+          background: radial-gradient(circle, rgba(99, 102, 241, 0.22) 0%, rgba(15, 17, 21, 0) 70%);
+          z-index: 0;
+          pointer-events: none;
+        }
+        .solutionsIntro {
+          max-width: 920px;
+          margin: 0 auto 76px;
+        }
+        .solutionsGrid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 28px;
+          perspective: 1000px;
+          align-items: stretch;
+        }
+        .solutionsCard {
+          min-width: 0;
+          border-radius: 32px !important;
+          box-shadow: 0 24px 60px rgba(2, 6, 23, 0.24);
+        }
+        .solutionsFooter {
+          max-width: fit-content;
+          margin: 68px auto 0;
+        }
         @keyframes float-slow {
           0%,100% { transform: translateY(0) rotate(-2deg) }
           50%      { transform: translateY(-12px) rotate(2deg) }
@@ -715,7 +772,6 @@ export default function MainLanding() {
           70%  { transform: scale(1.4); opacity: 0 }
           100% { transform: scale(1.4); opacity: 0 }
         }
-        .float-a { animation: float-slow 6s ease-in-out infinite }
         .float-b { animation: float-mid 5s ease-in-out infinite 1s }
         .cta-primary {
           display: inline-flex; align-items: center; gap: 8px;
@@ -1206,6 +1262,26 @@ export default function MainLanding() {
         }
         @media (max-width: 700px) {
           .hero-grid { flex-direction: column !important }
+          .solutionsSection {
+            padding: 0 0 84px;
+          }
+          .solutionsCurve {
+            width: calc(100vw - 20px);
+            border-radius: 56px 56px 0 0;
+          }
+          .solutionsIntro {
+            margin-bottom: 44px;
+          }
+          .solutionsGrid {
+            grid-template-columns: 1fr !important;
+            gap: 18px;
+          }
+          .solutionsCard {
+            border-radius: 26px !important;
+          }
+          .solutionsFooter {
+            margin-top: 42px;
+          }
           .product-grid { grid-template-columns: 1fr !important }
           .use-case-grid { grid-template-columns: 1fr 1fr !important }
           .product-choice-card {
@@ -1221,6 +1297,16 @@ export default function MainLanding() {
           }
         }
         @media (max-width: 900px) {
+          .solutionsSection {
+            padding: 0 0 92px;
+          }
+          .solutionsCurve {
+            width: calc(100vw - 28px);
+            border-radius: 34vw 34vw 0 0;
+          }
+          .solutionsGrid {
+            gap: 22px;
+          }
           .product-decision-shell {
             grid-template-columns: 1fr;
           }
@@ -1388,14 +1474,11 @@ export default function MainLanding() {
 
             {/* right visuals */}
             <div style={{
-              flex: '0 0 auto', position: 'relative', height: 380, width: 320,
+              flex: '0 0 auto', position: 'relative', height: 'clamp(300px, 55vw, 380px)', width: 'min(100%, 360px)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateX(30px)',
               transition: 'all 0.8s ease 0.2s',
             }}>
-              <div className="float-a" style={{ position: 'absolute', top: 20, right: 0 }}>
-                <MiniSiteMockup site={websites[1]} />
-              </div>
               <div className="float-b" style={{ position: 'absolute', bottom: 20, left: 0, transform: 'scale(0.85)' }}>
                 <ChatWidgetPreview language={language} />
               </div>
@@ -1404,41 +1487,25 @@ export default function MainLanding() {
         </section>
 
 {/* ── PREMIER PRODUCT SELECTION ───────────────────────────────────── */}
-<section id="solutions" style={{ 
-  background: '#0f1115', // Sophisticated Midnight Slate
-  padding: '140px 0',
-  width: '100vw',
-  position: 'relative',
-  left: '50%',
-  right: '50%',
-  marginLeft: '-50vw',
-  marginRight: '-50vw',
-  overflow: 'hidden',
-  fontFamily: '"Inter", system-ui, sans-serif'
-}}>
-  {/* Cinematic Ambient Glows */}
-  <div style={{
-    position: 'absolute',
-    top: '-10%',
-    right: '5%',
-    width: '500px',
-    height: '500px',
-    background: 'radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(15, 17, 21, 0) 70%)',
-    zIndex: 0
-  }} />
+<section id="solutions" className="solutionsSection">
+  <div className="solutionsCurve">
+    <div className="solutionsGlow" />
 
-  <div className="page" style={{ position: 'relative', zIndex: 1, maxWidth: '1240px', margin: '0 auto', padding: '0 24px' }}>
+    <div className="page solutionsShell" style={{ position: 'relative', zIndex: 1, maxWidth: '1240px', margin: '0 auto', padding: '0 24px' }}>
     
     <Reveal>
-      <div style={{ textAlign: 'center', marginBottom: '100px' }}>
+      <div className="solutionsIntro" style={{ textAlign: 'center', marginBottom: '100px' }}>
         
         <h2 style={{ 
           fontSize: 'clamp(42px, 6vw, 72px)', 
           fontWeight: 900, 
           letterSpacing: '-0.05em', 
-          color: '#fff',
-          lineHeight: 0.95,
-          marginBottom: '32px'
+          color: '#F8FAFC',
+          lineHeight: 1.02,
+          marginBottom: '22px',
+          maxWidth: '12ch',
+          marginLeft: 'auto',
+          marginRight: 'auto'
         }}>
           {text.productTitleStart} <br/> 
           {language === 'no' ? (
@@ -1451,23 +1518,32 @@ export default function MainLanding() {
             </>
           )}
         </h2>
+        <p style={{
+          maxWidth: '760px',
+          margin: '0 auto',
+          color: 'rgba(226, 232, 240, 0.76)',
+          fontSize: 'clamp(15px, 1.5vw, 18px)',
+          lineHeight: 1.75,
+        }}>
+          {text.togetherLead} <span style={{ color: '#fff', fontWeight: 700 }}>{text.togetherStrong}</span>
+        </p>
       </div>
     </Reveal>
 
-    <div style={{ 
+    <div className="solutionsGrid" style={{
       display: 'grid', 
-      gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', 
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
       gap: '40px',
       perspective: '1000px'
     }}>
       
       {/* OPTION A: MANAGED WEBSITE SERVICE */}
       <Reveal delay={100}>
-        <div className="product-card-group" style={{
-          background: 'linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%)',
-          border: '1px solid rgba(255,255,255,0.1)',
+        <div className="product-card-group solutionsCard solutionsCard--website" style={{
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.035) 100%)',
+          border: '1px solid rgba(148, 163, 184, 0.18)',
           borderRadius: '40px',
-          padding: '60px 50px',
+          padding: '52px 44px',
           transition: 'all 0.5s cubic-bezier(0.2, 1, 0.3, 1)',
           position: 'relative',
           height: '100%',
@@ -1488,24 +1564,24 @@ export default function MainLanding() {
             width: '80px', 
             height: '80px', 
             borderRadius: '24px', 
-            background: '#fff',
+            background: 'linear-gradient(180deg, #FFFFFF 0%, #DCE7FF 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            marginBottom: '40px',
-            boxShadow: '0 20px 40px rgba(255,255,255,0.1)'
+            marginBottom: '34px',
+            boxShadow: '0 20px 40px rgba(15,23,42,0.18)'
           }}>
             <GlobeIcon size={38} color="#000" />
           </div>
 
-          <h3 style={{ color: '#fff', fontSize: '32px', fontWeight: 800, marginBottom: '20px' }}>{text.websiteCardTitle}</h3>
-          <p style={{ color: '#94a3b8', fontSize: '18px', lineHeight: '1.6', marginBottom: '40px' }}>
+          <h3 style={{ color: '#F8FAFC', fontSize: 'clamp(26px, 2.2vw, 32px)', fontWeight: 800, lineHeight: 1.08, marginBottom: '16px' }}>{text.websiteCardTitle}</h3>
+          <p style={{ color: '#cbd5e1', fontSize: 'clamp(15px, 1.4vw, 18px)', lineHeight: '1.75', marginBottom: '30px' }}>
             {text.websiteCardBody}
           </p>
 
-          <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 50px 0', flexGrow: 1 }}>
+          <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 38px 0', flexGrow: 1 }}>
             {text.websiteCardFeatures.map((item) => (
-              <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#cbd5e1', marginBottom: '16px', fontSize: '15px' }}>
+              <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#d8e2ef', marginBottom: '14px', fontSize: '15px', lineHeight: 1.5 }}>
                 <div style={{ color: '#6366f1' }}><CheckIcon size={18} /></div> {item}
               </li>
             ))}
@@ -1516,8 +1592,8 @@ export default function MainLanding() {
             alignItems: 'center', 
             justifyContent: 'center',
             gap: '12px',
-            background: '#fff',
-            color: '#000',
+            background: 'linear-gradient(180deg, #FFFFFF 0%, #E8EEF9 100%)',
+            color: '#0f172a',
             height: '70px',
             borderRadius: '20px',
             fontWeight: '800',
@@ -1532,11 +1608,11 @@ export default function MainLanding() {
 
       {/* OPTION B: AUTOMATED CHATBOT */}
       <Reveal delay={300}>
-        <div style={{
-          background: 'linear-gradient(145deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.05) 100%)',
-          border: '1px solid rgba(99, 102, 241, 0.2)',
+        <div className="solutionsCard solutionsCard--chatbot" style={{
+          background: 'linear-gradient(180deg, rgba(99, 102, 241, 0.17) 0%, rgba(12, 17, 29, 0.22) 100%)',
+          border: '1px solid rgba(129, 140, 248, 0.24)',
           borderRadius: '40px',
-          padding: '60px 50px',
+          padding: '52px 44px',
           transition: 'all 0.5s cubic-bezier(0.2, 1, 0.3, 1)',
           position: 'relative',
           height: '100%',
@@ -1559,19 +1635,19 @@ export default function MainLanding() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            marginBottom: '40px'
+            marginBottom: '34px'
           }}>
             <BotIcon size={38} color="#fff" />
           </div>
 
-          <h3 style={{ color: '#fff', fontSize: '32px', fontWeight: 800, marginBottom: '20px' }}>{text.chatbotCardTitle}</h3>
-          <p style={{ color: '#94a3b8', fontSize: '18px', lineHeight: '1.6', marginBottom: '40px' }}>
+          <h3 style={{ color: '#F8FAFC', fontSize: 'clamp(26px, 2.2vw, 32px)', fontWeight: 800, lineHeight: 1.08, marginBottom: '16px' }}>{text.chatbotCardTitle}</h3>
+          <p style={{ color: '#cbd5e1', fontSize: 'clamp(15px, 1.4vw, 18px)', lineHeight: '1.75', marginBottom: '30px' }}>
             {text.chatbotCardBody}
           </p>
 
-          <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 50px 0', flexGrow: 1 }}>
+          <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 38px 0', flexGrow: 1 }}>
             {text.chatbotCardFeatures.map((item) => (
-              <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#cbd5e1', marginBottom: '16px', fontSize: '15px' }}>
+              <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#d8e2ef', marginBottom: '14px', fontSize: '15px', lineHeight: 1.5 }}>
                 <div style={{ color: '#a855f7' }}><CheckIcon size={18} /></div> {item}
               </li>
             ))}
@@ -1582,7 +1658,7 @@ export default function MainLanding() {
             alignItems: 'center', 
             justifyContent: 'center',
             gap: '12px',
-            background: 'linear-gradient(90deg, #6366f1, #a855f7)',
+            background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
             color: '#fff',
             height: '70px',
             borderRadius: '20px',
@@ -1613,21 +1689,22 @@ export default function MainLanding() {
     </div>
 
     <Reveal delay={500}>
-      <div style={{ 
-        marginTop: '80px', 
+      <div className="solutionsFooter" style={{
+        marginTop: '68px',
         textAlign: 'center',
-        background: 'rgba(255,255,255,0.02)',
+        background: 'rgba(255,255,255,0.04)',
         padding: '24px',
         borderRadius: '24px',
-        border: '1px solid rgba(255,255,255,0.05)',
+        border: '1px solid rgba(148, 163, 184, 0.14)',
         maxWidth: 'fit-content',
-        margin: '80px auto 0 auto'
+        margin: '68px auto 0 auto'
       }}>
-        <p style={{ margin: 0, color: '#64748b', fontWeight: 500 }}>
+        <p style={{ margin: 0, color: '#cbd5e1', fontWeight: 500 }}>
           {text.togetherLead} <span style={{ color: '#fff' }}>{text.togetherStrong}</span>
         </p>
       </div>
     </Reveal>
+  </div>
   </div>
 </section>
 

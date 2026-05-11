@@ -6,7 +6,7 @@ import styled, { css, keyframes } from 'styled-components'
 import { useAuth } from '@/context/AuthContext'
 import { usePathname, useRouter } from 'next/navigation'
 import { getInvitationsForEmail } from '@/lib/invitation.service'
-import { headerI18n, languageLabels, languageOptions, useVintraLanguage, type VintraLanguage } from '@/lib/i18n'
+import { headerI18n, languageLabels, languageOptions, useVintraLanguage } from '@/lib/i18n'
 import { isVintraAdminEmail } from '@/lib/vintra-admin'
 import type { BusinessInvitation } from '@/types/database'
 import {
@@ -74,7 +74,9 @@ const HeaderInner = styled.div`
   }
 
   @media (max-width: 720px) {
-    padding: 12px;
+    grid-template-columns: auto auto;
+    gap: 12px;
+    padding: 10px 10px 12px;
   }
 `
 
@@ -93,6 +95,11 @@ const BrandIcon = styled.img`
   display: block;
   background: transparent;
   box-shadow: none;
+
+  @media (max-width: 720px) {
+    width: 44px;
+    height: 36px;
+  }
 `
 
 const Brand = styled(Link)`
@@ -107,6 +114,10 @@ const BrandText = styled.div`
   display: flex;
   flex-direction: column;
   min-width: 0;
+
+  @media (max-width: 720px) {
+    display: none;
+  }
 `
 
 const BrandTitle = styled.span`
@@ -158,6 +169,11 @@ const DesktopNav = styled.nav`
     inset 0 1px 0 rgba(255, 255, 255, 0.5),
     inset 0 -1px 0 rgba(255, 255, 255, 0.1);
   overflow: hidden;
+
+  @media (max-width: 1100px) {
+    gap: 6px;
+    padding: 7px;
+  }
 
   &::before {
     content: '';
@@ -222,15 +238,25 @@ const NavLink = styled(Link)<{ $active?: boolean }>`
   padding: 11px 15px;
   border-radius: 16px;
   color: #475569;
-  font-size: 0.93rem;
+  font-size: clamp(0.78rem, 0.72rem + 0.22vw, 0.93rem);
   font-weight: 800;
   transition:
     transform 0.2s ease,
     color 0.2s ease,
     background 0.2s ease,
     box-shadow 0.2s ease;
+  white-space: nowrap;
 
- 
+  @media (max-width: 1100px) {
+    gap: 8px;
+    padding: 10px 13px;
+  }
+
+  @media (max-width: 720px) {
+    gap: 7px;
+    padding: 9px 12px;
+    font-size: 0.82rem;
+  }
 
   ${({ $active }) => $active && activeNavStyles}
 
@@ -270,6 +296,10 @@ const ActionRow = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
+
+  @media (max-width: 1200px) {
+    gap: 8px;
+  }
 `
 
 const LanguageSwitcher = styled.div`
@@ -300,13 +330,14 @@ const BaseButtonStyles = css`
     var(--button-shadow, 0 8px 32px rgba(0, 0, 0, 0.1)),
     inset 0 1px 0 rgba(255, 255, 255, 0.5),
     inset 0 -1px 0 rgba(255, 255, 255, 0.1);
-  font-size: 0.92rem;
+  font-size: clamp(0.78rem, 0.72rem + 0.22vw, 0.92rem);
   font-weight: 800;
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,
     background 0.2s ease,
     border-color 0.2s ease;
+  white-space: nowrap;
 
   &::before {
     content: '';
@@ -337,6 +368,17 @@ const BaseButtonStyles = css`
 
   &:hover {
     transform: translateY(-1px);
+  }
+
+  @media (max-width: 1200px) {
+    gap: 8px;
+    padding: 10px 14px;
+  }
+
+  @media (max-width: 720px) {
+    gap: 7px;
+    padding: 9px 12px;
+    font-size: 0.82rem;
   }
 `
 
@@ -461,6 +503,7 @@ const MobileNav = styled.nav`
 const MobileNavLink = styled(NavLink)`
   width: 100%;
   justify-content: space-between;
+  font-size: clamp(0.82rem, 0.8rem + 0.3vw, 0.92rem);
 `
 
 const MobileActionStack = styled.div`
@@ -526,77 +569,6 @@ const LanguageButton = styled.button<{ $active?: boolean }>`
     color: ${({ $active }) => ($active ? '#ffffff' : '#0f172a')};
   }
 `
-
-const headerCopy: Record<VintraLanguage, {
-  nav: {
-    websites: string
-    chatWidget: string
-    invitations: string
-    dashboard: string
-    myWebsites: string
-    myChatWidgets: string
-    adminPanel: string
-    vintraAdmin: string
-  }
-  actions: {
-    login: string
-    startFree: string
-    createBusiness: string
-    logout: string
-    language: string
-  }
-  menu: {
-    open: string
-    close: string
-  }
-}> = {
-  en: {
-    nav: {
-      websites: 'Websites',
-      chatWidget: 'Chat Widget',
-      invitations: 'Invitations',
-      dashboard: 'Dashboard',
-      myWebsites: 'My Websites',
-      myChatWidgets: 'My Chat Widgets',
-      adminPanel: 'Admin Panel',
-      vintraAdmin: 'Vintra Admin',
-    },
-    actions: {
-      login: 'Log In',
-      startFree: 'Start Free',
-      createBusiness: 'Create Business',
-      logout: 'Log Out',
-      language: 'Choose language',
-    },
-    menu: {
-      open: 'Open menu',
-      close: 'Close menu',
-    },
-  },
-  no: {
-    nav: {
-      websites: 'Nettsider',
-      chatWidget: 'Chatbot',
-      invitations: 'Invitasjoner',
-      dashboard: 'Dashboard',
-      myWebsites: 'Mine nettsider',
-      myChatWidgets: 'Mine chatboter',
-      adminPanel: 'Adminpanel',
-      vintraAdmin: 'Vintra Admin',
-    },
-    actions: {
-      login: 'Logg inn',
-      startFree: 'Start gratis',
-      createBusiness: 'Opprett bedrift',
-      logout: 'Logg ut',
-      language: 'Velg språk',
-    },
-    menu: {
-      open: 'Åpne meny',
-      close: 'Lukk meny',
-    },
-  },
-}
 
 export default function Header() {
   const { firebaseUser, dbUser, logout } = useAuth()
@@ -799,14 +771,12 @@ export default function Header() {
                   <ActionButton type="button" onClick={handleLogout}>
                     <FiLogOut />
                     <span>{text.actions.logout}</span>
-                    <span>{text.actions.logout}</span>
                   </ActionButton>
                 </>
               ) : (
                 <>
                   <ActionButton type="button" onClick={handleLogout}>
                     <FiLogOut />
-                    <span>{text.actions.logout}</span>
                     <span>{text.actions.logout}</span>
                   </ActionButton>
                 </>
@@ -879,7 +849,6 @@ export default function Header() {
                 <ActionButton type="button" onClick={handleLogout}>
                   <FiLogOut />
                   <span>{text.actions.logout}</span>
-                  <span>{text.actions.logout}</span>
                 </ActionButton>
               </>
             ) : (
@@ -887,7 +856,6 @@ export default function Header() {
                
                 <ActionButton type="button" onClick={handleLogout}>
                   <FiLogOut />
-                  <span>{text.actions.logout}</span>
                   <span>{text.actions.logout}</span>
                 </ActionButton>
               </>
