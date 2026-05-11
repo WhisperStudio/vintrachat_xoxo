@@ -5,6 +5,7 @@ import { FiCheck, FiCreditCard, FiRefreshCw, FiSave, FiSliders, FiMonitor, FiSma
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { setActiveChatWidget, updateChatWidgetConfig } from '@/lib/auth.service'
+import { chatWidgetBuilderI18n, useVintraLanguage } from '@/lib/i18n'
 import { sanitizeBubbleStyleForPlan } from '@/lib/subscription'
 import type { BubbleIconChoice, ChatWidgetConfig, OrbStyleConfig } from '@/types/database'
 import './ChatWidget.css'
@@ -150,6 +151,8 @@ const planPrices: Record<Plan, { monthly: number; yearly: number }> = {
 export default function ChatWidgetBuilderPage() {
   const router = useRouter()
   const { isAuthenticated, dbUser, business, loading, refreshBusiness } = useAuth()
+  const { language } = useVintraLanguage()
+  const t = chatWidgetBuilderI18n[language]
 
   const [inputs, setInputs] = useState<InputsState>(defaultInputs)
   const [hasLoadedDbConfig, setHasLoadedDbConfig] = useState(false)
@@ -351,18 +354,18 @@ export default function ChatWidgetBuilderPage() {
     <div className="chatbuilder-page">
       <main className="chatbuilder-content">
         <section className="chatbuilder-hero">
-          <h1>Chat Widget Builder</h1>
+          <h1>{t.heroTitle}</h1>
           <p>
-            Configure a simple chat widget preview. Choose a{' '}
+            {t.heroBody}{' '}
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#16a34a' }}>
               <FiCreditCard aria-hidden="true" />
-              <span>subscription</span>
+              <span>{t.subscription}</span>
             </span>{' '}
-            and customize the chat bubble, header, body and footer styles.
+            {t.heroBodyEnd}
           </p>
 
           <div className="chatbuilder-widget-switcher">
-            <label htmlFor="builder-widget-select">Active widget</label>
+            <label htmlFor="builder-widget-select">{t.activeWidget}</label>
             <select
               id="builder-widget-select"
               value={selectedWidgetKey || business?.activeChatWidgetKey || business?.chatWidgetKey || ''}
@@ -373,19 +376,19 @@ export default function ChatWidgetBuilderPage() {
                 widgetList.map((widget) => (
                   <option key={widget.widgetKey} value={widget.widgetKey}>
                     {widget.name}
-                    {widget.isDefault ? ' (default)' : ''}
+                    {widget.isDefault ? ` (${t.defaultWidget})` : ''}
                   </option>
                 ))
               ) : (
-                <option value="">No widgets yet</option>
+                <option value="">{t.noWidgets}</option>
               )}
             </select>
             <span className="chatbuilder-widget-switcher-hint">
               {widgetList.length > 1
-                ? `Editing ${widgetList.length} widgets.`
+                ? t.editingWidgets(widgetList.length)
                 : inputs.plan === 'free'
-                  ? 'Free plans keep a single widget.'
-                  : 'Pro and Enterprise can add more widgets.'}
+                  ? t.freeSingleWidget
+                  : t.paidMultipleWidgets}
             </span>
           </div>
 
@@ -395,7 +398,7 @@ export default function ChatWidgetBuilderPage() {
           <div className="builder-panel glass">
             <div className="panel-header">
               <h2 className="section-title">
-                <FiSliders /> Configure widget
+                <FiSliders /> {t.configureWidget}
               </h2>
 
               <div className="panel-actions">
@@ -403,16 +406,16 @@ export default function ChatWidgetBuilderPage() {
                   <div className="auto-save-indicator">
                     {isSaving && (
                       <span className="saving-status">
-                        <FiRefreshCw className="spinning" /> Saving...
+                        <FiRefreshCw className="spinning" /> {t.saving}
                       </span>
                     )}
                     {saveStatus === 'success' && (
                       <span className="saved-status">
-                        <FiSave /> Saved
+                        <FiSave /> {t.saved}
                       </span>
                     )}
                     {saveStatus === 'error' && (
-                      <span className="error-status">Save failed</span>
+                      <span className="error-status">{t.saveFailed}</span>
                     )}
                   </div>
                 )}
@@ -433,7 +436,7 @@ export default function ChatWidgetBuilderPage() {
                         <FiSave />
                       )}
                     </span>
-                    <span>{isSaving ? 'Saving...' : saveStatus === 'success' ? 'Saved!' : 'Save Configuration'}</span>
+                    <span>{isSaving ? t.saving : saveStatus === 'success' ? t.savedButton : t.saveConfiguration}</span>
                   </button>
                 ) : null}
 
@@ -444,7 +447,7 @@ export default function ChatWidgetBuilderPage() {
                   >
                     <FiRefreshCw />
                   </span>
-                  <span>Reset</span>
+                  <span>{t.reset}</span>
                 </button>
               </div>
             </div>
@@ -482,7 +485,7 @@ export default function ChatWidgetBuilderPage() {
           </div>
 
           <div className="preview-panel">
-            <div className="previewModeSwitcher" role="tablist" aria-label="Preview device">
+            <div className="previewModeSwitcher" role="tablist" aria-label={t.previewDevice}>
               <button
                 type="button"
                 className={previewMode === 'desktop' ? 'active' : ''}
@@ -490,7 +493,7 @@ export default function ChatWidgetBuilderPage() {
                 aria-pressed={previewMode === 'desktop'}
               >
                 <FiMonitor />
-                <span>Desktop</span>
+                <span>{t.desktop}</span>
               </button>
               <button
                 type="button"
@@ -499,7 +502,7 @@ export default function ChatWidgetBuilderPage() {
                 aria-pressed={previewMode === 'mobile'}
               >
                 <FiSmartphone />
-                <span>Mobile</span>
+                <span>{t.mobile}</span>
               </button>
             </div>
             <WidgetPreview
@@ -514,7 +517,7 @@ export default function ChatWidgetBuilderPage() {
               colorTheme={inputs.colorTheme}
               customBranding={inputs.customBranding}
               enablePreviewChat={true}
-              previewReply="hi, this is only a test"
+              previewReply={t.previewReply}
               previewMode={previewMode}
             />
           </div>

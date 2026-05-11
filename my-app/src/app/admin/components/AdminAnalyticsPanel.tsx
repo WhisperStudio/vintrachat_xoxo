@@ -12,6 +12,7 @@ import {
 } from 'react-icons/fi'
 import { useAuth } from '@/context/AuthContext'
 import { getBusinessChatAnalytics } from '@/lib/chat.service'
+import { adminAnalyticsI18n, useVintraLanguage } from '@/lib/i18n'
 import type { ChatAnalytics, ChatAnalyticsEvent } from '@/types/database'
 import AdminDropdown from './AdminDropdown'
 import './admin-components.css'
@@ -216,6 +217,8 @@ function eventLabel(kind: ChatAnalyticsEvent['kind']) {
 
 export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { selectedWidgetKey?: string }) {
   const { dbUser } = useAuth()
+  const { language } = useVintraLanguage()
+  const text = adminAnalyticsI18n[language]
   const [analytics, setAnalytics] = useState<ChatAnalytics>(emptyAnalytics)
   const [loading, setLoading] = useState(true)
   const [chartReady, setChartReady] = useState(false)
@@ -309,35 +312,35 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
 
     return [
       {
-        label: 'Total sessions',
+        label: text.totalSessions,
         value: rangeAnalytics.totalSessions,
-        detail: 'Selected range only',
+        detail: text.selectedRangeOnly,
         icon: FiActivity,
         tone: 'green',
       },
       {
-        label: 'Support requests',
+        label: text.supportRequests,
         value: rangeAnalytics.supportRequests,
-        detail: `${supportRate}% of sessions in range`,
+        detail: text.supportRate(supportRate),
         icon: FiShield,
         tone: 'blue',
       },
       {
-        label: 'AI-only sessions',
+        label: text.aiOnlySessions,
         value: rangeAnalytics.aiOnlySessions,
-        detail: `${aiRate}% handled fully by AI`,
+        detail: text.aiRate(aiRate),
         icon: FiCpu,
         tone: 'violet',
       },
       {
-        label: 'Saved support chats',
+        label: text.savedSupportChats,
         value: rangeAnalytics.savedSupportChats,
-        detail: `${savedRate}% of support requests`,
+        detail: text.savedRate(savedRate),
         icon: FiTrendingUp,
         tone: 'amber',
       },
       {
-        label: 'Top country',
+        label: text.topCountry,
         value: (
           <span className="adminAnalyticsCountryValue">
             {countryCodeToFlagImage(latestCountry) ? (
@@ -355,21 +358,21 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
             <span>{latestCountry}</span>
           </span>
         ),
-        detail: 'Based on selected range',
+        detail: text.basedOnRange,
         icon: FiGlobe,
         tone: 'sky',
       },
       {
-        label: 'Last activity',
-        value: analytics.lastChatAt ? new Date(analytics.lastChatAt).toLocaleTimeString() : 'None',
+        label: text.lastActivity,
+        value: analytics.lastChatAt ? new Date(analytics.lastChatAt).toLocaleTimeString() : text.none,
         detail: analytics.lastChatAt
           ? new Date(analytics.lastChatAt).toLocaleString()
-          : 'No chats yet',
+          : text.noChatsYet,
         icon: FiClock,
         tone: 'slate',
       },
     ] satisfies AnalyticsCard[]
-  }, [rangeAnalytics])
+  }, [analytics.lastChatAt, rangeAnalytics, text])
 
   const timelineBuckets = useMemo(() => {
     const map = new Map<number, { bucket: Date; activity: number; handovers: number }>()
@@ -413,14 +416,14 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
         rangeAnalytics.savedSupportChats > 0
 
       const pieData = google.visualization.arrayToDataTable([
-        ['Type', 'Count'],
+        [text.chartLabels.type, text.chartLabels.count],
         ...(hasOverviewData
           ? [
-              ['AI only', rangeAnalytics.aiOnlySessions],
-              ['Support requested', rangeAnalytics.supportRequests],
-              ['Saved follow-ups', rangeAnalytics.savedSupportChats],
+              [text.chartLabels.aiOnly, rangeAnalytics.aiOnlySessions],
+              [text.chartLabels.supportRequested, rangeAnalytics.supportRequests],
+              [text.chartLabels.savedFollowUps, rangeAnalytics.savedSupportChats],
             ]
-          : [['No data', 1]]),
+          : [[text.chartLabels.noData, 1]]),
       ])
 
       const pieChart = new google.visualization.PieChart(overviewRef.current)
@@ -442,7 +445,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
         timelineBuckets.length > 0 ? timelineBuckets : buildEmptyTimelineBuckets(range)
 
       const lineData = google.visualization.arrayToDataTable([
-        ['Time', 'Activity', 'Handovers'],
+        [text.chartLabels.time, text.chartLabels.activity, text.chartLabels.handovers],
         ...chartTimelineBuckets.map((bucket) => [bucket.bucket, bucket.activity, bucket.handovers]),
       ])
 
@@ -470,7 +473,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
 
     if (view === 'geography' && geographyRef.current) {
       const geoData = google.visualization.arrayToDataTable([
-        ['Country', 'Sessions'],
+        [text.chartLabels.country, text.chartLabels.sessions],
         ...countryEntries,
       ])
 
@@ -491,6 +494,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
     rangeAnalytics.aiOnlySessions,
     rangeAnalytics.savedSupportChats,
     rangeAnalytics.supportRequests,
+    text,
     timelineBuckets,
     view,
   ])
@@ -524,8 +528,8 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
   if (loading) {
     return (
       <div className="infoCard adminDataCard">
-        <h1>Analytics</h1>
-        <p>Loading chat analytics...</p>
+        <h1>{text.title}</h1>
+        <p>{text.loading}</p>
       </div>
     )
   }
@@ -534,18 +538,18 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
     <div className="infoCard adminDataCard adminAnalyticsPanel">
       <div className="adminSectionHeader">
         <div>
-          <h1>Analytics</h1>
-          <p>Live widget activity, support handovers, geography, and timeline trends.</p>
+          <h1>{text.title}</h1>
+          <p>{text.body}</p>
           {selectedWidgetKey ? (
             <p className="adminDataHint">
-              Showing analytics for widget <strong>{selectedWidgetKey}</strong>.
+              {text.showingWidget} <strong>{selectedWidgetKey}</strong>.
             </p>
           ) : null}
         </div>
         <div className="adminAnalyticsBadge">
           {rangeAnalytics.lastActivityAt
-            ? `Updated ${new Date(rangeAnalytics.lastActivityAt).toLocaleString()}`
-            : 'No recent activity'}
+            ? `${text.updated} ${new Date(rangeAnalytics.lastActivityAt).toLocaleString()}`
+            : text.noRecentActivity}
         </div>
       </div>
 
@@ -588,7 +592,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
             onClick={() => setView('overview')}
           >
             <FiPieChart />
-            Overview
+            {text.overview}
           </button>
           <button
             ref={(node) => {
@@ -599,7 +603,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
             onClick={() => setView('timeline')}
           >
             <FiTrendingUp />
-            Timeline
+            {text.timeline}
           </button>
           <button
             ref={(node) => {
@@ -610,21 +614,21 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
             onClick={() => setView('geography')}
           >
             <FiGlobe />
-            Geography
+            {text.geography}
           </button>
         </div>
 
         <label className="adminTaskFilter adminAnalyticsRange">
           <span>
-            <FiClock /> Time range
+            <FiClock /> {text.timeRange}
           </span>
           <AdminDropdown
             value={range}
             options={[
-              { value: '24h', label: 'Last 24 hours' },
-              { value: '7d', label: 'Last 7 days' },
-              { value: '30d', label: 'Last 30 days' },
-              { value: 'all', label: 'All time' },
+              { value: '24h', label: text.ranges.day },
+              { value: '7d', label: text.ranges.week },
+              { value: '30d', label: text.ranges.month },
+              { value: 'all', label: text.ranges.all },
             ]}
             onChange={(nextValue) => setRange(nextValue as AnalyticsRange)}
           />
@@ -636,8 +640,8 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
           <section className="adminAnalyticsChartCard adminAnalyticsChartCardWide">
             <div className="adminAnalyticsChartHeader">
               <div>
-                <h2>Conversation mix</h2>
-                <p>How chats split between AI-only, support requests, and saved follow-ups.</p>
+                <h2>{text.conversationMix}</h2>
+                <p>{text.conversationMixBody}</p>
               </div>
             </div>
             <div ref={overviewRef} className="adminGoogleChart" />
@@ -646,8 +650,8 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
           <section className="adminAnalyticsChartCard">
             <div className="adminAnalyticsChartHeader">
               <div>
-                <h2>Top countries</h2>
-                <p>Visitor country codes captured from the widget.</p>
+                <h2>{text.topCountries}</h2>
+                <p>{text.topCountriesBody}</p>
               </div>
             </div>
             <div className="adminAnalyticsCountryList">
@@ -673,7 +677,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
                   </div>
                 ))
               ) : (
-                <p className="adminTaskEmptyState">No country data yet.</p>
+                <p className="adminTaskEmptyState">{text.noCountryData}</p>
               )}
             </div>
           </section>
@@ -685,8 +689,8 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
           <section className="adminAnalyticsChartCard adminAnalyticsChartCardWide">
             <div className="adminAnalyticsChartHeader">
               <div>
-                <h2>Activity timeline</h2>
-                <p>Zoom the timeline using the range selector above.</p>
+                <h2>{text.activityTimeline}</h2>
+                <p>{text.activityTimelineBody}</p>
               </div>
             </div>
             <div ref={timelineRef} className="adminGoogleChart" />
@@ -695,8 +699,8 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
           <section className="adminAnalyticsChartCard">
             <div className="adminAnalyticsChartHeader">
               <div>
-                <h2>Recent events</h2>
-                <p>Latest chat events with precise timestamps.</p>
+                <h2>{text.recentEvents}</h2>
+                <p>{text.recentEventsBody}</p>
               </div>
             </div>
             <div className="adminAnalyticsEventList">
@@ -709,7 +713,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
                   <p>{new Date(event.createdAt).toLocaleString()}</p>
                 </article>
               ))}
-              {!timelineEvents.length ? <p className="adminTaskEmptyState">No timeline events yet.</p> : null}
+              {!timelineEvents.length ? <p className="adminTaskEmptyState">{text.noTimelineEvents}</p> : null}
             </div>
           </section>
         </div>
@@ -720,8 +724,8 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
           <section className="adminAnalyticsChartCard adminAnalyticsChartCardWide">
             <div className="adminAnalyticsChartHeader">
               <div>
-                <h2>Geography map</h2>
-                <p>Country-code map based on visitor traffic.</p>
+                <h2>{text.geographyMap}</h2>
+                <p>{text.geographyMapBody}</p>
               </div>
             </div>
             <div ref={geographyRef} className="adminGoogleChart adminGoogleChartTall" />
@@ -730,8 +734,8 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
           <section className="adminAnalyticsChartCard">
             <div className="adminAnalyticsChartHeader">
               <div>
-                <h2>Country breakdown</h2>
-                <p>Largest visitor groups from the selected range.</p>
+                <h2>{text.countryBreakdown}</h2>
+                <p>{text.countryBreakdownBody}</p>
               </div>
             </div>
             <div className="adminAnalyticsCountryList">
@@ -757,7 +761,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
                   </div>
                 ))
               ) : (
-                <p className="adminTaskEmptyState">No country data yet.</p>
+                <p className="adminTaskEmptyState">{text.noCountryData}</p>
               )}
             </div>
           </section>

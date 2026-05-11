@@ -13,6 +13,7 @@ import {
   saveSupportTaskCategories,
   updateSupportTask,
 } from '@/lib/chat.service'
+import { adminTasksI18n, adminChatsI18n, useVintraLanguage } from '@/lib/i18n'
 import type {
   SupportChatMessage,
   SupportChatSession,
@@ -66,16 +67,17 @@ function accentForKey(value: string) {
   return categoryAccentPalette[hash % categoryAccentPalette.length]
 }
 
-function speakerLabel(role: SupportChatMessage['role']) {
+function speakerLabel(role: SupportChatMessage['role'], language: 'no' | 'en') {
+  const chatText = adminChatsI18n[language]
   switch (role) {
     case 'assistant':
-      return 'AI'
+      return chatText.speakers.ai
     case 'support':
-      return 'Human Support'
+      return chatText.speakers.support
     case 'system':
-      return 'System'
+      return chatText.speakers.system
     default:
-      return 'Visitor'
+      return chatText.speakers.visitor
   }
 }
 
@@ -94,6 +96,8 @@ function formatMessageTime(value?: Date) {
 
 export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWidgetKey?: string }) {
   const { dbUser, business } = useAuth()
+  const { language } = useVintraLanguage()
+  const text = adminTasksI18n[language]
   const humanSupportEnabled = business?.chatAssistantConfig?.humanSupportEnabled !== false
   const [loading, setLoading] = useState(true)
   const [tasks, setTasks] = useState<SupportTask[]>([])
@@ -385,8 +389,8 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
   if (loading) {
     return (
       <div className="infoCard adminDataCard">
-        <h1>Tasks</h1>
-        <p>Loading tasks...</p>
+        <h1>{text.title}</h1>
+        <p>{text.loading}</p>
       </div>
     )
   }
@@ -395,16 +399,16 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
     <div className="infoCard adminDataCard adminTasksPanel">
       <div className="adminSectionHeader adminTasksHeader">
         <div>
-          <h1>Tasks</h1>
-          <p>Track follow-ups from chats, sort by urgency, and keep support work organized.</p>
+          <h1>{text.title}</h1>
+          <p>{text.body}</p>
           {selectedWidgetKey ? (
             <p className="adminDataHint">
-              Showing tasks for widget <strong>{selectedWidgetKey}</strong>.
+              {text.showingWidget} <strong>{selectedWidgetKey}</strong>.
             </p>
           ) : null}
           {!humanSupportEnabled ? (
             <p className="adminDataHint">
-              Human handoff is turned off. Turn it on to see tasks created from support chats here.
+              {text.humanSupportOff}
             </p>
           ) : null}
         </div>
@@ -416,7 +420,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
             onClick={() => setCategoryEditorOpen((prev) => !prev)}
           >
             <FiSettings />
-            Categories
+            {text.categories}
           </button>
           <button
             type="button"
@@ -424,7 +428,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
             onClick={() => setTaskCreatorOpen((prev) => !prev)}
           >
             <FiPlus />
-            {taskCreatorOpen ? 'Close task form' : 'New task'}
+            {taskCreatorOpen ? text.closeTaskForm : text.newTask}
           </button>
           <button
             type="button"
@@ -446,11 +450,11 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
       <div className="adminTaskFilterBar">
         <label className="adminTaskFilter">
           <span>
-            <FiFilter /> Status
+            <FiFilter /> {text.status}
           </span>
           <AdminDropdown
             value={filters.status}
-            placeholder="All statuses"
+            placeholder={text.allStatuses}
             options={[
               { value: 'all', label: 'All statuses' },
               ...Object.entries(taskStatusLabels).map(([value, label]) => ({
@@ -469,11 +473,11 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
 
         <label className="adminTaskFilter">
           <span>
-            <FiFilter /> Priority
+            <FiFilter /> {text.priority}
           </span>
           <AdminDropdown
             value={filters.priority}
-            placeholder="All priorities"
+            placeholder={text.allPriorities}
             options={[
               { value: 'all', label: 'All priorities' },
               ...taskPriorityOrder.map((value) => ({
@@ -494,11 +498,11 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
 
         <label className="adminTaskFilter">
           <span>
-            <FiFilter /> Category
+            <FiFilter /> {text.category}
           </span>
           <AdminDropdown
             value={filters.categoryId}
-            placeholder="All categories"
+            placeholder={text.allCategories}
             options={[
               { value: 'all', label: 'All categories' },
               ...categoryOptions,
@@ -518,7 +522,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
           </span>
           <AdminDropdown
             value={filters.sortBy}
-            placeholder="Newest first"
+            placeholder={text.newestFirst}
             options={[
               { value: 'newest', label: 'Newest first' },
               { value: 'oldest', label: 'Oldest first' },
@@ -537,31 +541,31 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
         <div className="adminTaskComposer">
           <div className="adminTaskComposerGrid">
             <label className="adminTaskField adminTaskFieldFull">
-              <span>Task title</span>
+                <span>{text.taskTitle}</span>
               <input
                 type="text"
                 value={creatorDraft.title}
                 onChange={(event) =>
                   setCreatorDraft((prev) => ({ ...prev, title: event.target.value }))
                 }
-                placeholder="Follow up on refund request"
+                placeholder={text.taskTitlePlaceholder}
               />
             </label>
 
             <label className="adminTaskField adminTaskFieldFull">
-              <span>Description</span>
+                <span>{text.description}</span>
               <textarea
                 value={creatorDraft.description}
                 onChange={(event) =>
                   setCreatorDraft((prev) => ({ ...prev, description: event.target.value }))
                 }
                 rows={4}
-                placeholder="Describe the issue, context, and the next step."
+                placeholder={text.descriptionPlaceholder}
               />
             </label>
 
             <label className="adminTaskField">
-              <span>Category</span>
+              <span>{text.category}</span>
               <AdminDropdown
                 value={creatorDraft.categoryId}
                 options={categoryOptions}
@@ -572,7 +576,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
             </label>
 
             <label className="adminTaskField">
-              <span>Priority</span>
+              <span>{text.priority}</span>
               <AdminDropdown
                 value={creatorDraft.priority}
                 options={taskPriorityOrder.map((value) => ({
@@ -591,7 +595,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
             </label>
 
             <label className="adminTaskField">
-              <span>Status</span>
+              <span>{text.status}</span>
               <AdminDropdown
                 value={creatorDraft.status}
                 options={Object.entries(taskStatusLabels).map(([value, label]) => ({
@@ -610,7 +614,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
 
           <div className="adminTaskComposerActions">
             <button type="button" className="secondaryBtn" onClick={() => setTaskCreatorOpen(false)}>
-              Cancel
+              {text.cancel}
             </button>
             <button
               type="button"
@@ -623,7 +627,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
                 !categories.length
               }
             >
-              {creatorBusy ? 'Saving...' : 'Save task'}
+              {creatorBusy ? text.saving : text.saveTask}
             </button>
           </div>
         </div>
@@ -633,8 +637,8 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
         <section className="adminCategoryPanel">
           <div className="adminSectionHeader compact">
             <div>
-              <h2>Categories</h2>
-              <p>Manage the default categories and add your own business-specific ones.</p>
+              <h2>{text.categories}</h2>
+              <p>{text.categoriesBody}</p>
             </div>
           </div>
 
@@ -643,7 +647,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
               type="text"
               value={newCategoryName}
               onChange={(event) => setNewCategoryName(event.target.value)}
-              placeholder="Add new category"
+              placeholder={text.addCategoryPlaceholder}
             />
             <button
               type="button"
@@ -651,7 +655,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
               onClick={addCategory}
               disabled={savingCategories}
             >
-              Add
+              {text.add}
             </button>
           </div>
 
@@ -660,7 +664,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
               <div key={category.id} className="adminCategoryPill">
                 <div>
                   <strong>{category.name}</strong>
-                  {category.default ? <span>Default</span> : <span>Custom</span>}
+                  {category.default ? <span>{text.default}</span> : <span>{text.custom}</span>}
                 </div>
                 <button
                   type="button"
@@ -681,10 +685,10 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
           {filteredTasks.length === 0 ? (
             <p>
               {selectedWidgetKey
-                ? 'No tasks found for the selected widget.'
+                ? text.emptySelectedWidget
                 : humanSupportEnabled
-                  ? 'No tasks match the current filters.'
-                  : 'Human handoff is turned off. Turn it on to see tasks created from support chats here.'}
+                  ? text.emptyFiltered
+                  : text.humanSupportOff}
             </p>
           ) : (
             filteredTasks.map((task) => {
@@ -702,7 +706,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
                       <h3>{task.title}</h3>
                       <p className="adminTaskCardMetaLine">
                         <FiUser />
-                        <span>{task.visitorName || 'Unnamed visitor'}</span>
+                        <span>{task.visitorName || text.unnamedVisitor}</span>
                       </p>
                     </div>
                     <div className="adminTaskMeta">
@@ -722,7 +726,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
                   <p className="adminTaskCardPreview">{task.description}</p>
                   <div className="adminTaskCardFooter">
                     <span>{formatDate(task.createdAt)}</span>
-                    <span>{task.comments?.length || 0} notes</span>
+                    <span>{task.comments?.length || 0} {text.notes}</span>
                   </div>
                 </button>
               )
@@ -759,13 +763,13 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
               </div>
               <div>
                 <span>
-                  <FiUser /> Visitor
+                  <FiUser /> {text.visitor}
                 </span>
-                <strong>{selectedTask.visitorName || 'Unnamed visitor'}</strong>
+                <strong>{selectedTask.visitorName || text.unnamedVisitor}</strong>
               </div>
               <div>
                 <span>
-                  <FiTag /> Category
+                  <FiTag /> {text.category}
                 </span>
                 <strong>{selectedTask.categoryName}</strong>
               </div>
@@ -773,7 +777,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
 
             <div className="adminTaskDetailControls">
               <label className="adminTaskFilter">
-                <span>Priority</span>
+                <span>{text.priority}</span>
               <AdminDropdown
                 value={selectedTask.priority}
                 options={taskPriorityOrder.map((value) => ({
@@ -793,7 +797,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
               </label>
 
               <label className="adminTaskFilter">
-                <span>Status</span>
+                <span>{text.status}</span>
                 <AdminDropdown
                   value={selectedTask.status}
                   options={Object.entries(taskStatusLabels).map(([value, label]) => ({
@@ -811,7 +815,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
               </label>
 
               <label className="adminTaskFilter">
-                <span>Category</span>
+                <span>{text.category}</span>
                 <AdminDropdown
                   value={selectedTask.categoryId}
                   options={categoryOptions}
@@ -825,9 +829,9 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
             <details className="adminTaskFold">
               <summary>
                 <span>
-                  <FiMessageSquare /> Linked chat history
+                  <FiMessageSquare /> {text.chatSnapshot}
                 </span>
-                <span>{taskChatMessages.length ? `${taskChatMessages.length} messages` : 'No saved chat snapshot'}</span>
+                <span>{taskChatMessages.length ? `${taskChatMessages.length} ${text.messages}` : text.noSavedChatSnapshot}</span>
               </summary>
               <div className="adminTaskFoldBody">
                 {taskChatMessages.length ? (
@@ -837,22 +841,22 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
                         key={message.id}
                         className={`adminTaskHistoryItem adminTaskHistoryItem-${message.role}`}
                       >
-                        <strong>{speakerLabel(message.role)}</strong>
+                        <strong>{speakerLabel(message.role, language)}</strong>
                         <p>{message.text}</p>
                         <span>{formatMessageTime(message.createdAt)}</span>
                       </article>
                     ))}
                   </div>
                 ) : (
-                  <p className="adminTaskEmptyState">This task does not have a saved chat snapshot.</p>
+                  <p className="adminTaskEmptyState">{text.noSavedChatSnapshot}</p>
                 )}
               </div>
             </details>
 
             <details className="adminTaskFold">
               <summary>
-                <span>Comments</span>
-                <span>{selectedTask.comments?.length || 0} notes</span>
+                <span>{text.comments}</span>
+                <span>{selectedTask.comments?.length || 0} {text.notes}</span>
               </summary>
               <div className="adminTaskFoldBody">
                 <div className="adminTaskCommentsList">
@@ -860,14 +864,14 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
                   selectedTask.comments.map((comment) => (
                     <article key={comment.id} className="adminTaskCommentItem">
                       <div>
-                        <strong>{comment.createdByName || 'Support'}</strong>
+                        <strong>{comment.createdByName || text.support}</strong>
                         <span>{new Date(comment.createdAt).toLocaleString()}</span>
                       </div>
                       <p>{comment.text}</p>
                     </article>
                   ))
                   ) : (
-                    <p className="adminTaskEmptyState">No comments yet.</p>
+                    <p className="adminTaskEmptyState">{text.noComments}</p>
                   )}
                 </div>
 
@@ -875,7 +879,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
                   <textarea
                     value={commentText}
                     onChange={(event) => setCommentText(event.target.value)}
-                    placeholder="Add a follow-up note or internal comment..."
+                    placeholder={text.commentPlaceholder}
                     rows={3}
                   />
                   <button
@@ -884,7 +888,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
                     onClick={addComment}
                     disabled={commentSaving || !commentText.trim()}
                   >
-                    <span>{commentSaving ? 'Saving comment...' : 'Add comment'}</span>
+                    <span>{commentSaving ? text.savingComment : text.addComment}</span>
                     <FiPlus />
                   </button>
                 </div>
@@ -893,8 +897,8 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
           </section>
         ) : (
           <section className="adminTaskDetail adminTaskDetailEmpty">
-            <h2>No task selected</h2>
-            <p>Pick a task from the list to view the chat history and update the work item.</p>
+            <h2>{text.noTaskSelected}</h2>
+            <p>{text.noTaskSelectedBody}</p>
           </section>
         )}
       </div>

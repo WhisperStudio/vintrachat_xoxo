@@ -21,6 +21,7 @@ import {
   FiX,
 } from 'react-icons/fi'
 import { FaCcVisa, FaCcMastercard, FaPaypal } from 'react-icons/fa'
+import { useVintraLanguage, websiteBuilderI18n } from '@/lib/i18n'
 import { 
   DesignLevelSelector,
   ColorThemeSelector,
@@ -39,71 +40,6 @@ import type {
   InputsState
 } from './types'
 import './WebPage.css'
-
-type Translation = {
-  heroTitle: string
-  heroSubtitle: string
-  heroMeta: string
-  configureProject: string
-  pageCount: string
-  designComplexity: string
-  colorStyle: string
-  addons: string
-  configuration: string
-  extraFeatures: string
-  ecommerceTitle: string
-  ecommerceDesc: string
-  seoTitle: string
-  seoDesc: string
-  careTitle: string
-  careDesc: string
-  adminTitle: string
-  adminDesc: string
-  databaseTitle: string
-  databaseDesc: string
-  databaseDescRequired: string
-  databaseComplexity: string
-  aiTitle: string
-  aiDesc: string
-  galleryTitle: string
-  galleryDesc: string
-  galleryComplexity: string
-  viewer3DTitle: string
-  viewer3DDesc: string
-  viewer3DComplexity: string
-  customDesignTitle: string
-  customDesignDesc: string
-  contactFormTitle: string
-  contactFormDesc: string
-  blogTitle: string
-  blogDesc: string
-  bookingTitle: string
-  bookingDesc: string
-  ecommerceComplexity: string
-  adminComplexity: string
-  basic: string
-  advanced: string
-  priceDisclaimer: string
-  estimateNote: string
-  estimateTitle: string
-  estimatedCost: string
-  estimatedWaitTime: string
-  monthlyLabel: string
-  perMonth: string
-  weeks: string
-  startProject: string
-  copy: string
-  reset: string
-  costBreakdown: string
-  selectCountry: string
-  priceBeforeVat: string
-  vat: string
-  totalInclVat: string
-  exVat: string
-  website: string
-  adminPanel: string
-  loginForAccess: string
-}
 
 type BreakdownItem = {
   name: string
@@ -224,74 +160,9 @@ const demoProducts: Product[] = [
   { id: 3, name: 'Product Three', price: 699, priceLabel: 'NOK 699', c1: '#dbeafe', c2: '#bfdbfe' },
 ]
 
-const translations: Translation = {
-  heroTitle: 'From idea to launch.',
-  heroSubtitle: 'Configure a custom, fast and user-friendly website with us.',
-  heroMeta: 'Try and make a mockup of your idea with estimated pricing, visual preview and flexible feature options.',
-  configureProject: 'Configure your project',
-  pageCount: 'Number of pages',
-  designComplexity: 'Design level',
-  colorStyle: 'Color style',
-  addons: 'Add-ons',
-  configuration: 'Core configuration',
-  extraFeatures: 'Extra features',
-  ecommerceTitle: 'E-commerce',
-  ecommerceDesc: 'Sell products or services online.',
-  seoTitle: 'SEO & Analytics',
-  seoDesc: 'Get found on Google and track performance.',
-  careTitle: 'Care & Maintenance',
-  careDesc: 'Monthly updates and support.',
-  adminTitle: 'Admin Panel',
-  adminDesc: 'Manage content, data and users.',
-  databaseTitle: 'Database',
-  databaseDesc: 'Store and manage dynamic data.',
-  databaseDescRequired: 'Required for e-commerce.',
-  databaseComplexity: 'Database complexity',
-  aiTitle: 'AI Assistant',
-  aiDesc: 'Smart chatbot and simple automation.',
-  galleryTitle: 'Gallery',
-  galleryDesc: 'Image gallery with categories and zoom.',
-  galleryComplexity: 'Gallery complexity',
-  viewer3DTitle: '3D Viewer',
-  viewer3DDesc: 'Interactive 3D product or model preview.',
-  viewer3DComplexity: '3D viewer complexity',
-  customDesignTitle: 'Custom Design',
-  customDesignDesc: 'Tailored visuals and creative layout ideas.',
-  contactFormTitle: 'Contact Form',
-  contactFormDesc: 'Professional lead and contact form.',
-  blogTitle: 'Blog',
-  blogDesc: 'CMS-powered blog section.',
-  bookingTitle: 'Booking System',
-  bookingDesc: 'Appointments and calendar booking.',
-  ecommerceComplexity: 'E-commerce complexity',
-  adminComplexity: 'Admin panel complexity',
-  basic: 'Basic',
-  advanced: 'Advanced',
-  priceDisclaimer:
-    'Prices may vary based on scope and project complexity. This calculator is meant as a realistic estimate.',
-  estimateNote: 'This is an estimated price',
-  estimateTitle: 'Your price estimate',
-  estimatedCost: 'Estimated cost',
-  estimatedWaitTime: 'Estimated timeline',
-  monthlyLabel: 'Monthly cost',
-  perMonth: '/mo',
-  weeks: 'weeks',
-  startProject: 'Start project',
-  copy: 'Copy',
-  reset: 'Reset',
-  costBreakdown: 'Cost breakdown',
-  selectCountry: 'Select country for VAT calculation:',
-  priceBeforeVat: 'Price before VAT:',
-  vat: 'VAT',
-  totalInclVat: 'Total incl. VAT:',
-  exVat: 'ex. VAT',
-  website: 'Website',
-  adminPanel: 'Admin Panel',
-  loginForAccess: 'Log in for full access',
-}
-
 export default function GuestWebsites() {
-  const t = translations
+  const { language } = useVintraLanguage()
+  const t = websiteBuilderI18n[language]
 
   const [country, setCountry] = useState<Country>('NO')
   const [showBreakdown, setShowBreakdown] = useState(false)
@@ -476,9 +347,9 @@ export default function GuestWebsites() {
     )
 
     const items: BreakdownItem[] = [
-      { name: 'Base package', cost: priceMap.base },
+      { name: t.basePackage, cost: priceMap.base },
       {
-        name: `${inputs.pages} pages (${inputs.design})`,
+        name: `${inputs.pages} ${t.pagesLabel} (${inputs.design})`,
         cost: inputs.pages * priceMap.perPage * dMul,
       },
     ]
@@ -506,7 +377,7 @@ export default function GuestWebsites() {
       totalWithVat: oneTime + vatAmount,
       vatRate,
     }
-  }, [inputs, vatRate])
+  }, [inputs, t, vatRate])
 
   const updateInput = <K extends keyof InputsState>(key: K, value: InputsState[K]) => {
     setInputs((prev) => {
@@ -551,29 +422,29 @@ export default function GuestWebsites() {
   )
 
   const copyEstimate = async () => {
-    const text = `Website estimate
+    const text = `${t.estimateTitle}
 -----------------------------
-One-time cost: ${formatCurrency(breakdown.oneTimeCost)} ex. VAT
-Total incl. VAT: ${formatCurrency(breakdown.totalWithVat)}
-Monthly cost: ${formatCurrency(breakdown.monthlyCost)}/mo
-Estimated timeline: ~${breakdown.weeks} weeks
+${t.estimatedCost}: ${formatCurrency(breakdown.oneTimeCost)} ${t.exVat}
+${t.totalInclVat} ${formatCurrency(breakdown.totalWithVat)}
+${t.monthlyLabel}: ${formatCurrency(breakdown.monthlyCost)}${t.perMonth}
+${t.estimatedWaitTime}: ~${breakdown.weeks} ${t.weeks}
 
-Configuration:
-- Pages: ${inputs.pages}
-- Design level: ${inputs.design}
-- Color style: ${inputs.colorTheme}
-- E-commerce: ${inputs.ecommerce ? 'Yes' : 'No'}
-- SEO & Analytics: ${inputs.seo ? 'Yes' : 'No'}
-- Admin Panel: ${inputs.admin ? 'Yes' : 'No'}
-- Database: ${inputs.database ? 'Yes' : 'No'}
-- AI Assistant: ${inputs.ai ? 'Yes' : 'No'}
-- Care & Maintenance: ${inputs.carePlan ? 'Yes' : 'No'}`
+${t.configuration}:
+- ${t.pageCount}: ${inputs.pages}
+- ${t.designComplexity}: ${inputs.design}
+- ${t.colorStyle}: ${inputs.colorTheme}
+- ${t.ecommerceTitle}: ${inputs.ecommerce ? t.yes : t.no}
+- ${t.seoTitle}: ${inputs.seo ? t.yes : t.no}
+- ${t.adminTitle}: ${inputs.admin ? t.yes : t.no}
+- ${t.databaseTitle}: ${inputs.database ? t.yes : t.no}
+- ${t.aiTitle}: ${inputs.ai ? t.yes : t.no}
+- ${t.careTitle}: ${inputs.carePlan ? t.yes : t.no}`
 
     try {
       await navigator.clipboard.writeText(text.trim())
-      alert('Estimate copied to clipboard.')
+      alert(t.copiedAlert)
     } catch {
-      alert('Could not copy right now.')
+      alert(t.copyFailedAlert)
     }
   }
 
@@ -626,13 +497,13 @@ Configuration:
     previewBackgroundEffect !== 'default' ? `bg-${previewBackgroundEffect}` : ''
 
   const featureNav = [
-    inputs.ecommerce ? { id: 'ecommerce' as ActiveFeature, label: 'Store' } : null,
-    inputs.gallery ? { id: 'gallery' as ActiveFeature, label: 'Gallery' } : null,
-    inputs.viewer3D ? { id: 'viewer3D' as ActiveFeature, label: '3D View' } : null,
-    inputs.customDesign ? { id: 'customDesign' as ActiveFeature, label: 'Custom' } : null,
-    inputs.blog ? { id: 'blog' as ActiveFeature, label: 'Blog' } : null,
-    inputs.contactForm ? { id: 'contactForm' as ActiveFeature, label: 'Contact' } : null,
-    inputs.booking ? { id: 'booking' as ActiveFeature, label: 'Booking' } : null,
+    inputs.ecommerce ? { id: 'ecommerce' as ActiveFeature, label: t.store } : null,
+    inputs.gallery ? { id: 'gallery' as ActiveFeature, label: t.gallery } : null,
+    inputs.viewer3D ? { id: 'viewer3D' as ActiveFeature, label: t.view3d } : null,
+    inputs.customDesign ? { id: 'customDesign' as ActiveFeature, label: t.custom } : null,
+    inputs.blog ? { id: 'blog' as ActiveFeature, label: t.blog } : null,
+    inputs.contactForm ? { id: 'contactForm' as ActiveFeature, label: t.contact } : null,
+    inputs.booking ? { id: 'booking' as ActiveFeature, label: t.booking } : null,
   ].filter(Boolean) as { id: ActiveFeature; label: string }[]
 
   const remainingPages = Math.max(0, inputs.pages - 1 - featureNav.length)
@@ -640,7 +511,7 @@ Configuration:
     ...featureNav,
     ...Array.from({ length: remainingPages }, (_, i) => ({
       id: 'page' as ActiveFeature,
-      label: `Page ${featureNav.length + i + 2}`,
+      label: `${t.page} ${featureNav.length + i + 2}`,
     })),
   ]
 
@@ -876,7 +747,7 @@ Configuration:
                                 {cartCount > 0 && <span className={`badge ${tDesignClass}`}>{cartCount}</span>}
                               </span>
                               <span className="cart-text">
-                                {cartCount > 0 ? formatCurrency(cartTotal) : 'Cart'}
+                                {cartCount > 0 ? formatCurrency(cartTotal) : t.cart}
                               </span>
                             </button>
                           )}

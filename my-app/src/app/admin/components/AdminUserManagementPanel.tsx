@@ -5,35 +5,29 @@ import { FiCopy, FiMail, FiShield, FiUserPlus, FiUsers } from 'react-icons/fi'
 import { useAuth } from '@/context/AuthContext'
 import { createInvitation, getBusinessInvitations } from '@/lib/invitation.service'
 import { getBusinessUsers, updateUserRole } from '@/lib/auth.service'
+import { adminUsersI18n, useVintraLanguage } from '@/lib/i18n'
 import { getDailyConversationCount, getPlanLabel, getPlanLimits, getTodayUsageKey } from '@/lib/subscription'
 import type { BusinessInvitation, BusinessUser, UserRole } from '@/types/database'
 import AdminDropdown from './AdminDropdown'
 import './admin-components.css'
 
-const roleOptions: Array<{ value: Exclude<UserRole, 'user'>; label: string; description: string }> = [
-  { value: 'admin', label: 'Admin', description: 'Full access to the workspace' },
-  { value: 'manager', label: 'Manager', description: 'Can manage support and analytics' },
-  { value: 'support', label: 'Support', description: 'Chats, tasks, and support flow' },
-  { value: 'viewer', label: 'Viewer', description: 'Read-only overview access' },
-]
-
-function roleLabel(role: UserRole) {
+function roleLabel(role: UserRole, text: (typeof adminUsersI18n)[keyof typeof adminUsersI18n]) {
   switch (role) {
     case 'admin':
-      return 'Admin'
+      return text.roles.admin.label
     case 'manager':
-      return 'Manager'
+      return text.roles.manager.label
     case 'support':
-      return 'Support'
+      return text.roles.support.label
     case 'viewer':
     case 'user':
     default:
-      return 'Viewer'
+      return text.roles.viewer.label
   }
 }
 
-function formatDate(value?: Date) {
-  if (!value) return 'Unknown'
+function formatDate(value: Date | undefined, unknownLabel: string) {
+  if (!value) return unknownLabel
   return new Date(value).toLocaleString()
 }
 
@@ -47,6 +41,8 @@ function buildInviteLink(invite: BusinessInvitation) {
 
 export default function AdminUserManagementPanel() {
   const { dbUser, business, refreshBusiness } = useAuth()
+  const { language } = useVintraLanguage()
+  const text = adminUsersI18n[language]
   const [users, setUsers] = useState<BusinessUser[]>([])
   const [invitations, setInvitations] = useState<BusinessInvitation[]>([])
   const [loading, setLoading] = useState(true)
@@ -66,6 +62,12 @@ export default function AdminUserManagementPanel() {
   const memberLimitReached =
     planLimits.maxTeamMembers !== null && users.length >= planLimits.maxTeamMembers
   const inviteLocked = memberLimitReached
+  const roleOptions: Array<{ value: Exclude<UserRole, 'user'>; label: string; description: string }> = [
+    { value: 'admin', label: text.roles.admin.label, description: text.roles.admin.description },
+    { value: 'manager', label: text.roles.manager.label, description: text.roles.manager.description },
+    { value: 'support', label: text.roles.support.label, description: text.roles.support.description },
+    { value: 'viewer', label: text.roles.viewer.label, description: text.roles.viewer.description },
+  ]
 
   const sortedUsers = useMemo(
     () => [...users].sort((a, b) => Number(b.role === 'admin') - Number(a.role === 'admin')),
@@ -111,7 +113,7 @@ export default function AdminUserManagementPanel() {
       const result = await createInvitation(dbUser.businessId, inviteEmail.trim().toLowerCase(), inviteRole, dbUser.id)
 
       if (!result.success) {
-        setStatusMessage(result.message || 'Could not create invitation')
+        setStatusMessage(result.message || text.inviteFailed)
         return
       }
 
@@ -127,7 +129,7 @@ export default function AdminUserManagementPanel() {
           setInvitations(nextInvites as BusinessInvitation[])
         })(),
       ])
-      setStatusMessage('Invitation created')
+      setStatusMessage(text.inviteCreated)
     } finally {
       setSavingInvite(false)
     }
@@ -153,14 +155,14 @@ export default function AdminUserManagementPanel() {
     const link = buildInviteLink(invite)
     if (!link) return
     await navigator.clipboard.writeText(link)
-    setStatusMessage('Invite link copied')
+    setStatusMessage(text.inviteCopied)
   }
 
   if (loading) {
     return (
       <div className="infoCard adminUsersPanel">
-        <h1>User Management</h1>
-        <p>Loading team members...</p>
+        <h1>{text.title}</h1>
+        <p>{text.loading}</p>
       </div>
     )
   }
@@ -170,57 +172,57 @@ export default function AdminUserManagementPanel() {
       <div className="adminUsersHero">
         <div>
           <span className="adminUsersEyebrow">
-            <FiUsers /> Team access
+            <FiUsers /> {text.eyebrow}
           </span>
-          <h1>User Management</h1>
-          <p>Invite people by email, assign roles, and control what each person can access.</p>
+          <h1>{text.title}</h1>
+          <p>{text.body}</p>
         </div>
         <div className="adminUsersMetaCard">
-          <strong>{business?.name || 'Workspace'}</strong>
-          <span>{sortedUsers.length} users</span>
+          <strong>{business?.name || text.workspace}</strong>
+          <span>{sortedUsers.length} {text.users}</span>
         </div>
       </div>
 
       <div className="adminUsersQuotaRow">
         <div className={`adminUsersQuotaCard ${dailyConversationLimitReached ? 'is-alert' : ''}`}>
-          <span>Plan</span>
+          <span>{text.plan}</span>
           <strong>{getPlanLabel(plan)}</strong>
-          <small>{planLimits.maxDailyConversations ? `${planLimits.maxDailyConversations} conversations/day` : 'Unlimited conversations'}</small>
+          <small>{planLimits.maxDailyConversations ? `${planLimits.maxDailyConversations} ${text.conversationsDay}` : text.unlimitedConversations}</small>
         </div>
 
         <div className={`adminUsersQuotaCard ${dailyConversationLimitReached ? 'is-alert' : ''}`}>
-          <span>Today</span>
+          <span>{text.today}</span>
           <strong>
             {todayConversationCount}
             {planLimits.maxDailyConversations ? ` / ${planLimits.maxDailyConversations}` : ''}
           </strong>
           <small>
-            {dailyConversationLimitReached ? 'Limit reached today' : `Today’s usage · ${todayKey}`}
+            {dailyConversationLimitReached ? text.limitReachedToday : `${text.todaysUsage} - ${todayKey}`}
           </small>
         </div>
 
         <div className={`adminUsersQuotaCard ${memberLimitReached ? 'is-alert' : ''}`}>
-          <span>Members</span>
+          <span>{text.members}</span>
           <strong>
             {sortedUsers.length}
             {planLimits.maxTeamMembers ? ` / ${planLimits.maxTeamMembers}` : ''}
           </strong>
           <small>
-            {planLimits.maxTeamMembers ? 'Team member limit active' : 'Unlimited team members'}
+            {planLimits.maxTeamMembers ? text.teamLimitActive : text.unlimitedTeamMembers}
           </small>
         </div>
 
         <div className="adminUsersQuotaCard">
-          <span>Orb access</span>
-          <strong>{planLimits.orbAvailable ? 'Enabled' : 'Locked'}</strong>
-          <small>{planLimits.extendedDesignOptions ? 'Extended design options unlocked' : 'Extended design options locked to Pro+'}</small>
+          <span>{text.orbAccess}</span>
+          <strong>{planLimits.orbAvailable ? text.enabled : text.locked}</strong>
+          <small>{planLimits.extendedDesignOptions ? text.extendedUnlocked : text.extendedLocked}</small>
         </div>
       </div>
 
       <div className="adminUsersInviteBar">
         <label>
           <span>
-            <FiMail /> Email
+            <FiMail /> {text.email}
           </span>
           <input
             type="email"
@@ -232,7 +234,7 @@ export default function AdminUserManagementPanel() {
 
         <label>
           <span>
-            <FiShield /> Role
+            <FiShield /> {text.role}
           </span>
           <AdminDropdown
             value={inviteRole}
@@ -252,14 +254,14 @@ export default function AdminUserManagementPanel() {
           disabled={savingInvite || inviteLocked}
         >
           <FiUserPlus />
-          {savingInvite ? 'Inviting...' : inviteLocked ? 'Member limit reached' : 'Invite user'}
+          {savingInvite ? text.inviting : inviteLocked ? text.memberLimitReached : text.inviteUser}
         </button>
       </div>
 
       <div className="adminUsersGrid">
         <section className="adminUsersSection">
           <div className="adminUsersSectionHeader">
-            <h2>Members</h2>
+            <h2>{text.members}</h2>
             <span>{sortedUsers.length}</span>
           </div>
           <div className="adminUsersList">
@@ -271,22 +273,22 @@ export default function AdminUserManagementPanel() {
                     <span>{user.email}</span>
                   </div>
                   <span className={`adminUsersRole adminUsersRole-${user.role === 'user' ? 'viewer' : user.role}`}>
-                    {roleLabel(user.role)}
+                    {roleLabel(user.role, text)}
                   </span>
                 </div>
 
                 <div className="adminUsersCardRow">
-                  <span>Status</span>
+                  <span>{text.status}</span>
                   <strong>{user.status}</strong>
                 </div>
 
                 <div className="adminUsersCardRow">
-                  <span>Joined</span>
-                  <strong>{formatDate(user.createdAt)}</strong>
+                  <span>{text.joined}</span>
+                  <strong>{formatDate(user.createdAt, text.unknown)}</strong>
                 </div>
 
                 <label className="adminUsersInlineSelect">
-                  <span>Role</span>
+                  <span>{text.role}</span>
                   <AdminDropdown
                     value={user.role === 'user' ? 'viewer' : user.role}
                     disabled={updatingUserId === user.id}
@@ -307,13 +309,13 @@ export default function AdminUserManagementPanel() {
 
         <section className="adminUsersSection">
           <div className="adminUsersSectionHeader">
-            <h2>Pending invites</h2>
+            <h2>{text.pendingInvites}</h2>
             <span>{invitations.length}</span>
           </div>
           <div className="adminUsersList">
             {invitations.length === 0 ? (
               <div className="adminUsersEmpty">
-                <p>No pending invitations yet.</p>
+                <p>{text.noPendingInvites}</p>
               </div>
             ) : (
               invitations.map((invite) => (
@@ -321,17 +323,17 @@ export default function AdminUserManagementPanel() {
                   <div className="adminUsersCardTop">
                     <div>
                       <strong>{invite.email}</strong>
-                      <span>Role: {roleLabel(invite.role)}</span>
+                      <span>{text.role}: {roleLabel(invite.role, text)}</span>
                     </div>
                     <button type="button" className="adminUsersCopyButton" onClick={() => copyInviteLink(invite)}>
                       <FiCopy />
-                      Copy link
+                      {text.copyLink}
                     </button>
                   </div>
 
                   <div className="adminUsersCardRow">
-                    <span>Expires</span>
-                    <strong>{formatDate(invite.expiresAt)}</strong>
+                    <span>{text.expires}</span>
+                    <strong>{formatDate(invite.expiresAt, text.unknown)}</strong>
                   </div>
                 </article>
               ))

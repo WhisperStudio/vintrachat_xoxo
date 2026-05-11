@@ -12,6 +12,7 @@ import {
   returnSupportChatToAi,
   sendSupportReply,
 } from '@/lib/chat.service'
+import { adminChatsI18n, useVintraLanguage } from '@/lib/i18n'
 import type {
   SupportChatMessage,
   SupportChatSession,
@@ -22,16 +23,16 @@ import type {
 import AdminDropdown from './AdminDropdown'
 import './admin-components.css'
 
-function speakerLabel(role: SupportChatMessage['role']) {
+function speakerLabel(role: SupportChatMessage['role'], text: (typeof adminChatsI18n)[keyof typeof adminChatsI18n]) {
   switch (role) {
     case 'assistant':
-      return 'AI'
+      return text.speakers.ai
     case 'support':
-      return 'Human Support'
+      return text.speakers.support
     case 'system':
-      return 'System'
+      return text.speakers.system
     default:
-      return 'Visitor'
+      return text.speakers.visitor
   }
 }
 
@@ -44,6 +45,8 @@ function formatMessageTime(value: Date) {
 
 export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWidgetKey?: string }) {
   const { dbUser, business } = useAuth()
+  const { language } = useVintraLanguage()
+  const text = adminChatsI18n[language]
   const humanSupportEnabled = business?.chatAssistantConfig?.humanSupportEnabled !== false
   const [chats, setChats] = useState<SupportChatSession[]>([])
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
@@ -168,8 +171,8 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
   if (loading) {
     return (
       <div className="infoCard">
-        <h1>Chats</h1>
-        <p>Loading support chats...</p>
+        <h1>{text.title}</h1>
+        <p>{text.loading}</p>
       </div>
     )
   }
@@ -177,13 +180,13 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
   if (chats.length === 0 || !selectedChat) {
     return (
       <div className="infoCard adminDataCard">
-        <h1>Chats</h1>
+        <h1>{text.title}</h1>
         <p>
           {humanSupportEnabled
             ? selectedWidgetKey
-              ? 'No support chats were found for the selected widget.'
-              : 'No support chats have been saved yet. AI-only conversations are counted in analytics, but only human-support requests appear here.'
-            : 'Human handoff is turned off. Turn it on to see chats created from support requests here.'}
+              ? text.emptySelectedWidget
+              : text.empty
+            : text.humanSupportOff}
         </p>
       </div>
     )
@@ -231,7 +234,7 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
 
     setTaskDraft({
       title: quick
-        ? selectedChat.preview || firstUserMessage?.text || 'Support follow-up'
+        ? selectedChat.preview || firstUserMessage?.text || text.fallbackTaskTitle
         : selectedChat.preview || '',
       description: quick
         ? firstUserMessage?.text || selectedChat.preview || ''
@@ -288,15 +291,15 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
     <div className="infoCard adminDataCard">
       <div className="adminChatsLayout">
         <div>
-          <h1>Chats</h1>
+          <h1>{text.title}</h1>
           {selectedWidgetKey ? (
             <p className="adminDataHint">
-              Showing chats for widget <strong>{selectedWidgetKey}</strong>.
+              {text.showingWidget} <strong>{selectedWidgetKey}</strong>.
             </p>
           ) : null}
           {!humanSupportEnabled ? (
             <p className="adminDataHint">
-              Human handoff is turned off. Turn it on to see support chats here.
+              {text.humanSupportOff}
             </p>
           ) : null}
           <div className="adminChatList">
@@ -316,20 +319,20 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
                 }`}
                 onClick={() => setSelectedChatId(chat.id)}
               >
-                <strong>{chat.preview || 'Support request'}</strong>
+                <strong>{chat.preview || text.supportRequest}</strong>
                 <span>{new Date(chat.updatedAt).toLocaleString()}</span>
-                <span>{chat.messageCount} messages</span>
-                <span>Status: {chat.status}</span>
+                <span>{chat.messageCount} {text.messages}</span>
+                <span>{text.status}: {chat.status}</span>
               </button>
             ))}
           </div>
           </div>
         <div className="adminChatTranscript">
           <div className="adminChatMeta">
-            <strong>{visibleSelectedChat?.pageTitle || 'Website visitor'}</strong>
-            <span>{visibleSelectedChat?.pageUrl || 'Unknown page'}</span>
-            <span>{visibleSelectedChat?.visitorName ? `Visitor: ${visibleSelectedChat.visitorName}` : 'Visitor: unnamed'}</span>
-            <span>Status: {visibleSelectedChat?.status || 'Unknown'}</span>
+            <strong>{visibleSelectedChat?.pageTitle || text.websiteVisitor}</strong>
+            <span>{visibleSelectedChat?.pageUrl || text.unknownPage}</span>
+            <span>{visibleSelectedChat?.visitorName ? `${text.visitor}: ${visibleSelectedChat.visitorName}` : `${text.visitor}: ${text.unnamed}`}</span>
+            <span>{text.status}: {visibleSelectedChat?.status || text.unknown}</span>
           </div>
 
           <div className="adminChatActions">
@@ -340,7 +343,7 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
                 onClick={handleReturnToAi}
                 disabled={actionBusy}
               >
-                Return to AI
+                {text.returnToAi}
               </button>
             ) : null}
             {visibleSelectedChat?.status === 'open' ? (
@@ -350,17 +353,17 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
                 onClick={handleAccept}
                 disabled={actionBusy}
               >
-                Return to human
+                {text.returnToHuman}
               </button>
             ) : null}
             {visibleSelectedChat?.status === 'open' ? (
               <button type="button" className="dangerBtn" onClick={handleClose} disabled={actionBusy}>
-                Close chat
+                {text.closeChat}
               </button>
             ) : null}
             {visibleSelectedChat?.status === 'ai-active' ? (
               <button type="button" className="dangerBtn" onClick={handleClose} disabled={actionBusy}>
-                Close chat
+                {text.closeChat}
               </button>
             ) : null}
           </div>
@@ -380,7 +383,7 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
                           : 'adminTranscriptBubbleUser'
                   }`}
                 >
-                  <strong>{speakerLabel(message.role)}</strong>
+                  <strong>{speakerLabel(message.role, text)}</strong>
                   <p>{message.text}</p>
                   <span className="adminTranscriptTime">
                     {formatMessageTime(message.createdAt)}
@@ -392,9 +395,9 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
             {awaitingAcceptance ? (
               <div className="adminChatGate">
                 <div className="adminChatGateCard">
-                  <p>Waiting for you to accept this chat</p>
+                  <p>{text.waitingAccept}</p>
                   <button type="button" className="adminChatGateButton" onClick={handleAccept} disabled={actionBusy}>
-                    Accept chat
+                    {text.acceptChat}
                   </button>
                 </div>
               </div>
@@ -410,7 +413,7 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
                 disabled={actionBusy || taskSaving}
               >
                 <FiPlus />
-                Create task
+                {text.createTask}
               </button>
               <button
                 type="button"
@@ -419,7 +422,7 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
                 disabled={actionBusy || taskSaving}
               >
                 <FiPlus />
-                Quick task
+                {text.quickTask}
               </button>
             </div>
 
@@ -427,37 +430,37 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
               <div className="adminTaskComposer">
                 <div className="adminTaskComposerGrid">
                   <label className="adminTaskField adminTaskFieldFull">
-                    <span>Task title</span>
+                    <span>{text.taskTitle}</span>
                     <input
                       type="text"
                       value={taskDraft.title}
                       onChange={(event) =>
                         setTaskDraft((prev) => ({ ...prev, title: event.target.value }))
                       }
-                      placeholder="e.g. Refund follow-up"
+                      placeholder={text.taskTitlePlaceholder}
                     />
                   </label>
 
                   <label className="adminTaskField adminTaskFieldFull">
-                    <span>Description</span>
+                    <span>{text.description}</span>
                     <textarea
                       value={taskDraft.description}
                       onChange={(event) =>
                         setTaskDraft((prev) => ({ ...prev, description: event.target.value }))
                       }
                       rows={4}
-                      placeholder="Describe the issue, context, and what needs to happen next."
+                      placeholder={text.descriptionPlaceholder}
                     />
                   </label>
 
                   <label className="adminTaskField">
-                    <span>Category</span>
+                    <span>{text.category}</span>
                     <AdminDropdown
                       value={taskDraft.categoryId}
                       options={taskCategories.map((category) => ({
                         value: category.id,
                         label: category.name,
-                        description: category.default ? 'Default category' : 'Custom category',
+                        description: category.default ? text.defaultCategory : text.customCategory,
                       }))}
                       onChange={(nextValue) =>
                         setTaskDraft((prev) => ({ ...prev, categoryId: nextValue }))
@@ -466,14 +469,14 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
                   </label>
 
                   <label className="adminTaskField">
-                    <span>Priority</span>
+                    <span>{text.priority}</span>
                     <AdminDropdown
                       value={taskDraft.priority}
                       options={[
-                        { value: 'low', label: 'Low priority' },
-                        { value: 'medium', label: 'Medium priority' },
-                        { value: 'high', label: 'High priority' },
-                        { value: 'critical', label: 'Critical priority' },
+                        { value: 'low', label: text.priorities.low },
+                        { value: 'medium', label: text.priorities.medium },
+                        { value: 'high', label: text.priorities.high },
+                        { value: 'critical', label: text.priorities.critical },
                       ]}
                       onChange={(nextValue) =>
                         setTaskDraft((prev) => ({
@@ -485,14 +488,14 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
                   </label>
 
                   <label className="adminTaskField">
-                    <span>Status</span>
+                    <span>{text.statusLabel}</span>
                     <AdminDropdown
                       value={taskDraft.status}
                       options={[
-                        { value: 'open', label: 'Open' },
-                        { value: 'in-progress', label: 'In progress' },
-                        { value: 'blocked', label: 'Blocked' },
-                        { value: 'done', label: 'Done' },
+                        { value: 'open', label: text.statuses.open },
+                        { value: 'in-progress', label: text.statuses.inProgress },
+                        { value: 'blocked', label: text.statuses.blocked },
+                        { value: 'done', label: text.statuses.done },
                       ]}
                       onChange={(nextValue) =>
                         setTaskDraft((prev) => ({
@@ -511,7 +514,7 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
                     onClick={() => setTaskComposerOpen(false)}
                     disabled={taskSaving}
                   >
-                    Cancel
+                    {text.cancel}
                   </button>
                   <button
                     type="button"
@@ -524,7 +527,7 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
                       !taskDraft.description.trim()
                     }
                   >
-                    {taskSaving ? 'Saving...' : 'Save task'}
+                    {taskSaving ? text.saving : text.saveTask}
                   </button>
                 </div>
               </div>
@@ -537,8 +540,8 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
               onChange={(event) => setReplyText(event.target.value)}
               placeholder={
                 canHumanReply
-                  ? 'Write a human support reply...'
-                  : 'Reply is locked while AI owns the chat.'
+                  ? text.replyPlaceholder
+                  : text.replyLocked
               }
               rows={4}
               disabled={actionBusy || !canHumanReply}
@@ -549,7 +552,7 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
               onClick={handleSendReply}
               disabled={actionBusy || !canHumanReply || !replyText.trim()}
             >
-              <span>Send human reply</span>
+              <span>{text.sendHumanReply}</span>
               <FiSend />
             </button>
           </div>

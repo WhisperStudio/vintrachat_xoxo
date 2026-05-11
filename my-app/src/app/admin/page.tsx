@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { FiArrowLeft, FiArrowRight, FiArrowUpRight, FiChevronLeft, FiChevronRight, FiPlay, FiZap } from 'react-icons/fi'
+import { businessAdminI18n, useVintraLanguage } from '@/lib/i18n'
 import AdminDropdown from './components/AdminDropdown'
 import AdminAnalyticsPanel from './components/AdminAnalyticsPanel'
 import AdminChatsPanel from './components/AdminChatsPanel'
@@ -39,6 +40,8 @@ type TutorialStep = {
 export default function AdminPage() {
   const { isAuthenticated, dbUser, business, loading, firebaseUser } = useAuth()
   const router = useRouter()
+  const { language } = useVintraLanguage()
+  const text = businessAdminI18n[language]
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
   const sidebarRef = useRef<HTMLElement | null>(null)
   const adminHeaderRef = useRef<HTMLDivElement | null>(null)
@@ -65,20 +68,20 @@ export default function AdminPage() {
     height: number
   } | null>(null)
   const supportItems: Array<{ tab: AdminTab; label: string }> = [
-    { tab: 'chats', label: 'Chats' },
-    { tab: 'tasks', label: 'Tasks' },
+    { tab: 'chats', label: text.sidebar.chats },
+    { tab: 'tasks', label: text.sidebar.tasks },
   ]
 
   const feedbackItems: Array<{ tab: AdminTab; label: string }> = [
-    { tab: 'feedback', label: 'Feedback' },
+    { tab: 'feedback', label: text.sidebar.feedback },
   ]
 
   const adminItems: Array<{ tab: AdminTab; label: string }> = [
-    { tab: 'analytics', label: 'Analytics' },
-    { tab: 'users', label: 'User Management' },
-    { tab: 'widgets', label: 'Chat Widgets' },
-    { tab: 'websites', label: 'Websites' },
-    { tab: 'settings', label: 'Settings' },
+    { tab: 'analytics', label: text.sidebar.analytics },
+    { tab: 'users', label: text.sidebar.userManagement },
+    { tab: 'widgets', label: text.sidebar.chatWidgets },
+    { tab: 'websites', label: text.sidebar.websites },
+    { tab: 'settings', label: text.sidebar.settings },
   ]
 
   const visibleTabs = useMemo(() => {
@@ -128,71 +131,63 @@ export default function AdminPage() {
     () => [
       {
         id: 'top-nav',
-        title: 'Top navigation',
-        description:
-          'This is your main header navigation. If you want to edit the widget itself, open My Chat Widgets from here.',
+        title: text.tutorial.steps.topNav.title,
+        description: text.tutorial.steps.topNav.description,
         targetRef: () =>
           document.querySelector<HTMLElement>('[data-vintra-main-nav]') || adminHeaderRef.current,
-        ctaLabel: 'Open My Chat Widgets',
+        ctaLabel: text.tutorial.steps.topNav.cta,
         ctaHref: '/landings/auth/chatWidget',
       },
       {
         id: 'panel-header',
-        title: 'Admin Panel',
-        description:
-          'This is the control center for the business. From here you manage support, feedback, analytics, users, and widgets.',
+        title: text.tutorial.steps.panelHeader.title,
+        description: text.tutorial.steps.panelHeader.description,
         targetRef: () => adminHeaderRef.current,
       },
       {
         id: 'chats',
-        title: 'Chats',
-        description:
-          'Here you can see live visitor conversations, step into support threads, and reply as a human when needed.',
+        title: text.tutorial.steps.chats.title,
+        description: text.tutorial.steps.chats.description,
         tab: 'chats',
         targetRef: () => chatsPanelRef.current,
       },
       {
         id: 'tasks',
-        title: 'Tasks',
-        description:
-          'Tasks turn important chat follow-ups into action items with categories, priorities, and notes.',
+        title: text.tutorial.steps.tasks.title,
+        description: text.tutorial.steps.tasks.description,
         tab: 'tasks',
         targetRef: () => tasksPanelRef.current,
       },
       {
         id: 'feedback',
-        title: 'Feedback',
-        description:
-          'Feedback collects star ratings and written comments from customers, with an average score at the top.',
+        title: text.tutorial.steps.feedback.title,
+        description: text.tutorial.steps.feedback.description,
         tab: 'feedback',
         targetRef: () => feedbackPanelRef.current,
       },
       {
         id: 'analytics',
-        title: 'Analytics',
-        description:
-          'Analytics gives you the bigger picture, like traffic, chat volume, and support activity trends.',
+        title: text.tutorial.steps.analytics.title,
+        description: text.tutorial.steps.analytics.description,
         tab: 'analytics',
         targetRef: () => analyticsPanelRef.current,
       },
       {
         id: 'users',
-        title: 'User Management',
-        description:
-          'User management is where you control access, roles, and who can see what in the business account.',
+        title: text.tutorial.steps.users.title,
+        description: text.tutorial.steps.users.description,
         tab: 'users',
         targetRef: () => usersPanelRef.current,
       },
       {
         id: 'widgets',
-        title: 'Chat Widgets',
-        description:
-          'This is where you adjust the widget appearance, branding, and launch behavior.',
+        title: text.tutorial.steps.widgets.title,
+        description: text.tutorial.steps.widgets.description,
         tab: 'widgets',
         targetRef: () => widgetsPanelRef.current,
       },
     ],
-    []
+    [text]
   )
 
   const activeTutorialStep = tutorialSteps[tutorialStepIndex] || tutorialSteps[0]
@@ -330,7 +325,7 @@ export default function AdminPage() {
     }
   }, [activeTab, activeTutorialStep, tutorialActive, tutorialStepIndex])
 
-  if (loading) return <div>Loading...</div>
+  if (loading) return <div>{text.loading}</div>
   if (!isAuthenticated || !dbUser) return null
 
   return (
@@ -346,8 +341,8 @@ export default function AdminPage() {
             type="button"
             className="adminSidebarCollapseToggle"
             onClick={() => setSidebarCollapsed((current) => !current)}
-            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={sidebarCollapsed ? text.sidebar.expand : text.sidebar.collapse}
+            title={sidebarCollapsed ? text.sidebar.expand : text.sidebar.collapse}
           >
             {sidebarCollapsed ? <FiChevronRight /> : <FiChevronLeft />}
           </button>
@@ -361,11 +356,11 @@ export default function AdminPage() {
             />
           ) : null}
           <div className="adminSidebarHeader" ref={adminHeaderRef}>
-            <span className="adminSidebarEyebrow">Control Center</span>
-            <h2>Admin Panel</h2>
+            <span className="adminSidebarEyebrow">{text.sidebar.eyebrow}</span>
+            <h2>{text.sidebar.title}</h2>
           </div>
           <div className="adminSidebarGroup">
-            <div className="adminSidebarGroupLabel">General</div>
+            <div className="adminSidebarGroupLabel">{text.sidebar.general}</div>
             <button
               ref={(node) => {
                 tabButtonRefs.current.overview = node
@@ -373,12 +368,12 @@ export default function AdminPage() {
               onClick={() => setActiveTab('overview')}
               className={activeTab === 'overview' ? 'sideActive' : ''}
             >
-              Overview
+              {text.sidebar.overview}
             </button>
           </div>
           {visibleSupportItems.length > 0 ? (
           <div className="adminSidebarGroup">
-            <div className="adminSidebarGroupLabel">Support</div>
+            <div className="adminSidebarGroupLabel">{text.sidebar.support}</div>
             {visibleSupportItems.map((item) => (
               <button
                 key={item.tab}
@@ -396,7 +391,7 @@ export default function AdminPage() {
 
           {visibleFeedbackItems.length > 0 ? (
             <div className="adminSidebarGroup">
-              <div className="adminSidebarGroupLabel">Feedback</div>
+              <div className="adminSidebarGroupLabel">{text.sidebar.feedback}</div>
               {visibleFeedbackItems.map((item) => (
                 <button
                   key={item.tab}
@@ -414,7 +409,7 @@ export default function AdminPage() {
 
           {visibleAdminItems.length > 0 ? (
           <div className="adminSidebarGroup">
-            <div className="adminSidebarGroupLabel">Administrative</div>
+            <div className="adminSidebarGroupLabel">{text.sidebar.administrative}</div>
             {visibleAdminItems.map((item) => (
               <button
                 key={item.tab}
@@ -437,37 +432,34 @@ export default function AdminPage() {
             <div className="infoCard">
               <div className="adminOverviewHero">
                 <div>
-                  <h1>Overview</h1>
-                  <p>Here you get a quick overview of your account and company setup.</p>
+                  <h1>{text.overview.title}</h1>
+                  <p>{text.overview.body}</p>
                 </div>
                 <button
                   type="button"
                   ref={tutorialOrbRef}
                   className="adminTutorialOrb"
                   onClick={openTutorial}
-                  aria-label="Start tutorial"
-                  title="Start tutorial"
+                  aria-label={text.overview.tutorialAria}
+                  title={text.overview.tutorialAria}
                 >
                   <FiPlay />
-                  <span>Tutorial</span>
+                  <span>{text.overview.tutorial}</span>
                 </button>
               </div>
               <section className="adminOverviewWidgetSwitch">
                 <div className="adminOverviewWidgetSwitchCopy">
-                  <span className="adminSidebarEyebrow">Widget scope</span>
-                  <h2>Select the widget this overview should show</h2>
-                  <p>
-                    This selection is shared with Chats, Tasks, Feedback, Analytics, and Chat Widgets.
-                    It does not affect Users, Websites, or Settings.
-                  </p>
+                  <span className="adminSidebarEyebrow">{text.overview.widgetScope}</span>
+                  <h2>{text.overview.widgetTitle}</h2>
+                  <p>{text.overview.widgetBody}</p>
                 </div>
                 <AdminDropdown
                   value={resolvedWidgetKey}
-                  placeholder="Select widget"
+                  placeholder={text.overview.selectWidget}
                   options={widgetList.map((widget) => ({
                     value: widget.widgetKey,
                     label: widget.name,
-                    description: widget.isDefault ? 'Default widget' : 'Custom widget',
+                    description: widget.isDefault ? text.overview.defaultWidget : text.overview.customWidget,
                   }))}
                   onChange={(nextValue) => setSelectedWidgetKey(nextValue)}
                   disabled={!widgetList.length}
@@ -477,42 +469,39 @@ export default function AdminPage() {
                 <section className="adminTutorialCard">
                   <div className="adminTutorialHeader">
                     <div>
-                      <span className="adminTutorialEyebrow">Welcome tutorial</span>
-                      <h2>Learn the three main work areas</h2>
-                      <p>
-                        Chats show live visitor conversations, tasks help your team follow up, and
-                        feedback collects star ratings plus comments from customers.
-                      </p>
+                      <span className="adminTutorialEyebrow">{text.overview.welcomeTutorial}</span>
+                      <h2>{text.overview.learnAreas}</h2>
+                      <p>{text.overview.learnBody}</p>
                     </div>
                     <button type="button" className="secondaryBtn" onClick={() => void completeTutorial()}>
-                      Dismiss tutorial
+                      {text.overview.dismissTutorial}
                     </button>
                   </div>
 
                   <div className="adminTutorialGrid">
                     <button type="button" className="adminTutorialTile" onClick={() => setActiveTab('chats')}>
-                      <strong>Chats</strong>
-                      <p>See every live support request, jump into the transcript, and return chats to AI.</p>
+                      <strong>{text.sidebar.chats}</strong>
+                      <p>{text.overview.chatsTile}</p>
                     </button>
                     <button type="button" className="adminTutorialTile" onClick={() => setActiveTab('tasks')}>
-                      <strong>Tasks</strong>
-                      <p>Turn chat follow-ups into work items with categories, priority, and internal notes.</p>
+                      <strong>{text.sidebar.tasks}</strong>
+                      <p>{text.overview.tasksTile}</p>
                     </button>
                     <button type="button" className="adminTutorialTile" onClick={() => setActiveTab('feedback')}>
-                      <strong>Feedback</strong>
-                      <p>Review customer ratings and comments, with the average star score shown at the top.</p>
+                      <strong>{text.sidebar.feedback}</strong>
+                      <p>{text.overview.feedbackTile}</p>
                     </button>
                   </div>
                 </section>
               ) : null}
               <div className="miniGrid">
                 <div className="miniStat">
-                  <strong>{dbUser?.displayName || 'User'}</strong>
-                  <span>Account Name</span>
+                  <strong>{dbUser?.displayName || text.overview.fallbackUser}</strong>
+                  <span>{text.overview.accountName}</span>
                 </div>
                 <div className="miniStat">
                   <strong>{dbUser?.email}</strong>
-                  <span>Email</span>
+                  <span>{text.overview.email}</span>
                 </div>
               </div>
             </div>
@@ -550,8 +539,8 @@ export default function AdminPage() {
 
           {activeTab === 'websites' && (
             <div className="infoCard">
-              <h1>Website Administration</h1>
-              <p>Manage websites, drafts, and publishing here.</p>
+              <h1>{text.websites.title}</h1>
+              <p>{text.websites.body}</p>
             </div>
           )}
 
@@ -566,10 +555,10 @@ export default function AdminPage() {
 
           {activeTab === 'settings' && (
             <div className="infoCard">
-              <h1>Settings</h1>
-              <p>Account-level settings can be expanded here later.</p>
+              <h1>{text.settings.title}</h1>
+              <p>{text.settings.body}</p>
               <div className="settingsToggleRow">
-                <p>More settings coming soon...</p>
+                <p>{text.settings.comingSoon}</p>
               </div>
             </div>
           )}
@@ -621,14 +610,14 @@ export default function AdminPage() {
               <div className="adminTutorialCoachCard">
                 <div className="adminTutorialCoachTop">
                   <span className="adminTutorialCoachStep">
-                    Step {tutorialStepIndex + 1} of {tutorialSteps.length}
+                    {text.tutorial.step} {tutorialStepIndex + 1} {text.tutorial.of} {tutorialSteps.length}
                   </span>
                   <button
                     type="button"
                     className="adminTutorialCoachSkip"
                     onClick={() => void closeTutorial(true)}
                   >
-                    Finish
+                    {text.tutorial.finish}
                   </button>
                 </div>
 
@@ -641,7 +630,7 @@ export default function AdminPage() {
                     className="adminTutorialCoachCta"
                     onClick={() => router.push(activeTutorialStep.ctaHref || '/landings/auth/chatWidget')}
                   >
-                    {activeTutorialStep.ctaLabel || 'Open My Chat Widgets'}
+                    {activeTutorialStep.ctaLabel || text.tutorial.steps.topNav.cta}
                     <FiArrowUpRight />
                   </button>
                 ) : null}
@@ -667,7 +656,7 @@ export default function AdminPage() {
                     disabled={tutorialStepIndex === 0}
                   >
                     <FiArrowLeft />
-                    Back
+                    {text.tutorial.back}
                   </button>
                   <button
                     type="button"
@@ -681,7 +670,7 @@ export default function AdminPage() {
                       goToTutorialStep(tutorialStepIndex + 1)
                     }}
                   >
-                    {tutorialStepIndex >= tutorialMaxStepIndex ? 'Finish' : 'Next'}
+                    {tutorialStepIndex >= tutorialMaxStepIndex ? text.tutorial.finish : text.tutorial.next}
                     <FiArrowRight />
                   </button>
                 </div>

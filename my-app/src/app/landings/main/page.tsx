@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import type { VintraLanguage as Language } from '@/lib/i18n'
+import { useVintraLanguage } from '@/lib/i18n'
+import { mainLandingCopy } from './i18n'
 import { absoluteUrl, siteConfig } from '@/lib/site-config'
 
 // ─── Minimal inline SVG icons ───────────────────────────────────────────────
@@ -80,278 +83,7 @@ const websites = [
   },
 ]
 
-type Language = 'no' | 'en'
 
-const languageLabels: Record<Language, string> = {
-  no: 'Norsk',
-  en: 'English',
-}
-
-const detectPreferredLanguage = (): Language => {
-  if (typeof window === 'undefined') return 'en'
-
-  const savedLanguage = window.localStorage.getItem('vintra-main-language')
-  if (savedLanguage === 'no' || savedLanguage === 'en') return savedLanguage
-
-  const languages = window.navigator.languages?.length ? window.navigator.languages : [window.navigator.language]
-  const usesNorwegian = languages.some((language) => language?.toLowerCase().startsWith('no') || language?.toLowerCase().startsWith('nb') || language?.toLowerCase().startsWith('nn'))
-  const isInNorwayTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone === 'Europe/Oslo'
-
-  return usesNorwegian || isInNorwayTimeZone ? 'no' : 'en'
-}
-
-const copy = {
-  en: {
-    languageSwitchLabel: 'Choose language',
-    badgeStatus: 'Official site',
-    heroTitleStart: 'Vintra builds',
-    heroTitleMiddle: 'websites and chatbots',
-    heroTitleEnd: 'that are easy to find.',
-    heroBody: 'Vintra is the official site for website design, AI chatbots, pricing, support, phone, and email in one place.',
-    heroWebsiteCta: 'Try website builder',
-    heroChatbotCta: 'Test chatbot for free',
-    heroBenefits: ['No credit card', 'No account', 'Instant prices'],
-    productEyebrow: 'Choose your starting point',
-    productTitleStart: 'We build the site.',
-    productTitleEnd: 'handles the rest.',
-    websiteCardTitle: 'Website',
-    websiteCardBody: "Don't waste weeks on templates. We build your professional presence for you, ensuring the perfect structure and look from day one.",
-    websiteCardFeatures: ['Done-for-you construction', 'Strategic layout & copywriting', 'Transparent upfront pricing'],
-    websiteCardCta: 'Get my website',
-    chatbotCardTitle: 'AI Chatbot',
-    chatbotCardBody: 'Instantly capture leads and answer visitor questions 24/7. Fully customizable behavior that matches your brand perfectly.',
-    chatbotCardFeatures: ['Automated first conversations', 'Custom tone & personality', 'Live testing & instant embed'],
-    chatbotCardCta: 'Open chatbot builder',
-    selfService: 'Self-Service',
-    togetherLead: 'The best part?',
-    togetherStrong: 'They work even better together.',
-    carouselTitle: 'Websites for all industries',
-    carouselBody: 'Each concept gets a larger preview in the middle before the next one takes over',
-    alwaysOn: 'Always on',
-    chatbotShowcaseTitle: 'The chatbot that never sleeps',
-    chatbotShowcaseBody: 'Built to answer faster, book smarter and guide customers to the right next step without making your team do repetitive work all day.',
-    useCases: ['E-commerce', 'Hotel', 'Clinic', 'Salon', 'Course', 'Business'],
-    chatbotFeatureTitle: 'Answer questions. Book appointments. Sell more.',
-    chatbotFeatureBody: 'Our AI chatbot learns about your business and answers your customers 24/7. You set the rules, the tone and the next step. It handles the routine work while your team focuses on what matters.',
-    chatbotFeatures: ['Answer common questions automatically', 'Book appointments and meetings directly in chat', 'Direct traffic to the right page or person', 'Integrate with existing tools'],
-    pricingTitle: 'Transparent prices. No surprises.',
-    pricingBody: 'Use our free calculator and see exactly what your solution costs before you decide.',
-    pricingCards: [
-      { label: 'Simple website', from: '2 990', desc: 'Personal / CV / Portfolio', color: '#1A6BFF' },
-      { label: 'Business website', from: '6 490', desc: 'Professional profile + contact form', color: '#0C9E6A' },
-      { label: 'Chatbot', from: '0', desc: 'Free to start, scale as needed', color: '#7C3AED' },
-    ],
-    from: 'from',
-    free: 'Free',
-    pricingCta: 'Calculate your price now',
-    bottomTitle: 'Ready to try?',
-    bottomBody: 'Start today, completely free, no card, no account. See what we can create for you.',
-    bottomWebsiteCta: 'Design website',
-    bottomChatbotCta: 'Test chatbot',
-    contactEyebrow: 'Contact Vintra',
-    contactTitle: 'Easy for visitors and Google to find',
-    contactBody: 'Reach us directly for website projects, chatbot setup, pricing questions, or support.',
-    email: 'Email',
-    emailDescription: 'Best for project questions and written follow-up.',
-    phone: 'Phone',
-    phoneDescription: 'Call for quick questions about websites, chatbots, and setup.',
-    websiteDescription: 'Main site for product demos, pricing, and contact details.',
-    footerRights: 'All rights reserved.',
-    contact: 'Contact',
-    chatTitle: 'Vintra Assistant',
-    chatSubtitle: 'Live help and support',
-    online: 'Online',
-    writeMessage: 'Write a message...',
-    sendPreview: 'Send preview message',
-    closePreview: 'Close preview chat',
-    today: 'Today',
-    heroChatMessages: [
-      { from: 'bot', text: 'Hi! I can help with questions, prices, or the next step.' },
-      { from: 'user', text: 'Can you help me today?' },
-      { from: 'bot', text: 'Yes. Tell me what you need and I will guide you from here.' },
-    ],
-    showcaseChatMessages: [
-      { from: 'bot', text: 'Hi! I can help with opening hours, prices, or send you to the right place.' },
-      { from: 'user', text: 'Can you help me tomorrow?' },
-      { from: 'bot', text: 'Yes, I can check availability and find the next step for you.' },
-    ],
-    preview: {
-      restaurant: {
-        eyebrow: 'Fine dining booking',
-        title: 'Tasting menu with instant reservations',
-        body: 'Elegant hero, course highlights, chef spotlight and a strong reserve-now focus.',
-        special: "Chef's 7-course tasting",
-        note: 'Wine pairing available tonight',
-        stats: ['4.9 rating', '320 bookings', 'Open today'],
-        primary: 'Reserve table',
-        secondary: 'See menu',
-      },
-      portfolio: {
-        eyebrow: 'Creative portfolio',
-        title: 'Case studies that feel premium and deliberate',
-        chips: ['Brand identity', 'UX systems', 'Web design'],
-        cta: 'View selected work',
-      },
-      shop: {
-        eyebrow: 'Campaign storefront',
-        title: 'Bestsellers, fast checkout and shipping trust',
-        body: 'Shop preview with real promo hierarchy instead of a generic landing card.',
-        products: [['Nordic wool set', '799 kr'], ['Autumn jacket', '1 290 kr']],
-        shipping: 'Free shipping over 499 kr',
-        badge: 'Today only',
-      },
-      startup: {
-        eyebrow: 'SaaS launch',
-        title: 'Clear product story with demand capture built in',
-        body: 'Waitlist, feature proof and pricing blocks that look much closer to a real startup landing.',
-        stats: ['8.4k waitlist', '31% demo', '4 plans'],
-        features: ['Live analytics dashboard', 'Workflow automation builder', 'CRM and Slack integrations'],
-        cta: 'Join waitlist',
-      },
-      salon: {
-        eyebrow: 'Beauty booking',
-        title: 'Calm service preview with booking times and treatments',
-        available: 'Available today',
-        services: ['Hair styling', 'Relax massage', 'Skin treatment'],
-        book: 'Book',
-      },
-      business: {
-        eyebrow: 'Corporate trust',
-        title: 'Company front page with clearer credibility signals',
-        body: 'Service summary, client logos and contact-first structure for B2B confidence.',
-        stats: ['Since 1998', '42 clients', '1 day response'],
-        features: ['Operations consulting', 'Project delivery', 'Support and maintenance'],
-        primary: 'Book meeting',
-        secondary: 'View services',
-      },
-    },
-  },
-  no: {
-    languageSwitchLabel: 'Velg språk',
-    badgeStatus: 'Offisiell side',
-    heroTitleStart: 'Vintra bygger',
-    heroTitleMiddle: 'nettsider og chatboter',
-    heroTitleEnd: 'som er enkle å finne.',
-    heroBody: 'Vintra er den offisielle siden for nettsidedesign, AI-chatboter, priser, support, telefon og e-post på ett sted.',
-    heroWebsiteCta: 'Prøv nettsidebyggeren',
-    heroChatbotCta: 'Test chatbot gratis',
-    heroBenefits: ['Ingen kort kreves', 'Ingen konto', 'Priser med en gang'],
-    productEyebrow: 'Velg hvor du vil starte',
-    productTitleStart: 'Vi bygger nettsiden.',
-    productTitleEnd: 'tar resten.',
-    websiteCardTitle: 'Nettside',
-    websiteCardBody: 'Ikke bruk uker på maler. Vi bygger en profesjonell tilstedeværelse for deg, med riktig struktur og uttrykk fra første dag.',
-    websiteCardFeatures: ['Ferdig bygget for deg', 'Strategisk oppsett og tekst', 'Tydelige priser på forhånd'],
-    websiteCardCta: 'Få min nettside',
-    chatbotCardTitle: 'AI-chatbot',
-    chatbotCardBody: 'Fang leads og svar på spørsmål fra besøkende døgnet rundt. Fullt tilpassbar oppførsel som matcher merkevaren din.',
-    chatbotCardFeatures: ['Automatiske første samtaler', 'Egen tone og personlighet', 'Live testing og enkel innbygging'],
-    chatbotCardCta: 'Åpne chatbot-byggeren',
-    selfService: 'Selvbetjening',
-    togetherLead: 'Det beste?',
-    togetherStrong: 'De fungerer enda bedre sammen.',
-    carouselTitle: 'Nettsider for alle bransjer',
-    carouselBody: 'Hvert konsept får en større forhåndsvisning i midten før neste tar over',
-    alwaysOn: 'Alltid på',
-    chatbotShowcaseTitle: 'Chatboten som aldri sover',
-    chatbotShowcaseBody: 'Bygget for å svare raskere, booke smartere og hjelpe kunder til riktig neste steg uten at teamet ditt må gjøre repeterende arbeid hele dagen.',
-    useCases: ['Nettbutikk', 'Hotell', 'Klinikk', 'Salong', 'Kurs', 'Bedrift'],
-    chatbotFeatureTitle: 'Svar på spørsmål. Book timer. Selg mer.',
-    chatbotFeatureBody: 'AI-chatboten vår lærer om bedriften din og svarer kundene dine 24/7. Du setter reglene, tonen og neste steg. Den tar rutinearbeidet mens teamet ditt fokuserer på det som betyr mest.',
-    chatbotFeatures: ['Svar automatisk på vanlige spørsmål', 'Book timer og møter direkte i chat', 'Send trafikk til riktig side eller person', 'Koble til eksisterende verktøy'],
-    pricingTitle: 'Tydelige priser. Ingen overraskelser.',
-    pricingBody: 'Bruk vår gratis kalkulator og se nøyaktig hva løsningen din koster før du bestemmer deg.',
-    pricingCards: [
-      { label: 'Enkel nettside', from: '2 990', desc: 'Personlig / CV / Portefølje', color: '#1A6BFF' },
-      { label: 'Bedriftsnettside', from: '6 490', desc: 'Profesjonell profil + kontaktskjema', color: '#0C9E6A' },
-      { label: 'Chatbot', from: '0', desc: 'Gratis å starte, skaler ved behov', color: '#7C3AED' },
-    ],
-    from: 'fra',
-    free: 'Gratis',
-    pricingCta: 'Beregn prisen din nå',
-    bottomTitle: 'Klar for å prøve?',
-    bottomBody: 'Start i dag, helt gratis, uten kort og uten konto. Se hva vi kan lage for deg.',
-    bottomWebsiteCta: 'Design nettside',
-    bottomChatbotCta: 'Test chatbot',
-    contactEyebrow: 'Kontakt Vintra',
-    contactTitle: 'Enkelt for besøkende og Google å finne',
-    contactBody: 'Kontakt oss direkte for nettsideprosjekter, chatbot-oppsett, prisspørsmål eller support.',
-    email: 'E-post',
-    emailDescription: 'Best for prosjektspørsmål og skriftlig oppfølging.',
-    phone: 'Telefon',
-    phoneDescription: 'Ring for raske spørsmål om nettsider, chatboter og oppsett.',
-    websiteDescription: 'Hovedsiden for produktdemoer, priser og kontaktinformasjon.',
-    footerRights: 'Alle rettigheter reservert.',
-    contact: 'Kontakt',
-    chatTitle: 'Vintra-assistenten',
-    chatSubtitle: 'Live hjelp og support',
-    online: 'På nett',
-    writeMessage: 'Skriv en melding...',
-    sendPreview: 'Send forhåndsvisningsmelding',
-    closePreview: 'Lukk chat-forhåndsvisning',
-    today: 'I dag',
-    heroChatMessages: [
-      { from: 'bot', text: 'Hei! Jeg kan hjelpe med spørsmål, priser eller neste steg.' },
-      { from: 'user', text: 'Kan du hjelpe meg i dag?' },
-      { from: 'bot', text: 'Ja. Fortell hva du trenger, så guider jeg deg videre.' },
-    ],
-    showcaseChatMessages: [
-      { from: 'bot', text: 'Hei! Jeg kan hjelpe med åpningstider, priser eller sende deg riktig sted.' },
-      { from: 'user', text: 'Kan dere hjelpe meg i morgen?' },
-      { from: 'bot', text: 'Ja, jeg kan sjekke tilgjengelighet og finne neste steg for deg.' },
-    ],
-    preview: {
-      restaurant: {
-        eyebrow: 'Restaurantbooking',
-        title: 'Smaksmeny med umiddelbar bordbestilling',
-        body: 'Elegant førsteseksjon, menyhøydepunkter, kokkepresentasjon og tydelig bookingfokus.',
-        special: 'Kokkens 7-retters meny',
-        note: 'Vinpakke tilgjengelig i kveld',
-        stats: ['4.9 vurdering', '320 bookinger', 'Åpent i dag'],
-        primary: 'Reserver bord',
-        secondary: 'Se meny',
-      },
-      portfolio: {
-        eyebrow: 'Kreativ portefølje',
-        title: 'Case-studier som føles premium og gjennomtenkte',
-        chips: ['Visuell identitet', 'UX-systemer', 'Webdesign'],
-        cta: 'Se utvalgte arbeider',
-      },
-      shop: {
-        eyebrow: 'Kampanjebutikk',
-        title: 'Bestselgere, rask utsjekk og trygg frakt',
-        body: 'Butikkvisning med ekte kampanjehierarki i stedet for en generisk landingsside.',
-        products: [['Nordisk ullsett', '799 kr'], ['Høstjakke', '1 290 kr']],
-        shipping: 'Fri frakt over 499 kr',
-        badge: 'Kun i dag',
-      },
-      startup: {
-        eyebrow: 'SaaS-lansering',
-        title: 'Tydelig produkthistorie med etterspørsel bygget inn',
-        body: 'Venteliste, funksjonsbevis og prisblokker som ligner en ekte startup-side.',
-        stats: ['8.4k på venteliste', '31% demo', '4 planer'],
-        features: ['Live analysedashboard', 'Bygger for arbeidsflyter', 'CRM- og Slack-integrasjoner'],
-        cta: 'Bli med på ventelisten',
-      },
-      salon: {
-        eyebrow: 'Beauty-booking',
-        title: 'Rolig tjenestevisning med timer og behandlinger',
-        available: 'Ledig i dag',
-        services: ['Hårstyling', 'Avslappende massasje', 'Hudbehandling'],
-        book: 'Book',
-      },
-      business: {
-        eyebrow: 'Bedriftstillit',
-        title: 'Bedriftsforside med tydeligere troverdighet',
-        body: 'Tjenesteoppsummering, kundelogoer og kontaktfokusert struktur for B2B-tillit.',
-        stats: ['Siden 1998', '42 kunder', 'Svar innen 1 dag'],
-        features: ['Driftsrådgivning', 'Prosjektleveranse', 'Support og vedlikehold'],
-        primary: 'Book møte',
-        secondary: 'Se tjenester',
-      },
-    },
-  },
-} as const
 
 const organizationId = `${siteConfig.url}/#organization`
 const websiteId = `${siteConfig.url}/#website`
@@ -436,7 +168,7 @@ function MiniSiteMockup({ site }: { site: typeof websites[0] }) {
 }
 
 function DetailedSitePreview({ site, language }: { site: typeof websites[0]; language: Language }) {
-  const preview = copy[language].preview
+  const preview = mainLandingCopy[language].preview
   const browserBar = (
     <div style={{ background: '#F5F5F5', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid #E8E8E8' }}>
       <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#FF5F57', display: 'inline-block' }} />
@@ -641,7 +373,7 @@ function DetailedSitePreview({ site, language }: { site: typeof websites[0]; lan
 // ─── Chat widget preview ─────────────────────────────────────────────────────
 
 function ChatWidgetPreview({ language }: { language: Language }) {
-  const text = copy[language]
+  const text = mainLandingCopy[language]
   const messages = text.heroChatMessages
 
   return (
@@ -883,7 +615,7 @@ function WebsiteCarousel({ language }: { language: Language }) {
 }
 
 function ChatbotShowcasePreview({ language }: { language: Language }) {
-  const text = copy[language]
+  const text = mainLandingCopy[language]
   const messages = text.showcaseChatMessages
 
   return (
@@ -950,18 +682,12 @@ function ChatbotShowcasePreview({ language }: { language: Language }) {
 
 export default function MainLanding() {
   const [heroMounted, setHeroMounted] = useState(false)
-  const [language, setLanguage] = useState<Language>('en')
-  const text = copy[language]
+  const { language } = useVintraLanguage()
+  const text = mainLandingCopy[language]
 
   useEffect(() => {
     setTimeout(() => setHeroMounted(true), 80)
-    setLanguage(detectPreferredLanguage())
   }, [])
-
-  const changeLanguage = (nextLanguage: Language) => {
-    setLanguage(nextLanguage)
-    window.localStorage.setItem('vintra-main-language', nextLanguage)
-  }
 
   const currentYear = new Date().getFullYear()
 
@@ -976,38 +702,6 @@ export default function MainLanding() {
         * { box-sizing: border-box; margin: 0; padding: 0 }
         body { background: var(--bg); font-family: -apple-system, 'Helvetica Neue', sans-serif; color: #111 }
         .page { max-width: 1100px; margin: 0 auto; padding: 0 24px }
-        .language-switch {
-          display: flex;
-          justify-content: flex-end;
-          padding: 18px 24px 0;
-        }
-        .language-switch__inner {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          padding: 4px;
-          border-radius: 999px;
-          border: 1px solid rgba(15,23,42,0.1);
-          background: rgba(255,255,255,0.82);
-          box-shadow: 0 10px 24px rgba(15,23,42,0.06);
-        }
-        .language-switch button {
-          min-width: 48px;
-          border: 0;
-          border-radius: 999px;
-          padding: 8px 12px;
-          background: transparent;
-          color: #64748b;
-          font-size: 13px;
-          font-weight: 800;
-          cursor: pointer;
-          transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
-        }
-        .language-switch button[aria-pressed="true"] {
-          background: #111;
-          color: #fff;
-          box-shadow: 0 8px 18px rgba(15,23,42,0.14);
-        }
         @keyframes float-slow {
           0%,100% { transform: translateY(0) rotate(-2deg) }
           50%      { transform: translateY(-12px) rotate(2deg) }
@@ -1640,48 +1334,12 @@ export default function MainLanding() {
       `}</style>
 
       <main lang={language}>
-        <div className="language-switch" aria-label={text.languageSwitchLabel}>
-          <div className="language-switch__inner">
-            {(['no', 'en'] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={language === option}
-                aria-label={languageLabels[option]}
-                onClick={() => changeLanguage(option)}
-              >
-                {option.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* ── HERO ───────────────────────────────────────── */}
         <section className="page" style={{ paddingTop: 80, paddingBottom: 80 }}>
           <div className="hero-grid" style={{ display: 'flex', gap: 48, alignItems: 'center' }}>
             {/* left text */}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '10px 16px',
-                borderRadius: 999,
-                background: '#EEF4FF',
-                color: '#1A6BFF',
-                fontSize: 12,
-                fontWeight: 900,
-                letterSpacing: 0.7,
-                textTransform: 'uppercase',
-                marginBottom: 18,
-                opacity: heroMounted ? 1 : 0,
-                transform: heroMounted ? 'none' : 'translateY(20px)',
-                transition: 'all 0.6s ease',
-              }}>
-                <span>Vintra</span>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E' }} />
-                <span>{text.badgeStatus}</span>
-              </div>
+              
 
               <h1 style={{
                 fontSize: 'clamp(36px, 5vw, 60px)',
@@ -1773,19 +1431,6 @@ export default function MainLanding() {
     
     <Reveal>
       <div style={{ textAlign: 'center', marginBottom: '100px' }}>
-        <div style={{ 
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '8px',
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          padding: '8px 20px',
-          borderRadius: '100px',
-          marginBottom: '28px'
-        }}>
-          <span style={{ width: '6px', height: '6px', background: '#6366f1', borderRadius: '50%', display: 'inline-block' }}></span>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>{text.productEyebrow}</span>
-        </div>
         
         <h2 style={{ 
           fontSize: 'clamp(42px, 6vw, 72px)', 
@@ -2224,3 +1869,4 @@ export default function MainLanding() {
     </>
   )
 }
+
