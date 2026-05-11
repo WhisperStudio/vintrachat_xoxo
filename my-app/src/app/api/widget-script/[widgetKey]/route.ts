@@ -173,9 +173,9 @@ const widgetStyles = `
 }
 
 .vintra-root.viewport-mobile .widget-faq-suggestions {
-  left: 0.95rem;
-  right: 0.95rem;
-  bottom: calc(var(--chat-footer-height) + 0.45rem + env(safe-area-inset-bottom, 0px));
+  left: auto;
+  right: auto;
+  bottom: auto;
   flex-wrap: nowrap;
   overflow-x: auto;
   padding: 0;
@@ -485,6 +485,7 @@ export async function GET(
     feedbackText: '',
     feedbackSubmitting: false,
     faqSuggestions: [],
+    faqSuggestionsDismissed: false,
     composerFocused: false,
     compactViewport: false,
     keyboardOffset: 0,
@@ -834,7 +835,7 @@ export async function GET(
   function syncComposerMode() {
     var footer = mount.querySelector('.chat-footer');
     var input = mount.querySelector('.chat-footer textarea');
-    var suggestions = mount.querySelector('.chat-footer .widget-faq-suggestions');
+    var suggestions = mount.querySelector('.widget-faq-suggestions');
     var hasValue = countCharacters(String(state.inputValue || '').trim()) > 0;
     var expanded = Boolean(state.open && !hasValue);
 
@@ -845,7 +846,7 @@ export async function GET(
     }
 
     if (suggestions) {
-      suggestions.hidden = !expanded || !state.faqSuggestions.length;
+      suggestions.hidden = !expanded || state.messages.length > 1 || !state.faqSuggestions.length || state.faqSuggestionsDismissed;
     }
 
     if (input) {
@@ -917,7 +918,7 @@ export async function GET(
   }
 
   function getFaqSuggestionsMarkup() {
-    if (!state.open || !state.faqSuggestions.length) return '';
+    if (!state.open || state.faqSuggestionsDismissed || state.messages.length > 1 || !state.faqSuggestions.length) return '';
 
     return (
       '<div class="widget-faq-suggestions" aria-label="Suggested questions">' +
@@ -1190,6 +1191,8 @@ export async function GET(
         var suggestion = String(button.getAttribute('data-faq-suggestion') || button.textContent || '').trim();
         if (suggestion) {
           state.inputValue = suggestion;
+          state.faqSuggestionsDismissed = true;
+          state.faqSuggestions = [];
           render();
           sendMessage();
         }
@@ -1249,7 +1252,7 @@ export async function GET(
       bubbleStyle.animationType !== 'none' &&
       (!state.hasOpenedOnce || (!state.open && state.hasUnreadWhileClosed));
     var logoStyle = getLogoStyle(config);
-    if (state.open && assistantConfig.faqSuggestionsEnabled && !state.faqSuggestions.length) {
+    if (state.open && assistantConfig.faqSuggestionsEnabled && !state.faqSuggestionsDismissed && state.messages.length <= 1 && !state.faqSuggestions.length) {
       refreshFaqSuggestions();
     }
     var headerAvatar = getLogo(config)
@@ -1299,8 +1302,8 @@ export async function GET(
           '</div>' +
           '<div class="' + classes(['chat-body', 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '">' +
             getMessagesMarkup(config) +
+            getFaqSuggestionsMarkup() +
           '</div>' +
-          getFaqSuggestionsMarkup() +
           '<div class="' + classes([
             'chat-footer',
             'border-' + (footerStyle.borderType || 'none'),
@@ -1467,6 +1470,8 @@ export async function GET(
     }
 
     markOrbActivity();
+    state.faqSuggestionsDismissed = true;
+    state.faqSuggestions = [];
 
     if (state.awaitingVisitorName) {
       state.sending = true;

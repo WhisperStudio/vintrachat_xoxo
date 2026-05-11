@@ -179,6 +179,7 @@ export default function WidgetPreview({
   const [internalFeedbackSubmitting, setInternalFeedbackSubmitting] = useState(false)
   const [internalErrorMessage, setInternalErrorMessage] = useState<string | null>(null)
   const [faqSuggestionNonce, setFaqSuggestionNonce] = useState(0)
+  const [faqSuggestionsDismissed, setFaqSuggestionsDismissed] = useState(false)
   const [isComposerFocused, setIsComposerFocused] = useState(false)
 
   const isChatOpen = openOverride ?? internalIsChatOpen
@@ -224,7 +225,8 @@ export default function WidgetPreview({
       setInternalFeedbackRating(5)
     },
   }
-  const showFaqSuggestions = isChatOpen && faqSuggestionsEnabled && activeFaqSuggestions.length > 0
+  const showFaqSuggestions =
+    isChatOpen && faqSuggestionsEnabled && !faqSuggestionsDismissed && messages.length <= 1 && activeFaqSuggestions.length > 0
   const showComposerSuggestions =
     showFaqSuggestions && countChars(String(inputValue ?? '').trim()) === 0
   const visibleErrorMessage = errorMessage || internalErrorMessage
@@ -294,6 +296,8 @@ export default function WidgetPreview({
       setInternalErrorMessage('Message is too long. Max 300 characters.')
       return
     }
+
+    setFaqSuggestionsDismissed(true)
 
     if (!onSendMessage && internalRequestedFeedback(nextText)) {
       setInternalMessages((prev) => [
@@ -570,23 +574,25 @@ export default function WidgetPreview({
                   )}
                 </div>
               ))}
-            </div>
-
-            {showComposerSuggestions && (
-              <div className="widget-faq-suggestions" aria-label="Suggested questions">
-                {activeFaqSuggestions.map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    type="button"
-                    className="widget-faq-chip"
-                    onClick={() => handleSend(suggestion)}
-                    disabled={disableInput}
-                  >
-                    {suggestion}
-                  </button>
-                ))}
+              {showComposerSuggestions && (
+                <div className="widget-faq-suggestions" aria-label="Suggested questions">
+                  {activeFaqSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      className="widget-faq-chip"
+                      onClick={() => {
+                        setFaqSuggestionsDismissed(true)
+                        void handleSend(suggestion)
+                      }}
+                      disabled={disableInput}
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
               </div>
-            )}
 
             <div className={footerClasses}>
               <div className="chat-footer-row">
