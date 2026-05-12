@@ -18,7 +18,7 @@ const widgetStyles = `
   --widget-keyboard-offset: 0px;
   position: fixed;
   inset: 0;
-  z-index: 2147483647;
+  z-index: 10000;
   pointer-events: none;
   display: block;
   visibility: visible;
@@ -34,7 +34,7 @@ const widgetStyles = `
 .vintra-root {
   position: fixed;
   inset: auto 24px calc(24px + env(safe-area-inset-bottom, 0px)) auto;
-  z-index: 2147483647;
+  z-index: 10000;
   font-family: Inter, Arial, sans-serif;
   pointer-events: none;
   display: block;
@@ -62,11 +62,11 @@ const widgetStyles = `
 }
 
 .vintra-stack > .chat-widget {
-  z-index: 2147483646;
+  z-index: 10000;
 }
 
 .vintra-stack > .widget-icon {
-  z-index: 2147483647;
+  z-index: 10001;
 }
 
 .vintra-root.viewport-mobile {
@@ -299,7 +299,7 @@ export async function GET(
     host.setAttribute('data-vintra-widget-key', WIDGET_KEY);
     host.style.position = 'fixed';
     host.style.inset = '0';
-    host.style.zIndex = '2147483647';
+    host.style.zIndex = '10000';
     host.style.pointerEvents = 'none';
     host.style.display = 'block';
     host.style.visibility = 'visible';

@@ -32,6 +32,9 @@ import {
   ChatWidgetConfig,
   Business,
   ChatAssistantConfig,
+  AssistantBusinessProfile,
+  AssistantKnowledgeBase,
+  AssistantIntegrationSettings,
   ChatAnalytics,
   ChatAnalyticsEvent,
   SupportTaskCategory,
@@ -289,6 +292,79 @@ function buildDefaultAssistantConfig(): ChatAssistantConfig {
     responseStyle: 'Friendly, clear, and concise',
     extraInstructions: 'Always keep answers short unless the user asks for more detail.',
     forceSelectedModelOnly: false,
+  }
+}
+
+function mergeAssistantConfig(
+  base?: Partial<ChatAssistantConfig> | null,
+  override?: Partial<ChatAssistantConfig> | null
+): ChatAssistantConfig {
+  const defaults = buildDefaultAssistantConfig()
+  const baseConfig = base || {}
+  const overrideConfig = override || {}
+
+  return {
+    ...defaults,
+    ...baseConfig,
+    ...overrideConfig,
+    businessProfile: {
+      ...(defaults.businessProfile || {}),
+      ...(baseConfig.businessProfile || {}),
+      ...(overrideConfig.businessProfile || {}),
+    } as AssistantBusinessProfile,
+    knowledgeBase: {
+      ...(defaults.knowledgeBase || {}),
+      ...(baseConfig.knowledgeBase || {}),
+      ...(overrideConfig.knowledgeBase || {}),
+    } as AssistantKnowledgeBase,
+    integrations: {
+      ...(defaults.integrations || {}),
+      ...(baseConfig.integrations || {}),
+      ...(overrideConfig.integrations || {}),
+    } as AssistantIntegrationSettings,
+    strictness:
+      overrideConfig.strictness ||
+      baseConfig.strictness ||
+      defaults.strictness ||
+      'balanced',
+    supportTriggerKeywords:
+      (overrideConfig.supportTriggerKeywords ||
+        baseConfig.supportTriggerKeywords ||
+        defaults.supportTriggerKeywords) as string[],
+    faqSuggestions:
+      (overrideConfig.faqSuggestions ||
+        baseConfig.faqSuggestions ||
+        defaults.faqSuggestions) as string[],
+    enabled:
+      overrideConfig.enabled ?? baseConfig.enabled ?? defaults.enabled,
+    provider:
+      overrideConfig.provider || baseConfig.provider || defaults.provider,
+    model:
+      overrideConfig.model || baseConfig.model || defaults.model,
+    strictContextOnly:
+      overrideConfig.strictContextOnly ?? baseConfig.strictContextOnly ?? defaults.strictContextOnly,
+    systemPrompt:
+      overrideConfig.systemPrompt || baseConfig.systemPrompt || defaults.systemPrompt,
+    businessContext:
+      overrideConfig.businessContext ?? baseConfig.businessContext ?? defaults.businessContext,
+    restrictions:
+      overrideConfig.restrictions || baseConfig.restrictions || defaults.restrictions,
+    humanSupportEnabled:
+      overrideConfig.humanSupportEnabled ?? baseConfig.humanSupportEnabled ?? defaults.humanSupportEnabled,
+    handoffMessage:
+      overrideConfig.handoffMessage || baseConfig.handoffMessage || defaults.handoffMessage,
+    faqSuggestionsEnabled:
+      overrideConfig.faqSuggestionsEnabled ?? baseConfig.faqSuggestionsEnabled ?? defaults.faqSuggestionsEnabled,
+    startLanguage:
+      overrideConfig.startLanguage || baseConfig.startLanguage || defaults.startLanguage,
+    replyInUserLanguage:
+      overrideConfig.replyInUserLanguage ?? baseConfig.replyInUserLanguage ?? defaults.replyInUserLanguage,
+    responseStyle:
+      overrideConfig.responseStyle || baseConfig.responseStyle || defaults.responseStyle,
+    extraInstructions:
+      overrideConfig.extraInstructions || baseConfig.extraInstructions || defaults.extraInstructions,
+    forceSelectedModelOnly:
+      overrideConfig.forceSelectedModelOnly ?? baseConfig.forceSelectedModelOnly ?? defaults.forceSelectedModelOnly,
   }
 }
 
@@ -947,19 +1023,21 @@ export async function getBusinessInfo(
   if (snap.exists()) {
     const data = snap.data();
     const widgetSnap = await getDocs(collection(db, `businesses/${businessId}/chatWidgets`))
-    const widgets = sortChatWidgetsByCreation(widgetSnap.docs.map(mapWidgetRecord))
-    const activeChatWidgetKey = String(data.activeChatWidgetKey || data.chatWidgetKey || widgets[0]?.widgetKey || '')
-    const activeWidget =
-      widgets.find((widget) => widget.widgetKey === activeChatWidgetKey) ||
-      widgets[0] ||
-      null
-    const chatWidgetConfig = activeWidget?.config || data.chatWidgetConfig || undefined
-    const chatWidgetKey = activeWidget?.widgetKey || data.chatWidgetKey || ''
-    const chatAssistantConfig =
-      activeWidget?.assistantConfig ||
-      (activeWidget?.isDefault ? data.chatAssistantConfig : undefined)
+      const widgets = sortChatWidgetsByCreation(widgetSnap.docs.map(mapWidgetRecord))
+      const activeChatWidgetKey = String(data.activeChatWidgetKey || data.chatWidgetKey || widgets[0]?.widgetKey || '')
+      const activeWidget =
+        widgets.find((widget) => widget.widgetKey === activeChatWidgetKey) ||
+        widgets[0] ||
+        null
+      const chatWidgetConfig = activeWidget?.config || data.chatWidgetConfig || undefined
+      const chatWidgetKey = activeWidget?.widgetKey || data.chatWidgetKey || ''
+      const chatAssistantConfig = mergeAssistantConfig(data.chatAssistantConfig, activeWidget?.assistantConfig)
+      const normalizedWidgets = widgets.map((widget) => ({
+        ...widget,
+        assistantConfig: mergeAssistantConfig(data.chatAssistantConfig, widget.assistantConfig),
+      }))
 
-    return {
+      return {
       id: snap.id,
       name: data.name,
       email: data.email,
@@ -969,20 +1047,20 @@ export async function getBusinessInfo(
       createdAt: data.createdAt?.toDate() || new Date(),
       updatedAt: data.updatedAt?.toDate() || new Date(),
       chatWidgetConfig,
-      chatWidgets: widgets.length
-        ? widgets
-        : chatWidgetConfig
-          ? [{
-              id: chatWidgetKey || 'default-widget',
-              widgetKey: chatWidgetKey || String(data.chatWidgetKey || 'default-widget'),
-              name: 'Main widget',
-              config: chatWidgetConfig,
-              assistantConfig: data.chatAssistantConfig,
-              isDefault: true,
-              createdAt: data.createdAt?.toDate() || new Date(),
-              updatedAt: data.updatedAt?.toDate() || new Date(),
-            }]
-          : [],
+        chatWidgets: normalizedWidgets.length
+          ? normalizedWidgets
+          : chatWidgetConfig
+            ? [{
+                id: chatWidgetKey || 'default-widget',
+                widgetKey: chatWidgetKey || String(data.chatWidgetKey || 'default-widget'),
+                name: 'Main widget',
+                config: chatWidgetConfig,
+                assistantConfig: chatAssistantConfig,
+                isDefault: true,
+                createdAt: data.createdAt?.toDate() || new Date(),
+                updatedAt: data.updatedAt?.toDate() || new Date(),
+              }]
+            : [],
       chatAssistantConfig,
       chatAnalytics: data.chatAnalytics
         ? {
@@ -1258,20 +1336,26 @@ export async function updateChatAssistantConfig(
     const businessSnap = await getDoc(businessRef)
     const businessData = businessSnap.exists() ? businessSnap.data() || {} : {}
     const targetWidgetKey = String(widgetKey || businessData.activeChatWidgetKey || businessData.chatWidgetKey || '')
+    const widgetRef = targetWidgetKey ? doc(db, `businesses/${businessId}/chatWidgets/${targetWidgetKey}`) : null
+    const widgetSnap = widgetRef ? await getDoc(widgetRef) : null
+    const widgetData = widgetSnap?.exists() ? widgetSnap.data() || {} : {}
+    const mergedAssistantConfig = mergeAssistantConfig(
+      businessData.chatAssistantConfig as Partial<ChatAssistantConfig> | undefined,
+      widgetData.assistantConfig as Partial<ChatAssistantConfig> | undefined
+    )
+    const nextAssistantConfig = mergeAssistantConfig(mergedAssistantConfig, config)
 
-    if (targetWidgetKey) {
-      const widgetRef = doc(db, `businesses/${businessId}/chatWidgets/${targetWidgetKey}`)
-      const widgetSnap = await getDoc(widgetRef)
+    if (widgetRef) {
       await setDoc(widgetRef, {
         widgetKey: targetWidgetKey,
-        assistantConfig: config,
-        createdAt: widgetSnap.exists() ? widgetSnap.data()?.createdAt || serverTimestamp() : serverTimestamp(),
+        assistantConfig: nextAssistantConfig,
+        createdAt: widgetSnap?.exists() ? widgetData.createdAt || serverTimestamp() : serverTimestamp(),
         updatedAt: serverTimestamp(),
       }, { merge: true })
     }
 
     await updateDoc(businessRef, {
-      chatAssistantConfig: config,
+      chatAssistantConfig: nextAssistantConfig,
       ...(targetWidgetKey ? { activeChatWidgetKey: targetWidgetKey } : {}),
       updatedAt: serverTimestamp(),
     });

@@ -1143,15 +1143,13 @@ export default function WidgetAdminPanel({
     setDomainsStatus('idle')
 
     const parsedDomains = parseAllowedDomainsInput(allowedDomainsText)
-    const nextConfig = {
+    const mergedConfig = {
       ...(config || {}),
       allowedDomains: parsedDomains,
-    } as Partial<ChatWidgetConfig>
+    } as ChatWidgetConfig
     const result = await updateChatWidgetConfig(
       dbUser.businessId,
-      {
-        ...nextConfig,
-      },
+      mergedConfig,
       targetWidgetKey
     )
 
@@ -1160,11 +1158,11 @@ export default function WidgetAdminPanel({
 
     if (result.success) {
       setSelectedWidgetKey(targetWidgetKey)
-      setConfig((prev) => (prev ? { ...prev, allowedDomains: parsedDomains } : ({ ...nextConfig } as ChatWidgetConfig)))
+      setConfig(mergedConfig)
       setAllowedDomainsText(parsedDomains.join('\n'))
       if (typeof window !== 'undefined') {
         const storageKey = `widget-config-${dbUser.businessId}`
-        const nextConfigPayload = JSON.stringify(nextConfig)
+        const nextConfigPayload = JSON.stringify(mergedConfig)
         localStorage.setItem(storageKey, nextConfigPayload)
         window.dispatchEvent(
           new CustomEvent('vintra-widget-config-updated', {
@@ -1177,6 +1175,8 @@ export default function WidgetAdminPanel({
       }
       void refreshBusiness()
       setTimeout(() => setDomainsStatus('idle'), 2000)
+    } else {
+      console.error('Failed to save allowed domains:', result.message)
     }
   }
 
