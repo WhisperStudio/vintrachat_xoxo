@@ -101,6 +101,123 @@ const defaultAssistantConfig: ChatAssistantConfig = {
   forceSelectedModelOnly: false,
 }
 
+const createDefaultWidgetConfig = (businessName: string): ChatWidgetConfig => ({
+  plan: 'free',
+  billingCycle: 'monthly',
+  colorTheme: 'modern',
+  position: 'bottom-right',
+  bubbleStyle: {
+    showStatus: true,
+    iconChoice: 'chat',
+    borderType: 'rounded',
+    shadowType: 'medium',
+    animationType: 'fade',
+    sizeType: 'medium',
+    orbStyle: {
+      hoverEnabled: true,
+      hoverGlyph: 'A',
+      replyEnabled: false,
+      replyGlyphs: '',
+      inactiveEnabled: false,
+      inactiveGlyphs: '',
+      inactivityMinMinutes: 2,
+      inactivityMaxMinutes: 4,
+    },
+  },
+  headerStyle: {
+    showStatus: true,
+    showCloseButton: true,
+    borderType: 'rounded',
+    shadowType: 'light',
+    showAvatar: true,
+    showTitle: true,
+  },
+  bodyStyle: {
+    borderType: 'none',
+    shadowType: 'none',
+    messageStyle: 'bubble',
+    showTimestamps: true,
+    showReadReceipts: false,
+  },
+  footerStyle: {
+    showSendButton: true,
+    borderType: 'none',
+    shadowType: 'none',
+    inputStyle: 'rounded',
+    showPlaceholder: true,
+  },
+  customBranding: {
+    title: businessName || 'Support Chat',
+    description: 'Usually replies in a few minutes',
+    logoStyle: {
+      zoom: 100,
+      focusX: 50,
+      focusY: 50,
+    },
+  },
+  settings: {
+    autoOpen: false,
+    delayMs: 3000,
+  },
+  allowedDomains: [],
+})
+
+const mergeWidgetConfig = (
+  config: Partial<ChatWidgetConfig> | undefined,
+  businessName: string
+): ChatWidgetConfig => {
+  const defaults = createDefaultWidgetConfig(businessName)
+
+  if (!config) return defaults
+
+  return {
+    ...defaults,
+    ...config,
+    allowedDomains: parseAllowedDomainsInput(config.allowedDomains ?? defaults.allowedDomains),
+    bubbleStyle: {
+      ...defaults.bubbleStyle,
+      ...(config.bubbleStyle || {}),
+      orbStyle: {
+        hoverEnabled: config.bubbleStyle?.orbStyle?.hoverEnabled ?? defaults.bubbleStyle.orbStyle!.hoverEnabled,
+        hoverGlyph: config.bubbleStyle?.orbStyle?.hoverGlyph ?? defaults.bubbleStyle.orbStyle!.hoverGlyph,
+        replyEnabled: config.bubbleStyle?.orbStyle?.replyEnabled ?? defaults.bubbleStyle.orbStyle!.replyEnabled,
+        replyGlyphs: config.bubbleStyle?.orbStyle?.replyGlyphs ?? defaults.bubbleStyle.orbStyle!.replyGlyphs,
+        inactiveEnabled: config.bubbleStyle?.orbStyle?.inactiveEnabled ?? defaults.bubbleStyle.orbStyle!.inactiveEnabled,
+        inactiveGlyphs: config.bubbleStyle?.orbStyle?.inactiveGlyphs ?? defaults.bubbleStyle.orbStyle!.inactiveGlyphs,
+        inactivityMinMinutes:
+          config.bubbleStyle?.orbStyle?.inactivityMinMinutes ?? defaults.bubbleStyle.orbStyle!.inactivityMinMinutes,
+        inactivityMaxMinutes:
+          config.bubbleStyle?.orbStyle?.inactivityMaxMinutes ?? defaults.bubbleStyle.orbStyle!.inactivityMaxMinutes,
+      },
+    },
+    headerStyle: {
+      ...defaults.headerStyle,
+      ...(config.headerStyle || {}),
+    },
+    bodyStyle: {
+      ...defaults.bodyStyle,
+      ...(config.bodyStyle || {}),
+    },
+    footerStyle: {
+      ...defaults.footerStyle,
+      ...(config.footerStyle || {}),
+    },
+    customBranding: {
+      ...defaults.customBranding,
+      ...(config.customBranding || {}),
+      logoStyle: {
+        zoom: config.customBranding?.logoStyle?.zoom ?? defaults.customBranding.logoStyle!.zoom,
+        focusX: config.customBranding?.logoStyle?.focusX ?? defaults.customBranding.logoStyle!.focusX,
+        focusY: config.customBranding?.logoStyle?.focusY ?? defaults.customBranding.logoStyle!.focusY,
+      },
+    },
+    settings: {
+      ...defaults.settings,
+      ...(config.settings || {}),
+    },
+  }
+}
+
 const allowedDomainSeed = ['chat.vintrastudio.com', 'http://localhost:3000/']
 
 type LanguageOption = {
@@ -476,11 +593,12 @@ export default function WidgetAdminPanel({
 
   const applyWidgetConfig = (widgetConfig: ChatWidgetConfig | undefined) => {
     if (!widgetConfig) return
-    setConfig(widgetConfig)
+    const mergedConfig = mergeWidgetConfig(widgetConfig, business?.name || '')
+    setConfig(mergedConfig)
     setAllowedDomainsText(
-      Array.isArray(widgetConfig.allowedDomains) ? widgetConfig.allowedDomains.join('\n') : ''
+      Array.isArray(mergedConfig.allowedDomains) ? mergedConfig.allowedDomains.join('\n') : ''
     )
-    setLastConfigUpdate(JSON.stringify(widgetConfig))
+    setLastConfigUpdate(JSON.stringify(mergedConfig))
   }
 
   const applyWidgetAssistantConfig = (widget?: (typeof widgetList)[number] | null) => {
@@ -682,31 +800,40 @@ export default function WidgetAdminPanel({
   }
 
   useEffect(() => {
-    if (externalSelectedWidgetKey) {
-      setSelectedWidgetKey((prev) =>
-        prev === externalSelectedWidgetKey ? prev : externalSelectedWidgetKey
-      )
-      return
+    const preferredWidgetKey =
+      externalSelectedWidgetKey ||
+      selectedWidgetKey ||
+      business?.activeChatWidgetKey ||
+      business?.chatWidgetKey ||
+      ''
+
+    if (externalSelectedWidgetKey && selectedWidgetKey !== externalSelectedWidgetKey) {
+      setSelectedWidgetKey(externalSelectedWidgetKey)
     }
 
     const widget =
-      widgetList.find((entry) => entry.widgetKey === selectedWidgetKey) ||
+      widgetList.find((entry) => entry.widgetKey === preferredWidgetKey) ||
       widgetList.find((entry) => entry.widgetKey === business?.activeChatWidgetKey) ||
-      widgetList[0]
+      widgetList[0] ||
+      null
 
-    if (widget?.config) {
+    if (widget) {
       setSelectedWidgetKey(widget.widgetKey)
       applyWidgetConfig(widget.config)
       applyWidgetAssistantConfig(widget)
-    } else if (business?.chatWidgetConfig) {
-      setConfig(business.chatWidgetConfig as ChatWidgetConfig)
-      setLastConfigUpdate(JSON.stringify(business.chatWidgetConfig))
+      return
+    }
+
+    if (business?.chatWidgetConfig) {
+      const mergedBusinessConfig = mergeWidgetConfig(business.chatWidgetConfig as ChatWidgetConfig, business.name || '')
+      setConfig(mergedBusinessConfig)
+      setLastConfigUpdate(JSON.stringify(mergedBusinessConfig))
       setAllowedDomainsText(
-        Array.isArray(business.chatWidgetConfig.allowedDomains)
-          ? business.chatWidgetConfig.allowedDomains.join('\n')
+        Array.isArray(mergedBusinessConfig.allowedDomains)
+          ? mergedBusinessConfig.allowedDomains.join('\n')
           : ''
       )
-      setSelectedWidgetKey(business.activeChatWidgetKey || business.chatWidgetKey || '')
+      setSelectedWidgetKey(preferredWidgetKey)
       applyWidgetAssistantConfig(null)
     }
   }, [business, widgetList, selectedWidgetKey, externalSelectedWidgetKey])

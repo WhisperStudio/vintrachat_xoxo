@@ -295,6 +295,62 @@ function buildDefaultAssistantConfig(): ChatAssistantConfig {
   }
 }
 
+function mergeWidgetConfig(
+  config: Partial<ChatWidgetConfig> | undefined,
+  businessName: string
+): ChatWidgetConfig {
+  const defaults = buildDefaultWidgetConfig(businessName)
+
+  if (!config) return defaults
+
+  return {
+    ...defaults,
+    ...config,
+    allowedDomains: parseAllowedDomainsInput(config.allowedDomains ?? defaults.allowedDomains),
+    bubbleStyle: {
+      ...defaults.bubbleStyle,
+      ...(config.bubbleStyle || {}),
+      orbStyle: {
+        hoverEnabled: config.bubbleStyle?.orbStyle?.hoverEnabled ?? defaults.bubbleStyle.orbStyle!.hoverEnabled,
+        hoverGlyph: config.bubbleStyle?.orbStyle?.hoverGlyph ?? defaults.bubbleStyle.orbStyle!.hoverGlyph,
+        replyEnabled: config.bubbleStyle?.orbStyle?.replyEnabled ?? defaults.bubbleStyle.orbStyle!.replyEnabled,
+        replyGlyphs: config.bubbleStyle?.orbStyle?.replyGlyphs ?? defaults.bubbleStyle.orbStyle!.replyGlyphs,
+        inactiveEnabled: config.bubbleStyle?.orbStyle?.inactiveEnabled ?? defaults.bubbleStyle.orbStyle!.inactiveEnabled,
+        inactiveGlyphs: config.bubbleStyle?.orbStyle?.inactiveGlyphs ?? defaults.bubbleStyle.orbStyle!.inactiveGlyphs,
+        inactivityMinMinutes:
+          config.bubbleStyle?.orbStyle?.inactivityMinMinutes ?? defaults.bubbleStyle.orbStyle!.inactivityMinMinutes,
+        inactivityMaxMinutes:
+          config.bubbleStyle?.orbStyle?.inactivityMaxMinutes ?? defaults.bubbleStyle.orbStyle!.inactivityMaxMinutes,
+      },
+    },
+    headerStyle: {
+      ...defaults.headerStyle,
+      ...(config.headerStyle || {}),
+    },
+    bodyStyle: {
+      ...defaults.bodyStyle,
+      ...(config.bodyStyle || {}),
+    },
+    footerStyle: {
+      ...defaults.footerStyle,
+      ...(config.footerStyle || {}),
+    },
+    customBranding: {
+      ...defaults.customBranding,
+      ...(config.customBranding || {}),
+      logoStyle: {
+        zoom: config.customBranding?.logoStyle?.zoom ?? defaults.customBranding.logoStyle!.zoom,
+        focusX: config.customBranding?.logoStyle?.focusX ?? defaults.customBranding.logoStyle!.focusX,
+        focusY: config.customBranding?.logoStyle?.focusY ?? defaults.customBranding.logoStyle!.focusY,
+      },
+    },
+    settings: {
+      ...defaults.settings,
+      ...(config.settings || {}),
+    },
+  }
+}
+
 function mergeAssistantConfig(
   base?: Partial<ChatAssistantConfig> | null,
   override?: Partial<ChatAssistantConfig> | null
@@ -388,7 +444,10 @@ function mapWidgetRecord(docSnap: { id: string; data: () => any }): ChatWidgetRe
     id: docSnap.id,
     widgetKey: String(data.widgetKey || docSnap.id),
     name: String(data.name || 'Chat Widget'),
-    config: (data.config || data.chatWidgetConfig || buildDefaultWidgetConfig(String(data.name || 'Chat Widget'))) as ChatWidgetConfig,
+    config: mergeWidgetConfig(
+      data.config || data.chatWidgetConfig,
+      String(data.name || 'Chat Widget')
+    ),
     assistantConfig: data.assistantConfig as ChatAssistantConfig | undefined,
     isDefault: Boolean(data.isDefault),
     createdAt: data.createdAt?.toDate?.() || new Date(0),
@@ -1029,7 +1088,8 @@ export async function getBusinessInfo(
         widgets.find((widget) => widget.widgetKey === activeChatWidgetKey) ||
         widgets[0] ||
         null
-      const chatWidgetConfig = activeWidget?.config || data.chatWidgetConfig || undefined
+      const chatWidgetConfig = activeWidget?.config
+        || (data.chatWidgetConfig ? mergeWidgetConfig(data.chatWidgetConfig, String(data.name || 'Chat Widget')) : undefined)
       const chatWidgetKey = activeWidget?.widgetKey || data.chatWidgetKey || ''
       const chatAssistantConfig = mergeAssistantConfig(data.chatAssistantConfig, activeWidget?.assistantConfig)
       const normalizedWidgets = widgets.map((widget) => ({
@@ -1184,7 +1244,7 @@ export async function listChatWidgets(businessId: string) {
     id: legacyWidgetKey,
     widgetKey: legacyWidgetKey,
     name: 'Main widget',
-    config: legacyConfig as ChatWidgetConfig,
+    config: mergeWidgetConfig(legacyConfig, String(businessData.name || 'Chat Widget')),
     assistantConfig: businessData.chatAssistantConfig as ChatAssistantConfig | undefined,
     isDefault: true,
     createdAt: businessData.createdAt?.toDate?.() || new Date(),

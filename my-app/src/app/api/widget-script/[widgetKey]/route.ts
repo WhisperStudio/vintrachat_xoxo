@@ -85,8 +85,8 @@ const widgetStyles = `
 }
 
 .vintra-root.viewport-mobile .chat-widget {
-  --chat-body-height: 350px;
-  --chat-footer-height: 86px;
+  --chat-body-height: 380px;
+  --chat-footer-height: 92px;
   position: fixed;
   left: 10px;
   right: 10px;
@@ -167,9 +167,10 @@ const widgetStyles = `
   min-height: min(220px, var(--chat-body-height));
   flex: 0 0 auto;
   margin-bottom: var(--chat-footer-height);
-  padding: 0.95rem 0.95rem 1.2rem;
+  padding: 0.95rem 0.95rem calc(var(--chat-footer-height) + 1rem);
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  scroll-padding-bottom: calc(var(--chat-footer-height) + 1rem);
 }
 
 .vintra-root.viewport-mobile .widget-faq-suggestions {
@@ -882,9 +883,12 @@ export async function GET(
     var waitingLine = state.supportStatus === 'needs-human'
       ? '<div class="chat-status-line">Waiting for a support assistant</div>'
       : '';
+    var typingMarkup = state.sending && !state.awaitingVisitorName
+      ? '<div class="message message-bot message-typing" aria-live="polite" aria-label="Assistant is typing"><div class="typing-dots"><span></span><span></span><span></span></div></div>'
+      : '';
 
     if (!state.messages.length) {
-      return waitingLine + '<div class="message message-bot">Chat is ready. Send a message to start.</div>';
+      return waitingLine + '<div class="message message-bot">Chat is ready. Send a message to start.</div>' + typingMarkup;
     }
 
     return waitingLine + state.messages.map(function (msg) {
@@ -914,7 +918,7 @@ export async function GET(
           ) : '') +
         '</div>'
       );
-    }).join('');
+    }).join('') + typingMarkup;
   }
 
   function getFaqSuggestionsMarkup() {

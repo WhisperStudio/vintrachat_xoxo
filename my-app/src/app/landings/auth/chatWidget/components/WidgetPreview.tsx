@@ -186,6 +186,7 @@ export default function WidgetPreview({
   const messages = messagesOverride ?? internalMessages
   const inputValue = inputValueOverride ?? internalInputValue
   const isReplying = bubbleActivityState === 'replying' || internalIsReplying
+  const showTypingIndicator = isReplying
   const feedbackKeywords = ['feedback', 'review', 'rating', 'star', 'stars', 'vurdering', 'anmeldelse', 'tilbakemelding']
   const internalRequestedFeedback = (text: string) =>
     feedbackKeywords.some((keyword) => text.toLowerCase().includes(keyword))
@@ -590,6 +591,15 @@ export default function WidgetPreview({
                       {suggestion}
                     </button>
                   ))}
+                </div>
+              )}
+              {showTypingIndicator && (
+                <div className="message message-bot message-typing" aria-live="polite" aria-label="Assistant is typing">
+                  <div className="typing-dots">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
                 </div>
               )}
               </div>
