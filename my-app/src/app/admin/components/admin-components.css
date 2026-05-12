@@ -464,8 +464,9 @@
 .adminTranscriptBubbleSystem {
   align-self: center;
   max-width: 100%;
-  background: transparent;
-  color: #64748b;
+  background: linear-gradient(180deg, #fef2f2, #fff1f2);
+  color: #991b1b;
+  border-color: rgba(248, 113, 113, 0.22);
   text-align: center;
   padding: 6px 12px;
 }
@@ -491,11 +492,60 @@
 }
 
 .adminTranscriptBubbleSystem strong {
-  color: #475569;
+  color: #b91c1c;
 }
 
 .adminTranscriptBubbleSystem .adminTranscriptTime {
-  color: #94a3b8;
+  color: #ef4444;
+}
+
+.adminTranscriptBubbleTyping {
+  align-self: flex-start;
+  background: linear-gradient(180deg, #ecfdf5, #f0fdf4);
+  border-color: rgba(74, 222, 128, 0.28);
+  color: #065f46;
+}
+
+.adminTranscriptBubbleTyping strong {
+  color: #047857;
+}
+
+.adminTypingDots {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 18px;
+}
+
+.adminTypingDots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.5;
+  animation: adminTypingBounce 1s infinite ease-in-out;
+}
+
+.adminTypingDots span:nth-child(2) {
+  animation-delay: 0.14s;
+}
+
+.adminTypingDots span:nth-child(3) {
+  animation-delay: 0.28s;
+}
+
+@keyframes adminTypingBounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+
+  40% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
 }
 
 .adminChatReplyBox {

@@ -53,6 +53,7 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
   const [loading, setLoading] = useState(true)
   const [replyText, setReplyText] = useState('')
   const [actionBusy, setActionBusy] = useState(false)
+  const [replySending, setReplySending] = useState(false)
   const [taskComposerOpen, setTaskComposerOpen] = useState(false)
   const [taskSaving, setTaskSaving] = useState(false)
   const [taskCategories, setTaskCategories] = useState<SupportTaskCategory[]>([])
@@ -220,10 +221,15 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
 
     const text = replyText.trim()
     setReplyText('')
+    setReplySending(true)
 
-    await runChatAction(() =>
-      sendSupportReply(dbUser.businessId, selectedChat.id, text, selectedChat.countryCode)
-    )
+    try {
+      await runChatAction(() =>
+        sendSupportReply(dbUser.businessId, selectedChat.id, text, selectedChat.countryCode)
+      )
+    } finally {
+      setReplySending(false)
+    }
   }
 
   const openTaskComposer = (quick = false) => {
@@ -390,6 +396,16 @@ export default function AdminChatsPanel({ selectedWidgetKey = '' }: { selectedWi
                   </span>
                 </div>
               ))}
+              {replySending ? (
+                <div className="adminTranscriptBubble adminTranscriptBubbleTyping" aria-live="polite" aria-label="Support is typing">
+                  <strong>{text.speakers.support}</strong>
+                  <div className="adminTypingDots">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             {awaitingAcceptance ? (

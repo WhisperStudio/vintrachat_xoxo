@@ -327,7 +327,7 @@
 
 .floating-chat-preview {
   position: absolute;
-  width: clamp(400px, calc(100% - 3rem), 430px);
+  width: clamp(400px, calc(100% - 3rem), 460px);
 }
 
 .widgetcontainer {
@@ -413,9 +413,10 @@
   display: block;
   visibility: visible;
   opacity: 1;
-  width: auto;
+  width: 100%;
+  min-width: 400px;
   height: auto;
-  max-width: none;
+  max-width: 460px;
   max-height: none;
   transform: translateY(calc(-110px - var(--widget-keyboard-offset, 0px))) scale(var(--widget-scale));
   pointer-events: auto;
@@ -652,9 +653,34 @@
   animation-delay: 0.28s;
 }
 
+.message-support .message-content {
+  color: inherit;
+}
+
+.message-system .message-content {
+  color: inherit;
+}
+
 .message-bot {
   align-self: flex-start;
   background: #eef2ff;
+}
+
+.message-support {
+  align-self: flex-start;
+  background: linear-gradient(180deg, #dcfce7, #ecfdf5);
+  border: 1px solid rgba(74, 222, 128, 0.26);
+  color: #14532d;
+}
+
+.message-system {
+  align-self: center;
+  max-width: 100%;
+  background: linear-gradient(180deg, #fef2f2, #fff1f2);
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  color: #991b1b;
+  text-align: center;
+  padding: 0.75rem 0.95rem;
 }
 
 .message-user {

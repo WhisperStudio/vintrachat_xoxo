@@ -65,6 +65,12 @@ const widgetStyles = `
   z-index: 10000;
 }
 
+.vintra-root .chat-widget.open {
+  width: min(460px, calc(var(--vintra-viewport-width) - 32px));
+  min-width: 400px;
+  max-width: 460px;
+}
+
 .vintra-stack > .widget-icon {
   z-index: 10001;
 }
