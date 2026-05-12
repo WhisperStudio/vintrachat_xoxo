@@ -228,6 +228,14 @@ export default function AdminPage() {
     })
   }
 
+  const handleSidebarTabClick = (tab: AdminTab) => {
+    setActiveTab(tab)
+
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches) {
+      setSidebarCollapsed(true)
+    }
+  }
+
   useEffect(() => {
     if (!widgetList.length) {
       setSelectedWidgetKey('')
@@ -247,6 +255,16 @@ export default function AdminPage() {
   useEffect(() => {
     if (!loading && !isAuthenticated) router.push('/auth/login')
   }, [firebaseUser?.email, isAuthenticated, loading, router])
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const isMobile = window.matchMedia('(max-width: 720px)').matches
+    document.body.classList.toggle('admin-mobile-sidebar-open', isMobile && !sidebarCollapsed)
+
+    return () => {
+      document.body.classList.remove('admin-mobile-sidebar-open')
+    }
+  }, [sidebarCollapsed])
 
   useLayoutEffect(() => {
     const updateIndicator = () => {
@@ -335,6 +353,22 @@ export default function AdminPage() {
           sidebarCollapsed ? 'adminPageSidebarCollapsed' : ''
         }`}
       >
+        <button
+          type="button"
+          className="adminMobileHeader"
+          onClick={() => setSidebarCollapsed((current) => !current)}
+          aria-label={sidebarCollapsed ? text.sidebar.expand : text.sidebar.collapse}
+          title={sidebarCollapsed ? text.sidebar.expand : text.sidebar.collapse}
+        >
+          <div className="adminMobileHeaderCopy">
+            <span className="adminSidebarEyebrow">{text.sidebar.eyebrow}</span>
+            <strong>{text.sidebar.title}</strong>
+          </div>
+          <span className="adminMobileCollapseToggle" aria-hidden="true">
+            {sidebarCollapsed ? <FiChevronRight /> : <FiChevronLeft />}
+          </span>
+        </button>
+
         <div className="adminSidebarFollowScreen">
         <aside className={`adminSidebar ${sidebarCollapsed ? 'adminSidebarCollapsed' : ''}`} ref={sidebarRef}>
           <button
@@ -365,7 +399,7 @@ export default function AdminPage() {
               ref={(node) => {
                 tabButtonRefs.current.overview = node
               }}
-              onClick={() => setActiveTab('overview')}
+              onClick={() => handleSidebarTabClick('overview')}
               className={activeTab === 'overview' ? 'sideActive' : ''}
             >
               {text.sidebar.overview}
@@ -380,7 +414,7 @@ export default function AdminPage() {
                 ref={(node) => {
                   tabButtonRefs.current[item.tab] = node
                 }}
-                onClick={() => setActiveTab(item.tab)}
+                onClick={() => handleSidebarTabClick(item.tab)}
                 className={activeTab === item.tab ? 'sideActive' : ''}
               >
                 {item.label}
@@ -393,14 +427,14 @@ export default function AdminPage() {
             <div className="adminSidebarGroup">
               <div className="adminSidebarGroupLabel">{text.sidebar.feedback}</div>
               {visibleFeedbackItems.map((item) => (
-                <button
-                  key={item.tab}
-                  ref={(node) => {
-                    tabButtonRefs.current[item.tab] = node
-                  }}
-                  onClick={() => setActiveTab(item.tab)}
-                  className={activeTab === item.tab ? 'sideActive' : ''}
-                >
+            <button
+              key={item.tab}
+              ref={(node) => {
+                tabButtonRefs.current[item.tab] = node
+              }}
+              onClick={() => handleSidebarTabClick(item.tab)}
+              className={activeTab === item.tab ? 'sideActive' : ''}
+            >
                   {item.label}
                 </button>
               ))}
@@ -416,7 +450,7 @@ export default function AdminPage() {
                 ref={(node) => {
                   tabButtonRefs.current[item.tab] = node
                 }}
-                onClick={() => setActiveTab(item.tab)}
+                onClick={() => handleSidebarTabClick(item.tab)}
                 className={activeTab === item.tab ? 'sideActive' : ''}
               >
                 {item.label}

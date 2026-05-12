@@ -172,8 +172,37 @@ function buildPrompt(args: {
   businessName: string
   systemPrompt: string
   businessContext: string
+  businessProfile?: {
+    businessName: string
+    industry: string
+    shortDescription: string
+    toneOfVoice: string
+    language: string
+    multilingual: boolean
+    mainGoal: string
+    fallbackContact: string
+  }
+  knowledgeBase?: {
+    websiteUrls: string[]
+    uploadedDocuments: { name: string; type: string; status?: string; url?: string; text?: string }[]
+    manualNotes: string
+    openingHours: string
+    contactInfo: string
+    addresses: string
+    keyFAQs: string[]
+  }
+  integrations?: {
+    replyToQuestions: boolean
+    collectLeads: boolean
+    bookMeetings: boolean
+    routeToPages: boolean
+    createSupportTickets: boolean
+    fetchOrderStatus: boolean
+    handoffToHuman: boolean
+  }
   restrictions: string
   strictContextOnly: boolean
+  strictness?: 'sales' | 'balanced' | 'support'
   supportKeywords: string[]
   faqSuggestions: string[]
   startLanguage: string
@@ -198,13 +227,76 @@ function buildPrompt(args: {
     ? `For the first assistant reply in a conversation, start in ${args.startLanguage || 'English'}. After that, reply in the same language as the latest user message.`
     : `Reply in ${args.startLanguage || 'English'} unless the business context explicitly requires another language.`
 
+  const profile = args.businessProfile || {
+    businessName: args.businessName,
+    industry: '',
+    shortDescription: '',
+    toneOfVoice: '',
+    language: args.startLanguage || 'English',
+    multilingual: args.replyInUserLanguage,
+    mainGoal: '',
+    fallbackContact: '',
+  }
+
+  const knowledgeBase = args.knowledgeBase || {
+    websiteUrls: [],
+    uploadedDocuments: [],
+    manualNotes: '',
+    openingHours: '',
+    contactInfo: '',
+    addresses: '',
+    keyFAQs: [],
+  }
+
+  const integrations = args.integrations || {
+    replyToQuestions: true,
+    collectLeads: true,
+    bookMeetings: false,
+    routeToPages: true,
+    createSupportTickets: false,
+    fetchOrderStatus: false,
+    handoffToHuman: true,
+  }
+
+  const strictnessRule =
+    args.strictness === 'sales'
+      ? 'Strictness level: sales mode. You may explain broadly, suggest next steps, and be proactive, but never invent prices, guarantees, or legal terms.'
+      : args.strictness === 'support'
+        ? 'Strictness level: support/legal mode. Only answer from approved business information. Do not guess or fill gaps with assumptions. If a fact is missing, say that you do not know and offer human support.'
+        : 'Strictness level: balanced mode. Answer from approved information first, explain clearly in your own words, and admit uncertainty when needed.'
+
+  const knowledgeDocuments = knowledgeBase.uploadedDocuments.length
+    ? knowledgeBase.uploadedDocuments
+        .map((doc) => {
+          const status = doc.status ? ` (${doc.status})` : ''
+          const body = doc.text ? `\n${doc.text}` : doc.url ? `\nSource: ${doc.url}` : ''
+          return `- ${doc.name}${status}${body}`
+        })
+        .join('\n')
+    : 'No uploaded documents configured.'
+
+  const activeIntegrations = Object.entries(integrations)
+    .filter(([, enabled]) => enabled)
+    .map(([key]) => key.replace(/([A-Z])/g, ' $1').replace(/^./, (value) => value.toUpperCase()))
+
   return [
-    `You are the website assistant for ${args.businessName}.`,
-    args.systemPrompt,
+    `Global system prompt:\n${args.systemPrompt}`,
+    `Business profile:\n${JSON.stringify(profile, null, 2)}`,
+    `Knowledge base summary:\n${[
+      knowledgeBase.websiteUrls.length ? `Website URLs: ${knowledgeBase.websiteUrls.join(', ')}` : 'Website URLs: none',
+      knowledgeBase.openingHours ? `Opening hours: ${knowledgeBase.openingHours}` : 'Opening hours: none',
+      knowledgeBase.contactInfo ? `Contact info: ${knowledgeBase.contactInfo}` : 'Contact info: none',
+      knowledgeBase.addresses ? `Addresses: ${knowledgeBase.addresses}` : 'Addresses: none',
+      knowledgeBase.manualNotes ? `Manual notes:\n${knowledgeBase.manualNotes}` : 'Manual notes: none',
+      knowledgeBase.keyFAQs.length ? `Key FAQs: ${knowledgeBase.keyFAQs.map((item) => `- ${item}`).join('\n')}` : 'Key FAQs: none',
+      `Uploaded documents:\n${knowledgeDocuments}`,
+    ].join('\n\n')}`,
+    `Actions / integrations:\n${activeIntegrations.length ? activeIntegrations.map((item) => `- ${item}`).join('\n') : 'No integrations enabled.'}`,
     languageRule,
     args.strictContextOnly
       ? 'Use only the provided business context for factual claims. If context is missing, say that clearly.'
       : 'Use the provided context as your primary source, but you may answer generally when the context is silent.',
+    strictnessRule,
     `Business context:\n${args.businessContext || 'No business context has been configured yet.'}`,
     `Restrictions:\n${args.restrictions || 'No additional restrictions configured.'}`,
     args.responseStyle ? `Response style:\n${args.responseStyle}` : 'Response style:\nKeep the answer natural and helpful.',
@@ -478,8 +570,37 @@ export async function POST(req: NextRequest) {
       provider: 'gemini' as const,
       model: 'gemini-2.5-flash-lite',
       strictContextOnly: true,
+      strictness: 'balanced' as const,
       systemPrompt: '',
       businessContext: '',
+      businessProfile: {
+        businessName: String(business.name || ''),
+        industry: '',
+        shortDescription: '',
+        toneOfVoice: 'professional, warm, helpful',
+        language: 'English',
+        multilingual: false,
+        mainGoal: 'convert visitors into leads',
+        fallbackContact: '',
+      },
+      knowledgeBase: {
+        websiteUrls: [],
+        uploadedDocuments: [],
+        manualNotes: '',
+        openingHours: '',
+        contactInfo: '',
+        addresses: '',
+        keyFAQs: [],
+      },
+      integrations: {
+        replyToQuestions: true,
+        collectLeads: true,
+        bookMeetings: false,
+        routeToPages: true,
+        createSupportTickets: false,
+        fetchOrderStatus: false,
+        handoffToHuman: true,
+      },
       restrictions: '',
       supportTriggerKeywords: fallbackSupportKeywords,
       humanSupportEnabled: true,
@@ -661,8 +782,12 @@ export async function POST(req: NextRequest) {
         businessName: business.name,
         systemPrompt: assistantConfig.systemPrompt,
         businessContext: assistantConfig.businessContext,
+        businessProfile: assistantConfig.businessProfile,
+        knowledgeBase: assistantConfig.knowledgeBase,
+        integrations: assistantConfig.integrations,
         restrictions: assistantConfig.restrictions,
         strictContextOnly: assistantConfig.strictContextOnly,
+        strictness: assistantConfig.strictness || 'balanced',
         supportKeywords,
         faqSuggestions:
           assistantConfig.faqSuggestionsEnabled && Array.isArray(assistantConfig.faqSuggestions)

@@ -25,13 +25,58 @@ export interface BusinessOnboardingState {
   tutorialCompletedAt?: Date | null;
 }
 
+export type AssistantStrictness = 'sales' | 'balanced' | 'support';
+
+export interface AssistantBusinessProfile {
+  businessName: string;
+  industry: string;
+  shortDescription: string;
+  toneOfVoice: string;
+  language: string;
+  multilingual: boolean;
+  mainGoal: string;
+  fallbackContact: string;
+}
+
+export interface AssistantKnowledgeDocument {
+  name: string;
+  type: string;
+  status?: 'pending' | 'ready' | 'error';
+  url?: string;
+  text?: string;
+}
+
+export interface AssistantKnowledgeBase {
+  websiteUrls: string[];
+  uploadedDocuments: AssistantKnowledgeDocument[];
+  manualNotes: string;
+  openingHours: string;
+  contactInfo: string;
+  addresses: string;
+  keyFAQs: string[];
+}
+
+export interface AssistantIntegrationSettings {
+  replyToQuestions: boolean;
+  collectLeads: boolean;
+  bookMeetings: boolean;
+  routeToPages: boolean;
+  createSupportTickets: boolean;
+  fetchOrderStatus: boolean;
+  handoffToHuman: boolean;
+}
+
 export interface ChatAssistantConfig {
   enabled: boolean;
   provider: 'gemini';
   model: string;
   strictContextOnly: boolean;
+  strictness?: AssistantStrictness;
   systemPrompt: string;
   businessContext: string;
+  businessProfile?: AssistantBusinessProfile;
+  knowledgeBase?: AssistantKnowledgeBase;
+  integrations?: AssistantIntegrationSettings;
   restrictions: string;
   supportTriggerKeywords: string[];
   humanSupportEnabled: boolean;

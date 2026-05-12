@@ -40,14 +40,20 @@ const activePulse = keyframes`
   50% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
 `
 
-const StyledHeader = styled.header<{ $scrolled: boolean }>`
+const StyledHeader = styled.header<{ $scrolled: boolean; $mobileHidden: boolean }>`
   position: sticky;
   top: 0;
   z-index: 80;
   width: 100%;
   padding: ${({ $scrolled }) => ($scrolled ? '14px 20px 0' : '20px 20px 0')};
   background: transparent;
-  transition: padding 0.25s ease;
+  transition: padding 0.25s ease, transform 0.28s ease, opacity 0.22s ease;
+
+  @media (max-width: 720px) {
+    transform: ${({ $mobileHidden }) => ($mobileHidden ? 'translateY(-110%)' : 'translateY(0)')};
+    opacity: ${({ $mobileHidden }) => ($mobileHidden ? 0 : 1)};
+    pointer-events: ${({ $mobileHidden }) => ($mobileHidden ? 'none' : 'auto')};
+  }
 
   @media (max-width: 720px) {
     padding: 12px 12px 0;
@@ -579,6 +585,7 @@ export default function Header() {
   const [pendingInvites, setPendingInvites] = useState<BusinessInvitation[]>([])
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const [isMobileHidden, setIsMobileHidden] = useState(false)
   const desktopNavRef = useRef<HTMLElement | null>(null)
   const navButtonRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
   const [navIndicator, setNavIndicator] = useState<{ left: number; width: number; opacity: number } | null>(null)
@@ -592,6 +599,43 @@ export default function Header() {
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  useEffect(() => {
+    const mobileQuery = window.matchMedia('(max-width: 720px)')
+    let lastScrollY = window.scrollY
+
+    const syncMobileHeader = () => {
+      const currentScrollY = window.scrollY
+      const isMobile = mobileQuery.matches
+
+      if (!isMobile) {
+        setIsMobileHidden(false)
+        document.body.style.removeProperty('--vintra-mobile-main-header-offset')
+        lastScrollY = currentScrollY
+        return
+      }
+
+      const isAtTop = currentScrollY < 18
+      const scrollingDown = currentScrollY > lastScrollY
+      const nextHidden = !isAtTop && scrollingDown
+
+      setIsMobileHidden(nextHidden)
+      document.body.style.setProperty('--vintra-mobile-main-header-offset', nextHidden ? '0px' : '72px')
+      lastScrollY = currentScrollY
+    }
+
+    syncMobileHeader()
+    window.addEventListener('scroll', syncMobileHeader, { passive: true })
+    window.addEventListener('resize', syncMobileHeader)
+    mobileQuery.addEventListener?.('change', syncMobileHeader)
+
+    return () => {
+      window.removeEventListener('scroll', syncMobileHeader)
+      window.removeEventListener('resize', syncMobileHeader)
+      mobileQuery.removeEventListener?.('change', syncMobileHeader)
+      document.body.style.removeProperty('--vintra-mobile-main-header-offset')
+    }
   }, [])
 
   useEffect(() => {
@@ -687,7 +731,7 @@ export default function Header() {
   }, [navItems, pathname])
 
   return (
-    <StyledHeader $scrolled={isScrolled}>
+    <StyledHeader $scrolled={isScrolled} $mobileHidden={isMobileHidden}>
       <HeaderFrame>
         <HeaderInner>
           <LeftSide>

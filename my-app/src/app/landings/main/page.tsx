@@ -714,20 +714,23 @@ export default function MainLanding() {
         }
         .solutionsCurve {
           position: relative;
-          width: min(1280px, calc(100vw - 48px));
-          margin: 0 auto;
-          border-radius: 45% 45% 0 0;
+          left: 50%;
+          width: 100vw;
+          min-height: clamp(86px, 10vw, 132px);
+          transform: translateX(-50%);
+          border-radius: 0 0 clamp(40px, 5vw, 72px) clamp(40px, 5vw, 72px);
           background:
             radial-gradient(circle at top left, rgba(99, 102, 241, 0.18), transparent 34%),
             radial-gradient(circle at top right, rgba(168, 85, 247, 0.14), transparent 30%),
             linear-gradient(180deg, #111827 0%, #0d1220 56%, #0c111d 100%);
-          box-shadow: 0 -24px 60px rgba(15, 23, 42, 0.22);
+          box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
           overflow: hidden;
         }
         .solutionsShell {
           position: relative;
           z-index: 1;
-          padding: 118px 0 104px;
+          margin-top: -22px;
+          padding: 84px 0 104px;
         }
         .solutionsGlow {
           position: absolute;
@@ -1266,8 +1269,12 @@ export default function MainLanding() {
             padding: 0 0 84px;
           }
           .solutionsCurve {
-            width: calc(100vw - 20px);
-            border-radius: 56px 56px 0 0;
+            min-height: 72px;
+            border-radius: 0 0 40px 40px;
+          }
+          .solutionsShell {
+            margin-top: -16px;
+            padding-top: 64px;
           }
           .solutionsIntro {
             margin-bottom: 44px;
@@ -1301,8 +1308,12 @@ export default function MainLanding() {
             padding: 0 0 92px;
           }
           .solutionsCurve {
-            width: calc(100vw - 28px);
-            border-radius: 34vw 34vw 0 0;
+            min-height: 80px;
+            border-radius: 0 0 48px 48px;
+          }
+          .solutionsShell {
+            margin-top: -18px;
+            padding-top: 72px;
           }
           .solutionsGrid {
             gap: 22px;
@@ -1490,9 +1501,10 @@ export default function MainLanding() {
 <section id="solutions" className="solutionsSection">
   <div className="solutionsCurve">
     <div className="solutionsGlow" />
+  </div>
 
-    <div className="page solutionsShell" style={{ position: 'relative', zIndex: 1, maxWidth: '1240px', margin: '0 auto', padding: '0 24px' }}>
-    
+  <div className="page solutionsShell" style={{ position: 'relative', zIndex: 1, maxWidth: '1240px', margin: '0 auto', padding: '0 24px' }}>
+
     <Reveal>
       <div className="solutionsIntro" style={{ textAlign: 'center', marginBottom: '100px' }}>
         
@@ -1704,7 +1716,6 @@ export default function MainLanding() {
         </p>
       </div>
     </Reveal>
-  </div>
   </div>
 </section>
 

@@ -25,7 +25,7 @@ body {
 .widget-frame-shell .floating-chat-preview {
   position: fixed;
   width: min(390px, calc(100vw - 24px));
-  z-index: 2147483002;
+  z-index: 10000;
 }
 
 .widget-frame-shell .position-bottom-right .floating-chat-preview {
@@ -39,11 +39,11 @@ body {
 }
 
 .widget-frame-shell .widget-icon {
-  z-index: 2147483003;
+  z-index: 10000;
   opacity: 1 !important;
   visibility: visible !important;
 }
 
 .widget-frame-shell .chat-widget {
-  z-index: 2147483002;
+  z-index: 10000;
 }

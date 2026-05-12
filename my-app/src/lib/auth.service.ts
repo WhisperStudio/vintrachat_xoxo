@@ -231,9 +231,38 @@ function buildDefaultAssistantConfig(): ChatAssistantConfig {
     provider: 'gemini',
     model: 'gemini-2.5-flash-lite',
     strictContextOnly: true,
+    strictness: 'balanced',
     systemPrompt:
-      "You are the company's website assistant. Be helpful, concise, and honest. If the answer is not supported by the provided business context, say so clearly and ask the visitor to contact support.",
+      "You are a helpful customer service assistant for the business. Use approved business information, keep answers concise, and be honest about uncertainty.",
     businessContext: '',
+    businessProfile: {
+      businessName: '',
+      industry: '',
+      shortDescription: '',
+      toneOfVoice: 'professional, warm, helpful',
+      language: 'English',
+      multilingual: false,
+      mainGoal: 'convert visitors into leads',
+      fallbackContact: '',
+    },
+    knowledgeBase: {
+      websiteUrls: [],
+      uploadedDocuments: [],
+      manualNotes: '',
+      openingHours: '',
+      contactInfo: '',
+      addresses: '',
+      keyFAQs: [],
+    },
+    integrations: {
+      replyToQuestions: true,
+      collectLeads: true,
+      bookMeetings: false,
+      routeToPages: true,
+      createSupportTickets: false,
+      fetchOrderStatus: false,
+      handoffToHuman: true,
+    },
     restrictions:
       'Do not invent policies, prices, opening hours, or legal guarantees. Only answer from the provided business context when possible.',
     supportTriggerKeywords: [
@@ -484,14 +513,43 @@ const defaultWidgetConfig: ChatWidgetConfig = {
   allowedDomains: [],
 };
 
-const defaultAssistantConfig: ChatAssistantConfig = {
+  const defaultAssistantConfig: ChatAssistantConfig = {
   enabled: true,
   provider: "gemini",
   model: "gemini-2.5-flash-lite",
   strictContextOnly: true,
+  strictness: 'balanced',
   systemPrompt:
-    "You are the company's website assistant. Be helpful, concise, and honest. If the answer is not supported by the provided business context, say so clearly and ask the visitor to contact support.",
+    "You are a helpful customer service assistant for the business. Use approved business information, keep answers concise, and be honest about uncertainty.",
   businessContext: "",
+  businessProfile: {
+    businessName,
+    industry: '',
+    shortDescription: '',
+    toneOfVoice: 'professional, warm, helpful',
+    language: 'English',
+    multilingual: false,
+    mainGoal: 'convert visitors into leads',
+    fallbackContact: email,
+  },
+  knowledgeBase: {
+    websiteUrls: [],
+    uploadedDocuments: [],
+    manualNotes: '',
+    openingHours: '',
+    contactInfo: '',
+    addresses: '',
+    keyFAQs: [],
+  },
+  integrations: {
+    replyToQuestions: true,
+    collectLeads: true,
+    bookMeetings: false,
+    routeToPages: true,
+    createSupportTickets: false,
+    fetchOrderStatus: false,
+    handoffToHuman: true,
+  },
   restrictions:
     "Do not invent policies, prices, opening hours, or legal guarantees. Only answer from the provided business context when possible.",
   supportTriggerKeywords: [
@@ -1059,7 +1117,8 @@ export async function listChatWidgets(businessId: string) {
 export async function createChatWidget(
   businessId: string,
   name?: string,
-  templateWidgetKey?: string
+  templateWidgetKey?: string,
+  assistantConfigOverride?: Partial<ChatAssistantConfig>
 ) {
   const businessRef = doc(db, 'businesses', businessId)
   const businessSnap = await getDoc(businessRef)
@@ -1112,6 +1171,7 @@ export async function createChatWidget(
       },
     },
     assistantConfig:
+      assistantConfigOverride ||
       sourceWidget.assistantConfig ||
       (businessData.chatAssistantConfig as ChatAssistantConfig | undefined) ||
       buildDefaultAssistantConfig(),

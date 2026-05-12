@@ -1,10 +1,12 @@
-// src/lib/website-context-scanner.ts
+﻿// src/lib/website-context-scanner.ts
 
 import * as cheerio from 'cheerio'
+import type { AssistantBusinessProfile, AssistantKnowledgeBase } from '@/types/database'
 
 export type WebsiteScanResult = {
   businessContext: string
   faqSuggestions: string[]
+  autofill: WebsiteAutofillResult
   discoveredPages: {
     url: string
     title: string
@@ -12,6 +14,27 @@ export type WebsiteScanResult = {
     textPreview: string
   }[]
   rawText: string
+}
+
+export type WebsiteAutofillResult = {
+  businessProfile: Partial<AssistantBusinessProfile>
+  knowledgeBase: Partial<AssistantKnowledgeBase> & { websiteUrls: string[] }
+  missingFields: Partial<
+    Record<
+      | 'businessName'
+      | 'industry'
+      | 'shortDescription'
+      | 'toneOfVoice'
+      | 'language'
+      | 'mainGoal'
+      | 'fallbackContact'
+      | 'websiteUrls'
+      | 'openingHours'
+      | 'contactInfo'
+      | 'addresses',
+      string
+    >
+  >
 }
 
 type ScanOptions = {
@@ -40,14 +63,19 @@ type ExtractedPage = {
   url: string
   title: string
   description: string
+  ogTitle: string
+  canonicalUrl: string
   headings: string[]
   text: string
   summaryText: string
   bodyLines: string[]
+  footerLines: string[]
   relevantLines: string[]
   links: string[]
   structuredLinks: StructuredLink[]
   contactInfo: ContactInfo
+  metaLines: string[]
+  schemaLines: string[]
 }
 
 const DEFAULT_OPTIONS: Required<ScanOptions> = {
@@ -364,6 +392,109 @@ function extractContactInfo(text: string, structuredLinks: StructuredLink[] = []
   }
 }
 
+function extractMetaLines($: LoadedCheerio) {
+  const entries = [
+    ['title', $('title').first().text()],
+    ['og:title', $('meta[property="og:title"]').attr('content') ?? ''],
+    ['og:site_name', $('meta[property="og:site_name"]').attr('content') ?? ''],
+    ['og:description', $('meta[property="og:description"]').attr('content') ?? ''],
+    ['description', $('meta[name="description"]').attr('content') ?? ''],
+    ['keywords', $('meta[name="keywords"]').attr('content') ?? ''],
+    ['author', $('meta[name="author"]').attr('content') ?? ''],
+    ['twitter:title', $('meta[name="twitter:title"]').attr('content') ?? ''],
+    ['twitter:description', $('meta[name="twitter:description"]').attr('content') ?? ''],
+    ['canonical', $('link[rel="canonical"]').attr('href') ?? ''],
+    ['language', $('html').attr('lang') ?? ''],
+  ]
+
+  return uniqueStrings(
+    entries
+      .map(([label, value]) => {
+        const cleaned = cleanText(value)
+        return cleaned ? `${label}: ${cleaned}` : ''
+      })
+      .filter(Boolean),
+    20
+  )
+}
+
+function extractJsonLdLines($: LoadedCheerio) {
+  const lines: string[] = []
+
+  const addLine = (label: string, value: string | undefined | null) => {
+    const cleaned = cleanText(value ?? '')
+    if (cleaned) lines.push(`${label}: ${cleaned}`)
+  }
+
+  const visit = (node: unknown) => {
+    if (!node) return
+
+    if (Array.isArray(node)) {
+      node.forEach(visit)
+      return
+    }
+
+    if (typeof node !== 'object') return
+
+    const data = node as Record<string, unknown>
+    const typeValue = data['@type']
+    const typeText = Array.isArray(typeValue) ? typeValue.join(', ') : typeof typeValue === 'string' ? typeValue : ''
+
+    addLine('Schema type', typeText)
+    addLine('Schema name', typeof data.name === 'string' ? data.name : undefined)
+    addLine('Schema description', typeof data.description === 'string' ? data.description : undefined)
+    addLine('Schema email', typeof data.email === 'string' ? data.email : undefined)
+    addLine('Schema phone', typeof data.telephone === 'string' ? data.telephone : undefined)
+    addLine('Schema url', typeof data.url === 'string' ? data.url : undefined)
+    addLine('Schema opening hours', typeof data.openingHours === 'string' ? data.openingHours : undefined)
+
+    const sameAs = data.sameAs
+    if (Array.isArray(sameAs)) {
+      sameAs.forEach((entry) => {
+        if (typeof entry === 'string') {
+          addLine('Schema sameAs', entry)
+        }
+      })
+    } else if (typeof sameAs === 'string') {
+      addLine('Schema sameAs', sameAs)
+    }
+
+    const address = data.address
+    if (address && typeof address === 'object') {
+      const addressData = address as Record<string, unknown>
+      const addressParts = [
+        addressData.streetAddress,
+        addressData.postalCode,
+        addressData.addressLocality,
+        addressData.addressRegion,
+        addressData.addressCountry,
+      ]
+        .filter((part): part is string => typeof part === 'string' && cleanText(part).length > 0)
+        .map((part) => cleanText(part))
+
+      if (addressParts.length) {
+        lines.push(`Schema address: ${addressParts.join(', ')}`)
+      }
+    }
+
+    const graph = data['@graph']
+    if (graph) visit(graph)
+  }
+
+  $('script[type="application/ld+json"]').each((_, element) => {
+    const raw = cleanText($(element).text())
+    if (!raw) return
+
+    try {
+      visit(JSON.parse(raw))
+    } catch {
+      // ignore invalid json-ld
+    }
+  })
+
+  return uniqueStrings(lines, 30)
+}
+
 function extractStructuredLinks(
   $: LoadedCheerio,
   currentUrl: string,
@@ -527,6 +658,9 @@ function extractUsefulPageData(
     cleanText($('h1').first().text()) ||
     url
 
+  const ogTitle = cleanText($('meta[property="og:title"]').attr('content') ?? '')
+  const canonicalUrl = cleanText($('link[rel="canonical"]').attr('href') ?? '')
+
   const description =
     cleanText($('meta[name="description"]').attr('content') ?? '') ||
     cleanText($('meta[property="og:description"]').attr('content') ?? '')
@@ -540,6 +674,8 @@ function extractUsefulPageData(
   )
 
   const structuredLinks = extractStructuredLinks($, url, rootUrl)
+  const metaLines = extractMetaLines($)
+  const schemaLines = extractJsonLdLines($)
   const bodyScopes = $('main, article').length ? 'main, article' : 'body'
   const bodyLines = collectTextLines($, bodyScopes, 100)
   const footerLines = collectTextLines($, 'footer', 30)
@@ -547,8 +683,12 @@ function extractUsefulPageData(
   const allLines = uniqueStrings(
     [
       title ? `Title: ${title}` : '',
+      ogTitle ? `OG title: ${ogTitle}` : '',
+      canonicalUrl ? `Canonical: ${canonicalUrl}` : '',
       description ? `Description: ${description}` : '',
       ...headings,
+      ...metaLines,
+      ...schemaLines,
       ...navigationLines,
       ...bodyLines,
       ...footerLines,
@@ -575,14 +715,19 @@ function extractUsefulPageData(
     url,
     title,
     description,
+    ogTitle,
+    canonicalUrl,
     headings,
     text,
     summaryText: text,
     bodyLines,
+    footerLines,
     relevantLines,
     links: structuredLinks.map((link) => link.url),
     structuredLinks,
     contactInfo,
+    metaLines,
+    schemaLines,
   }
 }
 
@@ -620,10 +765,62 @@ function scoreUrl(url: string) {
   return score
 }
 
-function shouldKeepPage(page: ExtractedPage) {
+function buildFallbackUrls(rootUrl: URL) {
+  const paths = [
+    '/',
+    '/kontakt',
+    '/contact',
+    '/om-oss',
+    '/about',
+    '/about-us',
+    '/om',
+    '/kundeservice',
+    '/customer-service',
+    '/support',
+    '/help',
+    '/service',
+    '/tjenester',
+    '/services',
+    '/priser',
+    '/pricing',
+    '/faq',
+    '/booking',
+    '/bestill',
+    '/book',
+    '/vilkaar',
+    '/terms',
+    '/personvern',
+    '/privacy',
+    '/imprint',
+    '/kontakt-oss',
+    '/kontaktoss',
+  ]
+
+  return uniqueStrings(
+    paths.map((path) => new URL(path, rootUrl.origin).toString()),
+    paths.length
+  )
+}
+
+function buildSeedUrls(rootUrl: URL, sitemapUrls: string[]) {
+  const candidates = uniqueStrings(
+    [
+      rootUrl.toString(),
+      ...sitemapUrls,
+      ...buildFallbackUrls(rootUrl),
+    ],
+    60
+  )
+
+  return candidates.sort((a, b) => scoreUrl(b) - scoreUrl(a))
+}
+
+function shouldKeepPage(page: ExtractedPage, rootUrl: URL) {
   const parsed = new URL(page.url)
   const pathname = parsed.pathname.toLowerCase()
   const authLikePage = /\/(auth|login|signin|sign-in|register)(\/|$)/.test(pathname)
+
+  if (page.url === rootUrl.toString()) return true
 
   if (authLikePage && page.bodyLines.length <= 2) {
     return false
@@ -632,6 +829,7 @@ function shouldKeepPage(page: ExtractedPage) {
   if (page.summaryText.length >= 120) return true
   if (page.contactInfo.emails.length || page.contactInfo.phones.length) return true
   if (page.structuredLinks.some((link) => link.source !== 'content')) return true
+  if (page.metaLines.length || page.schemaLines.length) return true
 
   return false
 }
@@ -641,13 +839,592 @@ function buildOverviewLines(pages: ExtractedPage[]) {
   const candidates = uniqueStrings(
     [
       homePage?.description ?? '',
+      homePage?.ogTitle ?? '',
+      homePage?.canonicalUrl ?? '',
       ...(homePage?.headings ?? []),
+      ...(homePage?.schemaLines ?? []),
       ...pages.flatMap((page) => page.relevantLines),
     ].filter((line) => line.length <= 220),
     6
   )
 
   return candidates.length ? candidates : ['The scan did not find a clear business description.']
+}
+
+function extractBusinessName(pages: ExtractedPage[], rootUrl: URL) {
+  const candidates = uniqueStrings(
+    [
+      ...pages.flatMap((page) => [
+        page.ogTitle,
+        page.title,
+        ...page.schemaLines,
+        ...page.metaLines,
+      ]),
+      rootUrl.hostname.replace(/^www\./, ''),
+    ],
+    30
+  )
+
+  const filtered = candidates.filter((line) => {
+    const lowered = normalizeForSearch(line)
+    return !lowered.includes('cookie') && !lowered.includes('privacy') && !lowered.includes('policy')
+  })
+
+  return filtered[0] || ''
+}
+
+function extractSummary(pages: ExtractedPage[]) {
+  const candidates = uniqueStrings(
+    pages.flatMap((page) => [
+      page.description,
+      page.ogTitle,
+      ...page.headings.slice(0, 4),
+      ...page.relevantLines,
+    ]),
+    12
+  )
+
+  if (!candidates.length) return ''
+
+  const first = candidates[0]
+  const second = candidates[1]
+
+  return second ? `${first} ${second}`.slice(0, 220) : first.slice(0, 220)
+}
+
+function scoreIndustryText(text: string, patterns: RegExp[]) {
+  const lowered = normalizeForSearch(text)
+  return patterns.reduce((score, pattern) => (pattern.test(lowered) ? score + 1 : score), 0)
+}
+
+function extractIndustry(pages: ExtractedPage[]) {
+  const pageWeights = {
+    title: 6,
+    ogTitle: 6,
+    description: 5,
+    headings: 4,
+    relevant: 3,
+    footer: 2,
+    schema: 4,
+    meta: 2,
+  }
+
+  const industries: Array<{
+    label: string
+    positive: RegExp[]
+    negative?: RegExp[]
+  }> = [
+    {
+      label: 'Roadside assistance / vehicle recovery',
+      positive: [
+        /\bveihjelp\b/,
+        /\bbilberging\b/,
+        /\bredningstjeneste\b/,
+        /\broadside assistance\b/,
+        /\broadside\b/,
+        /\bbilredning\b/,
+        /\bbergingsbil\b/,
+        /\bbilberger\b/,
+        /\btauing\b/,
+        /\bstarthjelp\b/,
+        /\bdekkskift\b/,
+        /\bpunktert\b/,
+      ],
+    },
+    {
+      label: 'Automotive repair / workshop',
+      positive: [
+        /\bbilverksted\b/,
+        /\bverksted\b/,
+        /\bcar repair\b/,
+        /\bauto repair\b/,
+        /\bserviceverksted\b/,
+        /\bmekanisk\b/,
+        /\bbilservice\b/,
+        /\bdekk\b/,
+        /\bworkshop\b/,
+      ],
+      negative: [/\bbank\b/, /\bpensjon\b/, /\bhealth\b/, /\blegal\b/],
+    },
+    {
+      label: 'Transport / logistics',
+      positive: [
+        /\btransport\b/,
+        /\blogistics\b/,
+        /\bfrakt\b/,
+        /\bshipping\b/,
+        /\bdistribusjon\b/,
+        /\bdistribution\b/,
+        /\bwarehouse\b/,
+        /\blager\b/,
+        /\bfreight\b/,
+        /\btrucking\b/,
+        /\bgodstransport\b/,
+        /\blevering\b/,
+      ],
+      negative: [/\bbank\b/, /\bpensjon\b/, /\blegal\b/, /\bhealth\b/],
+    },
+    {
+      label: 'Bank / financial services',
+      positive: [
+        /\bbank\b/,
+        /\bfinans\b/,
+        /\bfinancial\b/,
+        /\bfinance\b/,
+        /\bpensjon\b/,
+        /\bpension\b/,
+        /\bforsikring\b/,
+        /\binsurance\b/,
+        /\bfond\b/,
+        /\basset management\b/,
+        /\bkapitalforvaltning\b/,
+        /\bkreditt\b/,
+        /\bl[åa]n\b/,
+        /\bsparing\b/,
+      ],
+      negative: [/\bklinikk\b/, /\bclinic\b/, /\bhealth\b/, /\bmedical\b/],
+    },
+    {
+      label: 'Pension fund / insurance',
+      positive: [
+        /\bpensjonsselskap\b/,
+        /\bpensjon\b/,
+        /\bpension\b/,
+        /\bkundeeier\b/,
+        /\bforsikring\b/,
+        /\binsurance\b/,
+        /\bkommunal\b/,
+        /\bkapitalforvaltning\b/,
+      ],
+    },
+    {
+      label: 'Hair salon / barber',
+      positive: [/\bfris[oø]r\b/, /\bhairdresser\b/, /\bhair salon\b/, /\bbarber\b/],
+    },
+    {
+      label: 'Plumbing services',
+      positive: [/\br[oø]rlegger\b/, /\bplumber\b/, /\bvvs\b/, /\bveihjelp\b/],
+    },
+    {
+      label: 'Restaurant / café',
+      positive: [/\brestaurant\b/, /\bcaf[eé]\b/, /\bcafe\b/, /\bbar\b/],
+    },
+    {
+      label: 'Clinic / healthcare',
+      positive: [/\bklinikk\b/, /\bclinic\b/, /\bhealth\b/, /\bmedical\b/, /\bhealthcare\b/],
+      negative: [/\bpensjon\b/, /\bbank\b/, /\bfinans\b/],
+    },
+    {
+      label: 'Retail / e-commerce',
+      positive: [/\bnettbutikk\b/, /\be-commerce\b/, /\becommerce\b/, /\bcheckout\b/, /\bhandlekurv\b/, /\bcart\b/],
+      negative: [/\bbank\b/, /\bpensjon\b/, /\binsurance\b/, /\bveihjelp\b/],
+    },
+    {
+      label: 'Legal services',
+      positive: [/\badvokat\b/, /\blawyer\b/, /\blegal\b/, /\bjuridisk\b/, /\bjuridical\b/, /\brettshjelp\b/],
+    },
+    {
+      label: 'Consulting / professional services',
+      positive: [/\br[åa]dgivning\b/, /\bconsulting\b/, /\baccounting\b/, /\bregnskap\b/],
+    },
+    {
+      label: 'Real estate',
+      positive: [/\beiendom\b/, /\breal estate\b/, /\bproperty\b/, /\bbolig\b/, /\bmegler\b/],
+    },
+    {
+      label: 'Hospitality / travel',
+      positive: [/\bhotell\b/, /\bhotel\b/, /\btravel\b/, /\breise\b/],
+    },
+    {
+      label: 'Construction / building',
+      positive: [/\bbygg\b/, /\bconstruction\b/, /\bentrepren[oø]r\b/],
+    },
+    {
+      label: 'Design / digital studio',
+      positive: [/\bdesign\b/, /\bweb\s?design\b/, /\bdigital\b/, /\bstudio\b/],
+    },
+    {
+      label: 'Support / customer service',
+      positive: [/\bsupport\b/, /\bcustomer service\b/, /\bkundeservice\b/, /\bhelpdesk\b/],
+    },
+  ]
+
+  const candidatePages = pages.map((page) => ({
+    title: page.title,
+    ogTitle: page.ogTitle,
+    description: page.description,
+    summaryText: page.summaryText,
+    headings: page.headings.join(' '),
+    relevantLines: page.relevantLines.join(' '),
+    footerLines: page.footerLines.join(' '),
+    schemaLines: page.schemaLines.join(' '),
+    metaLines: page.metaLines.join(' '),
+  }))
+
+  const scored = industries
+    .map((industry) => {
+      const score = candidatePages.reduce((total, page) => {
+        const positiveScore =
+          scoreIndustryText(page.title, industry.positive) * pageWeights.title +
+          scoreIndustryText(page.ogTitle, industry.positive) * pageWeights.ogTitle +
+          scoreIndustryText(page.description, industry.positive) * pageWeights.description +
+          scoreIndustryText(page.headings, industry.positive) * pageWeights.headings +
+          scoreIndustryText(page.relevantLines, industry.positive) * pageWeights.relevant +
+          scoreIndustryText(page.footerLines, industry.positive) * pageWeights.footer +
+          scoreIndustryText(page.schemaLines, industry.positive) * pageWeights.schema +
+          scoreIndustryText(page.metaLines, industry.positive) * pageWeights.meta
+
+        const negativeScore = industry.negative
+          ? scoreIndustryText(page.title, industry.negative) * 4 +
+            scoreIndustryText(page.ogTitle, industry.negative) * 4 +
+            scoreIndustryText(page.description, industry.negative) * 3 +
+            scoreIndustryText(page.headings, industry.negative) * 2 +
+            scoreIndustryText(page.relevantLines, industry.negative) * 2 +
+            scoreIndustryText(page.footerLines, industry.negative) +
+            scoreIndustryText(page.schemaLines, industry.negative) * 2 +
+            scoreIndustryText(page.metaLines, industry.negative)
+          : 0
+
+        return total + positiveScore - negativeScore
+      }, 0)
+
+      return { label: industry.label, score }
+    })
+    .sort((left, right) => right.score - left.score)
+
+  const best = scored[0]
+
+  if (!best || best.score < 3) {
+    return ''
+  }
+
+  return best.label
+}
+
+function inferLanguage(pages: ExtractedPage[]) {
+  const text = normalizeForSearch(
+    pages
+      .map((page) => `${page.title}\n${page.description}\n${page.summaryText}\n${page.metaLines.join('\n')}`)
+      .join('\n')
+  )
+
+  if (/[æøå]|norsk|bokmal|nynorsk/.test(text)) return 'Norwegian'
+  if (/svensk/.test(text)) return 'Swedish'
+  if (/dansk/.test(text)) return 'Danish'
+  if (/suomi|finsk/.test(text)) return 'Finnish'
+  if (/deutsch|german|tysk/.test(text)) return 'German'
+  if (/espanol|spanish|spansk/.test(text)) return 'Spanish'
+  if (/francais|french|fransk/.test(text)) return 'French'
+
+  return ''
+}
+
+function inferToneOfVoice(pages: ExtractedPage[]) {
+  const text = normalizeForSearch(
+    pages
+      .map((page) => `${page.title}\n${page.description}\n${page.summaryText}`)
+      .join('\n')
+  )
+
+  if (/(premium|luxury|elegant|eleganse|style|stylish)/.test(text)) return 'professional, premium'
+  if (/(friendly|warm|kind|welcoming|vennlig|hyggelig)/.test(text)) return 'warm, helpful'
+  if (/(sale|buy|bestill|book|contact us|call now|ring oss)/.test(text)) return 'professional, selling'
+  if (/(playful|fun|creative|lekne|morsom)/.test(text)) return 'playful, creative'
+
+  return ''
+}
+
+function inferMainGoal(pages: ExtractedPage[]) {
+  const text = normalizeForSearch(
+    pages
+      .map((page) =>
+        [
+          page.title,
+          page.ogTitle,
+          page.description,
+          page.summaryText,
+          ...page.headings,
+          ...page.relevantLines,
+          ...page.footerLines,
+          ...page.schemaLines,
+        ].join('\n')
+      )
+      .join('\n')
+  )
+
+  const goals: Array<{
+    label: string
+    patterns: RegExp[]
+    negative?: RegExp[]
+    threshold?: number
+  }> = [
+    {
+      label: 'collect bookings',
+      patterns: [/\bbook\b/, /\bbooking\b/, /\bappointment\b/, /\btimebestilling\b/, /\bbestill time\b/, /\breserve\b/],
+    },
+    {
+      label: 'answer questions',
+      patterns: [/\bfaq\b/, /\bfrequently asked\b/, /\bquestions\b/, /\bsp[\u00f8o]rsm[\u00e5a]l\b/, /\bhelp center\b/, /\bguidance\b/],
+      negative: [/\bbook\b/, /\bbooking\b/, /\blead\b/, /\bsell\b/],
+    },
+    {
+      label: 'take the load off support',
+      patterns: [/\bsupport\b/, /\bcustomer service\b/, /\bkundeservice\b/, /\bhelpdesk\b/, /\bcontact us\b/, /\bcall us\b/, /\bchat\b/],
+      negative: [/\bshop\b/, /\bbuy\b/, /\bcheckout\b/],
+    },
+    {
+      label: 'convert visitors into leads',
+      patterns: [/\blead\b/, /\bcontact form\b/, /\bquote\b/, /\boffer\b/, /\benquiry\b/, /\bforesp[\u00f8o]rsel\b/, /\brequest a quote\b/],
+    },
+    {
+      label: 'drive sales',
+      patterns: [/\bshop\b/, /\bstore\b/, /\bbuy\b/, /\bcheckout\b/, /\bcart\b/, /\bprice\b/, /\bproduct\b/, /\bprodukt\b/],
+      negative: [/\bpension\b/, /\bbank\b/, /\binsurance\b/],
+    },
+    {
+      label: 'route visitors to the right page',
+      patterns: [/\bcontact\b/, /\bcontact us\b/, /\bfind\b/, /\bservice\b/, /\btjenester\b/, /\bchoose\b/, /\bselect\b/, /\bmenu\b/, /\bnav\b/],
+      negative: [/\bcheckout\b/, /\bbook\b/],
+    },
+    {
+      label: 'showcase work',
+      patterns: [/\bportfolio\b/, /\bgallery\b/, /\bshowcase\b/, /\bcase\b/, /\bproject\b/, /\bprosjekt\b/, /\breferanse\b/],
+    },
+    {
+      label: 'inform visitors',
+      patterns: [/\binformation\b/, /\binform\b/, /\babout us\b/, /\bom oss\b/, /\bnews\b/, /\bblog\b/, /\barticle\b/, /\bguide\b/],
+    },
+    {
+      label: 'book consultations',
+      patterns: [/\bconsultation\b/, /\bconsult\b/, /\bmeeting\b/, /\bm[\u00f8o]te\b/, /\bintro call\b/],
+    },
+  ]
+
+  const scored = goals
+    .map((goal) => {
+      const positive = scoreIndustryText(text, goal.patterns)
+      const negative = goal.negative ? scoreIndustryText(text, goal.negative) : 0
+      const score = positive * 4 - negative * 2
+
+      return { label: goal.label, score }
+    })
+    .sort((left, right) => right.score - left.score)
+
+  const best = scored[0]
+  if (!best || best.score < 2) return ''
+
+  return best.label
+}
+
+function extractOpeningHours(pages: ExtractedPage[]) {
+  const candidates = uniqueStrings(
+    pages.flatMap((page) => [
+      ...page.relevantLines,
+      ...page.footerLines,
+      ...page.metaLines,
+      ...page.schemaLines,
+    ]),
+    80
+  )
+  const footerBlocks = uniqueStrings(
+    pages.map((page) => page.footerLines.join(' ')).filter(Boolean),
+    20
+  )
+
+  const openingKeywords = [
+    'opening hours',
+    'business hours',
+    'opening hour',
+    'hours',
+    'åpningstid',
+    'åpningstider',
+    'åpningstida',
+    'åpningstidene',
+    'service hours',
+    'services hours',
+    'opening times',
+  ]
+
+  const timeRangePattern = /(?:^|[^0-9])(?:[01]?\d|2[0-3])[:.][0-5]\d\s*(?:-|–|to|til|–|—|\/)\s*(?:[01]?\d|2[0-3])[:.][0-5]\d(?:[^0-9]|$)/i
+  const dayPattern = /\b(mandag|tirsdag|onsdag|torsdag|fredag|lørdag|lordag|søndag|sondag|manday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i
+
+  const validOpeningHourLine = (line: string) => {
+    const lowered = normalizeForSearch(line)
+    const hasKeyword = openingKeywords.some((keyword) => lowered.includes(keyword))
+    const hasTimeRange = timeRangePattern.test(line)
+    const hasDayContext = dayPattern.test(line)
+    const hasMultipleTimes = (line.match(/\b(?:[01]?\d|2[0-3])[:.][0-5]\d\b/g) ?? []).length >= 2
+
+    return (hasKeyword && (hasTimeRange || hasMultipleTimes)) || (hasDayContext && hasMultipleTimes)
+  }
+
+  const openingHourLine =
+    candidates.find((line) => validOpeningHourLine(line)) ||
+    footerBlocks.find((line) => validOpeningHourLine(line)) ||
+    pages
+      .flatMap((page) => [...page.footerLines, ...page.schemaLines])
+      .find((line) => validOpeningHourLine(line)) ||
+    ''
+
+  return openingHourLine
+}
+
+function findAddressCandidate(lines: string[]) {
+  const streetPattern = /\b(?:\d+[a-zA-Z]?\s+)?[a-zæøå0-9'’.\- ]+\s+(?:vei|gate|gata|road|street|st|avenue|ave|boulevard|blvd|lane|ln|drive|dr|plass|square|park)\b/i
+  const postalCityPattern = /\b\d{4}\s+[A-ZÆØÅ][a-zæøå\- ]{2,}\b/
+  const explicitAddressPattern = /\b(?:address|adresse|location|lokasjon|visit us|besøk oss)\b/i
+
+  const isAddressLike = (line: string) => {
+    const hasStreet = streetPattern.test(line)
+    const hasPostalCity = postalCityPattern.test(line)
+    const hasExplicitAddress = explicitAddressPattern.test(line)
+
+    return (hasStreet && hasPostalCity) || (hasExplicitAddress && (hasStreet || hasPostalCity))
+  }
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const current = lines[index] || ''
+    const nextOne = lines[index + 1] || ''
+    const nextTwo = lines[index + 2] || ''
+    const window = [current, nextOne, nextTwo].filter(Boolean).join(' ').trim()
+
+    if (!window) continue
+
+    if (isAddressLike(window)) {
+      const addressMatch =
+        window.match(/\b(?:[A-ZÆØÅ][a-zæøå0-9'’.\- ]+\s+(?:vei|gate|gata|road|street|st|avenue|ave|boulevard|blvd|lane|ln|drive|dr|plass|square|park)[^,;\n]*)\s*,?\s*\d{4}\s+[A-ZÆØÅ][a-zæøå\- ]+/i) ||
+        window.match(/\b\d+[a-zA-Z]?\s+[A-ZÆØÅ][a-zæøå0-9'’.\- ]+\s*,\s*\d{4}\s+[A-ZÆØÅ][a-zæøå\- ]+/i)
+
+      if (addressMatch?.[0]) {
+        return cleanText(addressMatch[0])
+      }
+
+      return cleanText(window)
+    }
+  }
+
+  return ''
+}
+
+function extractAddresses(pages: ExtractedPage[]) {
+  const candidates = uniqueStrings(
+    pages.flatMap((page) => [
+      ...page.relevantLines,
+      ...page.metaLines,
+      ...page.schemaLines,
+      ...page.footerLines,
+    ]),
+    80
+  )
+  const footerBlocks = uniqueStrings(
+    pages.map((page) => page.footerLines.join(' ')).filter(Boolean),
+    20
+  )
+
+  const addressLine =
+    findAddressCandidate(candidates) ||
+    findAddressCandidate(footerBlocks) ||
+    findAddressCandidate(
+      pages.flatMap((page) => [
+        ...page.footerLines,
+        ...page.relevantLines,
+        ...page.schemaLines,
+      ])
+    )
+
+  return addressLine || ''
+}
+
+function collectWebsiteUrls(pages: ExtractedPage[], rootUrl: URL) {
+  const urls = uniqueStrings(
+    [
+      rootUrl.toString(),
+      ...pages.map((page) => page.url),
+      ...pages.flatMap((page) => page.links),
+      ...pages.flatMap((page) => [
+        page.canonicalUrl,
+        ...page.schemaLines
+          .map((line) => line.match(/https?:\/\/[^\s,;]+/gi) ?? [])
+          .flat(),
+      ]),
+    ].filter(Boolean),
+    30
+  )
+
+  return urls
+}
+
+function buildAutofillResult(pages: ExtractedPage[], rootUrl: URL): WebsiteAutofillResult {
+  const businessName = extractBusinessName(pages, rootUrl)
+  const summary = extractSummary(pages)
+  const industry = extractIndustry(pages)
+  const language = inferLanguage(pages)
+  const toneOfVoice = inferToneOfVoice(pages)
+  const mainGoal = inferMainGoal(pages)
+  const openingHours = extractOpeningHours(pages)
+  const addresses = extractAddresses(pages)
+
+  const emails = uniqueStrings(
+    pages.flatMap((page) => [
+      ...page.contactInfo.emails,
+      ...(page.schemaLines.flatMap((line) => line.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) ?? [])),
+    ]),
+    10
+  )
+  const phones = uniqueStrings(
+    pages.flatMap((page) => [
+      ...page.contactInfo.phones,
+      ...(page.schemaLines.flatMap((line) => line.match(/(?:\+|00)\d[\d\s().-]{6,}\d/g) ?? [])),
+    ]),
+    10
+  )
+
+  const websiteUrls = collectWebsiteUrls(pages, rootUrl)
+  const contactInfo = uniqueStrings([...emails, ...phones], 10).join(' • ')
+
+  const businessProfile: Partial<AssistantBusinessProfile> = {
+    businessName,
+    industry,
+    shortDescription: summary,
+    toneOfVoice,
+    language,
+    multilingual: Boolean(language && language !== 'Norwegian'),
+    mainGoal,
+    fallbackContact: emails[0] || phones[0] || '',
+  }
+
+  const knowledgeBase: Partial<AssistantKnowledgeBase> & { websiteUrls: string[] } = {
+    websiteUrls,
+    uploadedDocuments: [],
+    manualNotes: '',
+    openingHours,
+    contactInfo,
+    addresses,
+    keyFAQs: [],
+  }
+
+  const missingFields: WebsiteAutofillResult['missingFields'] = {
+    businessName: businessName ? '' : 'No business name was found. Fill this in manually.',
+    industry: industry ? '' : 'No industry was found. Fill this in manually.',
+    shortDescription: summary ? '' : 'No short description was found. Fill this in manually.',
+    toneOfVoice: toneOfVoice ? '' : 'No tone of voice was detected. Fill this in manually.',
+    language: language ? '' : 'No language hint was found. Fill this in manually.',
+    mainGoal: mainGoal ? '' : 'No clear main goal was detected. Fill this in manually.',
+    fallbackContact:
+      emails.length || phones.length
+        ? ''
+        : 'No email or phone number was found. Fill this in manually.',
+    websiteUrls: websiteUrls.length ? '' : 'No matching website URLs were found. Fill this in manually.',
+    openingHours: openingHours ? '' : 'No opening hours were found. Fill this in manually.',
+    contactInfo: contactInfo ? '' : 'No contact information was found. Fill this in manually.',
+    addresses: addresses ? '' : 'No address was found. Fill this in manually.',
+  }
+
+  return {
+    businessProfile,
+    knowledgeBase,
+    missingFields,
+  }
 }
 
 function buildBusinessContext(pages: ExtractedPage[], rootUrl: URL) {
@@ -788,15 +1565,7 @@ export async function scanWebsiteForAssistantContext(
 
   const sitemapUrls = await findSitemapUrls(rootUrl, finalOptions.timeoutMs)
 
-  if (sitemapUrls.length) {
-    queue.push(
-      ...sitemapUrls
-        .sort((a, b) => scoreUrl(b) - scoreUrl(a))
-        .slice(0, finalOptions.maxPages)
-    )
-  } else {
-    queue.push(rootUrl.toString())
-  }
+  queue.push(...buildSeedUrls(rootUrl, sitemapUrls).slice(0, finalOptions.maxPages))
 
   while (queue.length && pages.length < finalOptions.maxPages) {
     const currentUrl = queue.shift()
@@ -815,7 +1584,7 @@ export async function scanWebsiteForAssistantContext(
         finalOptions.maxCharactersPerPage
       )
 
-      if (shouldKeepPage(pageData)) {
+      if (shouldKeepPage(pageData, rootUrl)) {
         pages.push(pageData)
       }
 
@@ -838,10 +1607,12 @@ export async function scanWebsiteForAssistantContext(
   const rawText = pages.map((page) => page.summaryText).join('\n\n')
   const businessContext = buildBusinessContext(pages, rootUrl)
   const faqSuggestions = generateFaqSuggestions(pages)
+  const autofill = buildAutofillResult(pages, rootUrl)
 
   return {
     businessContext,
     faqSuggestions,
+    autofill,
     discoveredPages: pages.map((page) => ({
       url: page.url,
       title: page.title,
