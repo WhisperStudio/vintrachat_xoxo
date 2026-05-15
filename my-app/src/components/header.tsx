@@ -30,6 +30,8 @@ type NavItem = {
   badge?: string
 }
 
+type HeaderTone = 'dark' | 'light'
+
 const floatGlow = keyframes`
   0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.85; }
   50% { transform: translate3d(18px, -10px, 0) scale(1.05); opacity: 1; }
@@ -40,7 +42,84 @@ const activePulse = keyframes`
   50% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
 `
 
-const StyledHeader = styled.header<{ $scrolled: boolean; $mobileHidden: boolean }>`
+function parseCssColor(color: string) {
+  const rgbaMatch = color.match(/rgba?\(([^)]+)\)/i)
+  if (!rgbaMatch) return null
+
+  const parts = rgbaMatch[1]
+    .split(',')
+    .map((part) => Number.parseFloat(part.trim()))
+    .filter((part) => Number.isFinite(part))
+
+  if (parts.length < 3) return null
+
+  const [r, g, b, a = 1] = parts
+  return { r, g, b, a }
+}
+
+function getRelativeLuminance(color: string) {
+  const parsed = parseCssColor(color)
+  if (!parsed || parsed.a <= 0.05) return null
+
+  const channel = (value: number) => {
+    const normalized = value / 255
+    return normalized <= 0.03928
+      ? normalized / 12.92
+      : Math.pow((normalized + 0.055) / 1.055, 2.4)
+  }
+
+  return 0.2126 * channel(parsed.r) + 0.7152 * channel(parsed.g) + 0.0722 * channel(parsed.b)
+}
+
+function getEffectiveBackgroundColor(element: Element | null) {
+  let current: HTMLElement | null = element instanceof HTMLElement ? element : null
+
+  while (current) {
+    const backgroundColor = window.getComputedStyle(current).backgroundColor
+    if (backgroundColor && backgroundColor !== 'transparent' && backgroundColor !== 'rgba(0, 0, 0, 0)') {
+      return backgroundColor
+    }
+
+    current = current.parentElement
+  }
+
+  return window.getComputedStyle(document.body).backgroundColor
+}
+
+function inferHeaderTone(element: Element | null): HeaderTone {
+  const toneElement = element instanceof HTMLElement ? element.closest('[data-header-tone]') : null
+  const explicitTone = toneElement?.getAttribute('data-header-tone')
+
+  if (explicitTone === 'light' || explicitTone === 'dark') {
+    return explicitTone
+  }
+
+  const backgroundColor = getEffectiveBackgroundColor(element)
+  const luminance = getRelativeLuminance(backgroundColor)
+
+  return luminance !== null && luminance < 0.48 ? 'light' : 'dark'
+}
+
+const StyledHeader = styled.header<{ $scrolled: boolean; $mobileHidden: boolean; $tone: HeaderTone }>`
+  --vintra-header-text: ${({ $tone }) => ($tone === 'light' ? '#f8fafc' : '#0f172a')};
+  --vintra-header-muted: ${({ $tone }) => ($tone === 'light' ? 'rgba(226, 232, 240, 0.82)' : '#64748b')};
+  --vintra-header-panel-bg: ${({ $tone }) => ($tone === 'light' ? 'rgba(15, 23, 42, 0.58)' : 'rgba(255, 255, 255, 0.86)')};
+  --vintra-header-panel-border: ${({ $tone }) => ($tone === 'light' ? 'rgba(255, 255, 255, 0.14)' : 'rgba(203, 213, 225, 0.9)')};
+  --vintra-header-panel-shadow: ${({ $tone }) => ($tone === 'light' ? '0 14px 36px rgba(15, 23, 42, 0.24)' : '0 8px 24px rgba(15, 23, 42, 0.06)')};
+  --vintra-header-panel-inner: ${({ $tone }) =>
+    $tone === 'light'
+      ? 'inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 -1px 0 rgba(255, 255, 255, 0.05)'
+      : 'inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 rgba(255, 255, 255, 0.1)'};
+  --vintra-header-surface-soft: ${({ $tone }) => ($tone === 'light' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.88)')};
+  --vintra-header-border-soft: ${({ $tone }) => ($tone === 'light' ? 'rgba(255, 255, 255, 0.16)' : 'rgba(203, 213, 225, 0.95)')};
+  --vintra-header-shadow-soft: ${({ $tone }) => ($tone === 'light' ? '0 8px 24px rgba(15, 23, 42, 0.18)' : '0 8px 24px rgba(15, 23, 42, 0.06)')};
+  --vintra-header-button-bg: ${({ $tone }) => ($tone === 'light' ? 'rgba(15, 23, 42, 0.18)' : 'rgba(239, 68, 68, 0.14)')};
+  --vintra-header-button-border: ${({ $tone }) => ($tone === 'light' ? 'rgba(255, 255, 255, 0.18)' : 'rgba(239, 68, 68, 0.22)')};
+  --vintra-header-button-color: ${({ $tone }) => ($tone === 'light' ? '#e2e8f0' : '#475569')};
+  --vintra-header-nav-highlight: ${({ $tone }) =>
+    $tone === 'light'
+      ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(226, 232, 240, 0.1))'
+      : 'linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(241, 245, 249, 0.78))'};
   position: sticky;
   top: 0;
   z-index: 80;
@@ -127,7 +206,7 @@ const BrandText = styled.div`
 `
 
 const BrandTitle = styled.span`
-  color: #0f172a;
+  color: var(--vintra-header-text);
   font-family: "Georgia", "Times New Roman", serif;
   font-size: 1.34rem;
   font-weight: 700;
@@ -137,7 +216,7 @@ const BrandTitle = styled.span`
 `
 
 const BrandTag = styled.span`
-  color: #7c8aa0;
+  color: var(--vintra-header-muted);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.22em;
@@ -166,14 +245,12 @@ const DesktopNav = styled.nav`
   gap: 8px;
   padding: 8px;
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--vintra-header-panel-bg);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--vintra-header-panel-border);
+  box-shadow: var(--vintra-header-panel-shadow);
+  box-shadow: var(--vintra-header-panel-shadow), var(--vintra-header-panel-inner);
   overflow: hidden;
 
   @media (max-width: 1100px) {
@@ -188,7 +265,7 @@ const DesktopNav = styled.nav`
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.48), transparent);
     pointer-events: none;
   }
 
@@ -201,9 +278,9 @@ const DesktopNav = styled.nav`
     height: 100%;
     background: linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.8),
+      rgba(255, 255, 255, 0.48),
       transparent,
-      rgba(255, 255, 255, 0.3)
+      rgba(255, 255, 255, 0.18)
     );
     pointer-events: none;
   }
@@ -216,7 +293,7 @@ const DesktopNavIndicator = styled.span`
   left: 0px;
   width: 0;
   border-radius: 16px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(241, 245, 249, 0.78));
+  background: var(--vintra-header-nav-highlight);
   border: 1px solid rgba(148, 163, 184, 0.18);
   box-shadow:
     0 10px 22px rgba(15, 23, 42, 0.08),
@@ -231,7 +308,7 @@ const DesktopNavIndicator = styled.span`
 `
 
 const activeNavStyles = css`
-  color: #0f172a;
+  color: var(--vintra-header-text);
 
 `
 
@@ -243,7 +320,7 @@ const NavLink = styled(Link)<{ $active?: boolean }>`
   gap: 10px;
   padding: 11px 15px;
   border-radius: 16px;
-  color: #475569;
+  color: var(--vintra-header-muted);
   font-size: clamp(0.78rem, 0.72rem + 0.22vw, 0.93rem);
   font-weight: 800;
   transition:
@@ -267,7 +344,7 @@ const NavLink = styled(Link)<{ $active?: boolean }>`
   ${({ $active }) => $active && activeNavStyles}
 
   &:hover {
-    color: #0f172a;
+    color: var(--vintra-header-text);
     transform: translateY(-1px);
   }
 `
@@ -314,9 +391,9 @@ const LanguageSwitcher = styled.div`
   gap: 4px;
   padding: 5px;
   border-radius: 15px;
-  background: rgba(255, 255, 255, 0.84);
-  border: 1px solid rgba(203, 213, 225, 0.9);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  background: var(--vintra-header-surface-soft);
+  border: 1px solid var(--vintra-header-border-soft);
+  box-shadow: var(--vintra-header-shadow-soft);
 `
 
 
@@ -328,14 +405,14 @@ const BaseButtonStyles = css`
   border-radius: 16px;
   position: relative;
   overflow: hidden;
-  background: var(--button-bg, rgba(255, 255, 255, 0.05));
+  background: var(--button-bg, var(--vintra-header-surface-soft));
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
-  border: 1px solid var(--button-border, rgba(255, 255, 255, 0.3));
+  border: 1px solid var(--button-border, var(--vintra-header-border-soft));
   box-shadow:
-    var(--button-shadow, 0 8px 32px rgba(0, 0, 0, 0.1)),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+    var(--button-shadow, var(--vintra-header-shadow-soft)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
   font-size: clamp(0.78rem, 0.72rem + 0.22vw, 0.92rem);
   font-weight: 800;
   transition:
@@ -352,7 +429,7 @@ const BaseButtonStyles = css`
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.48), transparent);
     pointer-events: none;
   }
 
@@ -365,9 +442,9 @@ const BaseButtonStyles = css`
     height: 100%;
     background: linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.8),
+      rgba(255, 255, 255, 0.48),
       transparent,
-      rgba(255, 255, 255, 0.3)
+      rgba(255, 255, 255, 0.18)
     );
     pointer-events: none;
   }
@@ -390,10 +467,10 @@ const BaseButtonStyles = css`
 
 const SecondaryAction = styled(Link)`
   ${BaseButtonStyles}
-  --button-bg: rgba(255, 255, 255, 0.88);
-  --button-border: rgba(203, 213, 225, 0.95);
-  --button-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
-  color: #0f172a;
+  --button-bg: var(--vintra-header-surface-soft);
+  --button-border: var(--vintra-header-border-soft);
+  --button-shadow: var(--vintra-header-shadow-soft);
+  color: var(--vintra-header-text);
 
   &:hover {
     box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
@@ -414,10 +491,10 @@ const PrimaryAction = styled(Link)`
 
 const ActionButton = styled.button`
   ${BaseButtonStyles}
-  --button-bg: rgba(239, 68, 68, 0.14);
-  --button-border: rgba(239, 68, 68, 0.22);
-  --button-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
-  color: #475569;
+  --button-bg: var(--vintra-header-button-bg);
+  --button-border: var(--vintra-header-button-border);
+  --button-shadow: var(--vintra-header-shadow-soft);
+  color: var(--vintra-header-button-color);
   cursor: pointer;
 
   &:hover {
@@ -434,11 +511,11 @@ const MobileToggle = styled.button`
   justify-content: center;
   margin-left: auto;
   border-radius: 16px;
-  border: 1px solid rgba(203, 213, 225, 0.9);
-  background: rgba(255, 255, 255, 0.92);
-  color: #0f172a;
+  border: 1px solid var(--vintra-header-border-soft);
+  background: var(--vintra-header-surface-soft);
+  color: var(--vintra-header-text);
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--vintra-header-shadow-soft);
 
   @media (max-width: 1100px) {
     display: inline-flex;
@@ -455,12 +532,9 @@ const MobilePanel = styled.div<{ $open: boolean }>`
   gap: 12px;
   padding: 14px;
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  background: var(--vintra-header-panel-bg);
+  border: 1px solid var(--vintra-header-panel-border);
+  box-shadow: var(--vintra-header-panel-shadow), var(--vintra-header-panel-inner);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
   overflow: hidden;
@@ -523,9 +597,9 @@ const MobileLanguageSwitch = styled.div`
   gap: 6px;
   padding: 6px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(203, 213, 225, 0.95);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  background: var(--vintra-header-surface-soft);
+  border: 1px solid var(--vintra-header-border-soft);
+  box-shadow: var(--vintra-header-shadow-soft);
 `
 
 const MobileLanguageButton = styled.button<{ $active?: boolean }>`
@@ -534,7 +608,7 @@ const MobileLanguageButton = styled.button<{ $active?: boolean }>`
   border: 0;
   border-radius: 11px;
   background: ${({ $active }) => ($active ? '#0f172a' : 'transparent')};
-  color: ${({ $active }) => ($active ? '#ffffff' : '#475569')};
+  color: ${({ $active }) => ($active ? '#ffffff' : 'var(--vintra-header-text)')};
   font-size: 0.78rem;
   font-weight: 900;
   cursor: pointer;
@@ -542,6 +616,10 @@ const MobileLanguageButton = styled.button<{ $active?: boolean }>`
     background 0.2s ease,
     color 0.2s ease,
     transform 0.2s ease;
+
+  &:hover {
+    color: ${({ $active }) => ($active ? '#ffffff' : 'var(--vintra-header-text)')};
+  }
 `
 
 const LanguageSwitch = styled.div`
@@ -550,9 +628,9 @@ const LanguageSwitch = styled.div`
   gap: 6px;
   padding: 6px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(203, 213, 225, 0.95);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  background: var(--vintra-header-surface-soft);
+  border: 1px solid var(--vintra-header-border-soft);
+  box-shadow: var(--vintra-header-shadow-soft);
 `
 
 const LanguageButton = styled.button<{ $active?: boolean }>`
@@ -561,7 +639,7 @@ const LanguageButton = styled.button<{ $active?: boolean }>`
   border: 0;
   border-radius: 11px;
   background: ${({ $active }) => ($active ? '#0f172a' : 'transparent')};
-  color: ${({ $active }) => ($active ? '#ffffff' : '#475569')};
+  color: ${({ $active }) => ($active ? '#ffffff' : 'var(--vintra-header-text)')};
   font-size: 0.78rem;
   font-weight: 900;
   cursor: pointer;
@@ -572,7 +650,7 @@ const LanguageButton = styled.button<{ $active?: boolean }>`
 
   &:hover {
     transform: translateY(-1px);
-    color: ${({ $active }) => ($active ? '#ffffff' : '#0f172a')};
+    color: ${({ $active }) => ($active ? '#ffffff' : 'var(--vintra-header-text)')};
   }
 `
 
@@ -586,6 +664,8 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileHidden, setIsMobileHidden] = useState(false)
+  const [headerTone, setHeaderTone] = useState<HeaderTone>('dark')
+  const headerRef = useRef<HTMLElement | null>(null)
   const desktopNavRef = useRef<HTMLElement | null>(null)
   const navButtonRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
   const [navIndicator, setNavIndicator] = useState<{ left: number; width: number; opacity: number } | null>(null)
@@ -600,6 +680,51 @@ export default function Header() {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    let animationFrame = 0
+
+    const updateTone = () => {
+      animationFrame = 0
+      const headerEl = headerRef.current
+      if (!headerEl) return
+
+      const headerRect = headerEl.getBoundingClientRect()
+      const sampleX = Math.min(window.innerWidth - 1, Math.max(1, Math.round(window.innerWidth / 2)))
+      const sampleY = Math.min(window.innerHeight - 1, Math.max(1, Math.round(headerRect.height * 0.58)))
+      const stack = document.elementsFromPoint(sampleX, sampleY)
+      const source = stack.find((element) => element instanceof HTMLElement && !headerEl.contains(element)) || null
+
+      const nextTone = inferHeaderTone(source)
+      setHeaderTone((currentTone) => (currentTone === nextTone ? currentTone : nextTone))
+    }
+
+    const scheduleToneUpdate = () => {
+      if (animationFrame) return
+      animationFrame = window.requestAnimationFrame(updateTone)
+    }
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(scheduleToneUpdate) : null
+
+    scheduleToneUpdate()
+    window.addEventListener('scroll', scheduleToneUpdate, { passive: true })
+    window.addEventListener('resize', scheduleToneUpdate)
+    resizeObserver?.observe(document.documentElement)
+    if (headerRef.current) {
+      resizeObserver?.observe(headerRef.current)
+    }
+
+    return () => {
+      if (animationFrame) {
+        window.cancelAnimationFrame(animationFrame)
+      }
+      window.removeEventListener('scroll', scheduleToneUpdate)
+      window.removeEventListener('resize', scheduleToneUpdate)
+      resizeObserver?.disconnect()
+    }
+  }, [pathname])
 
   useEffect(() => {
     const mobileQuery = window.matchMedia('(max-width: 720px)')
@@ -731,7 +856,7 @@ export default function Header() {
   }, [navItems, pathname])
 
   return (
-    <StyledHeader $scrolled={isScrolled} $mobileHidden={isMobileHidden}>
+    <StyledHeader ref={headerRef} $scrolled={isScrolled} $mobileHidden={isMobileHidden} $tone={headerTone}>
       <HeaderFrame>
         <HeaderInner>
           <LeftSide>
