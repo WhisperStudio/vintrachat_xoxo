@@ -40,6 +40,7 @@ import {
   SupportTaskCategory,
   ChatWidgetRecord,
 } from "@/types/database";
+import { defaultConversationCards, normalizeConversationCards } from '@/lib/conversation-cards'
 import {
   sanitizeBubbleStyleForPlan,
   getPlanLimits,
@@ -208,6 +209,9 @@ function buildDefaultWidgetConfig(businessName: string): ChatWidgetConfig {
       messageStyle: 'bubble',
       showTimestamps: true,
       showReadReceipts: false,
+      showConversationCards: true,
+      conversationCardsLayout: 'grid',
+      conversationCardsStyle: 'modern',
     },
     footerStyle: {
       showSendButton: true,
@@ -287,6 +291,9 @@ function buildDefaultAssistantConfig(): ChatAssistantConfig {
       'How do I contact support?',
       'What services do you offer?',
     ],
+    conversationCardsEnabled: true,
+    conversationCardsLimit: 4,
+    conversationCards: defaultConversationCards,
     startLanguage: 'English',
     replyInUserLanguage: true,
     responseStyle: 'Friendly, clear, and concise',
@@ -391,6 +398,11 @@ function mergeAssistantConfig(
       (overrideConfig.faqSuggestions ||
         baseConfig.faqSuggestions ||
         defaults.faqSuggestions) as string[],
+    conversationCards: normalizeConversationCards(
+      overrideConfig.conversationCards ||
+        baseConfig.conversationCards ||
+        defaults.conversationCards
+    ),
     enabled:
       overrideConfig.enabled ?? baseConfig.enabled ?? defaults.enabled,
     provider:
@@ -411,6 +423,16 @@ function mergeAssistantConfig(
       overrideConfig.handoffMessage || baseConfig.handoffMessage || defaults.handoffMessage,
     faqSuggestionsEnabled:
       overrideConfig.faqSuggestionsEnabled ?? baseConfig.faqSuggestionsEnabled ?? defaults.faqSuggestionsEnabled,
+    conversationCardsEnabled:
+      overrideConfig.conversationCardsEnabled ??
+      baseConfig.conversationCardsEnabled ??
+      defaults.conversationCardsEnabled,
+    conversationCardsLimit:
+      Number.isFinite(overrideConfig.conversationCardsLimit)
+        ? Number(overrideConfig.conversationCardsLimit)
+        : Number.isFinite(baseConfig.conversationCardsLimit)
+          ? Number(baseConfig.conversationCardsLimit)
+          : defaults.conversationCardsLimit,
     startLanguage:
       overrideConfig.startLanguage || baseConfig.startLanguage || defaults.startLanguage,
     replyInUserLanguage:
@@ -629,6 +651,9 @@ const defaultWidgetConfig: ChatWidgetConfig = {
     messageStyle: "bubble",
     showTimestamps: true,
     showReadReceipts: false,
+    showConversationCards: true,
+    conversationCardsLayout: 'grid',
+    conversationCardsStyle: 'modern',
   },
   footerStyle: {
     showSendButton: true,
@@ -706,6 +731,9 @@ const defaultWidgetConfig: ChatWidgetConfig = {
     'How do I contact support?',
     'What services do you offer?',
   ],
+  conversationCardsEnabled: true,
+  conversationCardsLimit: 4,
+  conversationCards: defaultConversationCards,
   startLanguage: 'English',
   replyInUserLanguage: true,
   responseStyle: 'Friendly, clear, and concise',

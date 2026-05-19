@@ -52,6 +52,7 @@ body {
 /* Page Specific Styles */
 
 .chatbuilder-page {
+  position: relative;
   min-height: 100vh;
 }
 
@@ -99,6 +100,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+.chatbuilder-screen-guard {
+  display: none;
 }
 
 .previewModeSwitcher {
@@ -416,6 +421,50 @@ body {
 
   .previewModeSwitcher {
     align-self: flex-start;
+  }
+
+  .chatbuilder-screen-guard {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(241, 245, 249, 0.76);
+    backdrop-filter: blur(12px) saturate(0.85);
+    -webkit-backdrop-filter: blur(12px) saturate(0.85);
+  }
+
+  .chatbuilder-screen-guard__card {
+    width: min(100%, 420px);
+    padding: 1.4rem 1.3rem 1.25rem;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow:
+      0 22px 48px rgba(15, 23, 42, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.82);
+    text-align: center;
+  }
+
+  .chatbuilder-screen-guard__emoji {
+    margin-bottom: 0.85rem;
+    font-size: 2rem;
+    line-height: 1;
+  }
+
+  .chatbuilder-screen-guard__card h2 {
+    margin: 0 0 0.45rem;
+    color: #0f172a;
+    font-size: 1.2rem;
+    font-weight: 900;
+  }
+
+  .chatbuilder-screen-guard__card p {
+    margin: 0;
+    color: #475569;
+    font-size: 0.98rem;
+    line-height: 1.6;
   }
 }
 

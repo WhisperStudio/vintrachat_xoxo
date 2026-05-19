@@ -472,6 +472,9 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         onSendMessage={handleSend}
         faqSuggestionsEnabled={Boolean(configResponse?.assistantConfig?.faqSuggestionsEnabled)}
         faqSuggestions={configResponse?.assistantConfig?.faqSuggestions || []}
+        conversationCardsEnabled={Boolean(configResponse?.assistantConfig?.conversationCardsEnabled)}
+        conversationCardsLimit={Number(configResponse?.assistantConfig?.conversationCardsLimit || 4)}
+        conversationCards={configResponse?.assistantConfig?.conversationCards || []}
         openOverride={isOpen}
         onToggleOpen={handleToggle}
         statusText={configResponse?.assistantEnabled ? 'AI live' : 'AI off'}

@@ -56,6 +56,21 @@ export interface AssistantKnowledgeBase {
   keyFAQs: string[];
 }
 
+export interface AssistantConversationOption {
+  label: string;
+  prompt: string;
+  description?: string;
+}
+
+export interface AssistantConversationCard {
+  id: string;
+  title: string;
+  description: string;
+  icon?: string;
+  image?: string;
+  options: AssistantConversationOption[];
+}
+
 export interface AssistantIntegrationSettings {
   replyToQuestions: boolean;
   collectLeads: boolean;
@@ -83,6 +98,9 @@ export interface ChatAssistantConfig {
   handoffMessage: string;
   faqSuggestionsEnabled: boolean;
   faqSuggestions: string[];
+  conversationCardsEnabled: boolean;
+  conversationCardsLimit: number;
+  conversationCards: AssistantConversationCard[];
   startLanguage: string;
   replyInUserLanguage: boolean;
   responseStyle: string;
@@ -261,6 +279,9 @@ export interface ChatWidgetConfig {
     messageStyle: 'bubble' | 'flat' | 'card';
     showTimestamps: boolean;
     showReadReceipts: boolean;
+    showConversationCards: boolean;
+    conversationCardsLayout: 'grid' | 'list' | 'stack';
+    conversationCardsStyle: 'modern' | 'minimal' | 'bubble' | 'image' | 'chips';
   };
   
   footerStyle: {

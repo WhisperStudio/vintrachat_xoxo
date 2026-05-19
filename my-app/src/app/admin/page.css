@@ -1,11 +1,9 @@
 .adminPage {
   --admin-sidebar-width: 260px;
-  display: grid;
-  grid-template-columns: var(--admin-sidebar-width) 1fr;
-  align-items: stretch;
+  display: block;
   min-height: 100vh;
   margin-top: -150px;
-  padding-top: 0;
+  padding: 0 0 0 var(--admin-sidebar-width);
   background: linear-gradient(180deg, #f8fafc 0%, #f3f6fb 100%);
 }
 
@@ -14,13 +12,14 @@
 }
 
 .adminPageSidebarCollapsed {
-  --admin-sidebar-width: 84px;
+  --admin-sidebar-width: 42px;
 }
 
 .adminSidebar {
   position: relative;
   align-self: stretch;
   min-height: 100%;
+  width: 100%;
   border-right: 1px solid rgba(148, 163, 184, 0.22);
   background: rgba(255, 255, 255, 0.94);
   padding: 40px 18px 24px;
@@ -31,22 +30,28 @@
 }
 
 .adminSidebarFollowScreen {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  width: var(--admin-sidebar-width);
   align-self: start;
   height: 100vh;
   min-height: 100vh;
   z-index: 2;
+  overflow: visible;
 }
 
 .adminSidebarCollapsed {
-  padding: 40px 10px 24px;
+  width: 42px;
+  padding: 40px 0 24px;
+  border-right: none;
+  background: transparent;
 }
 
 .adminSidebarCollapseToggle {
   position: absolute;
   top: 50%;
-  right: -18px;
+  right: -21px;
   width: 42px;
   height: 42px;
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -103,7 +108,7 @@
 
 .adminSidebarCollapsed .adminSidebarCollapseToggle {
   top: 50%;
-  right: -18px;
+  right: -21px;
 }
 
 .adminSidebarHeader {
@@ -622,9 +627,10 @@ backdrop-filter: blur(7px);
 
 @media (max-width: 900px) {
   .adminPage {
-    grid-template-columns: 1fr;
+    display: block;
     margin-top: 0;
     padding-top: 0;
+    padding-left: 0;
     justify-items: stretch;
   }
 
@@ -804,6 +810,7 @@ backdrop-filter: blur(7px);
   }
 
   .adminSidebar {
+    position: relative;
     border-right: none;
     border-bottom: 1px solid rgba(148, 163, 184, 0.18);
     width: 100vw;
@@ -821,6 +828,7 @@ backdrop-filter: blur(7px);
 
   .adminSidebarCollapsed {
     padding: 14px 16px 18px;
+    width: 100vw;
   }
 
   .adminSidebar .adminSidebarCollapseToggle {

@@ -158,6 +158,30 @@ export async function PATCH(
           .map((value: string) => String(value).trim())
           .filter(Boolean)
       }
+      if (typeof assistant.conversationCardsEnabled === 'boolean') {
+        updates['chatAssistantConfig.conversationCardsEnabled'] = assistant.conversationCardsEnabled
+      }
+      if (typeof assistant.conversationCardsLimit === 'number' && Number.isFinite(assistant.conversationCardsLimit)) {
+        updates['chatAssistantConfig.conversationCardsLimit'] = Math.max(1, Math.min(12, Math.floor(assistant.conversationCardsLimit)))
+      }
+      if (Array.isArray(assistant.conversationCards)) {
+        updates['chatAssistantConfig.conversationCards'] = assistant.conversationCards
+          .map((card: any) => ({
+            id: String(card?.id || '').trim(),
+            title: String(card?.title || '').trim(),
+            description: String(card?.description || '').trim(),
+            options: Array.isArray(card?.options)
+              ? card.options
+                  .map((option: any) => ({
+                    label: String(option?.label || '').trim(),
+                    prompt: String(option?.prompt || '').trim(),
+                    description: String(option?.description || '').trim(),
+                  }))
+                  .filter((option: { label: string; prompt: string }) => option.label || option.prompt)
+              : [],
+          }))
+          .filter((card: { title: string; description: string; options: unknown[] }) => card.title || card.description || card.options.length > 0)
+      }
       if (typeof assistant.startLanguage === 'string') {
         updates['chatAssistantConfig.startLanguage'] = assistant.startLanguage.trim()
       }

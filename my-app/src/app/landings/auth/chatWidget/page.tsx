@@ -5,6 +5,7 @@ import { FiCheck, FiCreditCard, FiRefreshCw, FiSave, FiSliders, FiMonitor, FiSma
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { setActiveChatWidget, updateChatWidgetConfig } from '@/lib/auth.service'
+import { defaultConversationCards } from '@/lib/conversation-cards'
 import { chatWidgetBuilderI18n, useVintraLanguage } from '@/lib/i18n'
 import { sanitizeBubbleStyleForPlan } from '@/lib/subscription'
 import type { BubbleIconChoice, ChatWidgetConfig, OrbStyleConfig } from '@/types/database'
@@ -67,6 +68,9 @@ type InputsState = {
     messageStyle: 'bubble' | 'flat' | 'card'
     showTimestamps: boolean
     showReadReceipts: boolean
+    showConversationCards: boolean
+    conversationCardsLayout: 'grid' | 'list' | 'stack'
+    conversationCardsStyle: 'modern' | 'minimal' | 'bubble' | 'image' | 'chips'
   }
   footerStyle: {
     showSendButton: boolean
@@ -119,6 +123,9 @@ const defaultInputs: InputsState = {
     messageStyle: 'bubble',
     showTimestamps: true,
     showReadReceipts: false,
+    showConversationCards: true,
+    conversationCardsLayout: 'grid',
+    conversationCardsStyle: 'modern',
   },
   footerStyle: {
     showSendButton: true,
@@ -208,7 +215,10 @@ export default function ChatWidgetBuilderPage() {
         },
       },
       headerStyle: config.headerStyle || defaultInputs.headerStyle,
-      bodyStyle: config.bodyStyle || defaultInputs.bodyStyle,
+      bodyStyle: {
+        ...defaultInputs.bodyStyle,
+        ...(config.bodyStyle || {}),
+      },
       footerStyle: config.footerStyle || defaultInputs.footerStyle,
       customBranding: {
         ...defaultInputs.customBranding,
@@ -519,10 +529,22 @@ export default function ChatWidgetBuilderPage() {
               enablePreviewChat={true}
               previewReply={t.previewReply}
               previewMode={previewMode}
+              conversationCardsEnabled={true}
+              conversationCardsLimit={defaultConversationCards.length}
+              conversationCards={defaultConversationCards}
             />
           </div>
         </div>
       </main>
+      <div className="chatbuilder-screen-guard" aria-hidden="true">
+        <div className="chatbuilder-screen-guard__card">
+          <div className="chatbuilder-screen-guard__emoji" aria-hidden="true">
+            🙂
+          </div>
+          <h2>{t.desktopOnlyTitle}</h2>
+          <p>{t.desktopOnlyBody}</p>
+        </div>
+      </div>
     </div>
   )
 }

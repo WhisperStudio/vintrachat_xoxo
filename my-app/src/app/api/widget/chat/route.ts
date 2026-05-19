@@ -205,6 +205,15 @@ function buildPrompt(args: {
   strictness?: 'sales' | 'balanced' | 'support'
   supportKeywords: string[]
   faqSuggestions: string[]
+  conversationCards: {
+    title: string
+    description: string
+    options: {
+      label: string
+      prompt: string
+      description?: string
+    }[]
+  }[]
   startLanguage: string
   replyInUserLanguage: boolean
   responseStyle: string
@@ -222,6 +231,22 @@ function buildPrompt(args: {
   const faqText = faqSuggestions.length
     ? faqSuggestions.map((item) => `- ${item}`).join('\n')
     : 'No FAQ suggestions configured.'
+  const conversationCards = Array.isArray(args.conversationCards) ? args.conversationCards : []
+  const conversationCardsText = conversationCards.length
+    ? conversationCards
+        .map((card, index) => {
+          const options = card.options.length
+            ? card.options
+                .map((option) => {
+                  const note = option.description ? ` (${option.description})` : ''
+                  return `  - ${option.label}: ${option.prompt}${note}`
+                })
+                .join('\n')
+            : '  - No options configured.'
+          return `${index + 1}. ${card.title} - ${card.description}\n${options}`
+        })
+        .join('\n\n')
+    : 'No starter cards configured.'
 
   const languageRule = args.replyInUserLanguage
     ? `For the first assistant reply in a conversation, start in ${args.startLanguage || 'English'}. After that, reply in the same language as the latest user message.`
@@ -302,6 +327,7 @@ function buildPrompt(args: {
     args.responseStyle ? `Response style:\n${args.responseStyle}` : 'Response style:\nKeep the answer natural and helpful.',
     args.extraInstructions ? `Extra instructions:\n${args.extraInstructions}` : 'Extra instructions:\nNone.',
     `FAQ suggestions / common questions to anticipate:\n${faqText}`,
+    `Starter cards / quick entry points:\n${conversationCardsText}`,
     `Treat these phrases as likely requests for human support: ${args.supportKeywords.join(', ')}`,
     'Return JSON with keys "reply" and "needsHumanSupport".',
     'Set "needsHumanSupport" to true only when the user explicitly asks to contact support, a human, an agent, or similar human follow-up.',
@@ -608,6 +634,8 @@ export async function POST(req: NextRequest) {
         'I understand. I am putting you through to a human assistant now. Please hold on while I connect you with someone available.',
       faqSuggestionsEnabled: false,
       faqSuggestions: [],
+      conversationCardsEnabled: false,
+      conversationCards: [],
       startLanguage: 'English',
       replyInUserLanguage: true,
       responseStyle: '',
@@ -792,6 +820,13 @@ export async function POST(req: NextRequest) {
         faqSuggestions:
           assistantConfig.faqSuggestionsEnabled && Array.isArray(assistantConfig.faqSuggestions)
             ? assistantConfig.faqSuggestions
+            : [],
+        conversationCards:
+          assistantConfig.conversationCardsEnabled && Array.isArray(assistantConfig.conversationCards)
+            ? assistantConfig.conversationCards.slice(
+                0,
+                Math.max(1, Number(assistantConfig.conversationCardsLimit || 4))
+              )
             : [],
         startLanguage: assistantConfig.startLanguage || 'English',
         replyInUserLanguage: assistantConfig.replyInUserLanguage !== false,

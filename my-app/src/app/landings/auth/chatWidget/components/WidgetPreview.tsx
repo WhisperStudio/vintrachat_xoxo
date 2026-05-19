@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type SVGProps } from 'react'
-import { FiCheckCircle, FiCpu, FiLifeBuoy, FiMessageCircle, FiMessageSquare, FiPhone, FiSend } from 'react-icons/fi'
+import { FiArrowLeft, FiCheckCircle, FiChevronRight, FiCpu, FiLifeBuoy, FiMessageCircle, FiMessageSquare, FiPhone, FiSend } from 'react-icons/fi'
 import GlassOrbAvatar from '../../../../../svgs/GlassOrbAvatar'
 import { getWidgetThemeClass, getWidgetThemeStyle, joinWidgetClasses } from '@/components/chat/widgetDesign'
+import { normalizeConversationCards } from '@/lib/conversation-cards'
 import FeedbackFormOverlay from '@/components/chat/FeedbackFormOverlay'
 import './WidgetPreview.css'
-import type { BubbleIconChoice, OrbStyleConfig } from '@/types/database'
+import type { AssistantConversationCard, BubbleIconChoice, OrbStyleConfig } from '@/types/database'
 
 const OrbAvatar = GlassOrbAvatar as ComponentType<
   SVGProps<SVGSVGElement> & { glyph?: string; orbMode?: 'spin' | 'hover' | 'reply' | 'inactive' }
@@ -39,6 +40,9 @@ interface WidgetPreviewProps {
     messageStyle: 'bubble' | 'flat' | 'card'
     showTimestamps: boolean
     showReadReceipts: boolean
+    showConversationCards: boolean
+    conversationCardsLayout: 'grid' | 'list' | 'stack'
+    conversationCardsStyle: 'modern' | 'minimal' | 'bubble' | 'image' | 'chips'
   }
   footerStyle: {
     showSendButton: boolean
@@ -75,6 +79,9 @@ interface WidgetPreviewProps {
   keyboardOffset?: number
   faqSuggestionsEnabled?: boolean
   faqSuggestions?: string[]
+  conversationCardsEnabled?: boolean
+  conversationCards?: AssistantConversationCard[]
+  conversationCardsLimit?: number
   messagesOverride?: Message[]
   inputValueOverride?: string
   onInputValueChange?: (value: string) => void
@@ -155,6 +162,9 @@ export default function WidgetPreview({
   disableInput = false,
   bubbleActivityState = 'idle',
   feedbackOverlay,
+  conversationCardsEnabled = false,
+  conversationCards = [],
+  conversationCardsLimit = 4,
 }: WidgetPreviewProps) {
   const [internalIsChatOpen, setInternalIsChatOpen] = useState(initialOpen)
   const [internalIsReplying, setInternalIsReplying] = useState(false)
@@ -181,6 +191,7 @@ export default function WidgetPreview({
   const [faqSuggestionNonce, setFaqSuggestionNonce] = useState(0)
   const [faqSuggestionsDismissed, setFaqSuggestionsDismissed] = useState(false)
   const [isComposerFocused, setIsComposerFocused] = useState(false)
+  const [activeConversationCardId, setActiveConversationCardId] = useState<string | null>(null)
 
   const isChatOpen = openOverride ?? internalIsChatOpen
   const messages = messagesOverride ?? internalMessages
@@ -228,9 +239,68 @@ export default function WidgetPreview({
   }
   const showFaqSuggestions =
     isChatOpen && faqSuggestionsEnabled && !faqSuggestionsDismissed && messages.length <= 1 && activeFaqSuggestions.length > 0
-  const showComposerSuggestions =
-    showFaqSuggestions && countChars(String(inputValue ?? '').trim()) === 0
+  const hasUserMessage = messages.some((message) => !message.isBot)
+  const showStarterCards =
+    bodyStyle.showConversationCards &&
+    isChatOpen &&
+    !hasUserMessage &&
+    countChars(String(inputValue ?? '').trim()) === 0
+  const showComposerSuggestions = showFaqSuggestions && countChars(String(inputValue ?? '').trim()) === 0 && !showStarterCards
   const visibleErrorMessage = errorMessage || internalErrorMessage
+  const hasTypedMessage = countChars(String(inputValue ?? '').trim()) > 0
+  const starterCards = useMemo<AssistantConversationCard[]>(() => {
+    if (!bodyStyle.showConversationCards) return []
+
+    const normalized = conversationCardsEnabled ? normalizeConversationCards(conversationCards) : []
+    const limited = normalized.slice(0, Math.max(1, Number(conversationCardsLimit || 4)))
+    if (limited.length > 0) return limited
+
+    return [
+      {
+        id: 'preview-only',
+        title: 'This is only a preview',
+        description: 'Set cards in AI settings to show real starter cards.',
+        options: [
+          { label: 'Open AI settings', prompt: 'Open AI settings' },
+          { label: 'Add cards', prompt: 'Add starter cards to the AI settings' },
+        ],
+      },
+    ]
+  }, [conversationCardsLimit, bodyStyle.showConversationCards, conversationCards, conversationCardsEnabled])
+  const starterCardsPerPage = bodyStyle.conversationCardsStyle === 'chips' ? 6 : bodyStyle.conversationCardsStyle === 'bubble' ? 4 : bodyStyle.conversationCardsStyle === 'image' ? 3 : 4
+  const starterCardPages = useMemo<AssistantConversationCard[][]>(() => {
+    if (!starterCards.length) return []
+    const pages: AssistantConversationCard[][] = []
+    for (let index = 0; index < starterCards.length; index += starterCardsPerPage) {
+      pages.push(starterCards.slice(index, index + starterCardsPerPage))
+    }
+    return pages
+  }, [starterCards, starterCardsPerPage])
+  const [starterCardPageIndex, setStarterCardPageIndex] = useState(0)
+  const currentStarterCardPage = starterCardPages[Math.min(starterCardPageIndex, Math.max(0, starterCardPages.length - 1))] || []
+  const activeConversationCard =
+    starterCards.find((card) => card.id === activeConversationCardId) || null
+  const showStarterCardList = showStarterCards && Boolean(activeConversationCard)
+  const isMinimalCards = bodyStyle.conversationCardsStyle === 'minimal'
+  const isImageCards = bodyStyle.conversationCardsStyle === 'image'
+  const isChipsCards = bodyStyle.conversationCardsStyle === 'chips'
+
+  useEffect(() => {
+    if (!showStarterCards) {
+      setActiveConversationCardId(null)
+      setStarterCardPageIndex(0)
+      return
+    }
+
+    const nextActive =
+      activeConversationCardId && starterCards.some((card) => card.id === activeConversationCardId)
+        ? activeConversationCardId
+        : null
+
+    if (nextActive !== activeConversationCardId) {
+      setActiveConversationCardId(nextActive)
+    }
+  }, [activeConversationCardId, currentStarterCardPage, showStarterCards, starterCards])
 
   const setIsChatOpen = (value: boolean | ((prev: boolean) => boolean)) => {
     const nextValue = typeof value === 'function' ? value(isChatOpen) : value
@@ -491,7 +561,7 @@ export default function WidgetPreview({
     >
       <div className={`floating-chat-preview ${themeClass}`} style={themeVars as CSSProperties}>
         <div className="widgetcontainer">
-          <div className={`chat-widget ${isChatOpen ? 'open' : ''}`} hidden={!isChatOpen} aria-hidden={!isChatOpen}>
+          <div className={`chat-widget ${isChatOpen ? 'open' : ''} ${showStarterCards ? 'chat-widget--starter' : ''}`} hidden={!isChatOpen} aria-hidden={!isChatOpen}>
             <div
               className="chat-widget-interaction-surface"
               onPointerDownCapture={(event) => {
@@ -499,6 +569,9 @@ export default function WidgetPreview({
                 if (!target) return
                 if (target.closest('.chat-footer')) {
                   setIsComposerFocused(true)
+                  return
+                }
+                if (target.closest('.widget-starter-cards') || target.closest('.widget-starter-options')) {
                   return
                 }
                 if (target.closest('.widget-faq-suggestions')) {
@@ -509,31 +582,39 @@ export default function WidgetPreview({
             >
             <div className="chat-header">
               <div className="chat-header-left">
-                {headerStyle.showAvatar && (
-                  <div className={`avatar ${customBranding.logo ? 'avatar--image' : ''}`}>
-                    {customBranding.logo ? (
-                      <div
-                        className="avatar-image"
-                        aria-hidden="true"
-                        style={{
-                          backgroundImage: `url(${customBranding.logo})`,
-                          backgroundRepeat: 'no-repeat',
-                          backgroundSize: `${logoStyle.zoom}% ${logoStyle.zoom}%`,
-                          backgroundPosition: `${logoStyle.focusX}% ${logoStyle.focusY}%`,
-                        }}
-                      />
-                    ) : (
-                      <FiMessageCircle />
+                {showStarterCardList ? (
+                  <button type="button" className="chat-header-back" onClick={() => setActiveConversationCardId(null)} aria-label="Go back">
+                    <FiArrowLeft aria-hidden="true" />
+                  </button>
+                ) : (
+                  <>
+                    {headerStyle.showAvatar && (
+                      <div className={`avatar ${customBranding.logo ? 'avatar--image' : ''}`}>
+                        {customBranding.logo ? (
+                          <div
+                            className="avatar-image"
+                            aria-hidden="true"
+                            style={{
+                              backgroundImage: `url(${customBranding.logo})`,
+                              backgroundRepeat: 'no-repeat',
+                              backgroundSize: `${logoStyle.zoom}% ${logoStyle.zoom}%`,
+                              backgroundPosition: `${logoStyle.focusX}% ${logoStyle.focusY}%`,
+                            }}
+                          />
+                        ) : (
+                          <FiMessageCircle />
+                        )}
+                      </div>
                     )}
-                  </div>
+
+                    <div>
+                      {headerStyle.showTitle && <h3>{title}</h3>}
+                      <p>{description}</p>
+                    </div>
+
+                    {headerStyle.showStatus && <span className="header-status-dot" aria-hidden="true" />}
+                  </>
                 )}
-
-                <div>
-                  {headerStyle.showTitle && <h3>{title}</h3>}
-                  <p>{description}</p>
-                </div>
-
-                {headerStyle.showStatus && <span className="header-status-dot" aria-hidden="true" />}
               </div>
 
               <div className="chat-header-actions">
@@ -552,55 +633,158 @@ export default function WidgetPreview({
             </div>
 
               <div className={bodyClasses} ref={chatBodyRef}>
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`message ${msg.isBot ? 'message-bot' : 'message-user'}`}
-                >
-                  <div className="message-content">{msg.text}</div>
-                  {(bodyStyle.showTimestamps || (bodyStyle.showReadReceipts && !msg.isBot)) && (
-                    <div className="message-meta">
-                      {bodyStyle.showTimestamps && (
-                        <span className="timestamp">
-                          {new Date().toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                      )}
-                      {bodyStyle.showReadReceipts && !msg.isBot && (
-                        <span className="read-receipt">Read</span>
-                      )}
+              {showStarterCards && !showStarterCardList ? (
+                <div className={`widget-starter-cards widget-starter-cards--${bodyStyle.conversationCardsLayout} widget-starter-cards--${bodyStyle.conversationCardsStyle}`}>
+                  <div className={`widget-starter-cards__hero widget-starter-cards__hero--${bodyStyle.conversationCardsStyle}`}>
+                    <div className="widget-starter-cards__hero-icon" aria-hidden="true">
+                      {starterCards[0]?.icon || '🤖'}
                     </div>
-                  )}
+                    <div className="widget-starter-cards__hero-copy">
+                      <strong>Hei! 👋</strong>
+                      <p>{isMinimalCards ? 'Hva kan jeg hjelpe deg med?' : 'Hva kan jeg hjelpe deg med i dag?'}</p>
+                    </div>
+                  </div>
+
+                  {starterCardPages.length > 1 ? (
+                    <div className="widget-starter-cards__dots" aria-label="Starter card pages">
+                      {starterCardPages.map((_, pageIndex) => (
+                        <button
+                          key={pageIndex}
+                          type="button"
+                          className={pageIndex === starterCardPageIndex ? 'is-active' : ''}
+                          onClick={() => setStarterCardPageIndex(pageIndex)}
+                          aria-pressed={pageIndex === starterCardPageIndex}
+                          aria-label={`Show page ${pageIndex + 1}`}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <div className={`widget-starter-cards__grid widget-starter-cards__grid--${bodyStyle.conversationCardsStyle}`}>
+                    {currentStarterCardPage.map((card) => {
+                      const hasImage = isImageCards && Boolean(card.image)
+                      return (
+                        <button
+                          key={card.id}
+                          type="button"
+                          className={`widget-starter-card widget-starter-card--${bodyStyle.conversationCardsStyle}`}
+                          onClick={() => {
+                            setActiveConversationCardId(card.id)
+                          }}
+                        >
+                          {hasImage ? (
+                            <span className="widget-starter-card__image-wrap">
+                              <span className="widget-starter-card__image" style={{ backgroundImage: `url(${card.image})` }} />
+                              <span className="widget-starter-card__image-overlay" aria-hidden="true" />
+                              <span className="widget-starter-card__copy widget-starter-card__copy--image">
+                                {card.icon ? <span className="widget-starter-card__icon">{card.icon}</span> : null}
+                                <span className="widget-starter-card__title">{card.title}</span>
+                                <span className="widget-starter-card__description">{card.description}</span>
+                              </span>
+                            </span>
+                          ) : isChipsCards ? (
+                            <span className="widget-starter-card__copy widget-starter-card__copy--chips">
+                              <span className="widget-starter-card__title">{card.title}</span>
+                            </span>
+                          ) : (
+                            <>
+                              {card.icon ? <span className="widget-starter-card__icon">{card.icon}</span> : null}
+                              <span className="widget-starter-card__copy">
+                                <span className="widget-starter-card__title">{card.title}</span>
+                                <span className="widget-starter-card__description">{card.description}</span>
+                              </span>
+                              {isMinimalCards ? <FiChevronRight className="widget-starter-card__chevron" aria-hidden="true" /> : null}
+                            </>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
-              ))}
-              {showComposerSuggestions && (
-                <div className="widget-faq-suggestions" aria-label="Suggested questions">
-                  {activeFaqSuggestions.map((suggestion) => (
+              ) : showStarterCardList && activeConversationCard ? (
+                <div className="widget-starter-options widget-starter-options--panel" aria-label="Suggested next steps">
+                  <div className="widget-starter-options__title">
+                    <strong>{activeConversationCard.title}</strong>
+                    <p>{activeConversationCard.description}</p>
+                  </div>
+                  {activeConversationCard.options.map((option) => (
                     <button
-                      key={suggestion}
+                      key={`${activeConversationCard.id}-${option.label}`}
                       type="button"
-                      className="widget-faq-chip"
+                      className="widget-starter-option"
                       onClick={() => {
                         setFaqSuggestionsDismissed(true)
-                        void handleSend(suggestion)
+                        setActiveConversationCardId(null)
+                        if (onSendMessage) {
+                          onSendMessage(option.prompt)
+                          return
+                        }
+                        void handleSend(option.prompt)
                       }}
-                      disabled={disableInput}
-                    >
-                      {suggestion}
+                      >
+                      <span className="widget-starter-option__text">
+                        <span className="widget-starter-option__label">{option.label}</span>
+                        {option.description ? (
+                          <span className="widget-starter-option__description">{option.description}</span>
+                        ) : null}
+                      </span>
+                      <FiChevronRight className="widget-starter-option__arrow" aria-hidden="true" />
                     </button>
                   ))}
                 </div>
-              )}
-              {showTypingIndicator && (
-                <div className="message message-bot message-typing" aria-live="polite" aria-label="Assistant is typing">
-                  <div className="typing-dots">
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                </div>
+              ) : (
+                <>
+                  {messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`message ${msg.isBot ? 'message-bot' : 'message-user'}`}
+                    >
+                      <div className="message-content">{msg.text}</div>
+                      {(bodyStyle.showTimestamps || (bodyStyle.showReadReceipts && !msg.isBot)) && (
+                        <div className="message-meta">
+                          {bodyStyle.showTimestamps && (
+                            <span className="timestamp">
+                              {new Date().toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          )}
+                          {bodyStyle.showReadReceipts && !msg.isBot && (
+                            <span className="read-receipt">Read</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {showComposerSuggestions && (
+                    <div className="widget-faq-suggestions" aria-label="Suggested questions">
+                      {activeFaqSuggestions.map((suggestion) => (
+                        <button
+                          key={suggestion}
+                          type="button"
+                          className="widget-faq-chip"
+                          onClick={() => {
+                            setFaqSuggestionsDismissed(true)
+                            void handleSend(suggestion)
+                          }}
+                          disabled={disableInput}
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {showTypingIndicator && (
+                    <div className="message message-bot message-typing" aria-live="polite" aria-label="Assistant is typing">
+                      <div className="typing-dots">
+                        <span />
+                        <span />
+                        <span />
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
               </div>
 
@@ -610,7 +794,13 @@ export default function WidgetPreview({
                   id="widget-message-input"
                   name="widget-message-input"
                   ref={inputRef}
-                  placeholder={footerStyle.showPlaceholder ? 'Write a message...' : ''}
+                  placeholder={
+                    footerStyle.showPlaceholder
+                      ? showStarterCards
+                        ? 'Write a message...'
+                        : 'Write a message...'
+                      : ''
+                  }
                   value={inputValue}
                   onFocus={() => setIsComposerFocused(true)}
                   onBlur={() => setIsComposerFocused(false)}

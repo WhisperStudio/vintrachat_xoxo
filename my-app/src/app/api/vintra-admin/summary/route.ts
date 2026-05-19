@@ -262,6 +262,13 @@ export async function GET(req: NextRequest) {
                 faqSuggestions: Array.isArray(data.chatAssistantConfig.faqSuggestions)
                   ? data.chatAssistantConfig.faqSuggestions
                   : [],
+                conversationCardsEnabled: Boolean(data.chatAssistantConfig.conversationCardsEnabled),
+                conversationCardsLimit: Number.isFinite(data.chatAssistantConfig.conversationCardsLimit)
+                  ? Number(data.chatAssistantConfig.conversationCardsLimit)
+                  : 4,
+                conversationCards: Array.isArray(data.chatAssistantConfig.conversationCards)
+                  ? data.chatAssistantConfig.conversationCards
+                  : [],
                 startLanguage: String(data.chatAssistantConfig.startLanguage || 'English'),
                 replyInUserLanguage: Boolean(data.chatAssistantConfig.replyInUserLanguage ?? true),
                 responseStyle: String(data.chatAssistantConfig.responseStyle || ''),

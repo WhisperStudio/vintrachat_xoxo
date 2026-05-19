@@ -43,6 +43,9 @@ function buildDefaultWidgetConfig(businessName = 'Chat Widget'): ChatWidgetConfi
       messageStyle: 'bubble',
       showTimestamps: true,
       showReadReceipts: false,
+      showConversationCards: true,
+      conversationCardsLayout: 'grid',
+      conversationCardsStyle: 'modern',
     },
     footerStyle: {
       showSendButton: true,

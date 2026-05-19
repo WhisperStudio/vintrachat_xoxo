@@ -47,6 +47,7 @@ type AnimationType = 'none' | 'bounce' | 'fade' | 'slide'
 type SizeType = 'small' | 'medium' | 'large'
 type MessageStyle = 'bubble' | 'flat' | 'card'
 type InputStyle = 'flat' | 'rounded' | 'outlined'
+type StarterCardsLayout = 'grid' | 'list' | 'stack'
 
 type LogoStyle = {
   zoom: number
@@ -92,6 +93,9 @@ interface StyleSelectorProps {
     messageStyle: MessageStyle
     showTimestamps: boolean
     showReadReceipts: boolean
+    showConversationCards: boolean
+    conversationCardsLayout: StarterCardsLayout
+    conversationCardsStyle: 'modern' | 'minimal' | 'bubble' | 'image' | 'chips'
   }
   footerStyle: {
     showSendButton: boolean
@@ -1133,10 +1137,57 @@ export default function StyleSelector({
                 onBodyStyleChange({ ...bodyStyle, showReadReceipts: !bodyStyle.showReadReceipts })
               )
             }
-          >
+            >
             <span className="option-title">Show read receipts</span>
             <OptionDesc>Show read receipts on messages</OptionDesc>
           </div>
+
+          <div
+            className={`option-card ${bodyStyle.showConversationCards ? 'checked' : ''}`}
+            role="button"
+            tabIndex={0}
+            aria-pressed={bodyStyle.showConversationCards}
+            onClick={() =>
+              onBodyStyleChange({
+                ...bodyStyle,
+                showConversationCards: !bodyStyle.showConversationCards,
+              })
+            }
+            onKeyDown={(event) =>
+              handleToggleCardKeyDown(event, () =>
+                onBodyStyleChange({
+                  ...bodyStyle,
+                  showConversationCards: !bodyStyle.showConversationCards,
+                })
+              )
+            }
+          >
+            <span className="option-title">Show starter cards</span>
+            <OptionDesc>Show cards and quick choices before the user starts typing</OptionDesc>
+          </div>
+
+          {bodyStyle.showConversationCards ? (
+            <div className="option-card option-card--radio">
+              <span className="option-title">Card style</span>
+              <GlassRadioRow
+                name="body-conversation-cards-style"
+                value={bodyStyle.conversationCardsStyle}
+                options={[
+                  { value: 'modern', label: 'Modern' },
+                  { value: 'minimal', label: 'Minimal' },
+                  { value: 'bubble', label: 'Bubble / glow' },
+                  { value: 'image', label: 'Image-based' },
+                  { value: 'chips', label: 'Quick chips' },
+                ]}
+                onChange={(nextValue) =>
+                  onBodyStyleChange({
+                    ...bodyStyle,
+                    conversationCardsStyle: nextValue as StyleSelectorProps['bodyStyle']['conversationCardsStyle'],
+                  })
+                }
+              />
+            </div>
+          ) : null}
         </div>
       </div>
 
