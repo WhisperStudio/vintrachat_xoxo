@@ -18,7 +18,7 @@ export const defaultConversationCards: AssistantConversationCard[] = [
     id: 'services',
     title: 'Produkter og tjenester',
     description: 'Vis frem det du tilbyr på en enkel måte.',
-    icon: '🧰',
+    icon: '🧭',
     options: [
       { label: 'See services', prompt: 'What services do you offer?' },
       { label: 'Product help', prompt: 'Can you help me find the right product?' },
@@ -45,28 +45,6 @@ export const defaultConversationCards: AssistantConversationCard[] = [
       { label: 'Order status', prompt: 'Can you check my order status?' },
       { label: 'Delivery', prompt: 'How does delivery work?' },
       { label: 'Return', prompt: 'What is your return policy?' },
-    ],
-  },
-  {
-    id: 'contact',
-    title: 'Kontakt oss',
-    description: 'Rett folk til riktig kanal eller avdeling.',
-    icon: '✉️',
-    options: [
-      { label: 'Email', prompt: 'What is the best email to reach you?' },
-      { label: 'Phone', prompt: 'What is your phone number?' },
-      { label: 'Human', prompt: 'I want to talk to a human.' },
-    ],
-  },
-  {
-    id: 'more',
-    title: 'Annet',
-    description: 'For alt som ikke passer i de andre kategoriene.',
-    icon: '⋯',
-    options: [
-      { label: 'More info', prompt: 'Can you tell me more?' },
-      { label: 'Something else', prompt: 'I have another question.' },
-      { label: 'General help', prompt: 'Can you help me with something else?' },
     ],
   },
 ]

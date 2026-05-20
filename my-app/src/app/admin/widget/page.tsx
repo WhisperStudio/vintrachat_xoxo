@@ -285,6 +285,7 @@ type AiFieldId =
   | 'knowledge'
   | 'actions'
   | 'rules'
+  | 'starterCards'
 
 type IconComponent = (props: SVGProps<SVGSVGElement>) => ReactNode
 
@@ -554,13 +555,11 @@ export default function WidgetAdminPanel({
   const [domainsStatus, setDomainsStatus] = useState<'idle' | 'saved' | 'error'>('idle')
   const [assistantSaving, setAssistantSaving] = useState(false)
   const [assistantStatus, setAssistantStatus] = useState<'idle' | 'saved' | 'error'>('idle')
-  const [starterCardsEditorOpen, setStarterCardsEditorOpen] = useState(false)
   const [wizardOpen, setWizardOpen] = useState(false)
   const [wizardPurpose, setWizardPurpose] = useState<'settings' | 'new-widget'>('settings')
   const [wizardStep, setWizardStep] = useState(0)
   const [wizardAutofillStatus, setWizardAutofillStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
   const [wizardAutofillOpen, setWizardAutofillOpen] = useState(false)
-  const starterCardsEditorRef = useRef<HTMLDivElement | null>(null)
   const [wizardAutofillUrl, setWizardAutofillUrl] = useState('')
   const [wizardAutofillHints, setWizardAutofillHints] = useState<WebsiteAutofillResult['missingFields']>({})
   const wizardScrollRef = useRef<HTMLDivElement | null>(null)
@@ -719,14 +718,6 @@ export default function WidgetAdminPanel({
       }
     })
   }
-
-  useEffect(() => {
-    if (!starterCardsEditorOpen) return
-    const timer = window.setTimeout(() => {
-      starterCardsEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 0)
-    return () => window.clearTimeout(timer)
-  }, [starterCardsEditorOpen])
 
   const setAutoContextField = (field: 'businessContext' | 'faqSuggestions', nextValue: string) => {
     if (autoContextGeneratedSnapshot) {
@@ -2015,215 +2006,218 @@ export default function WidgetAdminPanel({
                 />
               </label>
 
-              <div className="widget-admin-card-list widget-admin-card-list--accordion" ref={starterCardsEditorRef}>
-                <button
-                  type="button"
-                  className="widget-admin-card-list__header widget-admin-card-list__header--toggle"
-                  onClick={() => setStarterCardsEditorOpen((prev) => !prev)}
-                >
-                  <div>
-                    <span className="widget-admin-section-label">Starter cards</span>
-                    <p className="field-note" style={{ marginTop: '0.45rem' }}>
-                      These cards appear before the user starts typing. Use this dropdown to add, remove, and edit the cards.
-                    </p>
-                    <p className="field-note" style={{ marginTop: '0.35rem' }}>
-                      Current style: <strong>{starterCardStyle}</strong>
-                    </p>
-                  </div>
-                  <span className={`widget-admin-card-list__chevron ${starterCardsEditorOpen ? 'open' : ''}`}>⌄</span>
-                </button>
+              <CollapsibleAiField
+                id="starterCards"
+                title="Starter cards"
+                description="Add, remove, and edit the cards visitors see first."
+                icon={FiLayers}
+                accent="violet"
+                openField={openAiField}
+                setOpenField={setOpenAiField}
+              >
+                <div className="widget-admin-card-list__actions">
+                  <button
+                    type="button"
+                    className="widget-admin-action-chip"
+                    onClick={() =>
+                      setConversationCards([
+                        ...normalizeConversationCards(assistantConfig.conversationCards),
+                        buildStarterCardDraft(starterCardStyle),
+                      ])
+                    }
+                  >
+                    Add card
+                  </button>
+                  <button
+                    type="button"
+                    className="widget-admin-action-chip"
+                    onClick={() =>
+                      setConversationCards([
+                        buildStarterCardDraft(starterCardStyle),
+                      ])
+                    }
+                  >
+                    Reset to one card
+                  </button>
+                </div>
 
-                {starterCardsEditorOpen ? (
-                  <div className="widget-admin-card-list__panel">
-                    <div className="widget-admin-card-list__actions">
-                      <button
-                        type="button"
-                        className="widget-admin-action-chip"
-                        onClick={() =>
-                          setConversationCards([
-                            ...normalizeConversationCards(assistantConfig.conversationCards),
-                            buildStarterCardDraft(starterCardStyle),
-                          ])
-                        }
-                      >
-                        Add card
-                      </button>
-                      <button
-                        type="button"
-                        className="widget-admin-action-chip"
-                        onClick={() =>
-                          setConversationCards([
-                            buildStarterCardDraft(starterCardStyle),
-                          ])
-                        }
-                      >
-                        Reset to one card
-                      </button>
-                    </div>
+                <label className="widget-ai-field widget-ai-field-full" style={{ marginTop: '0.15rem' }}>
+                  <span><FieldIcon icon={FiLayers} accent="violet" /> Cards shown</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={12}
+                    value={assistantConfig.conversationCardsLimit ?? 4}
+                    onChange={(event) =>
+                      setAssistantConfig((prev) => ({
+                        ...prev,
+                        conversationCardsLimit: Math.max(1, Math.min(12, Number(event.target.value) || 1)),
+                      }))
+                    }
+                  />
+                </label>
 
-                    {normalizeConversationCards(assistantConfig.conversationCards).length ? (
-                      <div className="widget-admin-card-list__items">
-                        {normalizeConversationCards(assistantConfig.conversationCards).map((card, cardIndex) => (
-                          <article key={card.id} className="widget-admin-card-editor">
-                            <div className="widget-admin-card-editor__header">
-                              <strong>{card.title || `Card ${cardIndex + 1}`}</strong>
-                              <span className="widget-admin-card-editor__badge">{starterCardStyle}</span>
-                              <button
-                                type="button"
-                                className="widget-admin-action-chip widget-admin-action-chip--danger"
-                                onClick={() =>
-                                  setConversationCards(
-                                    normalizeConversationCards(assistantConfig.conversationCards).filter((_, index) => index !== cardIndex)
-                                  )
+                {normalizeConversationCards(assistantConfig.conversationCards).length ? (
+                  <div className="widget-admin-card-list__items">
+                    {normalizeConversationCards(assistantConfig.conversationCards).map((card, cardIndex) => (
+                      <article key={card.id} className="widget-admin-card-editor">
+                        <div className="widget-admin-card-editor__header">
+                          <strong>{card.title || `Card ${cardIndex + 1}`}</strong>
+                          <span className="widget-admin-card-editor__badge">{starterCardStyle}</span>
+                          <button
+                            type="button"
+                            className="widget-admin-action-chip widget-admin-action-chip--danger"
+                            onClick={() =>
+                              setConversationCards(
+                                normalizeConversationCards(assistantConfig.conversationCards).filter((_, index) => index !== cardIndex)
+                              )
+                            }
+                          >
+                            Remove
+                          </button>
+                        </div>
+
+                        <div className="widget-admin-card-editor__body">
+                          <div className="widget-ai-grid">
+                            <label className="widget-ai-field">
+                              <span>Card name</span>
+                              <input
+                                type="text"
+                                value={card.title}
+                                onChange={(event) =>
+                                  updateConversationCard(cardIndex, (nextCard) => ({
+                                    ...nextCard,
+                                    title: event.target.value,
+                                  }))
                                 }
-                              >
-                                Remove
-                              </button>
-                            </div>
+                                placeholder="Opening hours"
+                              />
+                            </label>
 
-                            <div className="widget-admin-card-editor__body">
-                              <div className="widget-ai-grid">
-                                <label className="widget-ai-field">
-                                  <span>Card name</span>
-                                  <input
-                                    type="text"
-                                    value={card.title}
-                                    onChange={(event) =>
-                                      updateConversationCard(cardIndex, (nextCard) => ({
-                                        ...nextCard,
-                                        title: event.target.value,
-                                      }))
-                                    }
-                                    placeholder="Opening hours"
-                                  />
-                                </label>
+                            <label className="widget-ai-field">
+                              <span>Description</span>
+                              <input
+                                type="text"
+                                value={card.description}
+                                onChange={(event) =>
+                                  updateConversationCard(cardIndex, (nextCard) => ({
+                                    ...nextCard,
+                                    description: event.target.value,
+                                  }))
+                                }
+                                placeholder="Help visitors find the right answer quickly."
+                              />
+                            </label>
+                          </div>
 
-                                <label className="widget-ai-field">
-                                  <span>Description</span>
-                                  <input
-                                    type="text"
-                                    value={card.description}
-                                    onChange={(event) =>
-                                      updateConversationCard(cardIndex, (nextCard) => ({
-                                        ...nextCard,
-                                        description: event.target.value,
-                                      }))
-                                    }
-                                    placeholder="Help visitors find the right answer quickly."
-                                  />
-                                </label>
-                              </div>
-
-                              {starterCardStyle === 'image' ? (
-                                <div className="widget-ai-grid">
-                                  <label className="widget-ai-field widget-ai-field-full">
-                                    <span>Image URL</span>
-                                    <input
-                                      type="url"
-                                      value={card.image || ''}
-                                      onChange={(event) =>
-                                        updateConversationCard(cardIndex, (nextCard) => ({
-                                          ...nextCard,
-                                          image: event.target.value,
-                                        }))
-                                      }
-                                      placeholder="https://..."
-                                    />
-                                  </label>
-                                </div>
-                              ) : (
-                                <div className="widget-ai-grid">
-                                  <label className="widget-ai-field">
-                                    <span>Icon</span>
-                                    <input
-                                      type="text"
-                                      value={card.icon || ''}
-                                      onChange={(event) =>
-                                        updateConversationCard(cardIndex, (nextCard) => ({
-                                          ...nextCard,
-                                          icon: event.target.value,
-                                        }))
-                                      }
-                                      placeholder="💡, 📦, 🗓️, or an icon name"
-                                    />
-                                  </label>
-
-                                  <label className="widget-ai-field">
-                                    <span>Optional image URL</span>
-                                    <input
-                                      type="url"
-                                      value={card.image || ''}
-                                      onChange={(event) =>
-                                        updateConversationCard(cardIndex, (nextCard) => ({
-                                          ...nextCard,
-                                          image: event.target.value,
-                                        }))
-                                      }
-                                      placeholder="https://..."
-                                    />
-                                  </label>
-                                </div>
-                              )}
-
+                          {starterCardStyle === 'image' ? (
+                            <div className="widget-ai-grid">
                               <label className="widget-ai-field widget-ai-field-full">
-                                <span>Questions / choices</span>
-                                <AutoGrowTextarea
-                                  minRows={4}
-                                  value={card.options
-                                    .map((option) => [option.label, option.prompt, option.description].filter(Boolean).join(' | '))
-                                    .join('\n')}
-                                  onChange={(event) => {
-                                    const nextOptions = event.target.value
-                                      .split(/\n/)
-                                      .map((line) => line.trim())
-                                      .filter(Boolean)
-                                      .map((line) => {
-                                        const [label = '', prompt = '', description = ''] = line
-                                          .split('|')
-                                          .map((part) => part.trim())
-                                        return {
-                                          label: label || prompt,
-                                          prompt: prompt || label,
-                                          description: description || undefined,
-                                        }
-                                      })
-                                      .filter((option) => option.label || option.prompt)
-
+                                <span>Image URL</span>
+                                <input
+                                  type="url"
+                                  value={card.image || ''}
+                                  onChange={(event) =>
                                     updateConversationCard(cardIndex, (nextCard) => ({
                                       ...nextCard,
-                                      options: nextOptions.length
-                                        ? nextOptions
-                                        : [
-                                            {
-                                              label: 'Example question',
-                                              prompt: 'How can you help me?',
-                                              description: 'Add one option per line, using label | prompt | description.',
-                                            },
-                                          ],
+                                      image: event.target.value,
                                     }))
-                                  }}
-                                  placeholder={'Opening hours | What are your opening hours? | Show when you are open.\nPrices | What are your prices?'}
+                                  }
+                                  placeholder="https://..."
                                 />
                               </label>
                             </div>
-                          </article>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="widget-admin-card-editor widget-admin-card-editor--empty">
-                        <p>No starter cards yet. Add one to begin building the dropdown list.</p>
-                        <button
-                          type="button"
-                          className="widget-admin-action-chip"
-                          onClick={() => setConversationCards([buildStarterCardDraft(starterCardStyle)])}
-                        >
-                          Add first card
-                        </button>
-                      </div>
-                    )}
+                          ) : (
+                            <div className="widget-ai-grid">
+                              <label className="widget-ai-field">
+                                <span>Icon</span>
+                                <input
+                                  type="text"
+                                  value={card.icon || ''}
+                                  onChange={(event) =>
+                                    updateConversationCard(cardIndex, (nextCard) => ({
+                                      ...nextCard,
+                                      icon: event.target.value,
+                                    }))
+                                  }
+                                  placeholder="💡, 📦, 🗓️, or an icon name"
+                                />
+                              </label>
+
+                              <label className="widget-ai-field">
+                                <span>Optional image URL</span>
+                                <input
+                                  type="url"
+                                  value={card.image || ''}
+                                  onChange={(event) =>
+                                    updateConversationCard(cardIndex, (nextCard) => ({
+                                      ...nextCard,
+                                      image: event.target.value,
+                                    }))
+                                  }
+                                  placeholder="https://..."
+                                />
+                              </label>
+                            </div>
+                          )}
+
+                          <label className="widget-ai-field widget-ai-field-full">
+                            <span>Questions / choices</span>
+                            <AutoGrowTextarea
+                              minRows={4}
+                              value={card.options
+                                .map((option) => [option.label, option.prompt, option.description].filter(Boolean).join(' | '))
+                                .join('\n')}
+                              onChange={(event) => {
+                                const nextOptions = event.target.value
+                                  .split(/\n/)
+                                  .map((line) => line.trim())
+                                  .filter(Boolean)
+                                  .map((line) => {
+                                    const [label = '', prompt = '', description = ''] = line
+                                      .split('|')
+                                      .map((part) => part.trim())
+                                    return {
+                                      label: label || prompt,
+                                      prompt: prompt || label,
+                                      description: description || undefined,
+                                    }
+                                  })
+                                  .filter((option) => option.label || option.prompt)
+
+                                updateConversationCard(cardIndex, (nextCard) => ({
+                                  ...nextCard,
+                                  options: nextOptions.length
+                                    ? nextOptions
+                                    : [
+                                        {
+                                          label: 'Example question',
+                                          prompt: 'How can you help me?',
+                                          description: 'Add one option per line, using label | prompt | description.',
+                                        },
+                                      ],
+                                }))
+                              }}
+                              placeholder={'Opening hours | What are your opening hours? | Show when you are open.\nPrices | What are your prices?'}
+                            />
+                          </label>
+                        </div>
+                      </article>
+                    ))}
                   </div>
-                ) : null}
-              </div>
+                ) : (
+                  <div className="widget-admin-card-editor widget-admin-card-editor--empty">
+                    <p>No starter cards yet. Add one to begin building the dropdown list.</p>
+                    <button
+                      type="button"
+                      className="widget-admin-action-chip"
+                      onClick={() => setConversationCards([buildStarterCardDraft(starterCardStyle)])}
+                    >
+                      Add first card
+                    </button>
+                  </div>
+                )}
+              </CollapsibleAiField>
 
               <label className="widget-ai-field widget-ai-field-full">
                 <span><FieldIcon icon={FiBriefcase} accent="rose" /> Human handoff message</span>
@@ -2782,24 +2776,6 @@ export default function WidgetAdminPanel({
                 }
               />
             </label>
-
-            <button
-              type="button"
-              className={`widget-ai-field widget-ai-field--button widget-ai-card-manager-trigger ${starterCardsEditorOpen ? 'is-open' : ''}`}
-              aria-expanded={starterCardsEditorOpen}
-              onClick={() => setStarterCardsEditorOpen((prev) => !prev)}
-            >
-              <span><FieldIcon icon={FiLayers} accent="violet" /> Starter cards editor</span>
-              <div className="widget-admin-card-manager-trigger__meta">
-                <strong>{starterCardsEditorOpen ? 'Close editor' : 'Open editor'}</strong>
-                <span>{normalizeConversationCards(assistantConfig.conversationCards).length} cards</span>
-              </div>
-            </button>
-            <p className="field-note" style={{ marginTop: '0.15rem' }}>
-              {starterCardsEditorOpen
-                ? 'Editor is open. Add, remove, or edit cards below.'
-                : 'Click to expand and edit cards. The editor opens directly below.'}
-            </p>
 
             <label className="widget-ai-field">
               <span><FieldIcon icon={FiBriefcase} accent="violet" /> Provider</span>
