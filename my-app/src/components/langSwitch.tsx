@@ -164,7 +164,7 @@ const norwayConfig = {
    * Negativ = mer venstre
    * Positiv = mer høyre
    */
-  verticalCenterPhi: -0.52,
+  verticalCenterPhi: -0.57,
 
   /**
    * Flytter horisontalt kors opp/ned.
@@ -176,7 +176,7 @@ const norwayConfig = {
   /**
    * Bredde på hvit vertikal stripe.
    */
-  verticalWhiteHalfWidth: 0.19,
+  verticalWhiteHalfWidth: 0.29,
 
   /**
    * Høyde på hvit horisontal stripe.
@@ -282,13 +282,13 @@ function drawRun(
   };
 
   // Soft glow
-  draw(4, 0.28, 18);
+draw(2.2, 0.22, 8);
 
-  // Middle glow
-  draw(1.7, 0.55, 9);
+// Middle glow
+draw(1.1, 0.45, 4);
 
-  // Crisp wire
-  draw(1.35, 1, 2.5);
+// Crisp wire
+draw(0.75, 1, 1.5);
 }
 
 function drawColoredLine(ctx: CanvasRenderingContext2D, pts: Pt[]) {
@@ -329,10 +329,10 @@ function drawGlobe(
   const cosS = Math.cos(spin);
   const sinS = Math.sin(spin);
 
-  const STEP = 0.85;
+  const STEP = 1.1;
 
-  const nLat = 16;
-  const nLon = 36;
+  const nLat = 10;
+  const nLon = 22;
 
   const makePoint = (phi: number, lat: number): Pt | null => {
     const cosLat = Math.cos(lat);
@@ -460,7 +460,7 @@ export default function GlobeSwitcher({
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       const center = cssSize / 2;
-      const radius = cssSize * 0.44;
+      const radius = cssSize * 0.4;
 
       drawGlobe(
         ctx,
