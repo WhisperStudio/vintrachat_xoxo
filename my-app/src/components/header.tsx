@@ -9,6 +9,7 @@ import { getInvitationsForEmail } from '@/lib/invitation.service'
 import { headerI18n, languageLabels, languageOptions, useVintraLanguage } from '@/lib/i18n'
 import { isVintraAdminEmail } from '@/lib/vintra-admin'
 import type { BusinessInvitation } from '@/types/database'
+import GlobeSwitcher from "./langSwitch";
 import {
   FiArrowRight,
   FiBriefcase,
@@ -899,21 +900,7 @@ export default function Header() {
 
           <RightSide>
             <ActionRow>
-              <LanguageSwitcher aria-label={text.languageSwitchLabel}>
-                {languageOptions.map((option) => (
-                  <LanguageButton
-                    key={option}
-                    type="button"
-                    $active={language === option}
-                    aria-pressed={language === option}
-                    aria-label={languageLabels[option]}
-                    onClick={() => setLanguage(option)}
-                  >
-                    {option === 'no' ? <FiGlobe /> : null}
-                    <span>{option.toUpperCase()}</span>
-                  </LanguageButton>
-                ))}
-              </LanguageSwitcher>
+              <GlobeSwitcher size={62} />
 
               {!firebaseUser ? (
                 <>
@@ -977,21 +964,7 @@ export default function Header() {
           </MobileNav>
 
           <MobileActionStack>
-            <MobileLanguageSwitch aria-label={text.languageSwitchLabel}>
-              {languageOptions.map((option) => (
-                <MobileLanguageButton
-                  key={option}
-                  type="button"
-                  $active={language === option}
-                  aria-pressed={language === option}
-                  aria-label={languageLabels[option]}
-                  onClick={() => setLanguage(option)}
-                >
-                  {option === 'no' ? <FiGlobe /> : null}
-                  <span>{option.toUpperCase()}</span>
-                </MobileLanguageButton>
-              ))}
-            </MobileLanguageSwitch>
+            <GlobeSwitcher />
 
             {!firebaseUser ? (
               <>
