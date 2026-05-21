@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useVintraLanguage } from "@/lib/i18n";
 
 type Lang = "no" | "en";
 
@@ -24,62 +25,19 @@ function angularDistance(a: number, b: number): number {
  * Her kan du styre plassering og størrelse på fargene.
  */
 const gbConfig = {
-  /**
-   * Flytter hele flaggmønsteret venstre/høyre.
-   * Negativ = venstre
-   * Positiv = høyre
-   */
   centerX: 0,
-
-  /**
-   * Flytter hele flaggmønsteret opp/ned.
-   * Negativ = opp
-   * Positiv = ned
-   */
   centerY: 0,
 
-  /**
-   * Størrelse på det hvite rette korset.
-   */
   whiteCrossHalfWidth: 0.18,
-
-  /**
-   * Størrelse på det røde rette korset.
-   */
   redCrossHalfWidth: 0.085,
 
-  /**
-   * Størrelse på de hvite diagonalene.
-   */
   whiteDiagHalfWidth: 0.23,
-
-  /**
-   * Størrelse på de røde diagonalene.
-   */
   redDiagHalfWidth: 0.095,
 
-  /**
-   * Flytter diagonal én litt.
-   */
   diagOffset1: 0,
-
-  /**
-   * Flytter diagonal to litt.
-   */
   diagOffset2: 0,
 
-  /**
-   * Skalerer bredden på flagget i x-retning.
-   * Lavere tall = mønsteret blir bredere visuelt.
-   * Høyere tall = mønsteret blir smalere visuelt.
-   */
   scaleX: 1,
-
-  /**
-   * Skalerer høyden på flagget i y-retning.
-   * Lavere tall = mønsteret blir høyere visuelt.
-   * Høyere tall = mønsteret blir flatere visuelt.
-   */
   scaleY: 1,
 };
 
@@ -107,45 +65,27 @@ function gbColor(u: number, v: number): string {
     scaleY,
   } = gbConfig;
 
-  /**
-   * Gjør om fra 0-1 koordinater til -1 til 1.
-   */
   const x = ((u * 2 - 1) - centerX) * scaleX;
   const y = ((v * 2 - 1) - centerY) * scaleY;
 
   const absX = Math.abs(x);
   const absY = Math.abs(y);
 
-  /**
-   * Diagonalene.
-   */
   const d1 = Math.abs(x - y - diagOffset1);
   const d2 = Math.abs(x + y - diagOffset2);
 
-  /**
-   * Rette kors.
-   */
   const inWhiteCross =
     absX < whiteCrossHalfWidth || absY < whiteCrossHalfWidth;
 
   const inRedCross =
     absX < redCrossHalfWidth || absY < redCrossHalfWidth;
 
-  /**
-   * Diagonale kors.
-   */
   const inWhiteDiag =
     d1 < whiteDiagHalfWidth || d2 < whiteDiagHalfWidth;
 
   const inRedDiag =
     d1 < redDiagHalfWidth || d2 < redDiagHalfWidth;
 
-  /**
-   * Lagrekkefølge:
-   * blå bakerst,
-   * hvit over blå,
-   * rød øverst.
-   */
   if (inRedCross) return red;
   if (inWhiteCross) return white;
 
@@ -161,37 +101,33 @@ function gbColor(u: number, v: number): string {
 const norwayConfig = {
   /**
    * Flytter vertikalt kors venstre/høyre rundt globen.
-   * Negativ = mer venstre
-   * Positiv = mer høyre
    */
-  verticalCenterPhi: -0.57,
+  verticalCenterPhi: -0.54,
 
   /**
    * Flytter horisontalt kors opp/ned.
-   * Negativ = opp
-   * Positiv = ned
    */
   horizontalCenterY: 0.0008,
 
   /**
    * Bredde på hvit vertikal stripe.
    */
-  verticalWhiteHalfWidth: 0.29,
+  verticalWhiteHalfWidth: 0.35,
 
   /**
    * Høyde på hvit horisontal stripe.
    */
-  horizontalWhiteHalfHeight: 0.265,
+  horizontalWhiteHalfHeight: 0.330,
 
   /**
    * Bredde på blå vertikal stripe.
    */
-  verticalBlueHalfWidth: 0.15,
+  verticalBlueHalfWidth: 0.20,
 
   /**
    * Høyde på blå horisontal stripe.
    */
-  horizontalBlueHalfHeight: 0.155,
+  horizontalBlueHalfHeight: 0.210,
 };
 
 /**
@@ -239,11 +175,6 @@ function getFlagColor(
     return norwayWireColor(phi, y0);
   }
 
-  /**
-   * UK bruker flate flaggkoordinater.
-   * Men punktene kommer fortsatt fra sfæren,
-   * så fargene følger wireframe-buen.
-   */
   const u = Math.max(0, Math.min(1, 0.5 + x0 * 0.5));
   const v = Math.max(0, Math.min(1, 0.5 - y0 * 0.5));
 
@@ -281,14 +212,14 @@ function drawRun(
     ctx.restore();
   };
 
-  // Soft glow
-draw(2.2, 0.22, 8);
+  // Tynnere glow, bedre for liten globe
+  draw(2.2, 0.22, 8);
 
-// Middle glow
-draw(1.1, 0.45, 4);
+  // Tynnere mid-glow
+  draw(1.1, 0.45, 4);
 
-// Crisp wire
-draw(0.75, 1, 1.5);
+  // Tynn crisp wire
+  draw(0.75, 1, 1.5);
 }
 
 function drawColoredLine(ctx: CanvasRenderingContext2D, pts: Pt[]) {
@@ -329,8 +260,19 @@ function drawGlobe(
   const cosS = Math.cos(spin);
   const sinS = Math.sin(spin);
 
+  /**
+   * Litt større steg og færre wires gir mer luft.
+   */
   const STEP = 1.1;
 
+  /**
+   * Før:
+   * const nLat = 16;
+   * const nLon = 36;
+   *
+   * Nå:
+   * færre horisontale og vertikale wires.
+   */
   const nLat = 10;
   const nLon = 22;
 
@@ -412,9 +354,9 @@ function drawGlobe(
   ctx.arc(CX, CY, R, 0, Math.PI * 2);
   ctx.strokeStyle =
     lang === "no" ? "rgba(239,43,45,0.55)" : "rgba(70,120,255,0.55)";
-  ctx.lineWidth = Math.max(0.8, R * 0.02);
+  ctx.lineWidth = Math.max(0.7, R * 0.018);
   ctx.shadowColor = lang === "no" ? "#EF2B2D" : "#3E7BFF";
-  ctx.shadowBlur = Math.max(8, R * 0.22);
+  ctx.shadowBlur = Math.max(5, R * 0.16);
   ctx.stroke();
   ctx.restore();
 
@@ -423,7 +365,7 @@ function drawGlobe(
   ctx.beginPath();
   ctx.arc(CX, CY, R - 0.8, 0, Math.PI * 2);
   ctx.strokeStyle = "rgba(255,255,255,0.24)";
-  ctx.lineWidth = Math.max(0.6, R * 0.012);
+  ctx.lineWidth = Math.max(0.5, R * 0.01);
   ctx.stroke();
   ctx.restore();
 }
@@ -434,9 +376,10 @@ export default function GlobeSwitcher({
 }: GlobeSwitcherProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const spinRef = useRef(0);
-  const langRef = useRef<Lang>("no");
+  const { language, setLanguage } = useVintraLanguage();
+  const langRef = useRef<Lang>(language);
 
-  const [lang, setLang] = useState<Lang>("no");
+  const [lang, setLang] = useState<Lang>(language);
   const [spinning, setSpinning] = useState(false);
 
   const draw = useCallback(
@@ -460,7 +403,11 @@ export default function GlobeSwitcher({
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       const center = cssSize / 2;
-      const radius = cssSize * 0.4;
+
+      /**
+       * Litt mindre radius gir mer luft rundt globen.
+       */
+      const radius = cssSize * 0.42;
 
       drawGlobe(
         ctx,
@@ -475,7 +422,9 @@ export default function GlobeSwitcher({
   );
 
   useEffect(() => {
-    draw();
+    langRef.current = language;
+    setLang(language);
+    draw(language);
 
     const handleResize = () => draw();
     window.addEventListener("resize", handleResize);
@@ -483,7 +432,7 @@ export default function GlobeSwitcher({
     return () => {
       window.removeEventListener("resize", handleResize);
     };
-  }, [draw]);
+  }, [draw, language]);
 
   const doSpin = useCallback(
     (toLang: Lang) => {
@@ -516,6 +465,7 @@ export default function GlobeSwitcher({
           spinRef.current = end;
           langRef.current = toLang;
           setLang(toLang);
+          setLanguage(toLang);
           setSpinning(false);
           draw(toLang);
         }
@@ -541,7 +491,7 @@ export default function GlobeSwitcher({
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: Math.max(2, size * 0.05),
+        gap: Math.max(2, size * 0.04),
         padding: 0,
         margin: 0,
         fontFamily: "'DM Mono', 'Fira Mono', monospace",
@@ -591,13 +541,14 @@ export default function GlobeSwitcher({
           type="button"
           aria-label="Bytt språk til norsk"
           onClick={() => {
-            if (lang !== "no" && !spinning) doSpin("no");
+            if (spinning || lang === "no") return;
+            setLanguage("no");
+            doSpin("no");
           }}
           style={{
             border: 0,
             padding: 0,
             margin: 0,
-            fontSize: "16px",
             background: "transparent",
             color: lang === "no" ? "#3B82F6" : "#888780",
             cursor: lang === "no" || spinning ? "default" : "pointer",
@@ -623,13 +574,14 @@ export default function GlobeSwitcher({
           type="button"
           aria-label="Switch language to English"
           onClick={() => {
-            if (lang !== "en" && !spinning) doSpin("en");
+            if (spinning || lang === "en") return;
+            setLanguage("en");
+            doSpin("en");
           }}
           style={{
             border: 0,
             padding: 0,
             margin: 0,
-            fontSize: "16px",
             background: "transparent",
             color: lang === "en" ? "#3B82F6" : "#888780",
             cursor: lang === "en" || spinning ? "default" : "pointer",

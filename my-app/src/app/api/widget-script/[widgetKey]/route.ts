@@ -493,6 +493,8 @@ export async function GET(
     feedbackSubmitting: false,
     faqSuggestions: [],
     faqSuggestionsDismissed: false,
+    activeConversationCardId: '',
+    starterCardPageIndex: 0,
     composerFocused: false,
     compactViewport: false,
     keyboardOffset: 0,
@@ -808,6 +810,74 @@ export async function GET(
     return state.assistantConfig || {};
   }
 
+  function getConversationCards(config) {
+    var assistantConfig = getAssistantConfig();
+    var bodyStyle = (config && config.bodyStyle) || {};
+
+    if (!bodyStyle.showConversationCards) {
+      return [];
+    }
+
+    var cards = Array.isArray(assistantConfig.conversationCards)
+      ? assistantConfig.conversationCards
+      : [];
+    var limit = Math.max(1, Number(assistantConfig.conversationCardsLimit || 4));
+
+    var cleaned = cards
+      .map(function (card, index) {
+        var title = String(card && card.title ? card.title : '').trim();
+        var description = String(card && card.description ? card.description : '').trim();
+        var icon = String(card && card.icon ? card.icon : '').trim();
+        var image = String(card && card.image ? card.image : '').trim();
+        var options = Array.isArray(card && card.options) ? card.options : [];
+
+        return {
+          id: String(card && card.id ? card.id : 'card-' + index),
+          title: title || 'Starter card',
+          description: description || 'Tap to see more options.',
+          icon: icon,
+          image: image,
+          options: options
+            .map(function (option, optionIndex) {
+              var label = String(option && option.label ? option.label : '').trim();
+              var prompt = String(option && option.prompt ? option.prompt : '').trim();
+              var optionDescription = String(option && option.description ? option.description : '').trim();
+
+              return {
+                label: label || prompt || ('Option ' + (optionIndex + 1)),
+                prompt: prompt || label || ('Option ' + (optionIndex + 1)),
+                description: optionDescription || '',
+              };
+            })
+            .filter(function (option) {
+              return Boolean(option.label || option.prompt);
+            }),
+        };
+      })
+      .filter(function (card) {
+        return Boolean(card.title || card.description);
+      })
+      .slice(0, limit);
+
+    if (cleaned.length) {
+      return cleaned;
+    }
+
+    return [
+      {
+        id: 'preview-only',
+        title: 'This is only a preview',
+        description: 'Set cards in AI settings to show real starter cards.',
+        icon: '🤖',
+        image: '',
+        options: [
+          { label: 'Open AI settings', prompt: 'Open AI settings', description: '' },
+          { label: 'Add cards', prompt: 'Add starter cards to the AI settings', description: '' },
+        ],
+      },
+    ];
+  }
+
   function refreshFaqSuggestions() {
     var assistantConfig = getAssistantConfig();
 
@@ -925,6 +995,132 @@ export async function GET(
         '</div>'
       );
     }).join('') + typingMarkup;
+  }
+
+  function getStarterCardsMarkup(config) {
+    var bodyStyle = (config && config.bodyStyle) || {};
+    var assistantConfig = getAssistantConfig();
+    var starterCards = getConversationCards(config);
+    var cardsLayout = bodyStyle.conversationCardsLayout || 'grid';
+    var cardsStyle = bodyStyle.conversationCardsStyle || 'modern';
+    var hasUserMessage = state.messages.some(function (message) {
+      return message.role === 'user' || message.role === 'support';
+    });
+    var hasTypedMessage = countCharacters(String(state.inputValue || '').trim()) > 0;
+    var showStarterCards = Boolean(bodyStyle.showConversationCards && state.open && !hasUserMessage && !hasTypedMessage);
+
+    if (!showStarterCards || !starterCards.length) {
+      return {
+        html: '',
+        showStarterCards: false,
+        showStarterCardList: false,
+      };
+    }
+
+    var starterCardsPerPage = cardsStyle === 'chips'
+      ? 6
+      : cardsStyle === 'bubble'
+        ? 4
+        : cardsStyle === 'image'
+          ? 3
+          : 4;
+
+    var starterCardPages = [];
+    for (var index = 0; index < starterCards.length; index += starterCardsPerPage) {
+      starterCardPages.push(starterCards.slice(index, index + starterCardsPerPage));
+    }
+
+    var currentStarterCardPage = starterCardPages[Math.min(state.starterCardPageIndex, Math.max(0, starterCardPages.length - 1))] || [];
+    var activeConversationCard = starterCards.find(function (card) {
+      return card.id === state.activeConversationCardId;
+    }) || null;
+    var showStarterCardList = Boolean(activeConversationCard);
+    var isMinimalCards = cardsStyle === 'minimal';
+    var isImageCards = cardsStyle === 'image';
+    var isChipsCards = cardsStyle === 'chips';
+
+    if (showStarterCardList && activeConversationCard) {
+      return {
+        html:
+          '<div class="widget-starter-options widget-starter-options--panel" aria-label="Suggested next steps">' +
+            '<div class="widget-starter-options__title">' +
+              '<button type="button" class="widget-starter-options__back" aria-label="Back to cards">←</button>' +
+              '<div>' +
+                '<strong>' + escapeHtml(activeConversationCard.title) + '</strong>' +
+                '<p>' + escapeHtml(activeConversationCard.description) + '</p>' +
+              '</div>' +
+            '</div>' +
+            activeConversationCard.options.map(function (option) {
+              return (
+                '<button type="button" class="widget-starter-option" data-starter-prompt="' + escapeHtml(option.prompt) + '">' +
+                  '<span class="widget-starter-option__text">' +
+                    '<span class="widget-starter-option__label">' + escapeHtml(option.label) + '</span>' +
+                    (option.description ? '<span class="widget-starter-option__description">' + escapeHtml(option.description) + '</span>' : '') +
+                  '</span>' +
+                  '<span class="widget-starter-option__arrow" aria-hidden="true">›</span>' +
+                '</button>'
+              );
+            }).join('') +
+          '</div>',
+        showStarterCards: true,
+        showStarterCardList: true,
+      };
+    }
+
+    return {
+      html:
+        '<div class="widget-starter-cards widget-starter-cards--' + cardsLayout + ' widget-starter-cards--' + cardsStyle + '">' +
+          '<div class="widget-starter-cards__hero widget-starter-cards__hero--' + cardsStyle + '">' +
+            '<div class="widget-starter-cards__hero-icon" aria-hidden="true">' + escapeHtml(starterCards[0].icon || '🤖') + '</div>' +
+            '<div class="widget-starter-cards__hero-copy">' +
+              '<strong>Hei! 👋</strong>' +
+              '<p>' + escapeHtml(isMinimalCards ? 'Hva kan jeg hjelpe deg med?' : 'Hva kan jeg hjelpe deg med i dag?') + '</p>' +
+            '</div>' +
+          '</div>' +
+          (starterCardPages.length > 1 ? (
+            '<div class="widget-starter-cards__dots" aria-label="Starter card pages">' +
+              starterCardPages.map(function (_, pageIndex) {
+                return (
+                  '<button type="button" class="' + (pageIndex === state.starterCardPageIndex ? 'is-active' : '') + '" data-starter-page="' + pageIndex + '" aria-pressed="' + (pageIndex === state.starterCardPageIndex ? 'true' : 'false') + '" aria-label="Show page ' + (pageIndex + 1) + '"></button>'
+                );
+              }).join('') +
+            '</div>'
+          ) : '') +
+          '<div class="widget-starter-cards__grid widget-starter-cards__grid--' + cardsStyle + '">' +
+            currentStarterCardPage.map(function (card) {
+              var hasImage = isImageCards && Boolean(card.image);
+              return (
+                '<button type="button" class="widget-starter-card widget-starter-card--' + cardsStyle + '" data-starter-card-id="' + escapeHtml(card.id) + '">' +
+                  (hasImage ? (
+                    '<span class="widget-starter-card__image-wrap">' +
+                      '<span class="widget-starter-card__image" style="background-image:url(' + escapeHtml(card.image) + ')"></span>' +
+                      '<span class="widget-starter-card__image-overlay" aria-hidden="true"></span>' +
+                      '<span class="widget-starter-card__copy widget-starter-card__copy--image">' +
+                        (card.icon ? '<span class="widget-starter-card__icon">' + escapeHtml(card.icon) + '</span>' : '') +
+                        '<span class="widget-starter-card__title">' + escapeHtml(card.title) + '</span>' +
+                        '<span class="widget-starter-card__description">' + escapeHtml(card.description) + '</span>' +
+                      '</span>' +
+                    '</span>'
+                  ) : isChipsCards ? (
+                    '<span class="widget-starter-card__copy widget-starter-card__copy--chips"><span class="widget-starter-card__title">' + escapeHtml(card.title) + '</span></span>'
+                  ) : (
+                    (
+                      (card.icon ? '<span class="widget-starter-card__icon">' + escapeHtml(card.icon) + '</span>' : '') +
+                      '<span class="widget-starter-card__copy">' +
+                        '<span class="widget-starter-card__title">' + escapeHtml(card.title) + '</span>' +
+                        '<span class="widget-starter-card__description">' + escapeHtml(card.description) + '</span>' +
+                      '</span>' +
+                      (isMinimalCards ? '<span class="widget-starter-card__chevron" aria-hidden="true">›</span>' : '')
+                    )
+                  )) +
+                '</button>'
+              );
+            }).join('') +
+          '</div>' +
+        '</div>',
+      showStarterCards: true,
+      showStarterCardList: false,
+    };
   }
 
   function getFaqSuggestionsMarkup() {
@@ -1185,6 +1381,8 @@ export async function GET(
         }
         if (!state.open) {
           state.composerFocused = false;
+          state.activeConversationCardId = '';
+          state.starterCardPageIndex = 0;
         }
         render();
         return;
@@ -1193,6 +1391,8 @@ export async function GET(
       if (button.classList.contains('close-btn')) {
         state.open = false;
         state.composerFocused = false;
+        state.activeConversationCardId = '';
+        state.starterCardPageIndex = 0;
         render();
         return;
       }
@@ -1201,6 +1401,46 @@ export async function GET(
         var suggestion = String(button.getAttribute('data-faq-suggestion') || button.textContent || '').trim();
         if (suggestion) {
           state.inputValue = suggestion;
+          state.activeConversationCardId = '';
+          state.starterCardPageIndex = 0;
+          state.faqSuggestionsDismissed = true;
+          state.faqSuggestions = [];
+          render();
+          sendMessage();
+        }
+        return;
+      }
+
+      if (button.classList.contains('widget-starter-card')) {
+        var cardId = String(button.getAttribute('data-starter-card-id') || '').trim();
+        if (cardId) {
+          state.activeConversationCardId = cardId;
+          render();
+        }
+        return;
+      }
+
+      if (button.classList.contains('widget-starter-options__back')) {
+        state.activeConversationCardId = '';
+        render();
+        return;
+      }
+
+      if (button.hasAttribute('data-starter-page')) {
+        var pageIndex = Number(button.getAttribute('data-starter-page') || 0);
+        if (Number.isFinite(pageIndex)) {
+          state.starterCardPageIndex = Math.max(0, pageIndex);
+          render();
+        }
+        return;
+      }
+
+      if (button.classList.contains('widget-starter-option')) {
+        var prompt = String(button.getAttribute('data-starter-prompt') || '').trim();
+        if (prompt) {
+          state.inputValue = prompt;
+          state.activeConversationCardId = '';
+          state.starterCardPageIndex = 0;
           state.faqSuggestionsDismissed = true;
           state.faqSuggestions = [];
           render();
@@ -1283,6 +1523,11 @@ export async function GET(
     syncOrbTicker(orbStyle, orbPhase, orbGlyphList);
     syncOrbInactivity(orbStyle, orbPhase);
 
+    var starterCardsMarkupState = getStarterCardsMarkup(config);
+    var starterCardsMarkup = starterCardsMarkupState.html;
+    var showStarterCards = starterCardsMarkupState.showStarterCards;
+    var showStarterCardList = starterCardsMarkupState.showStarterCardList;
+
     mount.className = 'vintra-root position-' + position;
     applyViewportStateToMount();
     var shouldShowWidget = state.open;
@@ -1297,7 +1542,7 @@ export async function GET(
           'messages-' + (bodyStyle.messageStyle || 'bubble')
         ]) + '"' + (shouldShowWidget ? '' : ' hidden aria-hidden="true"') + '>' +
           '<div class="chat-content">' +
-          '<div class="chat-header">' +
+          '<div class="chat-header' + (showStarterCardList ? ' chat-header--starter-list' : '') + '">' +
             '<div class="chat-header-left">' +
               (headerStyle.showAvatar !== false ? headerAvatar : '') +
               '<div class="chat-header-copy">' +
@@ -1311,8 +1556,7 @@ export async function GET(
             '</div>' +
           '</div>' +
           '<div class="' + classes(['chat-body', 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '">' +
-            getMessagesMarkup(config) +
-            getFaqSuggestionsMarkup() +
+            (showStarterCards ? starterCardsMarkup : getMessagesMarkup(config) + getFaqSuggestionsMarkup()) +
           '</div>' +
           '<div class="' + classes([
             'chat-footer',
@@ -1371,7 +1615,7 @@ export async function GET(
     var body = mount.querySelector('.chat-body');
 
     if (body) {
-      body.scrollTop = body.scrollHeight;
+      body.scrollTop = showStarterCards ? 0 : body.scrollHeight;
     }
 
     if (bubbleButton && iconChoice === 'orb' && orbStyle.hoverEnabled) {
@@ -1401,6 +1645,10 @@ export async function GET(
           event.target.value = nextValue;
         }
         state.inputValue = nextValue;
+        if (nextValue) {
+          state.activeConversationCardId = '';
+          state.starterCardPageIndex = 0;
+        }
         syncComposerMode();
         markOrbActivity();
       });
@@ -1482,6 +1730,8 @@ export async function GET(
     markOrbActivity();
     state.faqSuggestionsDismissed = true;
     state.faqSuggestions = [];
+    state.activeConversationCardId = '';
+    state.starterCardPageIndex = 0;
 
     if (state.awaitingVisitorName) {
       state.sending = true;
@@ -1535,6 +1785,8 @@ export async function GET(
         state.awaitingVisitorName = false;
         state.pendingHumanSupportText = '';
         state.inputValue = '';
+        state.activeConversationCardId = '';
+        state.starterCardPageIndex = 0;
         setSupportStatus('needs-human');
 
         updateMessages(state.messages.concat([
@@ -1576,6 +1828,8 @@ export async function GET(
     ]));
     state.inputValue = '';
     state.error = '';
+    state.activeConversationCardId = '';
+    state.starterCardPageIndex = 0;
     state.sending = true;
     render();
 

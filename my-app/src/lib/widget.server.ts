@@ -165,10 +165,11 @@ export async function getBusinessByWidgetKey(
           ),
           chatAssistantConfig:
             widgetData.assistantConfig ||
-            (isDefaultWidget ? businessData.chatAssistantConfig : undefined),
-        chatAnalytics: businessData.chatAnalytics,
-        chatWidgetEmbedSecret: businessData.chatWidgetEmbedSecret,
-      }
+            businessData.chatAssistantConfig ||
+            undefined,
+          chatAnalytics: businessData.chatAnalytics,
+          chatWidgetEmbedSecret: businessData.chatWidgetEmbedSecret,
+        }
     }
 
     const businessData = businessDoc.data() || {}
