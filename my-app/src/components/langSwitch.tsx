@@ -12,6 +12,7 @@ interface Pt {
 type GlobeSwitcherProps = {
   size?: number;
   style?: React.CSSProperties;
+  glass?: boolean;
 };
 
 function angularDistance(a: number, b: number): number {
@@ -373,6 +374,7 @@ function drawGlobe(
 export default function GlobeSwitcher({
   size = 72,
   style,
+  glass = true,
 }: GlobeSwitcherProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const spinRef = useRef(0);
@@ -482,118 +484,176 @@ export default function GlobeSwitcher({
     }
   };
 
-  const labelSize = Math.max(8, size * 0.14);
+  const labelSize = Math.max(16, size * 0.14);
 
   return (
+  <div
+    style={{
+      display: "inline-flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: Math.max(2, size * 0.04),
+      padding: 0,
+      margin: 0,
+      fontFamily: "'DM Mono', 'Fira Mono', monospace",
+      lineHeight: 1,
+      ...style,
+    }}
+  >
     <div
+      onClick={handleGlobeClick}
       style={{
+        width: `${size + 8}px`,
+        height: `${size + 8}px`,
+        borderRadius: "50%",
         display: "inline-flex",
-        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: Math.max(2, size * 0.04),
-        padding: 0,
-        margin: 0,
-        fontFamily: "'DM Mono', 'Fira Mono', monospace",
-        lineHeight: 1,
-        ...style,
+        cursor: spinning ? "default" : "pointer",
+        background: glass
+          ? "rgba(255, 255, 255, 0.16)"
+          : "transparent",
+        boxShadow: glass
+          ? "0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 rgba(255, 255, 255, 0.1), inset 0 0 6px 3px rgba(255, 255, 255, 0.3)"
+          : "none",
+        border: glass ? "1px solid rgba(255, 255, 255, 0.3)" : "0",
+        backdropFilter: glass ? "blur(5px)" : "none",
+        WebkitBackdropFilter: glass ? "blur(5px)" : "none",
+        position: "relative",
+        overflow: "hidden",
+        transition: "transform 0.16s ease, filter 0.16s ease",
+        filter: spinning ? "brightness(1.12)" : "brightness(1)",
+      }}
+      onMouseDown={(e) => {
+        e.currentTarget.style.transform = "scale(0.96)";
+      }}
+      onMouseUp={(e) => {
+        e.currentTarget.style.transform = "scale(1)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "scale(1)";
       }}
     >
+      {glass ? (
+        <>
+          <span
+            aria-hidden="true"
+            style={{
+              content: "''",
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: "1px",
+              borderRadius: "50%",
+              background:
+                "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent)",
+              pointerEvents: "none",
+            }}
+          />
+          <span
+            aria-hidden="true"
+            style={{
+              content: "''",
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "1px",
+              height: "100%",
+              borderRadius: "50%",
+              background:
+                "linear-gradient(180deg, rgba(255, 255, 255, 0.8), transparent, rgba(255, 255, 255, 0.3))",
+              pointerEvents: "none",
+            }}
+          />
+        </>
+      ) : null}
+
       <canvas
         ref={canvasRef}
-        onClick={handleGlobeClick}
         style={{
           display: "block",
           width: `${size}px`,
           height: `${size}px`,
           borderRadius: "50%",
-          cursor: spinning ? "default" : "pointer",
-          background: "transparent",
-          transition: "transform 0.16s ease, filter 0.16s ease",
-          filter: spinning ? "brightness(1.12)" : "brightness(1)",
-        }}
-        onMouseDown={(e) => {
-          e.currentTarget.style.transform = "scale(0.96)";
-        }}
-        onMouseUp={(e) => {
-          e.currentTarget.style.transform = "scale(1)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = "scale(1)";
+          background: "radial-gradient(circle at center, rgba(15,23,42,0.24), rgba(15,23,42,0.04))",
+          pointerEvents: "none",
         }}
       />
+    </div>
 
-      <div
+    <div
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "2px",
+        fontSize: `${labelSize}px`,
+        fontWeight: 700,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        userSelect: "none",
+        whiteSpace: "nowrap",
+      }}
+    >
+      <button
+        type="button"
+        aria-label="Bytt språk til norsk"
+        onClick={() => {
+          if (spinning || lang === "no") return;
+          setLanguage("no");
+          doSpin("no");
+        }}
         style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "2px",
-          fontSize: `${labelSize}px`,
-          fontWeight: 700,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          userSelect: "none",
-          whiteSpace: "nowrap",
+          border: 0,
+          padding: 0,
+          margin: 0,
+          background: "transparent",
+          color: lang === "no" ? "#3B82F6" : "#888780",
+          cursor: lang === "no" || spinning ? "default" : "pointer",
+          font: "inherit",
+          lineHeight: 1,
+          letterSpacing: "inherit",
+          textTransform: "inherit",
         }}
       >
-        <button
-          type="button"
-          aria-label="Bytt språk til norsk"
-          onClick={() => {
-            if (spinning || lang === "no") return;
-            setLanguage("no");
-            doSpin("no");
-          }}
-          style={{
-            border: 0,
-            padding: 0,
-            margin: 0,
-            background: "transparent",
-            color: lang === "no" ? "#3B82F6" : "#888780",
-            cursor: lang === "no" || spinning ? "default" : "pointer",
-            font: "inherit",
-            lineHeight: 1,
-            letterSpacing: "inherit",
-            textTransform: "inherit",
-          }}
-        >
-          NO
-        </button>
+        NO
+      </button>
 
-        <span
-          aria-hidden="true"
-          style={{
-            color: "#888780",
-          }}
-        >
-          /
-        </span>
+      <span
+        aria-hidden="true"
+        style={{
+          color: "#888780",
+        }}
+      >
+        /
+      </span>
 
-        <button
-          type="button"
-          aria-label="Switch language to English"
-          onClick={() => {
-            if (spinning || lang === "en") return;
-            setLanguage("en");
-            doSpin("en");
-          }}
-          style={{
-            border: 0,
-            padding: 0,
-            margin: 0,
-            background: "transparent",
-            color: lang === "en" ? "#3B82F6" : "#888780",
-            cursor: lang === "en" || spinning ? "default" : "pointer",
-            font: "inherit",
-            lineHeight: 1,
-            letterSpacing: "inherit",
-            textTransform: "inherit",
-          }}
-        >
-          EN
-        </button>
-      </div>
+      <button
+        type="button"
+        aria-label="Switch language to English"
+        onClick={() => {
+          if (spinning || lang === "en") return;
+          setLanguage("en");
+          doSpin("en");
+        }}
+        style={{
+          border: 0,
+          padding: 0,
+          margin: 0,
+          background: "transparent",
+          color: lang === "en" ? "#3B82F6" : "#888780",
+          cursor: lang === "en" || spinning ? "default" : "pointer",
+          font: "inherit",
+          lineHeight: 1,
+          letterSpacing: "inherit",
+          textTransform: "inherit",
+        }}
+      >
+        EN
+      </button>
     </div>
-  );
+  </div>
+);
 }

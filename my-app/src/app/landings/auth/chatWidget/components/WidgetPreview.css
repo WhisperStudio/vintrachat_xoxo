@@ -244,6 +244,7 @@
 }
 
 .widget-preview-total {
+  display: none;
   margin-bottom: 1rem;
   padding: 1rem 1rem 1.15rem;
   border: 1px solid rgba(124, 58, 237, 0.12);
@@ -719,7 +720,53 @@
   animation: fadeInUp 0.3s ease;
 }
 
+.message--assistant,
+.message--support {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.22rem;
+  padding-left: 0.25rem;
+}
+
+.message--user {
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 0.22rem;
+  padding-right: 0.25rem;
+}
+
+.message-role-icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.58);
+  color: inherit;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  flex: none;
+  margin-top: 0.05rem;
+}
+
+.message--assistant .message-role-icon,
+.message--support .message-role-icon {
+  align-self: flex-start;
+  margin-left: 0.35rem;
+}
+
+.message--user .message-role-icon {
+  align-self: flex-end;
+  margin-right: 0.35rem;
+}
+
+.message-role-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
 .message-content {
+  flex: 0 1 auto;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -853,6 +900,11 @@
   color: #2563eb;
   font-size: 1.45rem;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.widget-starter-cards__hero-icon svg {
+  width: 1.35rem;
+  height: 1.35rem;
 }
 
 .widget-starter-cards--minimal .widget-starter-cards__hero-icon {

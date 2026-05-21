@@ -905,10 +905,8 @@ export default function Header() {
               {!firebaseUser ? (
                 <>
                   <SecondaryAction href="/auth/login">{text.actions.login}</SecondaryAction>
-                  <SecondaryAction href="/auth/login">{text.actions.login}</SecondaryAction>
                   <PrimaryAction href="/auth/signup">
                     <FiArrowRight />
-                    <span>{text.actions.startFree}</span>
                     <span>{text.actions.startFree}</span>
                   </PrimaryAction>
                 </>
@@ -917,11 +915,9 @@ export default function Header() {
                   <SecondaryAction href="/invite">
                     <FiUserPlus />
                     <span>{text.nav.invitations}</span>
-                    <span>{text.nav.invitations}</span>
                   </SecondaryAction>
                   <PrimaryAction href="/auth/signup">
                     <FiPlusCircle />
-                    <span>{text.actions.createBusiness}</span>
                     <span>{text.actions.createBusiness}</span>
                   </PrimaryAction>
                   <ActionButton type="button" onClick={handleLogout}>
@@ -969,10 +965,8 @@ export default function Header() {
             {!firebaseUser ? (
               <>
                 <SecondaryAction href="/auth/login">{text.actions.login}</SecondaryAction>
-                <SecondaryAction href="/auth/login">{text.actions.login}</SecondaryAction>
                 <PrimaryAction href="/auth/signup">
                   <FiArrowRight />
-                  <span>{text.actions.startFree}</span>
                   <span>{text.actions.startFree}</span>
                 </PrimaryAction>
               </>
@@ -981,11 +975,9 @@ export default function Header() {
                 <SecondaryAction href="/invite">
                   <FiUserPlus />
                   <span>{text.nav.invitations}</span>
-                  <span>{text.nav.invitations}</span>
                 </SecondaryAction>
                 <PrimaryAction href="/auth/signup">
                   <FiPlusCircle />
-                  <span>{text.actions.createBusiness}</span>
                   <span>{text.actions.createBusiness}</span>
                 </PrimaryAction>
                 <ActionButton type="button" onClick={handleLogout}>

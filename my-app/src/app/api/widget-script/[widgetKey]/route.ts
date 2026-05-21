@@ -2,12 +2,21 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { WIDGET_THEME_CLASS, WIDGET_THEME_VARS } from '@/components/chat/widgetDesign'
+import { WIDGET_ICON_OPTIONS, renderWidgetIcon } from '@/lib/widget-icons'
+import { renderToStaticMarkup } from 'react-dom/server'
 
 function serializeForJs(value: unknown) {
   return JSON.stringify(value)
     .replace(/\u2028/g, '\\u2028')
     .replace(/\u2029/g, '\\u2029')
 }
+
+const WIDGET_ICON_MARKUP_BY_KEY = Object.fromEntries(
+  WIDGET_ICON_OPTIONS.map((option) => [
+    option.key,
+    renderToStaticMarkup(renderWidgetIcon(option.key, { 'aria-hidden': true })),
+  ])
+)
 
 const widgetStyles = `
 :host {
@@ -282,6 +291,7 @@ export async function GET(
   var SUPPORT_STATUS_STORAGE_KEY = '__vintraWidgetSupportStatus__' + WIDGET_KEY;
   var THEME_CLASS_BY_NAME = ${serializeForJs(WIDGET_THEME_CLASS)};
   var THEME_VARS_BY_NAME = ${serializeForJs(WIDGET_THEME_VARS)};
+  var WIDGET_ICON_MARKUP_BY_KEY = ${serializeForJs(WIDGET_ICON_MARKUP_BY_KEY)};
 
   if (window[GLOBAL_KEY]) return;
   window[GLOBAL_KEY] = true;
@@ -510,6 +520,16 @@ export async function GET(
   function setSupportStatus(value) {
     state.supportStatus = value || '';
     writeStoredSupportStatus(state.supportStatus);
+  }
+
+  function getAssistantWidgetIcons() {
+    var assistantConfig = getAssistantConfig();
+    return (assistantConfig && assistantConfig.widgetIcons) || {};
+  }
+
+  function renderConfiguredWidgetIcon(iconKey) {
+    if (!iconKey) return '';
+    return WIDGET_ICON_MARKUP_BY_KEY[iconKey] || '';
   }
 
   var icons = {
@@ -956,6 +976,7 @@ export async function GET(
 
   function getMessagesMarkup(config) {
     var bodyStyle = (config && config.bodyStyle) || {};
+    var assistantIcons = getAssistantWidgetIcons();
     var waitingLine = state.supportStatus === 'needs-human'
       ? '<div class="chat-status-line">Waiting for a support assistant</div>'
       : '';
@@ -983,6 +1004,15 @@ export async function GET(
         );
       }
 
+      var messageIconKey = msg.role === 'assistant'
+        ? assistantIcons.aiIcon || assistantIcons.heroIcon || ''
+        : msg.role === 'support'
+          ? assistantIcons.supportIcon || ''
+          : msg.role === 'user'
+            ? assistantIcons.userIcon || ''
+            : '';
+      var messageIconMarkup = renderConfiguredWidgetIcon(messageIconKey);
+
       return (
         '<div class="' + classes(['message', roleClass]) + '">' +
           '<div class="message-content">' + escapeHtml(msg.text) + '</div>' +
@@ -992,6 +1022,7 @@ export async function GET(
               (bodyStyle.showReadReceipts && msg.role === 'user' ? '<span class="message-read">Read</span>' : '') +
             '</div>'
           ) : '') +
+          (messageIconMarkup ? '<span class="message-role-icon">' + messageIconMarkup + '</span>' : '') +
         '</div>'
       );
     }).join('') + typingMarkup;
@@ -1000,6 +1031,7 @@ export async function GET(
   function getStarterCardsMarkup(config) {
     var bodyStyle = (config && config.bodyStyle) || {};
     var assistantConfig = getAssistantConfig();
+    var assistantIcons = getAssistantWidgetIcons();
     var starterCards = getConversationCards(config);
     var cardsLayout = bodyStyle.conversationCardsLayout || 'grid';
     var cardsStyle = bodyStyle.conversationCardsStyle || 'modern';
@@ -1071,7 +1103,7 @@ export async function GET(
       html:
         '<div class="widget-starter-cards widget-starter-cards--' + cardsLayout + ' widget-starter-cards--' + cardsStyle + '">' +
           '<div class="widget-starter-cards__hero widget-starter-cards__hero--' + cardsStyle + '">' +
-            '<div class="widget-starter-cards__hero-icon" aria-hidden="true">' + escapeHtml(starterCards[0].icon || '🤖') + '</div>' +
+            '<div class="widget-starter-cards__hero-icon" aria-hidden="true">' + renderConfiguredWidgetIcon(assistantIcons.heroIcon || '') + '</div>' +
             '<div class="widget-starter-cards__hero-copy">' +
               '<strong>Hei! 👋</strong>' +
               '<p>' + escapeHtml(isMinimalCards ? 'Hva kan jeg hjelpe deg med?' : 'Hva kan jeg hjelpe deg med i dag?') + '</p>' +
@@ -1515,7 +1547,7 @@ export async function GET(
             ' style="object-fit: contain; object-position: ' + logoStyle.focusX + '% ' + logoStyle.focusY + '%; transform: scale(' + (logoStyle.zoom / 100) + '); transform-origin: ' + logoStyle.focusX + '% ' + logoStyle.focusY + '%;"' +
           ' />' +
         '</div>'
-      : icons.message;
+      : renderConfiguredWidgetIcon(getAssistantWidgetIcons().avatarIcon || '');
     var orbPhase = iconChoice === 'orb' ? getOrbPhase(orbStyle) : 'none';
     var orbGlyphList = iconChoice === 'orb' ? getOrbGlyphList(orbStyle, orbPhase) : [];
     var orbGlyph = orbGlyphList.length ? orbGlyphList[state.orbCycleTick % orbGlyphList.length] : '';

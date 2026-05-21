@@ -197,6 +197,15 @@ export async function PATCH(
       if (typeof assistant.forceSelectedModelOnly === 'boolean') {
         updates['chatAssistantConfig.forceSelectedModelOnly'] = assistant.forceSelectedModelOnly
       }
+      if (assistant.widgetIcons && typeof assistant.widgetIcons === 'object') {
+        updates['chatAssistantConfig.widgetIcons'] = {
+          avatarIcon: typeof assistant.widgetIcons.avatarIcon === 'string' ? assistant.widgetIcons.avatarIcon.trim() : '',
+          heroIcon: typeof assistant.widgetIcons.heroIcon === 'string' ? assistant.widgetIcons.heroIcon.trim() : '',
+          aiIcon: typeof assistant.widgetIcons.aiIcon === 'string' ? assistant.widgetIcons.aiIcon.trim() : '',
+          supportIcon: typeof assistant.widgetIcons.supportIcon === 'string' ? assistant.widgetIcons.supportIcon.trim() : '',
+          userIcon: typeof assistant.widgetIcons.userIcon === 'string' ? assistant.widgetIcons.userIcon.trim() : '',
+        }
+      }
     }
 
     if (Object.keys(updates).length === 0) {

@@ -269,6 +269,7 @@ export async function GET(req: NextRequest) {
                 conversationCards: Array.isArray(data.chatAssistantConfig.conversationCards)
                   ? data.chatAssistantConfig.conversationCards
                   : [],
+                widgetIcons: data.chatAssistantConfig.widgetIcons || null,
                 startLanguage: String(data.chatAssistantConfig.startLanguage || 'English'),
                 replyInUserLanguage: Boolean(data.chatAssistantConfig.replyInUserLanguage ?? true),
                 responseStyle: String(data.chatAssistantConfig.responseStyle || ''),

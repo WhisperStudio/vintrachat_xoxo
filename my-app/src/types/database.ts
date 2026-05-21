@@ -81,6 +81,14 @@ export interface AssistantIntegrationSettings {
   handoffToHuman: boolean;
 }
 
+export interface AssistantWidgetIcons {
+  avatarIcon?: string;
+  heroIcon?: string;
+  aiIcon?: string;
+  supportIcon?: string;
+  userIcon?: string;
+}
+
 export interface ChatAssistantConfig {
   enabled: boolean;
   provider: 'gemini';
@@ -101,6 +109,7 @@ export interface ChatAssistantConfig {
   conversationCardsEnabled: boolean;
   conversationCardsLimit: number;
   conversationCards: AssistantConversationCard[];
+  widgetIcons?: AssistantWidgetIcons;
   startLanguage: string;
   replyInUserLanguage: boolean;
   responseStyle: string;

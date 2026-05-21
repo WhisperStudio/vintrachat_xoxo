@@ -636,6 +636,13 @@ export async function POST(req: NextRequest) {
       faqSuggestions: [],
       conversationCardsEnabled: false,
       conversationCards: [],
+      widgetIcons: {
+        avatarIcon: 'FiMessageCircle',
+        heroIcon: 'FiMessageCircle',
+        aiIcon: 'FiCpu',
+        supportIcon: 'FiLifeBuoy',
+        userIcon: 'FiUser',
+      },
       startLanguage: 'English',
       replyInUserLanguage: true,
       responseStyle: '',

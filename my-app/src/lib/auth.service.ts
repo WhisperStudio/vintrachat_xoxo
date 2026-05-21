@@ -35,6 +35,7 @@ import {
   AssistantBusinessProfile,
   AssistantKnowledgeBase,
   AssistantIntegrationSettings,
+  AssistantWidgetIcons,
   ChatAnalytics,
   ChatAnalyticsEvent,
   SupportTaskCategory,
@@ -291,10 +292,17 @@ function buildDefaultAssistantConfig(): ChatAssistantConfig {
       'How do I contact support?',
       'What services do you offer?',
     ],
-    conversationCardsEnabled: true,
-    conversationCardsLimit: 4,
-    conversationCards: defaultConversationCards,
-    startLanguage: 'English',
+  conversationCardsEnabled: true,
+  conversationCardsLimit: 4,
+  conversationCards: defaultConversationCards,
+  widgetIcons: {
+    avatarIcon: 'FiMessageCircle',
+    heroIcon: 'FiMessageCircle',
+    aiIcon: 'FiCpu',
+    supportIcon: 'FiLifeBuoy',
+    userIcon: 'FiUser',
+  },
+  startLanguage: 'English',
     replyInUserLanguage: true,
     responseStyle: 'Friendly, clear, and concise',
     extraInstructions: 'Always keep answers short unless the user asks for more detail.',
@@ -385,6 +393,11 @@ function mergeAssistantConfig(
       ...(baseConfig.integrations || {}),
       ...(overrideConfig.integrations || {}),
     } as AssistantIntegrationSettings,
+    widgetIcons: {
+      ...(defaults.widgetIcons || {}),
+      ...(baseConfig.widgetIcons || {}),
+      ...(overrideConfig.widgetIcons || {}),
+    } as AssistantWidgetIcons,
     strictness:
       overrideConfig.strictness ||
       baseConfig.strictness ||
@@ -734,6 +747,13 @@ const defaultWidgetConfig: ChatWidgetConfig = {
   conversationCardsEnabled: true,
   conversationCardsLimit: 4,
   conversationCards: defaultConversationCards,
+  widgetIcons: {
+    avatarIcon: 'FiMessageCircle',
+    heroIcon: 'FiMessageCircle',
+    aiIcon: 'FiCpu',
+    supportIcon: 'FiLifeBuoy',
+    userIcon: 'FiUser',
+  },
   startLanguage: 'English',
   replyInUserLanguage: true,
   responseStyle: 'Friendly, clear, and concise',
@@ -1423,7 +1443,12 @@ export async function updateChatAssistantConfig(
     const businessRef = doc(db, "businesses", businessId);
     const businessSnap = await getDoc(businessRef)
     const businessData = businessSnap.exists() ? businessSnap.data() || {} : {}
-    const targetWidgetKey = String(widgetKey || businessData.activeChatWidgetKey || businessData.chatWidgetKey || '')
+    let targetWidgetKey = String(widgetKey || businessData.activeChatWidgetKey || businessData.chatWidgetKey || '')
+    if (!targetWidgetKey) {
+      const widgetsSnap = await getDocs(collection(db, `businesses/${businessId}/chatWidgets`))
+      const firstWidget = widgetsSnap.docs[0]
+      targetWidgetKey = firstWidget ? String(firstWidget.id || firstWidget.data()?.widgetKey || '') : ''
+    }
     const widgetRef = targetWidgetKey ? doc(db, `businesses/${businessId}/chatWidgets/${targetWidgetKey}`) : null
     const widgetSnap = widgetRef ? await getDoc(widgetRef) : null
     const widgetData = widgetSnap?.exists() ? widgetSnap.data() || {} : {}

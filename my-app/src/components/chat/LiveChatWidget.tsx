@@ -440,6 +440,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         id: message.id,
         text: message.text,
         isBot: message.role === 'assistant',
+        role: message.role,
       }))
     : [
         {
@@ -464,6 +465,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
           logo: config.customBranding?.logo,
           logoStyle: config.customBranding?.logoStyle,
         }}
+        assistantIcons={configResponse?.assistantConfig?.widgetIcons}
         variant="embedded"
         keyboardOffset={keyboardOffset}
         messagesOverride={widgetMessages}

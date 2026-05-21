@@ -5,9 +5,10 @@ import { FiArrowLeft, FiCheckCircle, FiChevronRight, FiCpu, FiLifeBuoy, FiMessag
 import GlassOrbAvatar from '../../../../../svgs/GlassOrbAvatar'
 import { getWidgetThemeClass, getWidgetThemeStyle, joinWidgetClasses } from '@/components/chat/widgetDesign'
 import { normalizeConversationCards } from '@/lib/conversation-cards'
+import { renderWidgetIcon } from '@/lib/widget-icons'
 import FeedbackFormOverlay from '@/components/chat/FeedbackFormOverlay'
 import './WidgetPreview.css'
-import type { AssistantConversationCard, BubbleIconChoice, OrbStyleConfig } from '@/types/database'
+import type { AssistantConversationCard, AssistantWidgetIcons, BubbleIconChoice, OrbStyleConfig } from '@/types/database'
 
 const OrbAvatar = GlassOrbAvatar as ComponentType<
   SVGProps<SVGSVGElement> & { glyph?: string; orbMode?: 'spin' | 'hover' | 'reply' | 'inactive' }
@@ -71,6 +72,7 @@ interface WidgetPreviewProps {
       focusY: number
     }
   }
+  assistantIcons?: AssistantWidgetIcons
   initialOpen?: boolean
   variant?: 'default' | 'embedded'
   previewMode?: 'desktop' | 'mobile'
@@ -110,6 +112,7 @@ interface Message {
   id: string
   text: string
   isBot: boolean
+  role?: 'assistant' | 'user' | 'support' | 'system'
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -143,6 +146,7 @@ export default function WidgetPreview({
   position,
   colorTheme,
   customBranding,
+  assistantIcons,
   initialOpen = false,
   variant = 'default',
   previewMode = 'desktop',
@@ -180,6 +184,7 @@ export default function WidgetPreview({
       id: crypto.randomUUID(),
       text: 'Hey! Welcome to our website. How can we help you today?',
       isBot: true,
+      role: 'assistant',
     },
   ])
   const [internalInputValue, setInternalInputValue] = useState('')
@@ -192,6 +197,14 @@ export default function WidgetPreview({
   const [faqSuggestionsDismissed, setFaqSuggestionsDismissed] = useState(false)
   const [isComposerFocused, setIsComposerFocused] = useState(false)
   const [activeConversationCardId, setActiveConversationCardId] = useState<string | null>(null)
+
+  const effectiveAssistantIcons = {
+    avatarIcon: assistantIcons?.avatarIcon ?? 'FiMessageCircle',
+    heroIcon: assistantIcons?.heroIcon ?? 'FiMessageCircle',
+    aiIcon: assistantIcons?.aiIcon ?? 'FiCpu',
+    supportIcon: assistantIcons?.supportIcon ?? 'FiLifeBuoy',
+    userIcon: assistantIcons?.userIcon ?? 'FiUser',
+  }
 
   const isChatOpen = openOverride ?? internalIsChatOpen
   const messages = messagesOverride ?? internalMessages
@@ -284,6 +297,20 @@ export default function WidgetPreview({
   const isMinimalCards = bodyStyle.conversationCardsStyle === 'minimal'
   const isImageCards = bodyStyle.conversationCardsStyle === 'image'
   const isChipsCards = bodyStyle.conversationCardsStyle === 'chips'
+  const getMessageRole = (message: Message) => message.role || (message.isBot ? 'assistant' : 'user')
+  const getMessageClassName = (message: Message) => {
+    const role = getMessageRole(message)
+    if (role === 'support') return 'message-support'
+    if (role === 'system') return 'message-system'
+    return message.isBot ? 'message-bot' : 'message-user'
+  }
+  const getMessageIconKey = (message: Message) => {
+    const role = getMessageRole(message)
+    if (role === 'assistant') return effectiveAssistantIcons.aiIcon || effectiveAssistantIcons.heroIcon || ''
+    if (role === 'support') return effectiveAssistantIcons.supportIcon || effectiveAssistantIcons.aiIcon || effectiveAssistantIcons.heroIcon || ''
+    if (role === 'user') return effectiveAssistantIcons.userIcon || ''
+    return ''
+  }
 
   useEffect(() => {
     if (!showStarterCards) {
@@ -377,11 +404,13 @@ export default function WidgetPreview({
           id: crypto.randomUUID(),
           text: nextText,
           isBot: false,
+          role: 'user',
         },
         {
           id: crypto.randomUUID(),
           text: 'Absolutely. I opened a quick feedback form for you.',
           isBot: true,
+          role: 'assistant',
         },
       ])
       setInputValue('')
@@ -404,19 +433,21 @@ export default function WidgetPreview({
 
     window.setTimeout(() => {
       if (enablePreviewChat) {
-        setInternalMessages((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            text: nextText,
-            isBot: false,
-          },
-          {
-            id: crypto.randomUUID(),
-            text: previewReply,
-            isBot: true,
-          },
-        ])
+          setInternalMessages((prev) => [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              text: nextText,
+              isBot: false,
+              role: 'user',
+            },
+            {
+              id: crypto.randomUUID(),
+              text: previewReply,
+              isBot: true,
+              role: 'assistant',
+            },
+          ])
       }
 
       setInputValue('')
@@ -588,7 +619,7 @@ export default function WidgetPreview({
                   </button>
                 ) : (
                   <>
-                    {headerStyle.showAvatar && (
+                    {headerStyle.showAvatar && (customBranding.logo || effectiveAssistantIcons.avatarIcon) ? (
                       <div className={`avatar ${customBranding.logo ? 'avatar--image' : ''}`}>
                         {customBranding.logo ? (
                           <div
@@ -602,10 +633,10 @@ export default function WidgetPreview({
                             }}
                           />
                         ) : (
-                          <FiMessageCircle />
+                          renderWidgetIcon(effectiveAssistantIcons.avatarIcon, { 'aria-hidden': true })
                         )}
                       </div>
-                    )}
+                    ) : null}
 
                     <div>
                       {headerStyle.showTitle && <h3>{title}</h3>}
@@ -636,9 +667,11 @@ export default function WidgetPreview({
               {showStarterCards && !showStarterCardList ? (
                 <div className={`widget-starter-cards widget-starter-cards--${bodyStyle.conversationCardsLayout} widget-starter-cards--${bodyStyle.conversationCardsStyle}`}>
                   <div className={`widget-starter-cards__hero widget-starter-cards__hero--${bodyStyle.conversationCardsStyle}`}>
-                    <div className="widget-starter-cards__hero-icon" aria-hidden="true">
-                      {starterCards[0]?.icon || '🤖'}
-                    </div>
+                    {effectiveAssistantIcons.heroIcon ? (
+                      <div className="widget-starter-cards__hero-icon" aria-hidden="true">
+                        {renderWidgetIcon(effectiveAssistantIcons.heroIcon, { 'aria-hidden': true })}
+                      </div>
+                    ) : null}
                     <div className="widget-starter-cards__hero-copy">
                       <strong>Hei! 👋</strong>
                       <p>{isMinimalCards ? 'Hva kan jeg hjelpe deg med?' : 'Hva kan jeg hjelpe deg med i dag?'}</p>
@@ -737,7 +770,7 @@ export default function WidgetPreview({
                   {messages.map((msg) => (
                     <div
                       key={msg.id}
-                      className={`message ${msg.isBot ? 'message-bot' : 'message-user'}`}
+                      className={`message message-${getMessageRole(msg)} message--${getMessageRole(msg)} ${getMessageClassName(msg)}`}
                     >
                       <div className="message-content">{msg.text}</div>
                       {(bodyStyle.showTimestamps || (bodyStyle.showReadReceipts && !msg.isBot)) && (
@@ -755,6 +788,11 @@ export default function WidgetPreview({
                           )}
                         </div>
                       )}
+                      {getMessageIconKey(msg) ? (
+                        <span className="message-role-icon" aria-hidden="true">
+                          {renderWidgetIcon(getMessageIconKey(msg), { 'aria-hidden': true })}
+                        </span>
+                      ) : null}
                     </div>
                   ))}
                   {showComposerSuggestions && (
@@ -777,6 +815,11 @@ export default function WidgetPreview({
                   )}
                   {showTypingIndicator && (
                     <div className="message message-bot message-typing" aria-live="polite" aria-label="Assistant is typing">
+                      {effectiveAssistantIcons.aiIcon || effectiveAssistantIcons.heroIcon ? (
+                        <span className="message-role-icon" aria-hidden="true">
+                          {renderWidgetIcon(effectiveAssistantIcons.aiIcon || effectiveAssistantIcons.heroIcon, { 'aria-hidden': true })}
+                        </span>
+                      ) : null}
                       <div className="typing-dots">
                         <span />
                         <span />
@@ -906,3 +949,4 @@ export default function WidgetPreview({
     </div>
   )
 }
+
