@@ -13,6 +13,7 @@ import {
 import {
   FiBriefcase,
   FiChevronDown,
+  FiChevronRight,
   FiCopy,
   FiCpu,
   FiGlobe,
@@ -545,11 +546,51 @@ const STRICTNESS_OPTIONS: Array<{
 ]
 
 const WIZARD_STEPS = [
-  { id: 'business', label: '1. Bedriftsinfo', icon: FiBriefcase, accent: 'violet' },
-  { id: 'sources', label: '2. Kilder', icon: FiLayers, accent: 'green' },
-  { id: 'actions', label: '3. Handling', icon: FiTarget, accent: 'amber' },
-  { id: 'rules', label: '4. Regler', icon: FiShield, accent: 'rose' },
-  { id: 'cards', label: '5. Extra settings', icon: FiLayers, accent: 'violet' },
+  {
+    id: 'business',
+    label: 'Bedriftsinfo',
+    eyebrow: 'Profile',
+    description: 'Navn, bransje, språk, tone og hovedmål.',
+    icon: FiBriefcase,
+    accent: 'violet',
+    sections: ['Navn og kontakt', 'Tone og språk', 'Hovedmål'],
+  },
+  {
+    id: 'sources',
+    label: 'Kilder',
+    eyebrow: 'Sources',
+    description: 'Nettsider, dokumenter, åpningstider, kontaktinfo og FAQ.',
+    icon: FiLayers,
+    accent: 'green',
+    sections: ['Nettsider', 'Dokumenter', 'Bedriftsfakta', 'FAQ-grunnlag'],
+  },
+  {
+    id: 'actions',
+    label: 'Handling',
+    eyebrow: 'Actions',
+    description: 'Hva assistenten skal gjøre, samle inn og sende videre.',
+    icon: FiTarget,
+    accent: 'amber',
+    sections: ['Oppgaver', 'AI-svar', 'Support og handoff'],
+  },
+  {
+    id: 'rules',
+    label: 'Regler',
+    eyebrow: 'Rules',
+    description: 'Strenghet, systemprompt, guardrails og ekstra instrukser.',
+    icon: FiShield,
+    accent: 'rose',
+    sections: ['Strenghet', 'Systemprompt', 'Begrensninger', 'Ekstra instrukser'],
+  },
+  {
+    id: 'cards',
+    label: 'Kort og valg',
+    eyebrow: 'Cards',
+    description: 'Starter cards, ikoner, bilder og hurtigvalg i chatbotten.',
+    icon: FiLayers,
+    accent: 'violet',
+    sections: ['Starter cards', 'Kortvisning', 'Innhold og ikoner'],
+  },
 ] as const
 
 const MAIN_GOAL_OPTIONS = [
@@ -648,9 +689,14 @@ export default function WidgetAdminPanel({
   const [domainsStatus, setDomainsStatus] = useState<'idle' | 'saved' | 'error'>('idle')
   const [assistantSaving, setAssistantSaving] = useState(false)
   const [assistantStatus, setAssistantStatus] = useState<'idle' | 'saved' | 'error'>('idle')
+  const [assistantError, setAssistantError] = useState('')
+  const [lastAssistantConfigUpdate, setLastAssistantConfigUpdate] = useState<string | null>(null)
+  const assistantSaveInProgressRef = useRef(false)
+  const assistantHydratedRef = useRef(false)
   const [wizardOpen, setWizardOpen] = useState(false)
   const [wizardPurpose, setWizardPurpose] = useState<'settings' | 'new-widget'>('settings')
   const [wizardStep, setWizardStep] = useState(0)
+  const [activeWizardSection, setActiveWizardSection] = useState<string>(WIZARD_STEPS[0].sections[0])
   const [wizardAutofillStatus, setWizardAutofillStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
   const [wizardAutofillOpen, setWizardAutofillOpen] = useState(false)
   const [wizardAutofillUrl, setWizardAutofillUrl] = useState('')
@@ -709,12 +755,19 @@ export default function WidgetAdminPanel({
     setLastConfigUpdate(JSON.stringify(mergedConfig))
   }
 
+  const serializeAssistantConfig = (config: ChatAssistantConfig) =>
+    JSON.stringify({
+      ...config,
+      conversationCards: normalizeConversationCards(config.conversationCards),
+    })
+
   const applyWidgetAssistantConfig = (widget?: (typeof widgetList)[number] | null) => {
     const legacyBusinessConfig =
       !widget || widget.isDefault
         ? (business?.chatAssistantConfig as ChatAssistantConfig | undefined)
         : undefined
 
+    const rawAssistantConfig = widget?.assistantConfig || legacyBusinessConfig || null
     const nextAssistantConfig = {
       ...defaultAssistantConfig,
       ...(legacyBusinessConfig || {}),
@@ -725,6 +778,8 @@ export default function WidgetAdminPanel({
       ...nextAssistantConfig,
       conversationCards: normalizeConversationCards(nextAssistantConfig.conversationCards),
     })
+    setLastAssistantConfigUpdate(rawAssistantConfig ? serializeAssistantConfig(rawAssistantConfig) : '{}')
+    assistantHydratedRef.current = true
   }
 
   const setAssistantField = <K extends keyof ChatAssistantConfig>(field: K, value: ChatAssistantConfig[K]) => {
@@ -1071,21 +1126,20 @@ export default function WidgetAdminPanel({
                     </div>
                   ) : (
                     <div className="widget-ai-grid">
-                      <label className="widget-ai-field">
-                        <span>Icon</span>
-                        <input
-                          type="text"
-                          value={activeCard.icon || ''}
-                          disabled={!assistantConfig.conversationCardsEnabled}
-                          onChange={(event) =>
-                            updateConversationCard(activeIndex, (nextCard) => ({
-                              ...nextCard,
-                              icon: event.target.value,
-                            }))
-                          }
-                          placeholder="??, ??, ???, or an icon name"
-                        />
-                      </label>
+                      <IconPickerBubble
+                        label="Icon"
+                        value={activeCard.icon || ''}
+                        onChange={(nextValue) =>
+                          updateConversationCard(activeIndex, (nextCard) => ({
+                            ...nextCard,
+                            icon: nextValue,
+                          }))
+                        }
+                        placeholder="Card icon"
+                        helperText="Choose the icon shown on this starter card."
+                        className={!assistantConfig.conversationCardsEnabled ? 'is-disabled' : ''}
+                        disabled={!assistantConfig.conversationCardsEnabled}
+                      />
 
                       <label className="widget-ai-field">
                         <span>Optional image URL</span>
@@ -1263,23 +1317,27 @@ export default function WidgetAdminPanel({
     )
   })()
   const autoContextNeedsOverwriteConfirmation = autoContextOpen && autoContextHasExistingContent
+  const activeWidgetKey =
+    selectedWidgetKey || business?.activeChatWidgetKey || business?.chatWidgetKey || ''
 
   const persistAssistantConfig = async (nextConfig: ChatAssistantConfig) => {
-    if (!dbUser?.businessId) return { success: false }
-
-    const targetWidgetKey =
-      selectedWidgetKey ||
-      business?.activeChatWidgetKey ||
-      business?.chatWidgetKey ||
-      widgetList[0]?.widgetKey ||
-      ''
-    const result = await updateChatAssistantConfig(dbUser.businessId, nextConfig, targetWidgetKey)
-
-    if (result.success) {
-      void refreshBusiness()
+    if (!dbUser?.businessId) {
+      return { success: false, message: 'Missing business ID.' }
     }
 
-    return result
+    assistantSaveInProgressRef.current = true
+
+    try {
+      const result = await updateChatAssistantConfig(dbUser.businessId, nextConfig, activeWidgetKey)
+
+      if (result.success) {
+        await refreshBusiness()
+      }
+
+      return result
+    } finally {
+      assistantSaveInProgressRef.current = false
+    }
   }
 
   const applyWizardAutofillResult = (autofill: WebsiteAutofillResult) => {
@@ -1350,18 +1408,38 @@ export default function WidgetAdminPanel({
   useEffect(() => {
     if (!wizardOpen) return
 
+    const scrollY = window.scrollY
+    const previousHtmlOverflow = document.documentElement.style.overflow
     const previousOverflow = document.body.style.overflow
     const previousPaddingRight = document.body.style.paddingRight
+    const previousPosition = document.body.style.position
+    const previousTop = document.body.style.top
+    const previousLeft = document.body.style.left
+    const previousRight = document.body.style.right
+    const previousWidth = document.body.style.width
     const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth
 
+    document.documentElement.style.overflow = 'hidden'
     document.body.style.overflow = 'hidden'
+    document.body.style.position = 'fixed'
+    document.body.style.top = `-${scrollY}px`
+    document.body.style.left = '0'
+    document.body.style.right = '0'
+    document.body.style.width = '100%'
     if (scrollBarWidth > 0) {
       document.body.style.paddingRight = `${scrollBarWidth}px`
     }
 
     return () => {
+      document.documentElement.style.overflow = previousHtmlOverflow
       document.body.style.overflow = previousOverflow
       document.body.style.paddingRight = previousPaddingRight
+      document.body.style.position = previousPosition
+      document.body.style.top = previousTop
+      document.body.style.left = previousLeft
+      document.body.style.right = previousRight
+      document.body.style.width = previousWidth
+      window.scrollTo(0, scrollY)
     }
   }, [wizardOpen])
 
@@ -1436,6 +1514,19 @@ export default function WidgetAdminPanel({
       window.removeEventListener('focus', handleWindowFocus)
     }
   }, [dbUser?.businessId, lastConfigUpdate, refreshBusiness])
+
+  useEffect(() => {
+    if (!assistantHydratedRef.current || !dbUser?.businessId || assistantSaveInProgressRef.current) return
+
+    const currentSerialized = serializeAssistantConfig(assistantConfig)
+    if (!currentSerialized || currentSerialized === lastAssistantConfigUpdate) return
+
+    const timeout = window.setTimeout(() => {
+      void saveAssistantConfig()
+    }, 600)
+
+    return () => window.clearTimeout(timeout)
+  }, [assistantConfig, dbUser?.businessId, lastAssistantConfigUpdate])
 
   const handleCopy = async () => {
     if (!activeWidgetKey) return
@@ -1532,6 +1623,8 @@ export default function WidgetAdminPanel({
     setConfig(null)
     setAllowedDomainsText('')
     setLastConfigUpdate(null)
+    setLastAssistantConfigUpdate(null)
+    assistantHydratedRef.current = false
     onWidgetSelected?.('')
     setAutoContextOpen(false)
     setAutoContextUrl('')
@@ -1565,6 +1658,7 @@ export default function WidgetAdminPanel({
 
     setAssistantSaving(true)
     setAssistantStatus('idle')
+    setAssistantError('')
 
     const result = await persistAssistantConfig(assistantConfig)
 
@@ -1572,8 +1666,10 @@ export default function WidgetAdminPanel({
     setAssistantStatus(result.success ? 'saved' : 'error')
 
     if (result.success) {
-      void refreshBusiness()
+      setLastAssistantConfigUpdate(serializeAssistantConfig(assistantConfig))
       setTimeout(() => setAssistantStatus('idle'), 2000)
+    } else {
+      setAssistantError(result.message || 'AI settings could not be saved.')
     }
   }
 
@@ -1888,7 +1984,6 @@ export default function WidgetAdminPanel({
     allowedDomains: [],
   }
   const starterCardStyle = activeConfig.bodyStyle.conversationCardsStyle
-  const activeWidgetKey = selectedWidgetKey || business.activeChatWidgetKey || business.chatWidgetKey || ''
   const activeWidgetName =
     widgetList.find((widget) => widget.widgetKey === activeWidgetKey)?.name || 'Widget'
   const embedCode = `<!-- VintraSolutions Chat Widget -->
@@ -1990,6 +2085,8 @@ export default function WidgetAdminPanel({
     if (wizardStep > 0) {
       setWizardAutofillOpen(false)
     }
+    setActiveWizardSection(WIZARD_STEPS[wizardStep]?.sections[0] || WIZARD_STEPS[0].sections[0])
+    wizardScrollRef.current?.scrollTo({ top: 0 })
   }, [wizardStep])
 
   useEffect(() => {
@@ -2001,6 +2098,9 @@ export default function WidgetAdminPanel({
       document.body.classList.remove('widget-admin-wizard-open')
     }
   }, [wizardOpen])
+
+  const activeWizardStep = WIZARD_STEPS[wizardStep] || WIZARD_STEPS[0]
+  const ActiveWizardIcon = activeWizardStep.icon
 
   return (
     <div className="widget-admin-shell">
@@ -2039,37 +2139,73 @@ export default function WidgetAdminPanel({
                 type="button"
                 className="widget-admin-save-button widget-admin-save-button--wizard"
                 onClick={() => void handleWizardFinish()}
-                disabled={wizardStep < WIZARD_STEPS.length - 1 || assistantSaving}
+                disabled={assistantSaving}
               >
                 {assistantSaving ? 'Saving...' : 'Save'}
               </button>
               </div>
-              <div className="widget-admin-wizard-stepper" aria-label="Business onboarding steps">
-          {WIZARD_STEPS.map((step, index) => {
-            const StepIcon = step.icon
-            const active = wizardStep === index
-            const done = wizardStep > index
-            const stepSubtitles = ['Profile', 'Sources', 'Actions', 'Rules', 'Cards']
-
-            return (
-              <div
-                key={step.id}
-                className={`widget-admin-wizard-step ${active ? 'active' : ''} ${done ? 'done' : ''}`.trim()}
-              >
-                <span className={`widget-admin-wizard-step__icon widget-admin-wizard-step__icon--${step.accent}`}>
-                  <StepIcon />
-                </span>
-                <span className="widget-admin-wizard-step__copy">
-                  <strong>{step.label}</strong>
-                  <small>{stepSubtitles[index] || 'Cards'}</small>
-                </span>
-              </div>
-            )
-          })}
-            </div>
             </div>
 
             <div className="widget-admin-wizard-body">
+              <div className="widget-admin-wizard-layout">
+                <aside className="widget-admin-wizard-sidebar" aria-label="Configure chatbot categories">
+                  <span className="widget-admin-wizard-sidebar__label">Setup</span>
+                  {WIZARD_STEPS.map((step, index) => {
+                    const StepIcon = step.icon
+                    const active = wizardStep === index
+
+                    return (
+                      <button
+                        key={step.id}
+                        type="button"
+                        className={`widget-admin-wizard-nav-item ${active ? 'active' : ''}`.trim()}
+                        onClick={() => setWizardStep(index)}
+                        aria-current={active ? 'step' : undefined}
+                      >
+                        <span className={`widget-admin-wizard-step__icon widget-admin-wizard-step__icon--${step.accent}`}>
+                          <StepIcon />
+                        </span>
+                        <span className="widget-admin-wizard-nav-item__copy">
+                          <small>{step.eyebrow}</small>
+                          <strong>{step.label}</strong>
+                        </span>
+                        <FiChevronRight className="widget-admin-wizard-nav-item__arrow" aria-hidden="true" />
+                      </button>
+                    )
+                  })}
+                </aside>
+
+                <aside className="widget-admin-wizard-subnav" aria-label="Selected category subcategories">
+                  <div key={activeWizardStep.id} className="widget-admin-wizard-subnav__panel">
+                    <span className={`widget-admin-wizard-step__icon widget-admin-wizard-step__icon--${activeWizardStep.accent}`}>
+                      <ActiveWizardIcon />
+                    </span>
+                    <div className="widget-admin-wizard-subnav__copy">
+                      <small>{activeWizardStep.eyebrow}</small>
+                      <h4>{activeWizardStep.label}</h4>
+                      <p>{activeWizardStep.description}</p>
+                    </div>
+                    <div className="widget-admin-wizard-subnav__list" role="group" aria-label={`${activeWizardStep.label} subcategories`}>
+                      {activeWizardStep.sections.map((section) => {
+                        const active = activeWizardSection === section
+
+                        return (
+                          <button
+                            key={section}
+                            type="button"
+                            className={`widget-admin-wizard-subnav__pill ${active ? 'active' : ''}`.trim()}
+                            onClick={() => setActiveWizardSection(section)}
+                            aria-pressed={active}
+                          >
+                            {section}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </aside>
+
+              <div className="widget-admin-wizard-content">
               <div className="widget-admin-wizard-scroll" ref={wizardScrollRef}>
                 <div className="widget-admin-wizard-scroll__content" ref={wizardScrollContentRef}>
                   {wizardStep === 0 ? (
@@ -2715,21 +2851,20 @@ export default function WidgetAdminPanel({
                             </div>
                           ) : (
                             <div className="widget-ai-grid">
-                              <label className="widget-ai-field">
-                                <span>Icon</span>
-                                <input
-                                  type="text"
-                                  value={card.icon || ''}
-                                  disabled={!assistantConfig.conversationCardsEnabled}
-                                  onChange={(event) =>
-                                    updateConversationCard(cardIndex, (nextCard) => ({
-                                      ...nextCard,
-                                      icon: event.target.value,
-                                    }))
-                                  }
-                                  placeholder="💡, 📦, 🗓️, or an icon name"
-                                />
-                              </label>
+                              <IconPickerBubble
+                                label="Icon"
+                                value={card.icon || ''}
+                                onChange={(nextValue) =>
+                                  updateConversationCard(cardIndex, (nextCard) => ({
+                                    ...nextCard,
+                                    icon: nextValue,
+                                  }))
+                                }
+                                placeholder="Card icon"
+                                helperText="Choose the icon shown on this starter card."
+                                className={!assistantConfig.conversationCardsEnabled ? 'is-disabled' : ''}
+                                disabled={!assistantConfig.conversationCardsEnabled}
+                              />
 
                               <label className="widget-ai-field">
                                 <span>Optional image URL</span>
@@ -2831,6 +2966,8 @@ export default function WidgetAdminPanel({
                   />
                 </div>
               </div>
+            </div>
+            </div>
             </div>
 
         <div className="widget-admin-wizard-footer">
@@ -3118,9 +3255,17 @@ export default function WidgetAdminPanel({
                 ? 'Saving...'
                 : assistantStatus === 'saved'
                   ? 'Saved!'
+                  : assistantStatus === 'error'
+                    ? 'Save failed'
                   : 'Save AI settings'}
             </button>
           </div>
+
+          {assistantStatus === 'error' ? (
+            <p className="widget-admin-status error">
+              {assistantError || 'AI settings could not be saved.'}
+            </p>
+          ) : null}
 
           <p className="widget-card-desc">
             Configure the assistant through the same layered context stack as onboarding. Each step expands into editable fields.

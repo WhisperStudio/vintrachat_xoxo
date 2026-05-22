@@ -2,8 +2,8 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { WIDGET_THEME_CLASS, WIDGET_THEME_VARS } from '@/components/chat/widgetDesign'
-import { WIDGET_ICON_OPTIONS, renderWidgetIcon } from '@/lib/widget-icons'
-import { renderToStaticMarkup } from 'react-dom/server'
+import { isValidElement, type ReactElement, type ReactNode } from 'react'
+import { WIDGET_ICON_ALIAS_MAP, WIDGET_ICON_OPTIONS, renderWidgetIcon } from '@/lib/widget-icons'
 
 function serializeForJs(value: unknown) {
   return JSON.stringify(value)
@@ -11,11 +11,69 @@ function serializeForJs(value: unknown) {
     .replace(/\u2029/g, '\\u2029')
 }
 
+function escapeHtml(value: unknown) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function toKebabCase(value: string) {
+  return value.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`)
+}
+
+function renderNodeToMarkup(node: ReactNode): string {
+  if (node === null || node === undefined || typeof node === 'boolean') {
+    return ''
+  }
+
+  if (typeof node === 'string' || typeof node === 'number') {
+    return escapeHtml(node)
+  }
+
+  if (Array.isArray(node)) {
+    return node.map((child) => renderNodeToMarkup(child)).join('')
+  }
+
+  if (!isValidElement(node)) {
+    return ''
+  }
+
+  const { type, props } = node as ReactElement<Record<string, unknown>, any>
+
+  if (typeof type === 'function') {
+    const Component = type as (props: Record<string, unknown>) => ReactNode
+    return renderNodeToMarkup(Component(props))
+  }
+
+  const elementProps = props || {}
+  const children = 'children' in elementProps ? renderNodeToMarkup(elementProps.children as ReactNode) : ''
+  const attributes = Object.entries(elementProps)
+    .filter(
+      ([key]) =>
+        key !== 'children' &&
+        elementProps[key] !== undefined &&
+        elementProps[key] !== null &&
+        elementProps[key] !== false
+    )
+    .map(([key, value]) => {
+      const attributeName = key === 'className' ? 'class' : toKebabCase(key)
+      if (value === true) return attributeName
+      return `${attributeName}="${escapeHtml(value)}"`
+    })
+    .join(' ')
+
+  const openTag = attributes ? `<${type} ${attributes}>` : `<${type}>`
+  return `${openTag}${children}</${type}>`
+}
+
 const WIDGET_ICON_MARKUP_BY_KEY = Object.fromEntries(
-  WIDGET_ICON_OPTIONS.map((option) => [
-    option.key,
-    renderToStaticMarkup(renderWidgetIcon(option.key, { 'aria-hidden': true })),
-  ])
+  WIDGET_ICON_OPTIONS.map((option) => {
+    const icon = renderWidgetIcon(option.key, { 'aria-hidden': true })
+    return [option.key, icon ? renderNodeToMarkup(icon) : '']
+  })
 )
 
 const widgetStyles = `
@@ -57,7 +115,7 @@ const widgetStyles = `
 
 .vintra-stack {
   position: relative;
-  width: min(390px, calc(var(--vintra-viewport-width) - 32px));
+  width: min(480px, calc(var(--vintra-viewport-width) - 32px));
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -75,9 +133,9 @@ const widgetStyles = `
 }
 
 .vintra-root .chat-widget.open {
-  width: min(460px, calc(var(--vintra-viewport-width) - 32px));
-  min-width: 400px;
-  max-width: 460px;
+  width: min(480px, calc(var(--vintra-viewport-width) - 32px));
+  min-width: min(420px, 100%);
+  max-width: 480px;
 }
 
 .vintra-stack > .widget-icon {
@@ -100,7 +158,8 @@ const widgetStyles = `
 }
 
 .vintra-root.viewport-mobile .chat-widget {
-  --chat-body-height: 380px;
+  --chat-body-height: 420px;
+  --chat-starter-body-height: 460px;
   --chat-footer-height: 92px;
   position: fixed;
   left: 10px;
@@ -292,6 +351,7 @@ export async function GET(
   var THEME_CLASS_BY_NAME = ${serializeForJs(WIDGET_THEME_CLASS)};
   var THEME_VARS_BY_NAME = ${serializeForJs(WIDGET_THEME_VARS)};
   var WIDGET_ICON_MARKUP_BY_KEY = ${serializeForJs(WIDGET_ICON_MARKUP_BY_KEY)};
+  var WIDGET_ICON_ALIAS_BY_KEY = ${serializeForJs(WIDGET_ICON_ALIAS_MAP)};
 
   if (window[GLOBAL_KEY]) return;
   window[GLOBAL_KEY] = true;
@@ -529,7 +589,14 @@ export async function GET(
 
   function renderConfiguredWidgetIcon(iconKey) {
     if (!iconKey) return '';
-    return WIDGET_ICON_MARKUP_BY_KEY[iconKey] || '';
+    var normalizedIconKey = String(iconKey || '').trim();
+    var aliasIconKey = WIDGET_ICON_ALIAS_BY_KEY[normalizedIconKey.toLowerCase()] || normalizedIconKey;
+    return WIDGET_ICON_MARKUP_BY_KEY[normalizedIconKey] || WIDGET_ICON_MARKUP_BY_KEY[aliasIconKey] || '';
+  }
+
+  function renderStarterCardIcon(iconKey) {
+    if (!iconKey) return '';
+    return renderConfiguredWidgetIcon(iconKey) || escapeHtml(iconKey);
   }
 
   var icons = {
@@ -1014,7 +1081,7 @@ export async function GET(
       var messageIconMarkup = renderConfiguredWidgetIcon(messageIconKey);
 
       return (
-        '<div class="' + classes(['message', roleClass]) + '">' +
+        '<div class="' + classes(['message', roleClass, 'message--' + msg.role]) + '">' +
           '<div class="message-content">' + escapeHtml(msg.text) + '</div>' +
           ((bodyStyle.showTimestamps || (bodyStyle.showReadReceipts && msg.role === 'user')) ? (
             '<div class="message-meta">' +
@@ -1128,16 +1195,19 @@ export async function GET(
                       '<span class="widget-starter-card__image" style="background-image:url(' + escapeHtml(card.image) + ')"></span>' +
                       '<span class="widget-starter-card__image-overlay" aria-hidden="true"></span>' +
                       '<span class="widget-starter-card__copy widget-starter-card__copy--image">' +
-                        (card.icon ? '<span class="widget-starter-card__icon">' + escapeHtml(card.icon) + '</span>' : '') +
+                        (card.icon ? '<span class="widget-starter-card__icon">' + renderStarterCardIcon(card.icon) + '</span>' : '') +
                         '<span class="widget-starter-card__title">' + escapeHtml(card.title) + '</span>' +
                         '<span class="widget-starter-card__description">' + escapeHtml(card.description) + '</span>' +
                       '</span>' +
                     '</span>'
                   ) : isChipsCards ? (
-                    '<span class="widget-starter-card__copy widget-starter-card__copy--chips"><span class="widget-starter-card__title">' + escapeHtml(card.title) + '</span></span>'
+                    '<span class="widget-starter-card__copy widget-starter-card__copy--chips">' +
+                      (card.icon ? '<span class="widget-starter-card__icon">' + renderStarterCardIcon(card.icon) + '</span>' : '') +
+                      '<span class="widget-starter-card__title">' + escapeHtml(card.title) + '</span>' +
+                    '</span>'
                   ) : (
                     (
-                      (card.icon ? '<span class="widget-starter-card__icon">' + escapeHtml(card.icon) + '</span>' : '') +
+                      (card.icon ? '<span class="widget-starter-card__icon">' + renderStarterCardIcon(card.icon) + '</span>' : '') +
                       '<span class="widget-starter-card__copy">' +
                         '<span class="widget-starter-card__title">' + escapeHtml(card.title) + '</span>' +
                         '<span class="widget-starter-card__description">' + escapeHtml(card.description) + '</span>' +

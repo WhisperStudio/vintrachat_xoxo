@@ -51,6 +51,7 @@ export async function GET(
             widgetKey: String(widget.widgetKey || docSnap.id),
             name: String(widget.name || 'Chat Widget'),
             isDefault: Boolean(widget.isDefault),
+            assistantConfig: widget.assistantConfig || null,
             updatedAt: toIso(widget.updatedAt),
             createdAt: toIso(widget.createdAt),
           }

@@ -297,6 +297,10 @@ export default function WidgetPreview({
   const isMinimalCards = bodyStyle.conversationCardsStyle === 'minimal'
   const isImageCards = bodyStyle.conversationCardsStyle === 'image'
   const isChipsCards = bodyStyle.conversationCardsStyle === 'chips'
+  const renderStarterCardIcon = (icon?: string) => {
+    if (!icon) return null
+    return renderWidgetIcon(icon, { 'aria-hidden': true }) || icon
+  }
   const getMessageRole = (message: Message) => message.role || (message.isBot ? 'assistant' : 'user')
   const getMessageClassName = (message: Message) => {
     const role = getMessageRole(message)
@@ -710,18 +714,19 @@ export default function WidgetPreview({
                               <span className="widget-starter-card__image" style={{ backgroundImage: `url(${card.image})` }} />
                               <span className="widget-starter-card__image-overlay" aria-hidden="true" />
                               <span className="widget-starter-card__copy widget-starter-card__copy--image">
-                                {card.icon ? <span className="widget-starter-card__icon">{card.icon}</span> : null}
+                                {card.icon ? <span className="widget-starter-card__icon">{renderStarterCardIcon(card.icon)}</span> : null}
                                 <span className="widget-starter-card__title">{card.title}</span>
                                 <span className="widget-starter-card__description">{card.description}</span>
                               </span>
                             </span>
                           ) : isChipsCards ? (
                             <span className="widget-starter-card__copy widget-starter-card__copy--chips">
+                              {card.icon ? <span className="widget-starter-card__icon">{renderStarterCardIcon(card.icon)}</span> : null}
                               <span className="widget-starter-card__title">{card.title}</span>
                             </span>
                           ) : (
                             <>
-                              {card.icon ? <span className="widget-starter-card__icon">{card.icon}</span> : null}
+                              {card.icon ? <span className="widget-starter-card__icon">{renderStarterCardIcon(card.icon)}</span> : null}
                               <span className="widget-starter-card__copy">
                                 <span className="widget-starter-card__title">{card.title}</span>
                                 <span className="widget-starter-card__description">{card.description}</span>

@@ -1,7 +1,22 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { FiCheck, FiCreditCard, FiRefreshCw, FiSave, FiSliders, FiMonitor, FiSmartphone } from 'react-icons/fi'
+import {
+  FiCheck,
+  FiCreditCard,
+  FiDroplet,
+  FiImage,
+  FiLayout,
+  FiMapPin,
+  FiMessageCircle,
+  FiMessageSquare,
+  FiRefreshCw,
+  FiSave,
+  FiSend,
+  FiSliders,
+  FiMonitor,
+  FiSmartphone,
+} from 'react-icons/fi'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { setActiveChatWidget, updateChatWidgetConfig } from '@/lib/auth.service'
@@ -167,7 +182,7 @@ export default function ChatWidgetBuilderPage() {
   const [selectedWidgetKey, setSelectedWidgetKey] = useState('')
 
   const [openSections, setOpenSections] = useState({
-    plan: false,
+    plan: true,
     bubble: false,
     header: false,
     body: false,
@@ -269,10 +284,22 @@ export default function ChatWidgetBuilderPage() {
 
       return {
         ...closed,
-        [section]: !prev[section],
+        [section]: true,
       }
     })
   }
+
+  const builderSections = [
+    { key: 'plan', label: 'Subscription', eyebrow: 'Plan', icon: FiCreditCard },
+    { key: 'bubble', label: 'Chat button', eyebrow: 'Launcher', icon: FiMessageCircle },
+    { key: 'header', label: 'Chat top bar', eyebrow: 'Header', icon: FiLayout },
+    { key: 'body', label: 'Chat messages', eyebrow: 'Messages', icon: FiMessageSquare },
+    { key: 'footer', label: 'Message box', eyebrow: 'Input', icon: FiSend },
+    { key: 'colorTheme', label: 'Colors', eyebrow: 'Theme', icon: FiDroplet },
+    { key: 'position', label: 'Screen position', eyebrow: 'Placement', icon: FiMapPin },
+    { key: 'branding', label: 'Your branding', eyebrow: 'Brand', icon: FiImage },
+    { key: 'advanced', label: 'Widget behavior', eyebrow: 'Rules', icon: FiSliders },
+  ] as const
 
   const resetBuilder = () => {
     setInputs(defaultInputs)
@@ -462,36 +489,65 @@ export default function ChatWidgetBuilderPage() {
               </div>
             </div>
 
-            <PlanSelector
-              plan={inputs.plan}
-              billingCycle={inputs.billingCycle}
-              onPlanChange={(plan) => updateInput('plan', plan)}
-              onBillingCycleChange={(cycle) => updateInput('billingCycle', cycle)}
-              isOpen={openSections.plan}
-              onToggle={() => toggleSection('plan')}
-            />
+            <div className="builder-layout">
+              <nav className="builder-sidebar" aria-label="Widget builder sections">
+                {builderSections.map((section) => {
+                  const SectionIcon = section.icon
+                  const active = openSections[section.key]
 
-            <StyleSelector
-              bubbleStyle={inputs.bubbleStyle}
-              plan={inputs.plan}
-              headerStyle={inputs.headerStyle}
-              bodyStyle={inputs.bodyStyle}
-              footerStyle={inputs.footerStyle}
-              onBubbleStyleChange={(style) => updateInput('bubbleStyle', style)}
-              onHeaderStyleChange={(style) => updateInput('headerStyle', style)}
-              onBodyStyleChange={(style) => updateInput('bodyStyle', style)}
-              onFooterStyleChange={(style) => updateInput('footerStyle', style)}
-              colorTheme={inputs.colorTheme}
-              position={inputs.position}
-              customBranding={inputs.customBranding}
-              settings={inputs.settings}
-              onColorThemeChange={(theme) => updateInput('colorTheme', theme)}
-              onPositionChange={(position) => updateInput('position', position)}
-              onCustomBrandingChange={(branding) => updateInput('customBranding', branding)}
-              onSettingsChange={(settings) => updateInput('settings', settings)}
-              openSections={openSections}
-              onToggleSection={toggleSection}
-            />
+                  return (
+                    <button
+                      key={section.key}
+                      type="button"
+                      className={`builder-sidebar-button ${active ? 'active' : ''}`.trim()}
+                      onClick={() => toggleSection(section.key)}
+                      aria-current={active ? 'page' : undefined}
+                    >
+                      <span className="builder-sidebar-button__icon" aria-hidden="true">
+                        <SectionIcon />
+                      </span>
+                      <span className="builder-sidebar-button__copy">
+                        <small>{section.eyebrow}</small>
+                        <strong>{section.label}</strong>
+                      </span>
+                    </button>
+                  )
+                })}
+              </nav>
+
+              <div className="builder-content-panel">
+                <PlanSelector
+                  plan={inputs.plan}
+                  billingCycle={inputs.billingCycle}
+                  onPlanChange={(plan) => updateInput('plan', plan)}
+                  onBillingCycleChange={(cycle) => updateInput('billingCycle', cycle)}
+                  isOpen={openSections.plan}
+                  onToggle={() => toggleSection('plan')}
+                />
+
+                <StyleSelector
+                  bubbleStyle={inputs.bubbleStyle}
+                  plan={inputs.plan}
+                  headerStyle={inputs.headerStyle}
+                  bodyStyle={inputs.bodyStyle}
+                  footerStyle={inputs.footerStyle}
+                  onBubbleStyleChange={(style) => updateInput('bubbleStyle', style)}
+                  onHeaderStyleChange={(style) => updateInput('headerStyle', style)}
+                  onBodyStyleChange={(style) => updateInput('bodyStyle', style)}
+                  onFooterStyleChange={(style) => updateInput('footerStyle', style)}
+                  colorTheme={inputs.colorTheme}
+                  position={inputs.position}
+                  customBranding={inputs.customBranding}
+                  settings={inputs.settings}
+                  onColorThemeChange={(theme) => updateInput('colorTheme', theme)}
+                  onPositionChange={(position) => updateInput('position', position)}
+                  onCustomBrandingChange={(branding) => updateInput('customBranding', branding)}
+                  onSettingsChange={(settings) => updateInput('settings', settings)}
+                  openSections={openSections}
+                  onToggleSection={toggleSection}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="preview-panel">

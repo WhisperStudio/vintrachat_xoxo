@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getBusinessByWidgetKey } from '@/lib/widget.server'
 import { authorizeWidgetRequest } from '@/lib/widget-embed-token.server'
 
+export const dynamic = 'force-dynamic'
+
 function corsHeaders(origin?: string | null) {
   return {
     'Access-Control-Allow-Origin': origin || '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers':
       'Content-Type, X-Vintra-Embed-Token, X-Vintra-Fingerprint, X-Vintra-Captcha-Token, X-Vintra-Debug',
+    'Cache-Control': 'no-store, no-cache, max-age=0, must-revalidate',
+    Pragma: 'no-cache',
     Vary: 'Origin',
   }
 }

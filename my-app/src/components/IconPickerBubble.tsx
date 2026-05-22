@@ -11,6 +11,7 @@ type IconPickerBubbleProps = {
   placeholder?: string
   helperText?: string
   className?: string
+  disabled?: boolean
 }
 
 export default function IconPickerBubble({
@@ -20,6 +21,7 @@ export default function IconPickerBubble({
   placeholder = 'Choose an icon',
   helperText,
   className = '',
+  disabled = false,
 }: IconPickerBubbleProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -59,6 +61,7 @@ export default function IconPickerBubble({
           type="button"
           className="widget-icon-picker__trigger"
           onClick={() => setOpen((prev) => !prev)}
+          disabled={disabled}
           aria-expanded={open}
         >
           <span className="widget-icon-picker__preview" aria-hidden="true">
@@ -74,7 +77,7 @@ export default function IconPickerBubble({
           type="button"
           className="widget-icon-picker__clear"
           onClick={() => onChange('')}
-          disabled={!value}
+          disabled={disabled || !value}
           aria-label={`Clear ${label}`}
         >
           <FiX />

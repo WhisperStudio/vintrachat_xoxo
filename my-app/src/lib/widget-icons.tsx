@@ -88,13 +88,55 @@ export const WIDGET_ICON_MAP = Object.fromEntries(
   WIDGET_ICON_OPTIONS.map((option) => [option.key, option.icon])
 ) as Record<WidgetIconKey, ComponentType<SVGProps<SVGSVGElement>>>
 
+export const WIDGET_ICON_ALIAS_MAP: Record<string, WidgetIconKey> = {
+  ai: 'FiCpu',
+  arrow: 'FiArrowRight',
+  bot: 'FaRobot',
+  briefcase: 'FiBriefcase',
+  business: 'FiBriefcase',
+  cards: 'FiLayers',
+  chat: 'FiMessageCircle',
+  check: 'FiCheckCircle',
+  clock: 'FiClock',
+  cpu: 'FiCpu',
+  globe: 'FiGlobe',
+  help: 'FiHelpCircle',
+  layers: 'FiLayers',
+  location: 'FiMapPin',
+  map: 'FiMapPin',
+  message: 'FiMessageSquare',
+  phone: 'FiPhone',
+  robot: 'FaRobot',
+  search: 'FiSearch',
+  shield: 'FiShield',
+  support: 'FiLifeBuoy',
+  target: 'FiTarget',
+  upload: 'FiUpload',
+  user: 'FiUser',
+  zap: 'FiZap',
+}
+
+export function normalizeWidgetIconKey(iconKey?: string | null) {
+  if (!iconKey) return ''
+  const trimmed = iconKey.trim()
+  if (!trimmed) return ''
+  if (WIDGET_ICON_MAP[trimmed]) return trimmed
+
+  const lowered = trimmed.toLowerCase()
+  if (WIDGET_ICON_ALIAS_MAP[lowered]) return WIDGET_ICON_ALIAS_MAP[lowered]
+
+  const exactCaseMatch = WIDGET_ICON_OPTIONS.find((option) => option.key.toLowerCase() === lowered)
+  return exactCaseMatch?.key || trimmed
+}
+
 export function getWidgetIconOption(iconKey?: string | null) {
-  if (!iconKey) return null
-  return WIDGET_ICON_OPTIONS.find((option) => option.key === iconKey) || null
+  const normalizedKey = normalizeWidgetIconKey(iconKey)
+  if (!normalizedKey) return null
+  return WIDGET_ICON_OPTIONS.find((option) => option.key === normalizedKey) || null
 }
 
 export function renderWidgetIcon(iconKey?: string | null, props?: SVGProps<SVGSVGElement>) {
-  const Icon = iconKey ? WIDGET_ICON_MAP[iconKey] : null
+  const Icon = iconKey ? WIDGET_ICON_MAP[normalizeWidgetIconKey(iconKey)] : null
   if (!Icon) return null
   return <Icon {...props} />
 }

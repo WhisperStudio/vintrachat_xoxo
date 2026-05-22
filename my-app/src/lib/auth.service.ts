@@ -1440,40 +1440,33 @@ export async function updateChatAssistantConfig(
   widgetKey?: string
 ) {
   try {
-    const businessRef = doc(db, "businesses", businessId);
-    const businessSnap = await getDoc(businessRef)
-    const businessData = businessSnap.exists() ? businessSnap.data() || {} : {}
-    let targetWidgetKey = String(widgetKey || businessData.activeChatWidgetKey || businessData.chatWidgetKey || '')
-    if (!targetWidgetKey) {
-      const widgetsSnap = await getDocs(collection(db, `businesses/${businessId}/chatWidgets`))
-      const firstWidget = widgetsSnap.docs[0]
-      targetWidgetKey = firstWidget ? String(firstWidget.id || firstWidget.data()?.widgetKey || '') : ''
-    }
-    const widgetRef = targetWidgetKey ? doc(db, `businesses/${businessId}/chatWidgets/${targetWidgetKey}`) : null
-    const widgetSnap = widgetRef ? await getDoc(widgetRef) : null
-    const widgetData = widgetSnap?.exists() ? widgetSnap.data() || {} : {}
-    const mergedAssistantConfig = mergeAssistantConfig(
-      businessData.chatAssistantConfig as Partial<ChatAssistantConfig> | undefined,
-      widgetData.assistantConfig as Partial<ChatAssistantConfig> | undefined
-    )
-    const nextAssistantConfig = mergeAssistantConfig(mergedAssistantConfig, config)
-
-    if (widgetRef) {
-      await setDoc(widgetRef, {
-        widgetKey: targetWidgetKey,
-        assistantConfig: nextAssistantConfig,
-        createdAt: widgetSnap?.exists() ? widgetData.createdAt || serverTimestamp() : serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      }, { merge: true })
+    const token = auth.currentUser ? await auth.currentUser.getIdToken() : ''
+    if (!token) {
+      return { success: false, message: 'You must be signed in to save AI settings' }
     }
 
-    await updateDoc(businessRef, {
-      chatAssistantConfig: nextAssistantConfig,
-      ...(targetWidgetKey ? { activeChatWidgetKey: targetWidgetKey } : {}),
-      updatedAt: serverTimestamp(),
-    });
+    const response = await fetch('/api/chatwidget/update', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        businessId,
+        widgetKey,
+        assistantConfig: mergeAssistantConfig(undefined, config),
+      }),
+    })
 
-    return { success: true, message: "AI config oppdatert" };
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok || !data?.success) {
+      return {
+        success: false,
+        message: data?.error || 'Failed to update AI config',
+      }
+    }
+
+    return { success: true, message: 'AI config oppdatert' }
   } catch (err: any) {
     return { success: false, message: err.message };
   }
