@@ -18,7 +18,6 @@ import {
   FiDroplet,
   FiImage,
   FiLayout,
-  FiMapPin,
   FiLock,
   FiMessageCircle,
   FiMessageSquare,
@@ -27,7 +26,8 @@ import {
   FiSliders,
   FiLifeBuoy,
 } from 'react-icons/fi'
-import type { BubbleIconChoice, OrbStyleConfig } from '@/types/database'
+import IconPickerBubble from '@/components/IconPickerBubble'
+import type { BubbleIconChoice, ChatWidgetInterfaceIcons, OrbStyleConfig } from '@/types/database'
 import './StyleSelector.css'
 
 type ColorTheme =
@@ -111,6 +111,7 @@ interface StyleSelectorProps {
   colorTheme: ColorTheme
   plan: Plan
   position: Position
+  widgetIcons: ChatWidgetInterfaceIcons
   customBranding: CustomBranding
   settings: {
     autoOpen: boolean
@@ -118,6 +119,7 @@ interface StyleSelectorProps {
   }
   onColorThemeChange: (theme: ColorTheme) => void
   onPositionChange: (position: Position) => void
+  onWidgetIconsChange: (icons: ChatWidgetInterfaceIcons) => void
   onCustomBrandingChange: (branding: CustomBranding) => void
   onSettingsChange: (settings: any) => void
   openSections: {
@@ -126,12 +128,12 @@ interface StyleSelectorProps {
     body: boolean
     footer: boolean
     colorTheme: boolean
-    position: boolean
+    icons: boolean
     branding: boolean
     advanced: boolean
   }
   onToggleSection: (
-    section: 'bubble' | 'header' | 'body' | 'footer' | 'colorTheme' | 'position' | 'branding' | 'advanced'
+    section: 'bubble' | 'header' | 'body' | 'footer' | 'colorTheme' | 'icons' | 'branding' | 'advanced'
   ) => void
 }
 
@@ -175,6 +177,14 @@ const iconChoices: Array<{
     minPlan: 'pro',
   },
 ]
+
+const launcherIconChoiceMap: Partial<Record<BubbleIconChoice, string>> = {
+  chat: 'FiMessageCircle',
+  phone: 'FiPhone',
+  cpu: 'FiCpu',
+  message: 'FiMessageSquare',
+  support: 'FiLifeBuoy',
+}
 
 function OptionDesc({ children }: { children: ReactNode }) {
   return (
@@ -587,10 +597,12 @@ export default function StyleSelector({
   colorTheme,
   plan,
   position,
+  widgetIcons,
   customBranding,
   settings,
   onColorThemeChange,
   onPositionChange,
+  onWidgetIconsChange,
   onCustomBrandingChange,
   onSettingsChange,
   openSections,
@@ -632,6 +644,13 @@ export default function StyleSelector({
         ...orbStyle,
         ...patch,
       },
+    })
+  }
+
+  const updateWidgetIcon = (field: keyof ChatWidgetInterfaceIcons, value: string) => {
+    onWidgetIconsChange({
+      ...widgetIcons,
+      [field]: value,
     })
   }
 
@@ -713,54 +732,6 @@ export default function StyleSelector({
             <OptionDesc>Show online/status dot on widget bubble</OptionDesc>
           </div>
 
-          <div className="option-card">
-            <span className="option-title">Icon choice</span>
-            <div className="iconChoiceGroup " ref={iconChoiceRef} role="radiogroup" aria-label="Icon choice">
-              {iconIndicator ? (
-                <span
-                  className="iconChoiceIndicator"
-                  style={{
-                    transform: `translate3d(${iconIndicator.left}px, ${iconIndicator.top}px, 0)`,
-                    width: `${iconIndicator.width}px`,
-                    height: `${iconIndicator.height}px`,
-                    opacity: iconIndicator.opacity,
-                  }}
-                />
-              ) : null}
-              {iconChoices.map((choice) => {
-                const locked = choice.minPlan === 'pro' && plan === 'free'
-                const active = bubbleStyle.iconChoice === choice.value && !locked
-                return (
-                  <button
-                    key={choice.value}
-                    ref={(node) => {
-                      iconChoiceButtonRefs.current[choice.value] = node
-                    }}
-                    type="button"
-                    className={`iconChoiceButton ${active ? 'active' : ''} ${locked ? 'locked' : ''}`}
-                    role="radio"
-                    aria-checked={active}
-                    disabled={locked}
-                    aria-disabled={locked}
-                    title={locked ? 'Available on Pro and Enterprise plans' : undefined}
-                    onClick={() =>
-                      !locked && onBubbleStyleChange({ ...bubbleStyle, iconChoice: choice.value })
-                    }
-                  >
-                    <span className="iconChoiceIcon">{choice.icon}</span>
-                    <span>{choice.label}</span>
-                    {locked && (
-                      <span className="iconChoiceLock">
-                        <FiLock />
-                        Pro
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
           <div className="option-card option-card--radio">
             <span className="option-title">Border type</span>
             <GlassRadioRow
@@ -828,117 +799,6 @@ export default function StyleSelector({
             />
           </div>
 
-          {bubbleStyle.iconChoice === 'orb' && (
-            <div className="option-card option-card--orb option-card--radio">
-              <span className="option-title">Orb behavior</span>
-              <OptionDesc>Set one hover letter, up to three reply letters, and up to five idle letters.</OptionDesc>
-
-              <div className="orbSettingsGrid">
-                <label className="orbField orbField--checkbox">
-                  <span>Show hover symbol</span>
-                  <input
-                    type="checkbox"
-                    checked={orbStyle.hoverEnabled}
-                    onChange={(event) => updateOrbStyle({ hoverEnabled: event.target.checked })}
-                  />
-                </label>
-
-                <label className="orbField">
-                  <span>Hover letter</span>
-                  <input
-                    type="text"
-                    maxLength={1}
-                    value={orbStyle.hoverGlyph}
-                    onChange={(event) =>
-                      updateOrbStyle({ hoverGlyph: event.target.value.slice(0, 1).toUpperCase() })
-                    }
-                    placeholder="A"
-                    disabled={!orbStyle.hoverEnabled}
-                  />
-                </label>
-
-                <label className="orbField orbField--checkbox">
-                  <span>Show reply symbol</span>
-                  <input
-                    type="checkbox"
-                    checked={orbStyle.replyEnabled}
-                    onChange={(event) => updateOrbStyle({ replyEnabled: event.target.checked })}
-                  />
-                </label>
-
-                <label className="orbField">
-                  <span>Reply letters</span>
-                  <input
-                    type="text"
-                    maxLength={3}
-                    value={orbStyle.replyGlyphs}
-                    onChange={(event) =>
-                      updateOrbStyle({ replyGlyphs: event.target.value.slice(0, 3).toUpperCase() })
-                    }
-                    placeholder="ABC"
-                    disabled={!orbStyle.replyEnabled}
-                  />
-                </label>
-
-                <label className="orbField orbField--checkbox">
-                  <span>Show inactive symbol</span>
-                  <input
-                    type="checkbox"
-                    checked={orbStyle.inactiveEnabled}
-                    onChange={(event) => updateOrbStyle({ inactiveEnabled: event.target.checked })}
-                  />
-                </label>
-
-                <label className="orbField">
-                  <span>Inactive letters</span>
-                  <input
-                    type="text"
-                    maxLength={5}
-                    value={orbStyle.inactiveGlyphs}
-                    onChange={(event) =>
-                      updateOrbStyle({ inactiveGlyphs: event.target.value.slice(0, 5).toUpperCase() })
-                    }
-                    placeholder="ABCDE"
-                    disabled={!orbStyle.inactiveEnabled}
-                  />
-                </label>
-
-                <label className="orbField orbField--number">
-                  <span>Inactive min (min)</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={60}
-                    step={1}
-                    value={inactivityMinMinutes}
-                    onChange={(event) =>
-                      updateOrbStyle({
-                        inactivityMinMinutes: Math.max(1, Math.min(60, Number(event.target.value) || 1)),
-                      })
-                    }
-                    placeholder="2"
-                  />
-                </label>
-
-                <label className="orbField orbField--number">
-                  <span>Inactive max (min)</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={120}
-                    step={1}
-                    value={inactivityMaxMinutes}
-                    onChange={(event) =>
-                      updateOrbStyle({
-                        inactivityMaxMinutes: Math.max(1, Math.min(120, Number(event.target.value) || 1)),
-                      })
-                    }
-                    placeholder="4"
-                  />
-                </label>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -1311,26 +1171,237 @@ export default function StyleSelector({
       </div>
 
       <div className="group">
-        <button type="button" className={`dropbtn ${openSections.position ? 'open' : ''}`} onClick={() => onToggleSection('position')}>
-          <SectionLabel icon={<FiMapPin />} tone="red">Screen position</SectionLabel>
+        <button type="button" className={`dropbtn ${openSections.icons ? 'open' : ''}`} onClick={() => onToggleSection('icons')}>
+          <SectionLabel icon={<FiMessageCircle />} tone="colorful">Icons</SectionLabel>
           <span className="dropbtn-icon">
             <FiChevronDown />
           </span>
         </button>
 
-        <div className={`option-grid dropdown-content ${openSections.position ? 'open' : ''}`}>
-          <div className="option-card">
-            <span className="option-title">Position</span>
-            <GlassRadioRow
-              name="widget-position"
-              value={position}
-              options={[
-                { value: 'bottom-right', label: 'Bottom right', description: 'Bottom right of the screen' },
-                { value: 'bottom-left', label: 'Bottom left', description: 'Bottom left of the screen' },
-              ]}
-              onChange={(nextValue) => onPositionChange(nextValue as Position)}
+        <div className={`icons-content dropdown-content ${openSections.icons ? 'open' : ''}`}>
+          <div className="option-card option-card--radio option-card--wide">
+            <span className="option-title">Launcher mode</span>
+            <OptionDesc>Use a normal icon launcher or the animated orb mode.</OptionDesc>
+            <div className="iconChoiceGroup" ref={iconChoiceRef} role="radiogroup" aria-label="Launcher mode">
+              {iconIndicator ? (
+                <span
+                  className="iconChoiceIndicator"
+                  style={{
+                    transform: `translate3d(${iconIndicator.left}px, ${iconIndicator.top}px, 0)`,
+                    width: `${iconIndicator.width}px`,
+                    height: `${iconIndicator.height}px`,
+                    opacity: iconIndicator.opacity,
+                  }}
+                />
+              ) : null}
+              {iconChoices.map((choice) => {
+                const locked = choice.minPlan === 'pro' && plan === 'free'
+                const active = bubbleStyle.iconChoice === choice.value && !locked
+                return (
+                  <button
+                    key={choice.value}
+                    ref={(node) => {
+                      iconChoiceButtonRefs.current[choice.value] = node
+                    }}
+                    type="button"
+                    className={`iconChoiceButton ${active ? 'active' : ''} ${locked ? 'locked' : ''}`}
+                    role="radio"
+                    aria-checked={active}
+                    disabled={locked}
+                    aria-disabled={locked}
+                    title={locked ? 'Available on Pro and Enterprise plans' : undefined}
+                    onClick={() => {
+                      if (locked) return
+                      onBubbleStyleChange({ ...bubbleStyle, iconChoice: choice.value })
+                      if (choice.value !== 'orb') {
+                        updateWidgetIcon('launcherIcon', launcherIconChoiceMap[choice.value] || 'FiMessageCircle')
+                      }
+                    }}
+                  >
+                    <span className="iconChoiceIcon">{choice.icon}</span>
+                    <span>{choice.label}</span>
+                    {locked && (
+                      <span className="iconChoiceLock">
+                        <FiLock />
+                        Pro
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="widget-icon-settings-grid">
+            <IconPickerBubble
+              label="Chat bubble"
+              value={widgetIcons.launcherIcon}
+              onChange={(nextValue) => updateWidgetIcon('launcherIcon', nextValue)}
+              placeholder="Launcher icon"
+              helperText="Used on the floating chat button when orb mode is not active."
+            />
+            <IconPickerBubble
+              label="Header avatar"
+              value={widgetIcons.avatarIcon}
+              onChange={(nextValue) => updateWidgetIcon('avatarIcon', nextValue)}
+              placeholder="Avatar icon"
+              helperText="Shown in the chat header when no logo is uploaded."
+            />
+            <IconPickerBubble
+              label="Close"
+              value={widgetIcons.closeIcon}
+              onChange={(nextValue) => updateWidgetIcon('closeIcon', nextValue)}
+              placeholder="Close icon"
+              helperText="Used on the X / close button."
+            />
+            <IconPickerBubble
+              label="Go back"
+              value={widgetIcons.backIcon}
+              onChange={(nextValue) => updateWidgetIcon('backIcon', nextValue)}
+              placeholder="Back icon"
+              helperText="Used when moving back from starter-card options."
+            />
+            <IconPickerBubble
+              label="Send"
+              value={widgetIcons.sendIcon}
+              onChange={(nextValue) => updateWidgetIcon('sendIcon', nextValue)}
+              placeholder="Send icon"
+              helperText="Used on the message send button."
+            />
+            <IconPickerBubble
+              label="AI"
+              value={widgetIcons.aiIcon}
+              onChange={(nextValue) => updateWidgetIcon('aiIcon', nextValue)}
+              placeholder="AI message icon"
+              helperText="Used beside assistant messages and typing."
+            />
+            <IconPickerBubble
+              label="Support"
+              value={widgetIcons.supportIcon}
+              onChange={(nextValue) => updateWidgetIcon('supportIcon', nextValue)}
+              placeholder="Support icon"
+              helperText="Used beside human support messages."
+            />
+            <IconPickerBubble
+              label="User"
+              value={widgetIcons.userIcon}
+              onChange={(nextValue) => updateWidgetIcon('userIcon', nextValue)}
+              placeholder="User icon"
+              helperText="Used beside visitor messages."
             />
           </div>
+
+          {bubbleStyle.iconChoice === 'orb' && (
+            <div className="option-card option-card--orb option-card--radio option-card--wide">
+              <span className="option-title">Orb behavior</span>
+              <OptionDesc>Set one hover letter, up to three reply letters, and up to five idle letters.</OptionDesc>
+
+              <div className="orbSettingsGrid">
+                <label className="orbField orbField--checkbox">
+                  <span>Show hover symbol</span>
+                  <input
+                    type="checkbox"
+                    checked={orbStyle.hoverEnabled}
+                    onChange={(event) => updateOrbStyle({ hoverEnabled: event.target.checked })}
+                  />
+                </label>
+
+                <label className="orbField">
+                  <span>Hover letter</span>
+                  <input
+                    type="text"
+                    maxLength={1}
+                    value={orbStyle.hoverGlyph}
+                    onChange={(event) =>
+                      updateOrbStyle({ hoverGlyph: event.target.value.slice(0, 1).toUpperCase() })
+                    }
+                    placeholder="A"
+                    disabled={!orbStyle.hoverEnabled}
+                  />
+                </label>
+
+                <label className="orbField orbField--checkbox">
+                  <span>Show reply symbol</span>
+                  <input
+                    type="checkbox"
+                    checked={orbStyle.replyEnabled}
+                    onChange={(event) => updateOrbStyle({ replyEnabled: event.target.checked })}
+                  />
+                </label>
+
+                <label className="orbField">
+                  <span>Reply letters</span>
+                  <input
+                    type="text"
+                    maxLength={3}
+                    value={orbStyle.replyGlyphs}
+                    onChange={(event) =>
+                      updateOrbStyle({ replyGlyphs: event.target.value.slice(0, 3).toUpperCase() })
+                    }
+                    placeholder="ABC"
+                    disabled={!orbStyle.replyEnabled}
+                  />
+                </label>
+
+                <label className="orbField orbField--checkbox">
+                  <span>Show inactive symbol</span>
+                  <input
+                    type="checkbox"
+                    checked={orbStyle.inactiveEnabled}
+                    onChange={(event) => updateOrbStyle({ inactiveEnabled: event.target.checked })}
+                  />
+                </label>
+
+                <label className="orbField">
+                  <span>Inactive letters</span>
+                  <input
+                    type="text"
+                    maxLength={5}
+                    value={orbStyle.inactiveGlyphs}
+                    onChange={(event) =>
+                      updateOrbStyle({ inactiveGlyphs: event.target.value.slice(0, 5).toUpperCase() })
+                    }
+                    placeholder="ABCDE"
+                    disabled={!orbStyle.inactiveEnabled}
+                  />
+                </label>
+
+                <label className="orbField orbField--number">
+                  <span>Inactive min (min)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    step={1}
+                    value={inactivityMinMinutes}
+                    onChange={(event) =>
+                      updateOrbStyle({
+                        inactivityMinMinutes: Math.max(1, Math.min(60, Number(event.target.value) || 1)),
+                      })
+                    }
+                    placeholder="2"
+                  />
+                </label>
+
+                <label className="orbField orbField--number">
+                  <span>Inactive max (min)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    step={1}
+                    value={inactivityMaxMinutes}
+                    onChange={(event) =>
+                      updateOrbStyle({
+                        inactivityMaxMinutes: Math.max(1, Math.min(120, Number(event.target.value) || 1)),
+                      })
+                    }
+                    placeholder="4"
+                  />
+                </label>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1379,6 +1450,19 @@ export default function StyleSelector({
         </button>
 
         <div className={`advanced-content dropdown-content ${openSections.advanced ? 'open' : ''}`}>
+          <div className="advanced-field advanced-field--position">
+            <label>Screen position</label>
+            <GlassRadioRow
+              name="widget-position"
+              value={position}
+              options={[
+                { value: 'bottom-right', label: 'Bottom right', description: 'Bottom right of the screen' },
+                { value: 'bottom-left', label: 'Bottom left', description: 'Bottom left of the screen' },
+              ]}
+              onChange={(nextValue) => onPositionChange(nextValue as Position)}
+            />
+          </div>
+
           <div className="advanced-field">
             <label>
               <input

@@ -17,7 +17,7 @@
 }
 
 .widget-preview-device-frame {
-  width: min(430px, 100%);
+  width: min(470px, 100%);
   padding: 18px;
   border-radius: 40px;
   background:
@@ -290,8 +290,8 @@
 .widget-viewport {
   position: relative;
   overflow: hidden;
-  min-height: 700px;
-  padding: 1.5rem;
+  min-height: 850px;
+  padding: 2rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background:
@@ -301,8 +301,8 @@
 }
 
 .widget-viewport.preview-mobile {
-  min-height: 820px;
-  padding: 3rem 1rem 1.25rem;
+  min-height: 920px;
+  padding: 0;
   overflow: hidden;
   background:
     linear-gradient(180deg, rgba(15, 23, 42, 0.08), rgba(255, 255, 255, 0.24)),
@@ -328,11 +328,39 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(84px + var(--widget-keyboard-offset, 0px));
+  top: 0;
+  bottom: calc(96px + var(--widget-keyboard-offset, 0px));
   width: auto;
   min-width: 0;
   max-width: 100%;
-  transform: translateY(0) scale(var(--widget-scale));
+  height: auto;
+  max-height: none;
+  border-radius: 0 0 24px 24px;
+  transform: translateY(0) scale(1);
+  transform-origin: top center;
+}
+
+.widget-viewport.preview-mobile .chat-widget.open .chat-content,
+.widget-viewport.preview-mobile .chat-widget.open.chat-widget--starter .chat-content {
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+}
+
+.widget-viewport.preview-mobile .chat-widget.open .chat-body,
+.widget-viewport.preview-mobile .chat-widget.open.chat-widget--starter .chat-body {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  margin-bottom: var(--chat-footer-height);
+  overflow-y: auto;
+  padding-bottom: calc(var(--chat-footer-height) + 1rem);
+}
+
+.widget-viewport.preview-mobile .widget-icon {
+  right: 18px;
+  bottom: 24px;
 }
 
 .widget-viewport-embedded {
@@ -344,24 +372,28 @@
 }
 
 .widget-preview-shell .floating-chat-preview {
-  width: min(420px, calc(100% - 2rem));
+  width: min(480px, calc(100% - 2rem));
   max-width: calc(100% - 2rem);
 }
 
 .widget-preview-shell .chat-widget.open {
-  width: min(100%, 420px);
+  width: min(100%, 480px);
   min-width: 0;
   max-width: 100%;
 }
 
 .widget-preview-shell.preview-shell-mobile .widget-preview-device-frame {
-  width: min(390px, 100%);
+  width: min(470px, 100%);
   padding: 12px;
   border-radius: 34px;
 }
 
 .widget-preview-shell.preview-shell-mobile .widget-preview-device-shell {
   border-radius: 26px;
+}
+
+.widget-preview-shell.preview-shell-mobile .widget-preview-device-shell::before {
+  display: none;
 }
 
 .widget-preview-shell.preview-shell-mobile .widget-viewport.preview-mobile .floating-chat-preview {
@@ -397,7 +429,7 @@
 .chat-widget {
   --widget-scale: 1;
   --chat-body-height: 440px;
-  --chat-starter-body-height: 520px;
+  --chat-starter-body-height: 620px;
   --chat-footer-height: 92px;
   position: relative;
   display: none;
@@ -915,28 +947,28 @@
 }
 
 .widget-starter-cards__hero-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 18px;
+  width: 64px;
+  height: 64px;
+  border-radius: 22px;
   display: grid;
   place-items: center;
   background: rgba(59, 130, 246, 0.12);
   color: #2563eb;
-  font-size: 1.45rem;
+  font-size: 1.85rem;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .widget-starter-cards__hero-icon svg {
-  width: 1.35rem;
-  height: 1.35rem;
+  width: 1.75rem;
+  height: 1.75rem;
 }
 
 .widget-starter-cards--minimal .widget-starter-cards__hero-icon {
-  width: 60px;
-  height: 60px;
+  width: 78px;
+  height: 78px;
   margin-inline: auto;
-  border-radius: 22px;
-  font-size: 1.65rem;
+  border-radius: 26px;
+  font-size: 2rem;
 }
 
 .widget-starter-cards--bubble .widget-starter-cards__hero-icon {
@@ -1061,6 +1093,12 @@
 .widget-starter-cards--list.widget-starter-cards--minimal .widget-starter-cards__grid,
 .widget-starter-cards--stack.widget-starter-cards--minimal .widget-starter-cards__grid {
   grid-template-columns: 1fr;
+}
+
+.widget-starter-cards--dense.widget-starter-cards--minimal .widget-starter-cards__grid,
+.widget-starter-cards--dense.widget-starter-cards--list.widget-starter-cards--minimal .widget-starter-cards__grid,
+.widget-starter-cards--dense.widget-starter-cards--stack.widget-starter-cards--minimal .widget-starter-cards__grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .widget-starter-card {
@@ -1797,7 +1835,7 @@
 
   .chat-widget {
     --chat-body-height: 420px;
-    --chat-starter-body-height: 460px;
+    --chat-starter-body-height: 560px;
   }
 
   .chat-header {
@@ -2163,16 +2201,16 @@
 
 .position-bottom-right .floating-chat-preview {
   top: auto;
-  right: 2rem;
-  bottom: 2rem;
+  right: 1.25rem;
+  bottom: 1.25rem;
   left: auto;
 }
 
 .position-bottom-left .floating-chat-preview {
   top: auto;
   right: auto;
-  bottom: 2rem;
-  left: 2rem;
+  bottom: 1.25rem;
+  left: 1.25rem;
 }
 
 .position-bottom-left .widget-icon {
@@ -2202,10 +2240,14 @@
   left: 0;
 }
 
-.widget-preview-shell.preview-shell-mobile .position-bottom-right .widget-icon,
-.widget-preview-shell.preview-shell-mobile .position-bottom-left .widget-icon {
-  right: 0;
+.widget-preview-shell.preview-shell-mobile .position-bottom-right .widget-icon {
+  right: 18px;
   left: auto;
+}
+
+.widget-preview-shell.preview-shell-mobile .position-bottom-left .widget-icon {
+  right: auto;
+  left: 18px;
 }
 
 
@@ -2621,8 +2663,16 @@
 
   .widget-starter-cards--list .widget-starter-cards__grid,
   .widget-starter-cards--stack .widget-starter-cards__grid,
-  .widget-starter-cards--minimal .widget-starter-cards__grid {
+  .widget-starter-cards--minimal .widget-starter-cards__grid,
+  .widget-starter-cards--list.widget-starter-cards--minimal .widget-starter-cards__grid,
+  .widget-starter-cards--stack.widget-starter-cards--minimal .widget-starter-cards__grid {
     grid-template-columns: 1fr;
+  }
+
+  .widget-starter-cards--dense.widget-starter-cards--minimal .widget-starter-cards__grid,
+  .widget-starter-cards--dense.widget-starter-cards--list.widget-starter-cards--minimal .widget-starter-cards__grid,
+  .widget-starter-cards--dense.widget-starter-cards--stack.widget-starter-cards--minimal .widget-starter-cards__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .widget-starter-cards__header {

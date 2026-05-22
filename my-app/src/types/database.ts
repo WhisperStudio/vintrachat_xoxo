@@ -89,6 +89,17 @@ export interface AssistantWidgetIcons {
   userIcon?: string;
 }
 
+export interface ChatWidgetInterfaceIcons {
+  launcherIcon?: string;
+  avatarIcon?: string;
+  closeIcon?: string;
+  backIcon?: string;
+  sendIcon?: string;
+  aiIcon?: string;
+  supportIcon?: string;
+  userIcon?: string;
+}
+
 export interface ChatAssistantConfig {
   enabled: boolean;
   provider: 'gemini';
@@ -261,6 +272,9 @@ export interface ChatWidgetConfig {
   
   // Position (affects widget placement)
   position: 'bottom-right' | 'bottom-left';
+
+  // Interface icons (does not affect starter card icons)
+  widgetIcons?: ChatWidgetInterfaceIcons;
   
   // Design options (affects shapes, shadows, borders, elements)
   bubbleStyle: {

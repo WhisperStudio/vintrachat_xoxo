@@ -7,7 +7,6 @@ import {
   FiDroplet,
   FiImage,
   FiLayout,
-  FiMapPin,
   FiMessageCircle,
   FiMessageSquare,
   FiRefreshCw,
@@ -23,7 +22,7 @@ import { setActiveChatWidget, updateChatWidgetConfig } from '@/lib/auth.service'
 import { defaultConversationCards } from '@/lib/conversation-cards'
 import { chatWidgetBuilderI18n, useVintraLanguage } from '@/lib/i18n'
 import { sanitizeBubbleStyleForPlan } from '@/lib/subscription'
-import type { BubbleIconChoice, ChatWidgetConfig, OrbStyleConfig } from '@/types/database'
+import type { BubbleIconChoice, ChatWidgetConfig, ChatWidgetInterfaceIcons, OrbStyleConfig } from '@/types/database'
 import './ChatWidget.css'
 
 import PlanSelector from './components/PlanSelector'
@@ -55,11 +54,20 @@ const defaultOrbStyle: OrbStyleConfig = {
   inactivityMaxMinutes: 4,
 }
 
+const launcherIconChoiceMap: Partial<Record<BubbleIconChoice, string>> = {
+  chat: 'FiMessageCircle',
+  phone: 'FiPhone',
+  cpu: 'FiCpu',
+  message: 'FiMessageSquare',
+  support: 'FiLifeBuoy',
+}
+
 type InputsState = {
   plan: Plan
   billingCycle: BillingCycle
   colorTheme: ColorTheme
   position: Position
+  widgetIcons: ChatWidgetInterfaceIcons
   bubbleStyle: {
     showStatus: boolean
     iconChoice: BubbleIconChoice
@@ -115,6 +123,16 @@ const defaultInputs: InputsState = {
   billingCycle: 'monthly',
   colorTheme: 'modern',
   position: 'bottom-right',
+  widgetIcons: {
+    launcherIcon: 'FiMessageCircle',
+    avatarIcon: 'FiMessageCircle',
+    closeIcon: 'FiX',
+    backIcon: 'FiArrowLeft',
+    sendIcon: 'FiSend',
+    aiIcon: 'FiCpu',
+    supportIcon: 'FiLifeBuoy',
+    userIcon: 'FiUser',
+  },
   bubbleStyle: {
     showStatus: true,
     iconChoice: 'chat',
@@ -188,7 +206,7 @@ export default function ChatWidgetBuilderPage() {
     body: false,
     footer: false,
     colorTheme: false,
-    position: false,
+    icons: false,
     branding: false,
     advanced: false,
   })
@@ -221,6 +239,14 @@ export default function ChatWidgetBuilderPage() {
       billingCycle: config.billingCycle || defaultInputs.billingCycle,
       colorTheme: config.colorTheme || defaultInputs.colorTheme,
       position: config.position || defaultInputs.position,
+      widgetIcons: {
+        ...defaultInputs.widgetIcons,
+        ...(config.widgetIcons || {}),
+        launcherIcon:
+          config.widgetIcons?.launcherIcon ||
+          launcherIconChoiceMap[bubbleStyle.iconChoice] ||
+          defaultInputs.widgetIcons.launcherIcon,
+      },
       bubbleStyle: {
         ...defaultInputs.bubbleStyle,
         ...bubbleStyle,
@@ -296,7 +322,7 @@ export default function ChatWidgetBuilderPage() {
     { key: 'body', label: 'Chat messages', eyebrow: 'Messages', icon: FiMessageSquare },
     { key: 'footer', label: 'Message box', eyebrow: 'Input', icon: FiSend },
     { key: 'colorTheme', label: 'Colors', eyebrow: 'Theme', icon: FiDroplet },
-    { key: 'position', label: 'Screen position', eyebrow: 'Placement', icon: FiMapPin },
+    { key: 'icons', label: 'Icons', eyebrow: 'Design', icon: FiMessageCircle },
     { key: 'branding', label: 'Your branding', eyebrow: 'Brand', icon: FiImage },
     { key: 'advanced', label: 'Widget behavior', eyebrow: 'Rules', icon: FiSliders },
   ] as const
@@ -342,6 +368,7 @@ export default function ChatWidgetBuilderPage() {
         billingCycle: inputs.billingCycle,
         colorTheme: inputs.colorTheme,
         position: inputs.position,
+        widgetIcons: inputs.widgetIcons,
         bubbleStyle: sanitizeBubbleStyleForPlan(inputs.bubbleStyle, inputs.plan),
         headerStyle: inputs.headerStyle,
         bodyStyle: inputs.bodyStyle,
@@ -537,10 +564,12 @@ export default function ChatWidgetBuilderPage() {
                   onFooterStyleChange={(style) => updateInput('footerStyle', style)}
                   colorTheme={inputs.colorTheme}
                   position={inputs.position}
+                  widgetIcons={inputs.widgetIcons}
                   customBranding={inputs.customBranding}
                   settings={inputs.settings}
                   onColorThemeChange={(theme) => updateInput('colorTheme', theme)}
                   onPositionChange={(position) => updateInput('position', position)}
+                  onWidgetIconsChange={(widgetIcons) => updateInput('widgetIcons', widgetIcons)}
                   onCustomBrandingChange={(branding) => updateInput('customBranding', branding)}
                   onSettingsChange={(settings) => updateInput('settings', settings)}
                   openSections={openSections}
@@ -582,6 +611,7 @@ export default function ChatWidgetBuilderPage() {
               position={inputs.position}
               colorTheme={inputs.colorTheme}
               customBranding={inputs.customBranding}
+              assistantIcons={inputs.widgetIcons}
               enablePreviewChat={true}
               previewReply={t.previewReply}
               previewMode={previewMode}

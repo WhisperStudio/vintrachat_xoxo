@@ -260,18 +260,22 @@ body {
 
 .builder-sidebar-button:hover {
   transform: translateX(3px);
-  border-color: rgba(99, 102, 241, 0.18);
-  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(124, 58, 237, 0.18);
+  background: rgba(255, 255, 255, 0.82);
   color: #0f172a;
+  box-shadow:
+    0 12px 24px rgba(124, 58, 237, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 
 .builder-sidebar-button.active {
   color: #0f172a;
-  border-color: rgba(99, 102, 241, 0.28);
+  border-color: rgba(124, 58, 237, 0.3);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(238, 242, 255, 0.88));
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(245, 243, 255, 0.92));
   box-shadow:
-    0 12px 26px rgba(99, 102, 241, 0.13),
+    0 14px 30px rgba(15, 23, 42, 0.08),
+    0 0 0 5px rgba(124, 58, 237, 0.05),
     inset 0 1px 0 rgba(255, 255, 255, 0.96);
 }
 

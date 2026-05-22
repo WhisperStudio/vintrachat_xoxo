@@ -143,34 +143,44 @@ const widgetStyles = `
 }
 
 .vintra-root.viewport-mobile {
-  inset: auto 10px calc(10px + env(safe-area-inset-bottom, 0px)) 10px;
+  inset: auto 18px calc(24px + env(safe-area-inset-bottom, 0px)) auto;
 }
 
-.vintra-root.viewport-mobile.position-bottom-left,
+.vintra-root.viewport-mobile.position-bottom-left {
+  inset: auto auto calc(24px + env(safe-area-inset-bottom, 0px)) 18px;
+}
+
 .vintra-root.viewport-mobile.position-bottom-right {
-  inset: auto 10px calc(10px + env(safe-area-inset-bottom, 0px)) 10px;
+  inset: auto 18px calc(24px + env(safe-area-inset-bottom, 0px)) auto;
 }
 
 .vintra-root.viewport-mobile .vintra-stack {
-  width: min(100%, calc(var(--vintra-viewport-width) - 20px));
-  align-items: stretch;
+  width: auto;
+  align-items: flex-end;
   gap: 10px;
 }
 
+.vintra-root.viewport-mobile.position-bottom-left .vintra-stack {
+  align-items: flex-start;
+}
+
 .vintra-root.viewport-mobile .chat-widget {
-  --chat-body-height: 520px;
-  --chat-starter-body-height: 460px;
+  --chat-body-height: 100%;
+  --chat-starter-body-height: 100%;
   --chat-footer-height: 92px;
   position: fixed;
-  left: 10px;
-  right: 10px;
-  bottom: calc(84px + env(safe-area-inset-bottom, 0px) + var(--vintra-keyboard-offset));
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px) + var(--vintra-keyboard-offset));
   width: auto;
+  min-width: 0;
   max-width: none;
-  max-height: min(720px, calc(var(--vintra-viewport-height) - 104px - var(--vintra-keyboard-offset)));
-  border-radius: 24px;
-  transform: translateY(18px) scale(0.98);
-  transform-origin: bottom center;
+  height: auto;
+  max-height: none;
+  border-radius: 0 0 24px 24px;
+  transform: translateY(14px) scale(0.985);
+  transform-origin: top center;
   box-shadow: 0 28px 56px rgba(15, 23, 42, 0.22);
 }
 
@@ -182,9 +192,15 @@ const widgetStyles = `
   display: flex;
   flex-direction: column;
   min-height: 0;
-  height: calc(var(--chat-body-height) + var(--chat-footer-height));
-  max-height: calc(var(--chat-body-height) + var(--chat-footer-height));
+  height: 100%;
+  max-height: none;
   overflow: hidden;
+}
+
+.vintra-root.viewport-mobile .chat-widget.chat-widget--starter .chat-content {
+  height: 100%;
+  min-height: 0;
+  max-height: none;
 }
 
 .vintra-root.viewport-mobile .chat-header {
@@ -236,15 +252,25 @@ const widgetStyles = `
 }
 
 .vintra-root.viewport-mobile .chat-body {
-  height: min(var(--chat-body-height), calc(var(--vintra-viewport-height) - 210px - var(--vintra-keyboard-offset)));
-  max-height: min(var(--chat-body-height), calc(var(--vintra-viewport-height) - 210px - var(--vintra-keyboard-offset)));
-  min-height: min(220px, var(--chat-body-height));
-  flex: 0 0 auto;
+  height: auto;
+  max-height: none;
+  min-height: 0;
+  flex: 1 1 auto;
   margin-bottom: var(--chat-footer-height);
   padding: 0.95rem 0.95rem calc(var(--chat-footer-height) + 1rem);
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scroll-padding-bottom: calc(var(--chat-footer-height) + 1rem);
+}
+
+.vintra-root.viewport-mobile .chat-widget.chat-widget--starter .chat-body {
+  height: auto;
+  max-height: none;
+  min-height: 0;
+  flex: 1 1 auto;
+  margin-bottom: var(--chat-footer-height);
+  overflow-y: auto;
+  padding-bottom: calc(var(--chat-footer-height) + 1rem);
 }
 
 .vintra-root.viewport-mobile .widget-faq-suggestions {
@@ -311,6 +337,9 @@ const widgetStyles = `
   width: 64px;
   height: 64px;
   touch-action: manipulation;
+  position: relative;
+  right: auto;
+  bottom: auto;
 }
 
 .vintra-root.viewport-mobile .close-btn {
@@ -585,6 +614,11 @@ export async function GET(
   function getAssistantWidgetIcons() {
     var assistantConfig = getAssistantConfig();
     return (assistantConfig && assistantConfig.widgetIcons) || {};
+  }
+
+  function getWidgetInterfaceIcons() {
+    var config = state.config || {};
+    return (config && config.widgetIcons) || {};
   }
 
   function renderConfiguredWidgetIcon(iconKey) {
@@ -1044,11 +1078,13 @@ export async function GET(
   function getMessagesMarkup(config) {
     var bodyStyle = (config && config.bodyStyle) || {};
     var assistantIcons = getAssistantWidgetIcons();
+    var widgetIcons = getWidgetInterfaceIcons();
+    var typingIconMarkup = renderConfiguredWidgetIcon(widgetIcons.aiIcon || assistantIcons.aiIcon || assistantIcons.heroIcon || '');
     var waitingLine = state.supportStatus === 'needs-human'
       ? '<div class="chat-status-line">Waiting for a support assistant</div>'
       : '';
     var typingMarkup = state.sending && !state.awaitingVisitorName
-      ? '<div class="message message-bot message-typing" aria-live="polite" aria-label="Assistant is typing"><div class="typing-dots"><span></span><span></span><span></span></div></div>'
+      ? '<div class="message message-bot message-typing" aria-live="polite" aria-label="Assistant is typing">' + (typingIconMarkup ? '<span class="message-role-icon">' + typingIconMarkup + '</span>' : '') + '<div class="typing-dots"><span></span><span></span><span></span></div></div>'
       : '';
 
     if (!state.messages.length) {
@@ -1072,11 +1108,11 @@ export async function GET(
       }
 
       var messageIconKey = msg.role === 'assistant'
-        ? assistantIcons.aiIcon || assistantIcons.heroIcon || ''
+        ? widgetIcons.aiIcon || assistantIcons.aiIcon || assistantIcons.heroIcon || ''
         : msg.role === 'support'
-          ? assistantIcons.supportIcon || ''
+          ? widgetIcons.supportIcon || assistantIcons.supportIcon || ''
           : msg.role === 'user'
-            ? assistantIcons.userIcon || ''
+            ? widgetIcons.userIcon || assistantIcons.userIcon || ''
             : '';
       var messageIconMarkup = renderConfiguredWidgetIcon(messageIconKey);
 
@@ -1099,6 +1135,7 @@ export async function GET(
     var bodyStyle = (config && config.bodyStyle) || {};
     var assistantConfig = getAssistantConfig();
     var assistantIcons = getAssistantWidgetIcons();
+    var widgetIcons = getWidgetInterfaceIcons();
     var starterCards = getConversationCards(config);
     var cardsLayout = bodyStyle.conversationCardsLayout || 'grid';
     var cardsStyle = bodyStyle.conversationCardsStyle || 'modern';
@@ -1116,13 +1153,15 @@ export async function GET(
       };
     }
 
-    var starterCardsPerPage = cardsStyle === 'chips'
-      ? 6
-      : cardsStyle === 'bubble'
-        ? 4
-        : cardsStyle === 'image'
-          ? 3
-          : 4;
+    var starterCardsPerPage = cardsStyle === 'minimal' && starterCards.length > 4
+      ? 8
+      : cardsStyle === 'chips'
+        ? 6
+        : cardsStyle === 'bubble'
+          ? 4
+          : cardsStyle === 'image'
+            ? 3
+            : 4;
 
     var starterCardPages = [];
     for (var index = 0; index < starterCards.length; index += starterCardsPerPage) {
@@ -1137,13 +1176,14 @@ export async function GET(
     var isMinimalCards = cardsStyle === 'minimal';
     var isImageCards = cardsStyle === 'image';
     var isChipsCards = cardsStyle === 'chips';
+    var denseStarterClass = isMinimalCards && starterCards.length > 4 ? ' widget-starter-cards--dense' : '';
 
     if (showStarterCardList && activeConversationCard) {
       return {
         html:
           '<div class="widget-starter-options widget-starter-options--panel" aria-label="Suggested next steps">' +
             '<div class="widget-starter-options__title">' +
-              '<button type="button" class="widget-starter-options__back" aria-label="Back to cards">←</button>' +
+              '<button type="button" class="widget-starter-options__back" aria-label="Back to cards">' + (renderConfiguredWidgetIcon(widgetIcons.backIcon || 'FiArrowLeft') || '←') + '</button>' +
               '<div>' +
                 '<strong>' + escapeHtml(activeConversationCard.title) + '</strong>' +
                 '<p>' + escapeHtml(activeConversationCard.description) + '</p>' +
@@ -1168,7 +1208,7 @@ export async function GET(
 
     return {
       html:
-        '<div class="widget-starter-cards widget-starter-cards--' + cardsLayout + ' widget-starter-cards--' + cardsStyle + '">' +
+        '<div class="widget-starter-cards widget-starter-cards--' + cardsLayout + ' widget-starter-cards--' + cardsStyle + denseStarterClass + '">' +
           '<div class="widget-starter-cards__hero widget-starter-cards__hero--' + cardsStyle + '">' +
             '<div class="widget-starter-cards__hero-icon" aria-hidden="true">' + renderConfiguredWidgetIcon(assistantIcons.heroIcon || '') + '</div>' +
             '<div class="widget-starter-cards__hero-copy">' +
@@ -1593,12 +1633,14 @@ export async function GET(
     var bodyStyle = config.bodyStyle || {};
     var footerStyle = config.footerStyle || {};
     var assistantConfig = getAssistantConfig();
+    var widgetIcons = getWidgetInterfaceIcons();
+    var assistantIcons = getAssistantWidgetIcons();
     var theme = getThemeName(config);
     var themeClass = THEME_CLASS_BY_NAME[theme] || THEME_CLASS_BY_NAME.modern || 'theme-modern';
     var position = getPosition(config);
     var iconChoice = bubbleStyle.iconChoice || 'chat';
     var orbStyle = getOrbStyle(config);
-    var bubbleIcon = icons[iconChoice] || icons.chat;
+    var bubbleIcon = renderConfiguredWidgetIcon(widgetIcons.launcherIcon || '') || icons[iconChoice] || icons.chat;
     var shouldAnimateBubble =
       bubbleStyle.animationType &&
       bubbleStyle.animationType !== 'none' &&
@@ -1617,7 +1659,7 @@ export async function GET(
             ' style="object-fit: contain; object-position: ' + logoStyle.focusX + '% ' + logoStyle.focusY + '%; transform: scale(' + (logoStyle.zoom / 100) + '); transform-origin: ' + logoStyle.focusX + '% ' + logoStyle.focusY + '%;"' +
           ' />' +
         '</div>'
-      : renderConfiguredWidgetIcon(getAssistantWidgetIcons().avatarIcon || '');
+      : renderConfiguredWidgetIcon(widgetIcons.avatarIcon || assistantIcons.avatarIcon || '');
     var orbPhase = iconChoice === 'orb' ? getOrbPhase(orbStyle) : 'none';
     var orbGlyphList = iconChoice === 'orb' ? getOrbGlyphList(orbStyle, orbPhase) : [];
     var orbGlyph = orbGlyphList.length ? orbGlyphList[state.orbCycleTick % orbGlyphList.length] : '';
@@ -1654,7 +1696,7 @@ export async function GET(
             '</div>' +
             '<div class="chat-header-actions">' +
               (headerStyle.showStatus ? '<span class="status-pill">' + icons.check + ' ' + escapeHtml(getStatusLabel()) + '</span><span class="header-status-dot" aria-hidden="true"></span>' : '') +
-              (headerStyle.showCloseButton && state.open ? '<button type="button" class="close-btn" aria-label="Close chat">×</button>' : '') +
+              (headerStyle.showCloseButton && state.open ? '<button type="button" class="close-btn" aria-label="Close chat">' + (renderConfiguredWidgetIcon(widgetIcons.closeIcon || 'FiX') || '×') + '</button>' : '') +
             '</div>' +
           '</div>' +
           '<div class="' + classes(['chat-body', 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '">' +
@@ -1671,7 +1713,7 @@ export async function GET(
                 ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled ' : '') +
                 'value="' + escapeHtml(truncateTextByCharacters(String(state.inputValue || ''), MAX_WIDGET_MESSAGE_CHARS)) + '" ' +
                 'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : (state.awaitingVisitorName ? 'Write your name to contact human support...' : (state.supportStatus === 'needs-human' ? 'Waiting for human support...' : 'Write a message...'))) + '"></textarea>' +
-              (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled' : '') + '>' + icons.send + '</button>') +
+              (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled' : '') + '>' + (renderConfiguredWidgetIcon(widgetIcons.sendIcon || 'FiSend') || icons.send) + '</button>') +
             '</div>' +
           '</div>' +
           (state.awaitingVisitorName ? '<div class="name-request-hint">Please write your name to connect with human support.</div>' : '') +

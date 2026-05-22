@@ -172,6 +172,14 @@ const defaultSupportTaskCategories: SupportTaskCategory[] = [
   updatedAt: new Date(),
 }));
 
+const launcherIconChoiceMap: Record<string, string> = {
+  chat: 'FiMessageCircle',
+  phone: 'FiPhone',
+  cpu: 'FiCpu',
+  message: 'FiMessageSquare',
+  support: 'FiLifeBuoy',
+}
+
 function buildDefaultWidgetConfig(businessName: string): ChatWidgetConfig {
   return {
     plan: 'free',
@@ -224,6 +232,16 @@ function buildDefaultWidgetConfig(businessName: string): ChatWidgetConfig {
     customBranding: {
       title: businessName,
       description: 'Vi er her for å hjelpe deg!',
+    },
+    widgetIcons: {
+      launcherIcon: 'FiMessageCircle',
+      avatarIcon: 'FiMessageCircle',
+      closeIcon: 'FiX',
+      backIcon: 'FiArrowLeft',
+      sendIcon: 'FiSend',
+      aiIcon: 'FiCpu',
+      supportIcon: 'FiLifeBuoy',
+      userIcon: 'FiUser',
     },
     settings: {
       autoOpen: false,
@@ -362,6 +380,14 @@ function mergeWidgetConfig(
     settings: {
       ...defaults.settings,
       ...(config.settings || {}),
+    },
+    widgetIcons: {
+      ...(defaults.widgetIcons || {}),
+      ...(config.widgetIcons || {}),
+      launcherIcon:
+        config.widgetIcons?.launcherIcon ||
+        launcherIconChoiceMap[String(config.bubbleStyle?.iconChoice || '')] ||
+        defaults.widgetIcons?.launcherIcon,
     },
   }
 }
@@ -678,6 +704,16 @@ const defaultWidgetConfig: ChatWidgetConfig = {
   customBranding: {
     title: businessName,
     description: "Vi er her for å hjelpe deg!",
+  },
+  widgetIcons: {
+    launcherIcon: 'FiMessageCircle',
+    avatarIcon: 'FiMessageCircle',
+    closeIcon: 'FiX',
+    backIcon: 'FiArrowLeft',
+    sendIcon: 'FiSend',
+    aiIcon: 'FiCpu',
+    supportIcon: 'FiLifeBuoy',
+    userIcon: 'FiUser',
   },
   settings: {
     autoOpen: false,

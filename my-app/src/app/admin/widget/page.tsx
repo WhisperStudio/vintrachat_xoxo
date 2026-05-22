@@ -3148,7 +3148,7 @@ export default function WidgetAdminPanel({
               position={activeConfig.position}
               colorTheme={activeConfig.colorTheme}
               customBranding={activeConfig.customBranding}
-              assistantIcons={assistantConfig.widgetIcons}
+              assistantIcons={{ ...(assistantConfig.widgetIcons || {}), ...(activeConfig.widgetIcons || {}) }}
               initialOpen={true}
               variant="embedded"
               enablePreviewChat={true}

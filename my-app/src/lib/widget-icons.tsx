@@ -1,5 +1,6 @@
 import type { ComponentType, SVGProps } from 'react'
 import {
+  FiArrowLeft,
   FiArrowRight,
   FiBriefcase,
   FiCheckCircle,
@@ -14,12 +15,14 @@ import {
   FiMessageSquare,
   FiPhone,
   FiSearch,
+  FiSend,
   FiShield,
   FiTarget,
   FiUpload,
   FiUser,
   FiUserCheck,
   FiUserPlus,
+  FiX,
   FiZap,
 } from 'react-icons/fi'
 import { BsRobot } from 'react-icons/bs'
@@ -79,8 +82,11 @@ export const WIDGET_ICON_OPTIONS: WidgetIconOption[] = [
   { key: 'FiTarget', label: 'Target', icon: FiTarget, keywords: ['goal', 'target', 'conversion'] },
   { key: 'FiUpload', label: 'Upload', icon: FiUpload, keywords: ['upload', 'file', 'document'] },
   { key: 'FiPhone', label: 'Phone', icon: FiPhone, keywords: ['call', 'phone', 'contact'] },
+  { key: 'FiSend', label: 'Send', icon: FiSend, keywords: ['send', 'paper plane', 'submit', 'message'] },
   { key: 'FiCheckCircle', label: 'Check circle', icon: FiCheckCircle, keywords: ['done', 'ok', 'status'] },
+  { key: 'FiArrowLeft', label: 'Arrow left', icon: FiArrowLeft, keywords: ['back', 'arrow', 'return', 'previous'] },
   { key: 'FiArrowRight', label: 'Arrow right', icon: FiArrowRight, keywords: ['next', 'arrow', 'forward'] },
+  { key: 'FiX', label: 'Close', icon: FiX, keywords: ['close', 'x', 'dismiss', 'cancel'] },
   { key: 'FiHelpCircle', label: 'Help', icon: FiHelpCircle, keywords: ['help', 'question', 'faq'] },
 ]
 
@@ -90,13 +96,17 @@ export const WIDGET_ICON_MAP = Object.fromEntries(
 
 export const WIDGET_ICON_ALIAS_MAP: Record<string, WidgetIconKey> = {
   ai: 'FiCpu',
+  back: 'FiArrowLeft',
   arrow: 'FiArrowRight',
+  'arrow-left': 'FiArrowLeft',
+  'arrow-right': 'FiArrowRight',
   bot: 'FaRobot',
   briefcase: 'FiBriefcase',
   business: 'FiBriefcase',
   cards: 'FiLayers',
   chat: 'FiMessageCircle',
   check: 'FiCheckCircle',
+  close: 'FiX',
   clock: 'FiClock',
   cpu: 'FiCpu',
   globe: 'FiGlobe',
@@ -108,11 +118,13 @@ export const WIDGET_ICON_ALIAS_MAP: Record<string, WidgetIconKey> = {
   phone: 'FiPhone',
   robot: 'FaRobot',
   search: 'FiSearch',
+  send: 'FiSend',
   shield: 'FiShield',
   support: 'FiLifeBuoy',
   target: 'FiTarget',
   upload: 'FiUpload',
   user: 'FiUser',
+  x: 'FiX',
   zap: 'FiZap',
 }
 

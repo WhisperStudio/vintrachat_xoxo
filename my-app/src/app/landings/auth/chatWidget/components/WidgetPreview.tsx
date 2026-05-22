@@ -8,7 +8,7 @@ import { normalizeConversationCards } from '@/lib/conversation-cards'
 import { renderWidgetIcon } from '@/lib/widget-icons'
 import FeedbackFormOverlay from '@/components/chat/FeedbackFormOverlay'
 import './WidgetPreview.css'
-import type { AssistantConversationCard, AssistantWidgetIcons, BubbleIconChoice, OrbStyleConfig } from '@/types/database'
+import type { AssistantConversationCard, AssistantWidgetIcons, ChatWidgetInterfaceIcons, BubbleIconChoice, OrbStyleConfig } from '@/types/database'
 
 const OrbAvatar = GlassOrbAvatar as ComponentType<
   SVGProps<SVGSVGElement> & { glyph?: string; orbMode?: 'spin' | 'hover' | 'reply' | 'inactive' }
@@ -72,7 +72,7 @@ interface WidgetPreviewProps {
       focusY: number
     }
   }
-  assistantIcons?: AssistantWidgetIcons
+  assistantIcons?: AssistantWidgetIcons & ChatWidgetInterfaceIcons
   initialOpen?: boolean
   variant?: 'default' | 'embedded'
   previewMode?: 'desktop' | 'mobile'
@@ -199,8 +199,12 @@ export default function WidgetPreview({
   const [activeConversationCardId, setActiveConversationCardId] = useState<string | null>(null)
 
   const effectiveAssistantIcons = {
+    launcherIcon: assistantIcons?.launcherIcon ?? '',
     avatarIcon: assistantIcons?.avatarIcon ?? 'FiMessageCircle',
     heroIcon: assistantIcons?.heroIcon ?? 'FiMessageCircle',
+    closeIcon: assistantIcons?.closeIcon ?? 'FiX',
+    backIcon: assistantIcons?.backIcon ?? 'FiArrowLeft',
+    sendIcon: assistantIcons?.sendIcon ?? 'FiSend',
     aiIcon: assistantIcons?.aiIcon ?? 'FiCpu',
     supportIcon: assistantIcons?.supportIcon ?? 'FiLifeBuoy',
     userIcon: assistantIcons?.userIcon ?? 'FiUser',
@@ -280,7 +284,16 @@ export default function WidgetPreview({
       },
     ]
   }, [conversationCardsLimit, bodyStyle.showConversationCards, conversationCards, conversationCardsEnabled])
-  const starterCardsPerPage = bodyStyle.conversationCardsStyle === 'chips' ? 6 : bodyStyle.conversationCardsStyle === 'bubble' ? 4 : bodyStyle.conversationCardsStyle === 'image' ? 3 : 4
+  const starterCardsPerPage =
+    bodyStyle.conversationCardsStyle === 'minimal' && starterCards.length > 4
+      ? 8
+      : bodyStyle.conversationCardsStyle === 'chips'
+        ? 6
+        : bodyStyle.conversationCardsStyle === 'bubble'
+          ? 4
+          : bodyStyle.conversationCardsStyle === 'image'
+            ? 3
+            : 4
   const starterCardPages = useMemo<AssistantConversationCard[][]>(() => {
     if (!starterCards.length) return []
     const pages: AssistantConversationCard[][] = []
@@ -297,6 +310,7 @@ export default function WidgetPreview({
   const isMinimalCards = bodyStyle.conversationCardsStyle === 'minimal'
   const isImageCards = bodyStyle.conversationCardsStyle === 'image'
   const isChipsCards = bodyStyle.conversationCardsStyle === 'chips'
+  const useDenseStarterGrid = isMinimalCards && starterCards.length > 4
   const renderStarterCardIcon = (icon?: string) => {
     if (!icon) return null
     return renderWidgetIcon(icon, { 'aria-hidden': true }) || icon
@@ -619,7 +633,7 @@ export default function WidgetPreview({
               <div className="chat-header-left">
                 {showStarterCardList ? (
                   <button type="button" className="chat-header-back" onClick={() => setActiveConversationCardId(null)} aria-label="Go back">
-                    <FiArrowLeft aria-hidden="true" />
+                    {renderWidgetIcon(effectiveAssistantIcons.backIcon, { 'aria-hidden': true }) || <FiArrowLeft aria-hidden="true" />}
                   </button>
                 ) : (
                   <>
@@ -661,7 +675,7 @@ export default function WidgetPreview({
 
                 {headerStyle.showCloseButton && isChatOpen && (
                   <button type="button" className="close-btn" onClick={() => setIsChatOpen(false)}>
-                    x
+                    {renderWidgetIcon(effectiveAssistantIcons.closeIcon, { 'aria-hidden': true }) || 'x'}
                   </button>
                 )}
               </div>
@@ -669,7 +683,7 @@ export default function WidgetPreview({
 
               <div className={bodyClasses} ref={chatBodyRef}>
               {showStarterCards && !showStarterCardList ? (
-                <div className={`widget-starter-cards widget-starter-cards--${bodyStyle.conversationCardsLayout} widget-starter-cards--${bodyStyle.conversationCardsStyle}`}>
+                <div className={`widget-starter-cards widget-starter-cards--${bodyStyle.conversationCardsLayout} widget-starter-cards--${bodyStyle.conversationCardsStyle} ${useDenseStarterGrid ? 'widget-starter-cards--dense' : ''}`.trim()}>
                   <div className={`widget-starter-cards__hero widget-starter-cards__hero--${bodyStyle.conversationCardsStyle}`}>
                     {effectiveAssistantIcons.heroIcon ? (
                       <div className="widget-starter-cards__hero-icon" aria-hidden="true">
@@ -865,7 +879,7 @@ export default function WidgetPreview({
 
                 {footerStyle.showSendButton && (
                   <button type="button" onClick={() => handleSend()} disabled={disableInput}>
-                    <FiSend />
+                    {renderWidgetIcon(effectiveAssistantIcons.sendIcon, { 'aria-hidden': true }) || <FiSend />}
                   </button>
                 )}
               </div>
@@ -904,11 +918,14 @@ export default function WidgetPreview({
             tabIndex={0}
           >
             <span className="widget-icon-inner" aria-hidden="true">
-              {bubbleStyle.iconChoice === 'chat' && <FiMessageCircle />}
-              {bubbleStyle.iconChoice === 'phone' && <FiPhone />}
-              {bubbleStyle.iconChoice === 'cpu' && <FiCpu />}
-              {bubbleStyle.iconChoice === 'message' && <FiMessageSquare />}
-              {bubbleStyle.iconChoice === 'support' && <FiLifeBuoy />}
+              {bubbleStyle.iconChoice !== 'orb' && effectiveAssistantIcons.launcherIcon ? (
+                renderWidgetIcon(effectiveAssistantIcons.launcherIcon, { 'aria-hidden': true })
+              ) : null}
+              {!effectiveAssistantIcons.launcherIcon && bubbleStyle.iconChoice === 'chat' && <FiMessageCircle />}
+              {!effectiveAssistantIcons.launcherIcon && bubbleStyle.iconChoice === 'phone' && <FiPhone />}
+              {!effectiveAssistantIcons.launcherIcon && bubbleStyle.iconChoice === 'cpu' && <FiCpu />}
+              {!effectiveAssistantIcons.launcherIcon && bubbleStyle.iconChoice === 'message' && <FiMessageSquare />}
+              {!effectiveAssistantIcons.launcherIcon && bubbleStyle.iconChoice === 'support' && <FiLifeBuoy />}
               {bubbleStyle.iconChoice === 'orb' && (
                 <OrbAvatar
                   className="widget-orb-avatar"

@@ -5,6 +5,14 @@ import type {
   ChatWidgetConfig,
 } from '@/types/database'
 
+const launcherIconChoiceMap: Record<string, string> = {
+  chat: 'FiMessageCircle',
+  phone: 'FiPhone',
+  cpu: 'FiCpu',
+  message: 'FiMessageSquare',
+  support: 'FiLifeBuoy',
+}
+
 function buildDefaultWidgetConfig(businessName = 'Chat Widget'): ChatWidgetConfig {
   return {
     plan: 'free',
@@ -62,6 +70,16 @@ function buildDefaultWidgetConfig(businessName = 'Chat Widget'): ChatWidgetConfi
         focusX: 50,
         focusY: 50,
       },
+    },
+    widgetIcons: {
+      launcherIcon: 'FiMessageCircle',
+      avatarIcon: 'FiMessageCircle',
+      closeIcon: 'FiX',
+      backIcon: 'FiArrowLeft',
+      sendIcon: 'FiSend',
+      aiIcon: 'FiCpu',
+      supportIcon: 'FiLifeBuoy',
+      userIcon: 'FiUser',
     },
     settings: {
       autoOpen: false,
@@ -125,6 +143,14 @@ function mergeWidgetConfig(
     settings: {
       ...defaults.settings,
       ...(config.settings || {}),
+    },
+    widgetIcons: {
+      ...(defaults.widgetIcons || {}),
+      ...(config.widgetIcons || {}),
+      launcherIcon:
+        config.widgetIcons?.launcherIcon ||
+        launcherIconChoiceMap[String(config.bubbleStyle?.iconChoice || '')] ||
+        defaults.widgetIcons?.launcherIcon,
     },
   }
 }
