@@ -158,7 +158,7 @@ const widgetStyles = `
 }
 
 .vintra-root.viewport-mobile .chat-widget {
-  --chat-body-height: 420px;
+  --chat-body-height: 520px;
   --chat-starter-body-height: 460px;
   --chat-footer-height: 92px;
   position: fixed;
