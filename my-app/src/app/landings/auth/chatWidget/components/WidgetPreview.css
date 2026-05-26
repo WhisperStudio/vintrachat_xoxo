@@ -656,6 +656,43 @@
   vertical-align: middle;
 }
 
+.widget-svg-icon {
+  width: var(--widget-glyph-size, 60%);
+  height: var(--widget-glyph-size, 60%);
+  min-width: 0;
+  min-height: 0;
+  max-width: calc(100% - var(--widget-glyph-inset, 0px));
+  max-height: calc(100% - var(--widget-glyph-inset, 0px));
+  display: grid;
+  place-items: center;
+  align-self: center;
+  justify-self: center;
+  flex: 0 0 auto;
+  margin: auto;
+  line-height: 0;
+  pointer-events: none;
+}
+
+.widget-svg-icon > svg {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  display: block !important;
+  margin: auto !important;
+  overflow: visible;
+  transform: none;
+  transform-origin: center;
+  vertical-align: middle;
+}
+
+.widget-svg-icon--text {
+  line-height: 1;
+  font-size: var(--widget-glyph-size, 60%);
+}
+
 .chat-body {
   display: flex;
   flex-direction: column;

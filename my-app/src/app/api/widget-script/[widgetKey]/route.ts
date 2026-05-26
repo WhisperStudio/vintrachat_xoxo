@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { WIDGET_THEME_CLASS, WIDGET_THEME_VARS } from '@/components/chat/widgetDesign'
-import { isValidElement, type ReactElement, type ReactNode } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { WIDGET_ICON_ALIAS_MAP, WIDGET_ICON_OPTIONS, renderWidgetIcon } from '@/lib/widget-icons'
 
 function serializeForJs(value: unknown) {
@@ -20,59 +20,10 @@ function escapeHtml(value: unknown) {
     .replace(/'/g, '&#39;')
 }
 
-function toKebabCase(value: string) {
-  return value.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`)
-}
-
-function renderNodeToMarkup(node: ReactNode): string {
-  if (node === null || node === undefined || typeof node === 'boolean') {
-    return ''
-  }
-
-  if (typeof node === 'string' || typeof node === 'number') {
-    return escapeHtml(node)
-  }
-
-  if (Array.isArray(node)) {
-    return node.map((child) => renderNodeToMarkup(child)).join('')
-  }
-
-  if (!isValidElement(node)) {
-    return ''
-  }
-
-  const { type, props } = node as ReactElement<Record<string, unknown>, any>
-
-  if (typeof type === 'function') {
-    const Component = type as (props: Record<string, unknown>) => ReactNode
-    return renderNodeToMarkup(Component(props))
-  }
-
-  const elementProps = props || {}
-  const children = 'children' in elementProps ? renderNodeToMarkup(elementProps.children as ReactNode) : ''
-  const attributes = Object.entries(elementProps)
-    .filter(
-      ([key]) =>
-        key !== 'children' &&
-        elementProps[key] !== undefined &&
-        elementProps[key] !== null &&
-        elementProps[key] !== false
-    )
-    .map(([key, value]) => {
-      const attributeName = key === 'className' ? 'class' : toKebabCase(key)
-      if (value === true) return attributeName
-      return `${attributeName}="${escapeHtml(value)}"`
-    })
-    .join(' ')
-
-  const openTag = attributes ? `<${type} ${attributes}>` : `<${type}>`
-  return `${openTag}${children}</${type}>`
-}
-
 const WIDGET_ICON_MARKUP_BY_KEY = Object.fromEntries(
   WIDGET_ICON_OPTIONS.map((option) => {
-    const icon = renderWidgetIcon(option.key, { 'aria-hidden': true })
-    return [option.key, icon ? renderNodeToMarkup(icon) : '']
+    const icon = renderWidgetIcon(option.key, { 'aria-hidden': true, focusable: false })
+    return [option.key, icon ? renderToStaticMarkup(icon) : '']
   })
 )
 
@@ -668,9 +619,17 @@ export async function GET(
     return WIDGET_ICON_MARKUP_BY_KEY[normalizedIconKey] || WIDGET_ICON_MARKUP_BY_KEY[aliasIconKey] || '';
   }
 
+  function renderIconSlot(markup) {
+    return markup ? '<span class="widget-svg-icon" aria-hidden="true">' + markup + '</span>' : '';
+  }
+
+  function renderConfiguredWidgetIconSlot(iconKey) {
+    return renderIconSlot(renderConfiguredWidgetIcon(iconKey));
+  }
+
   function renderStarterCardIcon(iconKey) {
     if (!iconKey) return '';
-    return renderConfiguredWidgetIcon(iconKey) || escapeHtml(iconKey);
+    return renderConfiguredWidgetIconSlot(iconKey) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">' + escapeHtml(iconKey) + '</span>';
   }
 
   var icons = {
@@ -1123,7 +1082,7 @@ export async function GET(
     var bodyStyle = (config && config.bodyStyle) || {};
     var assistantIcons = getAssistantWidgetIcons();
     var widgetIcons = getWidgetInterfaceIcons();
-    var typingIconMarkup = renderConfiguredWidgetIcon(widgetIcons.aiIcon || assistantIcons.aiIcon || assistantIcons.heroIcon || '');
+    var typingIconMarkup = renderConfiguredWidgetIconSlot(widgetIcons.aiIcon || assistantIcons.aiIcon || assistantIcons.heroIcon || '');
     var waitingLine = state.supportStatus === 'needs-human'
       ? '<div class="chat-status-line">Waiting for a support assistant</div>'
       : '';
@@ -1158,7 +1117,7 @@ export async function GET(
           : msg.role === 'user'
             ? widgetIcons.userIcon || assistantIcons.userIcon || ''
             : '';
-      var messageIconMarkup = renderConfiguredWidgetIcon(messageIconKey);
+      var messageIconMarkup = renderConfiguredWidgetIconSlot(messageIconKey);
 
       return (
         '<div class="' + classes(['message', roleClass, 'message--' + msg.role]) + '">' +
@@ -1227,7 +1186,7 @@ export async function GET(
         html:
           '<div class="widget-starter-options widget-starter-options--panel" aria-label="Suggested next steps">' +
             '<div class="widget-starter-options__title">' +
-              '<button type="button" class="widget-starter-options__back" aria-label="Back to cards">' + (renderConfiguredWidgetIcon(widgetIcons.backIcon || 'FiArrowLeft') || '←') + '</button>' +
+              '<button type="button" class="widget-starter-options__back" aria-label="Back to cards">' + (renderConfiguredWidgetIconSlot(widgetIcons.backIcon || 'FiArrowLeft') || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">←</span>') + '</button>' +
               '<div>' +
                 '<strong>' + escapeHtml(activeConversationCard.title) + '</strong>' +
                 '<p>' + escapeHtml(activeConversationCard.description) + '</p>' +
@@ -1254,7 +1213,7 @@ export async function GET(
       html:
         '<div class="widget-starter-cards widget-starter-cards--' + cardsLayout + ' widget-starter-cards--' + cardsStyle + denseStarterClass + '">' +
           '<div class="widget-starter-cards__hero widget-starter-cards__hero--' + cardsStyle + '">' +
-            '<div class="widget-starter-cards__hero-icon" aria-hidden="true">' + renderConfiguredWidgetIcon(assistantIcons.heroIcon || '') + '</div>' +
+            '<div class="widget-starter-cards__hero-icon" aria-hidden="true">' + renderConfiguredWidgetIconSlot(assistantIcons.heroIcon || '') + '</div>' +
             '<div class="widget-starter-cards__hero-copy">' +
               '<strong>Hei! 👋</strong>' +
               '<p>' + escapeHtml(isMinimalCards ? 'Hva kan jeg hjelpe deg med?' : 'Hva kan jeg hjelpe deg med i dag?') + '</p>' +
@@ -1693,7 +1652,7 @@ export async function GET(
     var position = getPosition(config);
     var iconChoice = bubbleStyle.iconChoice || 'chat';
     var orbStyle = getOrbStyle(config);
-    var bubbleIcon = renderConfiguredWidgetIcon(widgetIcons.launcherIcon || '') || icons[iconChoice] || icons.chat;
+    var bubbleIcon = renderConfiguredWidgetIconSlot(widgetIcons.launcherIcon || '') || renderIconSlot(icons[iconChoice] || icons.chat);
     var shouldAnimateBubble =
       bubbleStyle.animationType &&
       bubbleStyle.animationType !== 'none' &&
@@ -1702,7 +1661,7 @@ export async function GET(
     if (state.open && assistantConfig.faqSuggestionsEnabled && !state.faqSuggestionsDismissed && state.messages.length <= 1 && !state.faqSuggestions.length) {
       refreshFaqSuggestions();
     }
-    var headerIconMarkup = renderConfiguredWidgetIcon(widgetIcons.avatarIcon || assistantIcons.avatarIcon || '');
+    var headerIconMarkup = renderConfiguredWidgetIconSlot(widgetIcons.avatarIcon || assistantIcons.avatarIcon || '');
     var headerAvatar = getLogo(config)
       ? '<div class="avatar avatar--image">' +
           '<img' +
@@ -1749,8 +1708,8 @@ export async function GET(
               '</div>' +
             '</div>' +
             '<div class="chat-header-actions">' +
-              (headerStyle.showStatus ? '<span class="status-pill">' + icons.check + ' ' + escapeHtml(getStatusLabel()) + '</span><span class="header-status-dot" aria-hidden="true"></span>' : '') +
-              (headerStyle.showCloseButton && state.open ? '<button type="button" class="close-btn" aria-label="Close chat">' + (renderConfiguredWidgetIcon(widgetIcons.closeIcon || 'FiX') || '×') + '</button>' : '') +
+              (headerStyle.showStatus ? '<span class="status-pill">' + renderIconSlot(icons.check) + ' ' + escapeHtml(getStatusLabel()) + '</span><span class="header-status-dot" aria-hidden="true"></span>' : '') +
+              (headerStyle.showCloseButton && state.open ? '<button type="button" class="close-btn" aria-label="Close chat">' + (renderConfiguredWidgetIconSlot(widgetIcons.closeIcon || 'FiX') || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">×</span>') + '</button>' : '') +
             '</div>' +
           '</div>' +
           '<div class="' + classes(['chat-body', 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '">' +
@@ -1767,7 +1726,7 @@ export async function GET(
                 ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled ' : '') +
                 'value="' + escapeHtml(truncateTextByCharacters(String(state.inputValue || ''), MAX_WIDGET_MESSAGE_CHARS)) + '" ' +
                 'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : (state.awaitingVisitorName ? 'Write your name to contact human support...' : (state.supportStatus === 'needs-human' ? 'Waiting for human support...' : 'Write a message...'))) + '"></textarea>' +
-              (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled' : '') + '>' + (renderConfiguredWidgetIcon(widgetIcons.sendIcon || 'FiSend') || icons.send) + '</button>') +
+              (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled' : '') + '>' + (renderConfiguredWidgetIconSlot(widgetIcons.sendIcon || 'FiSend') || renderIconSlot(icons.send)) + '</button>') +
             '</div>' +
           '</div>' +
           (state.awaitingVisitorName ? '<div class="name-request-hint">Please write your name to connect with human support.</div>' : '') +
