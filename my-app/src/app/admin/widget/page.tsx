@@ -236,7 +236,7 @@ const mergeWidgetConfig = (
   }
 }
 
-const allowedDomainSeed = ['chat.vintrastudio.com', 'http://localhost:3000/']
+const allowedDomainSeed = ['chat.vintrastudio.com', 'http://localhost:3000/', 'app://com.company.app']
 
 type LanguageOption = {
   value: string
@@ -3190,7 +3190,7 @@ export default function WidgetAdminPanel({
           </div>
 
           <p className="widget-card-desc">
-            Add one allowed domain or full origin per line. If this list is empty, external sites are blocked.
+            Add one allowed domain, full origin, or mobile app id per line. If this list is empty, external sites and mobile apps are blocked.
           </p>
 
           <div className="widget-ai-grid">
@@ -3206,8 +3206,10 @@ export default function WidgetAdminPanel({
               />
               <p className="field-note">
                 Press Enter for a new line. You can paste full URLs like{' '}
-                <code>{allowedDomainSeed[1]}</code>, or plain domains like{' '}
-                <code>{allowedDomainSeed[0]}</code>.
+                <code>{allowedDomainSeed[1]}</code>, plain domains like{' '}
+                <code>{allowedDomainSeed[0]}</code>, or mobile app ids like{' '}
+                <code>{allowedDomainSeed[2]}</code>. React Native/WebView embeds must send this as{' '}
+                <code>X-Vintra-App-Origin</code>.
               </p>
             </label>
           </div>

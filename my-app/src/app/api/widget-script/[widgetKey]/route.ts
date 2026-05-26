@@ -381,6 +381,15 @@ export async function GET(
   var THEME_VARS_BY_NAME = ${serializeForJs(WIDGET_THEME_VARS)};
   var WIDGET_ICON_MARKUP_BY_KEY = ${serializeForJs(WIDGET_ICON_MARKUP_BY_KEY)};
   var WIDGET_ICON_ALIAS_BY_KEY = ${serializeForJs(WIDGET_ICON_ALIAS_MAP)};
+  var SCRIPT_ELEMENT = document.currentScript || null;
+  var APP_ORIGIN = normalizeAppOrigin(
+    SCRIPT_ELEMENT && (
+      SCRIPT_ELEMENT.getAttribute('data-vintra-app-origin') ||
+      SCRIPT_ELEMENT.getAttribute('data-vintra-app-id') ||
+      SCRIPT_ELEMENT.getAttribute('data-app-origin') ||
+      SCRIPT_ELEMENT.getAttribute('data-app-id')
+    )
+  );
 
   if (window[GLOBAL_KEY]) return;
   window[GLOBAL_KEY] = true;
@@ -392,6 +401,20 @@ export async function GET(
   var EMBED_TOKEN = '';
   var CAPTCHA_TOKEN = '';
   var FINGERPRINT_LIGHT = buildFingerprintLight();
+
+  function normalizeAppOrigin(value) {
+    var raw = String(value || '').trim().toLowerCase().replace(/\\s+/g, '');
+    if (!raw) return '';
+
+    var appUrlMatch = raw.match(/^(app|mobile|ios|android):\\/\\/([^/?#]+)$/i);
+    if (appUrlMatch) return 'app://' + appUrlMatch[2];
+
+    var appIdMatch = raw.match(/^app:([a-z0-9][a-z0-9._-]*[a-z0-9])$/i);
+    if (appIdMatch) return 'app://' + appIdMatch[1];
+
+    if (/^[a-z0-9][a-z0-9._-]*[a-z0-9]$/i.test(raw)) return 'app://' + raw;
+    return '';
+  }
 
   function createHost() {
     if (host && shadowRoot && mount) return;
@@ -822,6 +845,10 @@ export async function GET(
 
     if (DEBUG_MODE) {
       headers['X-Vintra-Debug'] = '1';
+    }
+
+    if (APP_ORIGIN) {
+      headers['X-Vintra-App-Origin'] = APP_ORIGIN;
     }
 
     if (EMBED_TOKEN) {
@@ -1454,7 +1481,8 @@ export async function GET(
       mode: 'cors',
       cache: 'no-store',
       headers: {
-        ...(DEBUG_MODE ? { 'X-Vintra-Debug': '1' } : {})
+        ...(DEBUG_MODE ? { 'X-Vintra-Debug': '1' } : {}),
+        ...(APP_ORIGIN ? { 'X-Vintra-App-Origin': APP_ORIGIN } : {})
       }
     });
 
@@ -1483,6 +1511,7 @@ export async function GET(
       headers: {
         'Content-Type': 'application/json',
         'X-Vintra-Fingerprint': FINGERPRINT_LIGHT,
+        ...(APP_ORIGIN ? { 'X-Vintra-App-Origin': APP_ORIGIN } : {}),
         ...(DEBUG_MODE ? { 'X-Vintra-Debug': '1' } : {})
       },
       mode: 'cors',
@@ -1849,6 +1878,7 @@ export async function GET(
         headers: {
           'X-Vintra-Embed-Token': EMBED_TOKEN,
           'X-Vintra-Fingerprint': FINGERPRINT_LIGHT,
+          ...(APP_ORIGIN ? { 'X-Vintra-App-Origin': APP_ORIGIN } : {}),
           ...(CAPTCHA_TOKEN ? { 'X-Vintra-Captcha-Token': CAPTCHA_TOKEN } : {}),
           ...(DEBUG_MODE ? { 'X-Vintra-Debug': '1' } : {})
         }

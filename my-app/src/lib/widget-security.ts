@@ -16,6 +16,8 @@ export function isWidgetDebugRequest(req: NextRequest) {
 function normalizeSingleDomain(raw: string) {
   let value = String(raw || '').trim().toLowerCase()
   if (!value) return ''
+  const mobileAppOrigin = normalizeMobileAppOrigin(value)
+  if (mobileAppOrigin) return mobileAppOrigin
 
   value = value.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '')
   value = value.split('/')[0] || value
@@ -39,6 +41,29 @@ function normalizeSingleDomain(raw: string) {
   }
 
   return value
+}
+
+export function normalizeMobileAppOrigin(raw: string, options: { allowBareAppId?: boolean } = {}) {
+  let value = String(raw || '').trim().toLowerCase()
+  if (!value) return ''
+
+  value = value.replace(/\s+/g, '')
+
+  const appUrlMatch = value.match(/^(app|mobile|ios|android):\/\/([^/?#]+)$/i)
+  if (appUrlMatch) {
+    return `app://${appUrlMatch[2]}`
+  }
+
+  const appIdMatch = value.match(/^app:([a-z0-9][a-z0-9._-]*[a-z0-9])$/i)
+  if (appIdMatch) {
+    return `app://${appIdMatch[1]}`
+  }
+
+  if (options.allowBareAppId && /^[a-z0-9][a-z0-9._-]*[a-z0-9]$/i.test(value)) {
+    return `app://${value}`
+  }
+
+  return ''
 }
 
 export function parseAllowedDomainsInput(value: string | string[] | undefined | null) {
@@ -72,6 +97,20 @@ export function getRequestOrigin(req: NextRequest) {
   if (referer) return referer
 
   return ''
+}
+
+export function getRequestMobileAppOrigin(req: NextRequest) {
+  return normalizeMobileAppOrigin(
+    req.headers.get('x-vintra-app-origin') ||
+      req.headers.get('x-vintra-mobile-app') ||
+      req.headers.get('x-vintra-app-id') ||
+      '',
+    { allowBareAppId: true }
+  )
+}
+
+export function getWidgetRequestOrigin(req: NextRequest) {
+  return getRequestOrigin(req) || getRequestMobileAppOrigin(req)
 }
 
 export function getRequestHostname(req: NextRequest) {
@@ -121,6 +160,7 @@ export function matchesAllowedDomain(hostname: string, allowedDomain: string) {
   const allowed = normalizeSingleDomain(allowedDomain)
 
   if (!host || !allowed) return false
+  if (host.startsWith('app://') || allowed.startsWith('app://')) return false
 
   const hostParts = host.match(/^(.+?)(?::(\d+))?$/)
   const allowedParts = allowed.match(/^(.+?)(?::(\d+))?$/)
@@ -158,20 +198,39 @@ export function isRequestOriginAllowed(
     }
   }
 
-  const hostname = getRequestHostWithPort(req) || getRequestHostname(req)
-  if (!hostname) {
+  const webOrigin = getRequestOrigin(req)
+  if (webOrigin) {
+    const hostname = getRequestHostWithPort(req) || getRequestHostname(req)
+    if (!hostname) {
+      return {
+        allowed: false as const,
+        reason: 'This widget is restricted to approved domains.',
+      }
+    }
+
+    const allowed = normalizedAllowedDomains.some((domain) => matchesAllowedDomain(hostname, domain))
+    return allowed
+      ? { allowed: true as const }
+      : {
+          allowed: false as const,
+          reason: 'This widget is restricted to approved domains.',
+        }
+  }
+
+  const mobileAppOrigin = getRequestMobileAppOrigin(req)
+  if (!mobileAppOrigin) {
     return {
       allowed: false as const,
-      reason: 'This widget is restricted to approved domains.',
+      reason: 'This widget is restricted to approved domains or approved mobile apps.',
     }
   }
 
-  const allowed = normalizedAllowedDomains.some((domain) => matchesAllowedDomain(hostname, domain))
+  const allowed = normalizedAllowedDomains.some((domain) => normalizeMobileAppOrigin(domain) === mobileAppOrigin)
   return allowed
     ? { allowed: true as const }
     : {
         allowed: false as const,
-        reason: 'This widget is restricted to approved domains.',
+        reason: 'This widget is restricted to approved mobile apps.',
       }
 }
 

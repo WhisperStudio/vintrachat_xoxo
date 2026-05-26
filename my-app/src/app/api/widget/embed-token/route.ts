@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getBusinessByWidgetKey } from '@/lib/widget.server'
-import { isWidgetOriginPermitted, getRequestOrigin } from '@/lib/widget-security'
+import { isWidgetOriginPermitted, getWidgetRequestOrigin } from '@/lib/widget-security'
 import { createWidgetEmbedToken, getOrCreateWidgetEmbedSecret } from '@/lib/widget-embed-token.server'
 
 function corsHeaders(origin?: string | null) {
@@ -8,7 +8,7 @@ function corsHeaders(origin?: string | null) {
     'Access-Control-Allow-Origin': origin || '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers':
-      'Content-Type, X-Vintra-Embed-Token, X-Vintra-Fingerprint, X-Vintra-Captcha-Token, X-Vintra-Debug',
+      'Content-Type, X-Vintra-Embed-Token, X-Vintra-Fingerprint, X-Vintra-Captcha-Token, X-Vintra-App-Origin, X-Vintra-Debug',
     Vary: 'Origin',
   }
 }
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const widgetKey = req.nextUrl.searchParams.get('key') || ''
-    const requestOrigin = getRequestOrigin(req) || req.nextUrl.origin
+    const requestOrigin = getWidgetRequestOrigin(req)
     console.log('[widget/embed-token] request start', {
       widgetKey,
       requestOrigin,
@@ -64,6 +64,13 @@ export async function GET(req: NextRequest) {
         allowedDomains: business.chatWidgetConfig.allowedDomains || [],
       })
       return NextResponse.json({ error: originCheck.reason }, { status: 403, headers })
+    }
+
+    if (!requestOrigin) {
+      return NextResponse.json(
+        { error: 'This widget is restricted to approved domains or approved mobile apps.' },
+        { status: 403, headers }
+      )
     }
 
     console.log('[widget/embed-token] origin allowed', {

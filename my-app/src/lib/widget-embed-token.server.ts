@@ -1,6 +1,6 @@
 import crypto from 'node:crypto'
 import { adminDb } from '@/lib/firebase-admin'
-import { getRequestOrigin, isRequestOriginAllowed, isSameOriginRequest, isWidgetDebugRequest } from '@/lib/widget-security'
+import { getWidgetRequestOrigin, isRequestOriginAllowed, isSameOriginRequest, isWidgetDebugRequest } from '@/lib/widget-security'
 
 const TOKEN_VERSION = 'v1'
 
@@ -154,7 +154,14 @@ export async function authorizeWidgetRequest(args: {
   }
 
   const secret = await getOrCreateWidgetEmbedSecret(args.business.id)
-  const requestOrigin = getRequestOrigin(args.req)
+  const requestOrigin = getWidgetRequestOrigin(args.req)
+  if (!requestOrigin) {
+    return {
+      allowed: false as const,
+      reason: 'This widget is restricted to approved domains or approved mobile apps.',
+    }
+  }
+
   const verification = verifyWidgetEmbedToken({
     token,
     businessId: args.business.id,
