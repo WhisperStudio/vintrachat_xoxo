@@ -1702,6 +1702,7 @@ export async function GET(
     if (state.open && assistantConfig.faqSuggestionsEnabled && !state.faqSuggestionsDismissed && state.messages.length <= 1 && !state.faqSuggestions.length) {
       refreshFaqSuggestions();
     }
+    var headerIconMarkup = renderConfiguredWidgetIcon(widgetIcons.avatarIcon || assistantIcons.avatarIcon || '');
     var headerAvatar = getLogo(config)
       ? '<div class="avatar avatar--image">' +
           '<img' +
@@ -1712,7 +1713,7 @@ export async function GET(
             ' style="object-fit: contain; object-position: ' + logoStyle.focusX + '% ' + logoStyle.focusY + '%; transform: scale(' + (logoStyle.zoom / 100) + '); transform-origin: ' + logoStyle.focusX + '% ' + logoStyle.focusY + '%;"' +
           ' />' +
         '</div>'
-      : renderConfiguredWidgetIcon(widgetIcons.avatarIcon || assistantIcons.avatarIcon || '');
+      : (headerIconMarkup ? '<div class="avatar">' + headerIconMarkup + '</div>' : '');
     var orbPhase = iconChoice === 'orb' ? getOrbPhase(orbStyle) : 'none';
     var orbGlyphList = iconChoice === 'orb' ? getOrbGlyphList(orbStyle, orbPhase) : [];
     var orbGlyph = orbGlyphList.length ? orbGlyphList[state.orbCycleTick % orbGlyphList.length] : '';
@@ -1792,15 +1793,17 @@ export async function GET(
           iconChoice === 'orb' && orbPhase === 'reply' ? 'widget-icon--orb-replying' : '',
           iconChoice === 'orb' && orbPhase === 'inactive' ? 'widget-icon--orb-idle' : ''
         ]) + '" aria-label="Open chat">' +
-          (iconChoice === 'orb' ? '<span class="' + classes([
-            'widget-orb-avatar',
-            'widget-icon--orb-mode-' + (orbPhase === 'hover' ? 'color-shift' : orbPhase === 'reply' ? 'pulse' : 'spin')
-          ]) + '">' +
-            '<span class="widget-orb-avatar-base"></span>' +
-            '<canvas class="widget-orb-avatar-canvas" aria-hidden="true"></canvas>' +
-          '</span>' : '') +
-          (iconChoice === 'orb' && orbGlyph ? '<span class="widget-orb-overlay widget-orb-overlay--glyph widget-orb-overlay--' + orbPhase + '">' + escapeHtml(orbGlyph) + '</span>' : (iconChoice === 'orb' ? '' : bubbleIcon)) +
-          (bubbleStyle.showStatus ? '<span class="status-dot"></span>' : '') +
+          '<span class="widget-icon-inner" aria-hidden="true">' +
+            (iconChoice === 'orb' ? '<span class="' + classes([
+              'widget-orb-avatar',
+              'widget-icon--orb-mode-' + (orbPhase === 'hover' ? 'color-shift' : orbPhase === 'reply' ? 'pulse' : 'spin')
+            ]) + '">' +
+              '<span class="widget-orb-avatar-base"></span>' +
+              '<canvas class="widget-orb-avatar-canvas" aria-hidden="true"></canvas>' +
+            '</span>' : '') +
+            (iconChoice === 'orb' && orbGlyph ? '<span class="widget-orb-overlay widget-orb-overlay--glyph widget-orb-overlay--' + orbPhase + '">' + escapeHtml(orbGlyph) + '</span>' : (iconChoice === 'orb' ? '' : bubbleIcon)) +
+            (bubbleStyle.showStatus ? '<span class="status-dot"></span>' : '') +
+          '</span>' +
         '</button>' +
       '</div>';
 

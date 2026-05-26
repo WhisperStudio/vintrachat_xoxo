@@ -539,6 +539,7 @@
 }
 
 .avatar {
+  --widget-glyph-size: 60%;
   width: 42px;
   height: 42px;
   flex: 0 0 auto;
@@ -608,6 +609,7 @@
 }
 
 .status-pill {
+  --widget-glyph-size: 14px;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -634,18 +636,24 @@
 .widget-starter-cards__hero-icon > svg,
 .widget-starter-card__icon > svg,
 .widget-starter-options__back > svg,
-.widget-starter-option__arrow,
 .chat-footer button > svg,
 .widget-icon-inner > svg,
 .widget-icon > svg {
-  display: block;
-  flex: 0 0 auto;
-  margin: auto;
-  max-width: 70%;
-  max-height: 70%;
+  width: var(--widget-glyph-size, 60%) !important;
+  height: var(--widget-glyph-size, 60%) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: calc(100% - var(--widget-glyph-inset, 0px)) !important;
+  max-height: calc(100% - var(--widget-glyph-inset, 0px)) !important;
+  display: block !important;
+  flex: 0 0 auto !important;
+  align-self: center !important;
+  justify-self: center !important;
+  margin: auto !important;
   object-fit: contain;
   overflow: visible;
   transform-origin: center;
+  vertical-align: middle;
 }
 
 .chat-body {
@@ -698,6 +706,7 @@
 }
 
 .chat-header-back {
+  --widget-glyph-size: 55%;
   width: 40px;
   height: 40px;
   display: grid;
@@ -803,6 +812,7 @@
 }
 
 .message-role-icon {
+  --widget-glyph-size: 58%;
   position: absolute;
   bottom: -24px;
   width: 30px;
@@ -977,11 +987,13 @@
 }
 
 .widget-starter-cards__hero-icon {
+  --widget-glyph-size: 58%;
   width: 64px;
   height: 64px;
   border-radius: 22px;
   display: grid;
   place-items: center;
+  line-height: 0;
   background: rgba(59, 130, 246, 0.12);
   color: #2563eb;
   font-size: 1.85rem;
@@ -1234,11 +1246,13 @@
 }
 
 .widget-starter-card__icon {
+  --widget-glyph-size: 58%;
   width: 34px;
   height: 34px;
   border-radius: 999px;
   display: grid;
   place-items: center;
+  line-height: 0;
   background: rgba(59, 130, 246, 0.12);
   color: #1d4ed8;
   font-size: 1.2rem;
@@ -1366,6 +1380,7 @@
 }
 
 .widget-starter-options__back {
+  --widget-glyph-size: 54%;
   width: 2rem;
   height: 2rem;
   border: 0;
@@ -1374,9 +1389,9 @@
   color: #0f172a;
   font-size: 1.05rem;
   font-weight: 800;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
+  line-height: 0;
   cursor: pointer;
   transition: transform 0.16s ease, background 0.16s ease;
 }
@@ -1463,6 +1478,9 @@
 
 .widget-starter-option__arrow {
   flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  display: block;
   color: #94a3b8;
   font-size: 1rem;
 }
@@ -1533,6 +1551,7 @@
 }
 
 .chat-footer button {
+  --widget-glyph-size: 48%;
   flex: 0 0 auto;
   width: 52px;
   min-width: 52px;
@@ -1559,6 +1578,7 @@
 }
 
 .widget-icon {
+  --widget-glyph-size: 54%;
   position: absolute;
   right: 0rem;
   bottom: 0rem;
@@ -1809,6 +1829,7 @@
 }
 
 .close-btn {
+  --widget-glyph-size: 55%;
   width: 24px;
   height: 24px;
   flex: 0 0 auto;
