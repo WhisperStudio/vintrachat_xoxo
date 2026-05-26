@@ -428,8 +428,8 @@
 
 .chat-widget {
   --widget-scale: 1;
-  --chat-body-height: 440px;
-  --chat-starter-body-height: 620px;
+  --chat-body-height: 500px;
+  --chat-starter-body-height: 500px;
   --chat-footer-height: 92px;
   position: relative;
   display: none;
