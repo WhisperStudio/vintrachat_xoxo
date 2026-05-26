@@ -186,10 +186,6 @@ export function isRequestOriginAllowed(
   req: NextRequest,
   allowedDomains: unknown
 ) {
-  if (isWidgetDebugRequest(req)) {
-    return { allowed: true as const, debug: true as const }
-  }
-
   const normalizedAllowedDomains = normalizeAllowedDomainList(allowedDomains)
   if (!normalizedAllowedDomains.length) {
     return {
@@ -235,14 +231,6 @@ export function isRequestOriginAllowed(
 }
 
 export function isWidgetOriginPermitted(req: NextRequest, allowedDomains: unknown) {
-  if (isWidgetDebugRequest(req)) {
-    return { allowed: true as const, internal: false as const, debug: true as const }
-  }
-
-  if (isSameOriginRequest(req)) {
-    return { allowed: true as const, internal: true as const }
-  }
-
   const originCheck = isRequestOriginAllowed(req, allowedDomains)
   if (!originCheck.allowed) {
     return originCheck

@@ -1,6 +1,6 @@
 import crypto from 'node:crypto'
 import { adminDb } from '@/lib/firebase-admin'
-import { getWidgetRequestOrigin, isRequestOriginAllowed, isSameOriginRequest, isWidgetDebugRequest } from '@/lib/widget-security'
+import { getWidgetRequestOrigin, isRequestOriginAllowed } from '@/lib/widget-security'
 
 const TOKEN_VERSION = 'v1'
 
@@ -132,14 +132,6 @@ export async function authorizeWidgetRequest(args: {
     }
   }
 }) {
-  if (isWidgetDebugRequest(args.req)) {
-    return { allowed: true as const, internal: false as const, debug: true as const }
-  }
-
-  if (isSameOriginRequest(args.req)) {
-    return { allowed: true as const, internal: true as const }
-  }
-
   const originCheck = isRequestOriginAllowed(args.req, args.business.chatWidgetConfig?.allowedDomains)
   if (!originCheck.allowed) {
     return { allowed: false as const, reason: originCheck.reason }
