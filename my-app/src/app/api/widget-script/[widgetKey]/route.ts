@@ -431,6 +431,26 @@ const widgetStyles = `
 }
 
 ${readFileSync(join(process.cwd(), 'src/app/landings/auth/chatWidget/components/WidgetPreview.css'), 'utf8')}
+
+.vintra-stack > .chat-widget,
+.vintra-root.viewport-mobile .chat-widget.open {
+  z-index: 10002;
+}
+
+.vintra-stack > .widget-icon,
+.vintra-root.viewport-mobile .widget-icon {
+  z-index: 10001;
+}
+
+.vintra-root.viewport-mobile .chat-widget.open + .widget-icon {
+  transform: translateY(6px) scale(0.9);
+  opacity: 0.88;
+}
+
+.vintra-root.viewport-mobile.viewport-keyboard-open .widget-icon {
+  opacity: 0;
+  pointer-events: none;
+}
 `
 
 export async function GET(
@@ -737,6 +757,21 @@ export async function GET(
   function getWidgetInterfaceIcons() {
     var config = state.config || {};
     return (config && config.widgetIcons) || {};
+  }
+
+  function getInterfaceIcon(field, fallback) {
+    var widgetIcons = getWidgetInterfaceIcons();
+    var assistantIcons = getAssistantWidgetIcons();
+
+    if (Object.prototype.hasOwnProperty.call(widgetIcons, field)) {
+      return String(widgetIcons[field] || '');
+    }
+
+    if (Object.prototype.hasOwnProperty.call(assistantIcons, field)) {
+      return String(assistantIcons[field] || '');
+    }
+
+    return String(fallback || '');
   }
 
   function renderConfiguredWidgetIcon(iconKey) {
@@ -1207,9 +1242,7 @@ export async function GET(
 
   function getMessagesMarkup(config) {
     var bodyStyle = (config && config.bodyStyle) || {};
-    var assistantIcons = getAssistantWidgetIcons();
-    var widgetIcons = getWidgetInterfaceIcons();
-    var typingIconMarkup = renderConfiguredWidgetIconSlot(widgetIcons.aiIcon || assistantIcons.aiIcon || assistantIcons.heroIcon || '');
+    var typingIconMarkup = renderConfiguredWidgetIconSlot(getInterfaceIcon('aiIcon', getInterfaceIcon('heroIcon', '')));
     var waitingLine = state.supportStatus === 'needs-human'
       ? '<div class="chat-status-line">Waiting for a support assistant</div>'
       : '';
@@ -1238,11 +1271,11 @@ export async function GET(
       }
 
       var messageIconKey = msg.role === 'assistant'
-        ? widgetIcons.aiIcon || assistantIcons.aiIcon || assistantIcons.heroIcon || ''
+        ? getInterfaceIcon('aiIcon', getInterfaceIcon('heroIcon', ''))
         : msg.role === 'support'
-          ? widgetIcons.supportIcon || assistantIcons.supportIcon || ''
+          ? getInterfaceIcon('supportIcon', '')
           : msg.role === 'user'
-            ? widgetIcons.userIcon || assistantIcons.userIcon || ''
+            ? getInterfaceIcon('userIcon', '')
             : '';
       var messageIconMarkup = renderConfiguredWidgetIconSlot(messageIconKey);
 
@@ -1264,8 +1297,6 @@ export async function GET(
   function getStarterCardsMarkup(config) {
     var bodyStyle = (config && config.bodyStyle) || {};
     var assistantConfig = getAssistantConfig();
-    var assistantIcons = getAssistantWidgetIcons();
-    var widgetIcons = getWidgetInterfaceIcons();
     var starterCards = getConversationCards(config);
     var cardsLayout = bodyStyle.conversationCardsLayout || 'grid';
     var cardsStyle = bodyStyle.conversationCardsStyle || 'modern';
@@ -1313,7 +1344,7 @@ export async function GET(
         html:
           '<div class="widget-starter-options widget-starter-options--panel" aria-label="Suggested next steps">' +
             '<div class="widget-starter-options__title">' +
-              '<button type="button" class="widget-starter-options__back" aria-label="Back to cards">' + (renderConfiguredWidgetIconSlot(widgetIcons.backIcon || 'FiArrowLeft') || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">←</span>') + '</button>' +
+              '<button type="button" class="widget-starter-options__back" aria-label="Back to cards">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('backIcon', 'FiArrowLeft')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">←</span>') + '</button>' +
               '<div>' +
                 '<strong>' + escapeHtml(activeConversationCard.title) + '</strong>' +
                 '<p>' + escapeHtml(activeConversationCard.description) + '</p>' +
@@ -1340,7 +1371,7 @@ export async function GET(
       html:
         '<div class="widget-starter-cards widget-starter-cards--' + cardsLayout + ' widget-starter-cards--' + cardsStyle + denseStarterClass + '">' +
           '<div class="widget-starter-cards__hero widget-starter-cards__hero--' + cardsStyle + '">' +
-            '<div class="widget-starter-cards__hero-icon" aria-hidden="true">' + renderConfiguredWidgetIconSlot(assistantIcons.heroIcon || '') + '</div>' +
+            '<div class="widget-starter-cards__hero-icon" aria-hidden="true">' + renderConfiguredWidgetIconSlot(getInterfaceIcon('heroIcon', 'FiMessageCircle')) + '</div>' +
             '<div class="widget-starter-cards__hero-copy">' +
               '<strong>Hei! 👋</strong>' +
               '<p>' + escapeHtml(isMinimalCards ? 'Hva kan jeg hjelpe deg med?' : 'Hva kan jeg hjelpe deg med i dag?') + '</p>' +
@@ -1772,14 +1803,12 @@ export async function GET(
     var bodyStyle = config.bodyStyle || {};
     var footerStyle = config.footerStyle || {};
     var assistantConfig = getAssistantConfig();
-    var widgetIcons = getWidgetInterfaceIcons();
-    var assistantIcons = getAssistantWidgetIcons();
     var theme = getThemeName(config);
     var themeClass = THEME_CLASS_BY_NAME[theme] || THEME_CLASS_BY_NAME.modern || 'theme-modern';
     var position = getPosition(config);
     var iconChoice = bubbleStyle.iconChoice || 'chat';
     var orbStyle = getOrbStyle(config);
-    var bubbleIcon = renderConfiguredWidgetIconSlot(widgetIcons.launcherIcon || '') || renderIconSlot(icons[iconChoice] || icons.chat);
+    var bubbleIcon = renderConfiguredWidgetIconSlot(getInterfaceIcon('launcherIcon', '')) || renderIconSlot(icons[iconChoice] || icons.chat);
     var shouldAnimateBubble =
       bubbleStyle.animationType &&
       bubbleStyle.animationType !== 'none' &&
@@ -1788,7 +1817,7 @@ export async function GET(
     if (state.open && assistantConfig.faqSuggestionsEnabled && !state.faqSuggestionsDismissed && state.messages.length <= 1 && !state.faqSuggestions.length) {
       refreshFaqSuggestions();
     }
-    var headerIconMarkup = renderConfiguredWidgetIconSlot(widgetIcons.avatarIcon || assistantIcons.avatarIcon || '');
+    var headerIconMarkup = renderConfiguredWidgetIconSlot(getInterfaceIcon('avatarIcon', ''));
     var headerAvatar = getLogo(config)
       ? '<div class="avatar avatar--image">' +
           '<img' +
@@ -1828,6 +1857,7 @@ export async function GET(
           '<div class="chat-content">' +
           '<div class="chat-header' + (showStarterCardList ? ' chat-header--starter-list' : '') + '">' +
             '<div class="chat-header-left">' +
+              (showStarterCardList ? '<button type="button" class="chat-header-back" aria-label="Back to cards">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('backIcon', 'FiArrowLeft')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">←</span>') + '</button>' : '') +
               (headerStyle.showAvatar !== false ? headerAvatar : '') +
               '<div class="chat-header-copy">' +
                 (headerStyle.showTitle !== false ? '<h3>' + escapeHtml(getTitle(config)) + '</h3>' : '') +
@@ -1836,7 +1866,7 @@ export async function GET(
             '</div>' +
             '<div class="chat-header-actions">' +
               (headerStyle.showStatus ? '<span class="status-pill">' + renderIconSlot(icons.check) + ' ' + escapeHtml(getStatusLabel()) + '</span><span class="header-status-dot" aria-hidden="true"></span>' : '') +
-              (headerStyle.showCloseButton && state.open ? '<button type="button" class="close-btn" aria-label="Close chat">' + (renderConfiguredWidgetIconSlot(widgetIcons.closeIcon || 'FiX') || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">×</span>') + '</button>' : '') +
+              (headerStyle.showCloseButton && state.open ? '<button type="button" class="close-btn" aria-label="Close chat">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('closeIcon', 'FiX')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">×</span>') + '</button>' : '') +
             '</div>' +
           '</div>' +
           '<div class="' + classes(['chat-body', 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '">' +
@@ -1853,7 +1883,7 @@ export async function GET(
                 ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled ' : '') +
                 'value="' + escapeHtml(truncateTextByCharacters(String(state.inputValue || ''), MAX_WIDGET_MESSAGE_CHARS)) + '" ' +
                 'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : (state.awaitingVisitorName ? 'Write your name to contact human support...' : (state.supportStatus === 'needs-human' ? 'Waiting for human support...' : 'Write a message...'))) + '"></textarea>' +
-              (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled' : '') + '>' + (renderConfiguredWidgetIconSlot(widgetIcons.sendIcon || 'FiSend') || renderIconSlot(icons.send)) + '</button>') +
+              (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled' : '') + '>' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('sendIcon', 'FiSend')) || renderIconSlot(icons.send)) + '</button>') +
             '</div>' +
           '</div>' +
           (state.awaitingVisitorName ? '<div class="name-request-hint">Please write your name to connect with human support.</div>' : '') +

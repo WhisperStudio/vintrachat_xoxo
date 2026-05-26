@@ -1,8 +1,9 @@
 'use client'
 
-import { FiChevronDown, FiDollarSign, FiLogIn, FiSave } from 'react-icons/fi'
+import { FiChevronDown, FiLogIn, FiSave } from 'react-icons/fi'
 import { FaMoneyBillWave } from "react-icons/fa";
 import { MdMoneyOff, MdAttachMoney } from "react-icons/md";
+import { chatWidgetPricingI18n, useVintraLanguage } from '@/lib/i18n'
 import './PricingPanel.css'
 
 interface PricingPanelProps {
@@ -62,26 +63,34 @@ export default function PricingPanel({
   onSave,
   isSaving,
 }: PricingPanelProps) {
+  const { language } = useVintraLanguage()
+  const text = chatWidgetPricingI18n[language]
+  const formattedTotal =
+    language === 'no'
+      ? `${new Intl.NumberFormat('nb-NO').format(total)} kr`
+      : `$${total}`
+  const period = billingCycle === 'monthly' ? text.month : text.year
+
   return (
     <div className="price-panel glass sticky">
       <h2 className="section-title">
         {plan === 'free' && <MdMoneyOff />}
         {plan === 'pro' && <><MdAttachMoney /><MdAttachMoney /></>}
         {plan === 'business' && <><MdAttachMoney /><MdAttachMoney /><MdAttachMoney /></>}
-        Total
+        {text.total}
       </h2>
 
       <div className="total-box">
-        <p className="total-label"><FaMoneyBillWave/>Subscription total</p>
+        <p className="total-label"><FaMoneyBillWave/>{text.subscriptionTotal}</p>
         <h3 className="total-price">
-          ${total}
-          <span>/{billingCycle === 'monthly' ? 'month' : 'year'}</span>
+          {formattedTotal}
+          <span>/{period}</span>
         </h3>
       </div>
 
       <div className="breakdown-section">
         <button type="button" className={`breakdown-toggle ${showBreakdown ? 'open' : ''}`} onClick={onToggleBreakdown}>
-          <span>Plan breakdown</span>
+          <span>{text.planBreakdown}</span>
           <span className="dropbtn-icon">
             <FiChevronDown />
           </span>
@@ -93,21 +102,21 @@ export default function PricingPanel({
 
             <div className="summary-list compact">
               <div className="summary-row">
-                <span>Bubble</span>
+                <span>{text.bubble}</span>
                 <strong>
                   {bubbleStyle.sizeType}, {bubbleStyle.animationType}
                 </strong>
               </div>
               <div className="summary-row">
-                <span>Header</span>
-                <strong>{headerStyle.showAvatar ? 'avatar' : 'minimal'}</strong>
+                <span>{text.header}</span>
+                <strong>{headerStyle.showAvatar ? text.avatar : text.minimal}</strong>
               </div>
               <div className="summary-row">
-                <span>Body</span>
+                <span>{text.body}</span>
                 <strong>{bodyStyle.messageStyle}</strong>
               </div>
               <div className="summary-row">
-                <span>Footer</span>
+                <span>{text.footer}</span>
                 <strong>{footerStyle.inputStyle}</strong>
               </div>
             </div>
@@ -117,38 +126,38 @@ export default function PricingPanel({
 
       <div className="summary-list">
         <div className="summary-row">
-          <span>Plan</span>
+          <span>{text.plan}</span>
           <strong>{plan}</strong>
         </div>
         <div className="summary-row">
-          <span>Billing cycle</span>
+          <span>{text.billingCycle}</span>
           <strong>{billingCycle}</strong>
         </div>
         <div className="summary-row">
-          <span>Bubble style</span>
+          <span>{text.bubbleStyle}</span>
           <strong>{bubbleStyle.borderType}</strong>
         </div>
         <div className="summary-row">
-          <span>Header style</span>
+          <span>{text.headerStyle}</span>
           <strong>{headerStyle.borderType}</strong>
         </div>
         <div className="summary-row">
-          <span>Body style</span>
+          <span>{text.bodyStyle}</span>
           <strong>{bodyStyle.messageStyle}</strong>
         </div>
         <div className="summary-row">
-          <span>Footer style</span>
+          <span>{text.footerStyle}</span>
           <strong>{footerStyle.inputStyle}</strong>
         </div>
       </div>
 
       {isAuthenticated ? (
         <button className="continue-btn" type="button" onClick={onSave} disabled={isSaving}>
-          <FiSave /> {isSaving ? 'Saving...' : 'Save configuration'}
+          <FiSave /> {isSaving ? text.saving : text.saveConfiguration}
         </button>
       ) : (
         <button className="continue-btn" type="button" onClick={onContinue}>
-          <FiLogIn /> Continue to login
+          <FiLogIn /> {text.continueToLogin}
         </button>
       )}
     </div>

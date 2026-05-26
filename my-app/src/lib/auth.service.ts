@@ -236,6 +236,7 @@ function buildDefaultWidgetConfig(businessName: string): ChatWidgetConfig {
     widgetIcons: {
       launcherIcon: 'FiMessageCircle',
       avatarIcon: 'FiMessageCircle',
+      heroIcon: 'FiMessageCircle',
       closeIcon: 'FiX',
       backIcon: 'FiArrowLeft',
       sendIcon: 'FiSend',
@@ -708,6 +709,7 @@ const defaultWidgetConfig: ChatWidgetConfig = {
   widgetIcons: {
     launcherIcon: 'FiMessageCircle',
     avatarIcon: 'FiMessageCircle',
+    heroIcon: 'FiMessageCircle',
     closeIcon: 'FiX',
     backIcon: 'FiArrowLeft',
     sendIcon: 'FiSend',

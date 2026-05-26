@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   FiCheck,
   FiCreditCard,
@@ -20,7 +20,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { setActiveChatWidget, updateChatWidgetConfig } from '@/lib/auth.service'
 import { defaultConversationCards } from '@/lib/conversation-cards'
-import { chatWidgetBuilderI18n, useVintraLanguage } from '@/lib/i18n'
+import { chatWidgetBuilderExtraI18n, chatWidgetBuilderI18n, useVintraLanguage } from '@/lib/i18n'
 import { sanitizeBubbleStyleForPlan } from '@/lib/subscription'
 import type { BubbleIconChoice, ChatWidgetConfig, ChatWidgetInterfaceIcons, OrbStyleConfig } from '@/types/database'
 import './ChatWidget.css'
@@ -126,6 +126,7 @@ const defaultInputs: InputsState = {
   widgetIcons: {
     launcherIcon: 'FiMessageCircle',
     avatarIcon: 'FiMessageCircle',
+    heroIcon: 'FiMessageCircle',
     closeIcon: 'FiX',
     backIcon: 'FiArrowLeft',
     sendIcon: 'FiSend',
@@ -182,22 +183,18 @@ const defaultInputs: InputsState = {
   },
 }
 
-const planPrices: Record<Plan, { monthly: number; yearly: number }> = {
-  free: { monthly: 0, yearly: 0 },
-  pro: { monthly: 29, yearly: 29 * 12 },
-  business: { monthly: 59, yearly: 59 * 12 },
-}
-
 export default function ChatWidgetBuilderPage() {
   const router = useRouter()
   const { isAuthenticated, dbUser, business, loading, refreshBusiness } = useAuth()
   const { language } = useVintraLanguage()
   const t = chatWidgetBuilderI18n[language]
+  const builderExtraText = chatWidgetBuilderExtraI18n[language]
 
   const [inputs, setInputs] = useState<InputsState>(defaultInputs)
   const [hasLoadedDbConfig, setHasLoadedDbConfig] = useState(false)
   const [previewMode, setPreviewMode] = useState<PreviewMode>('desktop')
   const [selectedWidgetKey, setSelectedWidgetKey] = useState('')
+  const builderPanelRef = useRef<HTMLDivElement | null>(null)
 
   const [openSections, setOpenSections] = useState({
     plan: true,
@@ -216,8 +213,8 @@ export default function ChatWidgetBuilderPage() {
   const [resetAnimating, setResetAnimating] = useState(false)
 
   const total = useMemo(
-    () => planPrices[inputs.plan][inputs.billingCycle],
-    [inputs.plan, inputs.billingCycle]
+    () => builderExtraText.prices[inputs.plan][inputs.billingCycle],
+    [builderExtraText.prices, inputs.plan, inputs.billingCycle]
   )
   const widgetList = business?.chatWidgets || []
   const selectedWidget = useMemo(() => {
@@ -234,14 +231,29 @@ export default function ChatWidgetBuilderPage() {
     if (!config) return
 
     const bubbleStyle = config.bubbleStyle || defaultInputs.bubbleStyle
+    const configIcons = config.widgetIcons || {}
+    const migratedIcons: ChatWidgetInterfaceIcons = {
+      ...defaultInputs.widgetIcons,
+      ...configIcons,
+    }
+    const legacyAssistantIcons = business?.chatAssistantConfig?.widgetIcons || {}
+
+    ;(['avatarIcon', 'heroIcon', 'aiIcon', 'supportIcon', 'userIcon'] as const).forEach((field) => {
+      const legacyValue = legacyAssistantIcons[field]
+      if (!legacyValue) return
+      const currentValue = configIcons[field]
+      if (!currentValue || currentValue === defaultInputs.widgetIcons[field]) {
+        migratedIcons[field] = legacyValue
+      }
+    })
+
     setInputs({
       plan: config.plan || defaultInputs.plan,
       billingCycle: config.billingCycle || defaultInputs.billingCycle,
       colorTheme: config.colorTheme || defaultInputs.colorTheme,
       position: config.position || defaultInputs.position,
       widgetIcons: {
-        ...defaultInputs.widgetIcons,
-        ...(config.widgetIcons || {}),
+        ...migratedIcons,
         launcherIcon:
           config.widgetIcons?.launcherIcon ||
           launcherIconChoiceMap[bubbleStyle.iconChoice] ||
@@ -297,6 +309,30 @@ export default function ChatWidgetBuilderPage() {
     }))
   }, [inputs.plan, inputs.bubbleStyle.iconChoice])
 
+  useEffect(() => {
+    const syncHeaderCollapse = () => {
+      const headerHeight = document.querySelector<HTMLElement>('header')?.offsetHeight ?? 96
+      const panelTop = builderPanelRef.current?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY
+      const shouldReleaseHeader = panelTop <= headerHeight + 8
+
+      if (shouldReleaseHeader) {
+        document.body.dataset.chatbuilderHeaderReleased = 'true'
+      } else {
+        delete document.body.dataset.chatbuilderHeaderReleased
+      }
+    }
+
+    syncHeaderCollapse()
+    window.addEventListener('scroll', syncHeaderCollapse, { passive: true })
+    window.addEventListener('resize', syncHeaderCollapse)
+
+    return () => {
+      window.removeEventListener('scroll', syncHeaderCollapse)
+      window.removeEventListener('resize', syncHeaderCollapse)
+      delete document.body.dataset.chatbuilderHeaderReleased
+    }
+  }, [])
+
   const updateInput = <K extends keyof InputsState>(key: K, value: InputsState[K]) => {
     setInputs((prev) => ({ ...prev, [key]: value }))
   }
@@ -316,15 +352,15 @@ export default function ChatWidgetBuilderPage() {
   }
 
   const builderSections = [
-    { key: 'plan', label: 'Subscription', eyebrow: 'Plan', icon: FiCreditCard },
-    { key: 'bubble', label: 'Chat button', eyebrow: 'Launcher', icon: FiMessageCircle },
-    { key: 'header', label: 'Chat top bar', eyebrow: 'Header', icon: FiLayout },
-    { key: 'body', label: 'Chat messages', eyebrow: 'Messages', icon: FiMessageSquare },
-    { key: 'footer', label: 'Message box', eyebrow: 'Input', icon: FiSend },
-    { key: 'colorTheme', label: 'Colors', eyebrow: 'Theme', icon: FiDroplet },
-    { key: 'icons', label: 'Icons', eyebrow: 'Design', icon: FiMessageCircle },
-    { key: 'branding', label: 'Your branding', eyebrow: 'Brand', icon: FiImage },
-    { key: 'advanced', label: 'Widget behavior', eyebrow: 'Rules', icon: FiSliders },
+    { key: 'plan', label: builderExtraText.sidebar.subscription, eyebrow: builderExtraText.sidebar.plan, icon: FiCreditCard },
+    { key: 'bubble', label: builderExtraText.sidebar.chatButton, eyebrow: builderExtraText.sidebar.launcher, icon: FiMessageCircle },
+    { key: 'header', label: builderExtraText.sidebar.chatTopBar, eyebrow: builderExtraText.sidebar.header, icon: FiLayout },
+    { key: 'body', label: builderExtraText.sidebar.chatMessages, eyebrow: builderExtraText.sidebar.messages, icon: FiMessageSquare },
+    { key: 'footer', label: builderExtraText.sidebar.messageBox, eyebrow: builderExtraText.sidebar.input, icon: FiSend },
+    { key: 'colorTheme', label: builderExtraText.sidebar.colors, eyebrow: builderExtraText.sidebar.theme, icon: FiDroplet },
+    { key: 'icons', label: builderExtraText.sidebar.icons, eyebrow: builderExtraText.sidebar.design, icon: FiMessageCircle },
+    { key: 'branding', label: builderExtraText.sidebar.branding, eyebrow: builderExtraText.sidebar.brand, icon: FiImage },
+    { key: 'advanced', label: builderExtraText.sidebar.behavior, eyebrow: builderExtraText.sidebar.rules, icon: FiSliders },
   ] as const
 
   const resetBuilder = () => {
@@ -459,7 +495,7 @@ export default function ChatWidgetBuilderPage() {
         </section>
 
         <div className="chatbuilder-grid">
-          <div className="builder-panel glass">
+          <div className="builder-panel glass" ref={builderPanelRef}>
             <div className="panel-header">
               <h2 className="section-title">
                 <FiSliders /> {t.configureWidget}

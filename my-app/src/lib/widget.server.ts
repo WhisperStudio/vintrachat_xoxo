@@ -74,6 +74,7 @@ function buildDefaultWidgetConfig(businessName = 'Chat Widget'): ChatWidgetConfi
     widgetIcons: {
       launcherIcon: 'FiMessageCircle',
       avatarIcon: 'FiMessageCircle',
+      heroIcon: 'FiMessageCircle',
       closeIcon: 'FiX',
       backIcon: 'FiArrowLeft',
       sendIcon: 'FiSend',

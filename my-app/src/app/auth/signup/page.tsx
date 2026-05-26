@@ -3,12 +3,15 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Link from 'next/link'
-import { signUpWithEmail } from '@/lib/auth.service'
-import './signup.css'
 import { FiEye, FiEyeOff } from 'react-icons/fi'
+import { signUpWithEmail } from '@/lib/auth.service'
+import { authPagesI18n, useVintraLanguage } from '@/lib/i18n'
+import './signup.css'
 
 export default function SignupPage() {
   const router = useRouter()
+  const { language } = useVintraLanguage()
+  const text = authPagesI18n[language].signup
 
   const [step, setStep] = useState<'choice' | 'form'>('choice')
   const [accountType, setAccountType] = useState<'business' | 'user'>('business')
@@ -16,19 +19,19 @@ export default function SignupPage() {
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false)
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleContinue = () => {
     if (!accountType) {
-      setError('Please select an account type to continue')
+      setError(text.selectType)
       return
     }
 
     if (accountType === 'business' && !businessName.trim()) {
-      setError('Business name is required')
+      setError(text.businessRequired)
       return
     }
 
@@ -41,22 +44,22 @@ export default function SignupPage() {
     setError('')
 
     if (!displayName.trim()) {
-      setError('Full name is required')
+      setError(text.nameRequired)
       return
     }
 
     if (!email.trim()) {
-      setError('Email is required')
+      setError(text.emailRequired)
       return
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters')
+      setError(text.passwordLength)
       return
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
+      setError(text.passwordMismatch)
       return
     }
 
@@ -77,211 +80,195 @@ export default function SignupPage() {
         setError(result.message)
       }
     } catch (err: any) {
-      setError(err.message || 'Something went wrong during signup')
+      setError(err.message || text.failed)
     } finally {
       setLoading(false)
     }
   }
 
+  const passwordToggleLabel = showPassword ? text.hidePassword : text.showPassword
+
   return (
-    <>
-      <main className="authPage">
-        <div className="authCard">
+    <main className="authPage">
+      <div className="authCard">
+        {step === 'choice' && (
+          <>
+            <h1>{text.title}</h1>
+            <p style={{ marginBottom: '20px' }}>{text.choiceBody}</p>
 
-          {/* STEP 1: ACCOUNT TYPE */}
-          {step === 'choice' && (
-            <>
-              <h1>Create your account</h1>
-              <p style={{ marginBottom: '20px' }}>
-                Choose how you want to use the platform
-              </p>
-
-              <div className="accountTypeGrid">
-
-                {/* BUSINESS */}
-                <div
-                  className={`accountCard ${accountType === 'business' ? 'active' : ''}`}
-                  onClick={() => {
-                    setAccountType('business')
-                    setError('')
-                  }}
-                >
-                  <div className="cardHeader">
-                    <div className={`radioDot ${accountType === 'business' ? 'active' : ''}`} />
-                    <h3>Business Account</h3>
-                  </div>
-
-                  <p className="desc">
-                    Create and manage a company workspace.
-                  </p>
-
-                  {accountType === 'business' && (
-                    <ul className="featuresList">
-                      <li>✔ Create a company</li>
-                      <li>✔ Invite team members</li>
-                      <li>✔ Manage users</li>
-                    </ul>
-                  )}
-
-                  <small className="hint">
-                    Choose this if you are setting up a company.
-                  </small>
+            <div className="accountTypeGrid">
+              <div
+                className={`accountCard ${accountType === 'business' ? 'active' : ''}`}
+                onClick={() => {
+                  setAccountType('business')
+                  setError('')
+                }}
+              >
+                <div className="cardHeader">
+                  <div className={`radioDot ${accountType === 'business' ? 'active' : ''}`} />
+                  <h3>{text.businessAccount}</h3>
                 </div>
 
-                {/* USER */}
-                <div
-                  className={`accountCard ${accountType === 'user' ? 'active' : ''}`}
-                  onClick={() => {
-                    setAccountType('user')
-                    setError('')
-                  }}
-                >
-                  <div className="cardHeader">
-                    <div className={`radioDot ${accountType === 'user' ? 'active' : ''}`} />
-                    <h3>Personal User</h3>
-                  </div>
+                <p className="desc">{text.businessDesc}</p>
 
-                  <p className="desc">
-                    Join an existing company.
-                  </p>
+                {accountType === 'business' && (
+                  <ul className="featuresList">
+                    {text.businessFeatures.map((feature) => (
+                      <li key={feature}>- {feature}</li>
+                    ))}
+                  </ul>
+                )}
 
-                  {accountType === 'user' && (
-                    <ul className="featuresList">
-                      <li>✔ Join via invitation</li>
-                      <li>✔ Access assigned workspace</li>
-                    </ul>
-                  )}
-
-                  <small className="hint">
-                    Choose this if your company invited you.
-                  </small>
-                </div>
+                <small className="hint">{text.businessHint}</small>
               </div>
 
-              {accountType === 'business' && (
-                <label>
-                  <span>Company name</span>
+              <div
+                className={`accountCard ${accountType === 'user' ? 'active' : ''}`}
+                onClick={() => {
+                  setAccountType('user')
+                  setError('')
+                }}
+              >
+                <div className="cardHeader">
+                  <div className={`radioDot ${accountType === 'user' ? 'active' : ''}`} />
+                  <h3>{text.personalUser}</h3>
+                </div>
+
+                <p className="desc">{text.personalDesc}</p>
+
+                {accountType === 'user' && (
+                  <ul className="featuresList">
+                    {text.personalFeatures.map((feature) => (
+                      <li key={feature}>- {feature}</li>
+                    ))}
+                  </ul>
+                )}
+
+                <small className="hint">{text.personalHint}</small>
+              </div>
+            </div>
+
+            {accountType === 'business' && (
+              <label>
+                <span>{text.companyName}</span>
+                <input
+                  type="text"
+                  placeholder={text.companyPlaceholder}
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
+                />
+              </label>
+            )}
+
+            {error && <div className="errorBox">{error}</div>}
+
+            <button className="primaryBtn fullWidth" onClick={handleContinue}>
+              {text.continue}
+            </button>
+
+            <p className="authSwitch">
+              {text.alreadyHaveAccount} <Link href="/auth/login">{text.login}</Link>
+            </p>
+          </>
+        )}
+
+        {step === 'form' && (
+          <>
+            <h1>{text.title}</h1>
+            <p>{text.formBody}</p>
+
+            <form onSubmit={handleSignup}>
+              <label>
+                <span>{text.fullName}</span>
+                <input
+                  type="text"
+                  autoComplete="name"
+                  placeholder={text.fullNamePlaceholder}
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                />
+              </label>
+
+              <label>
+                <span>{text.emailAddress}</span>
+                <input
+                  type="email"
+                  name="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </label>
+
+              <label>
+                <span>{text.password}</span>
+                <div className="inputWrapper">
                   <input
-                    type="text"
-                    placeholder="e.g. Acme Inc."
-                    value={businessName}
-                    onChange={(e) => setBusinessName(e.target.value)}
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    autoComplete="new-password"
+                    placeholder={text.passwordPlaceholder}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                   />
-                </label>
-              )}
+                  <button
+                    type="button"
+                    className="togglePassword"
+                    aria-label={passwordToggleLabel}
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <FiEyeOff /> : <FiEye />}
+                  </button>
+                </div>
+              </label>
+
+              <label>
+                <span>{text.confirmPassword}</span>
+                <div className="inputWrapper">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="confirmPassword"
+                    autoComplete="new-password"
+                    placeholder={text.confirmPasswordPlaceholder}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="togglePassword"
+                    aria-label={passwordToggleLabel}
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <FiEyeOff /> : <FiEye />}
+                  </button>
+                </div>
+              </label>
 
               {error && <div className="errorBox">{error}</div>}
 
-              <button
-                className="primaryBtn fullWidth"
-                onClick={handleContinue}
-              >
-                Continue
+              <button className="primaryBtn fullWidth" disabled={loading}>
+                {loading ? text.creating : text.create}
               </button>
 
-              <p className="authSwitch">
-                Already have an account? <Link href="/auth/login">Log in</Link>
-              </p>
-            </>
-          )}
+              <button
+                type="button"
+                className="backBtn"
+                onClick={() => {
+                  setStep('choice')
+                  setError('')
+                }}
+              >
+                {text.back}
+              </button>
+            </form>
 
-          {/* STEP 2: FORM */}
-          {step === 'form' && (
-            <>
-              <h1>Create your account</h1>
-              <p>Enter your details below</p>
-
-              <form onSubmit={handleSignup}>
-                <label>
-                  <span>Full name</span>
-                  <input
-                    type="text"
-                    autoComplete="name"
-                    placeholder="John Doe"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                  />
-                </label>
-
-                <label>
-                  <span>Email address</span>
-                  <input
-                    type="email"
-                    name="email"
-                    autoComplete="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </label>
-
-                <label>
-                  <span>Password</span>
-                  <div className="inputWrapper">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      name="password"
-                      autoComplete="new-password"
-                      placeholder="Minimum 6 characters"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      className="togglePassword"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <FiEyeOff /> : <FiEye />}
-                    </button>
-                  </div>
-                </label>
-
-                <label>
-                  <span>Confirm password</span>
-                  <div className="inputWrapper">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      name="confirmPassword"
-                      autoComplete="new-password"
-                      placeholder="Repeat your password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      className="togglePassword"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <FiEyeOff /> : <FiEye />}
-                    </button>
-                  </div>
-                </label>
-
-                {error && <div className="errorBox">{error}</div>}
-
-                <button className="primaryBtn fullWidth" disabled={loading}>
-                  {loading ? 'Creating account...' : 'Create account'}
-                </button>
-
-                <button
-                  type="button"
-                  className="backBtn"
-                  onClick={() => {
-                    setStep('choice')
-                    setError('')
-                  }}
-                >
-                  Back
-                </button>
-              </form>
-
-              <p className="authSwitch">
-                Already have an account? <Link href="/auth/login">Log in</Link>
-              </p>
-            </>
-          )}
-        </div>
-      </main>
-    </>
+            <p className="authSwitch">
+              {text.alreadyHaveAccount} <Link href="/auth/login">{text.login}</Link>
+            </p>
+          </>
+        )}
+      </div>
+    </main>
   )
 }

@@ -3,6 +3,7 @@
 import { FiCheck, FiChevronDown, FiX } from 'react-icons/fi'
 import { FaInfinity, FaMoneyBillWave, FaRegCreditCard } from 'react-icons/fa'
 import { MdMoneyOff, MdAttachMoney } from "react-icons/md";
+import { chatWidgetBuilderExtraI18n, chatWidgetPlanI18n, useVintraLanguage } from '@/lib/i18n'
 import './PlanSelector.css'
 
 type Plan = 'free' | 'pro' | 'business'
@@ -22,32 +23,40 @@ interface PlanSelectorProps {
   onToggle: () => void
 }
 
-const planFeatures: Record<Plan, PlanFeature[]> = {
+const planFeatureStatuses: Record<Plan, Array<PlanFeature['status']>> = {
   free: [
-    { label: '200 conversations/day', status: 'included' },
-    { label: '1 team member', status: 'included' },
-    { label: 'AI up to 200/day', status: 'included' },
-    { label: 'Orb chat button', status: 'excluded' },
-    { label: 'Remove branding', status: 'excluded' },
-    { label: 'Email support', status: 'excluded' },
-    { label: 'Extended design options', status: 'excluded' },
+    'included',
+    'included',
+    'included',
+    'excluded',
+    'excluded',
+    'excluded',
+    'excluded',
   ],
   pro: [
-    { label: 'Unlimited conversations', status: 'highlight' },
-    { label: '5 team members', status: 'included' },
-    { label: 'Unlimited AI conversations', status: 'included' },
-    { label: 'Orb chat button', status: 'included' },
-    { label: 'Remove branding', status: 'included' },
-    { label: 'Email support', status: 'included' },
-    { label: 'Extended design options', status: 'included' },
+    'highlight',
+    'included',
+    'included',
+    'included',
+    'included',
+    'included',
+    'included',
   ],
   business: [
-    { label: 'Everything in Pro', status: 'included' },
-    { label: 'Unlimited team members', status: 'highlight' },
-    { label: 'Orb chat button', status: 'included' },
-    { label: 'API access', status: 'included' },
-    { label: 'SLA guarantee', status: 'included' },
+    'included',
+    'highlight',
+    'included',
+    'included',
+    'included',
   ],
+}
+
+function formatPlanPrice(amount: number, language: 'no' | 'en', period: string) {
+  if (language === 'no') {
+    return `${new Intl.NumberFormat('nb-NO').format(amount)} kr / ${period}`
+  }
+
+  return `$${amount} / ${period}`
 }
 
 export default function PlanSelector({
@@ -58,6 +67,24 @@ export default function PlanSelector({
   isOpen,
   onToggle,
 }: PlanSelectorProps) {
+  const { language } = useVintraLanguage()
+  const text = chatWidgetPlanI18n[language]
+  const extraText = chatWidgetBuilderExtraI18n[language]
+  const planFeatures: Record<Plan, PlanFeature[]> = {
+    free: text.features.free.map((label, index) => ({
+      label,
+      status: planFeatureStatuses.free[index] || 'included',
+    })),
+    pro: text.features.pro.map((label, index) => ({
+      label,
+      status: planFeatureStatuses.pro[index] || 'included',
+    })),
+    business: text.features.business.map((label, index) => ({
+      label,
+      status: planFeatureStatuses.business[index] || 'included',
+    })),
+  }
+
   return (
     <div className="group">
       <button type="button" className={`dropbtn ${isOpen ? 'open' : ''}`} onClick={onToggle}>
@@ -65,7 +92,7 @@ export default function PlanSelector({
           <span className="section-label-icon section-label-icon--green" aria-hidden="true">
             <FaRegCreditCard />
           </span>
-          <span>Subscription</span>
+          <span>{text.subscription}</span>
         </span>
         <span className="dropbtn-icon">
           <FiChevronDown />
@@ -74,9 +101,9 @@ export default function PlanSelector({
 
       <div className={`option-grid option-grid-3 dropdown-content ${isOpen ? 'open' : ''}`}>
         {([
-          ['free', 'Free', billingCycle === 'monthly' ? '$0 / month' : '$0 / year', 'Basic widget access'],
-          ['pro', 'Pro', billingCycle === 'monthly' ? '$29 / month' : '$348 / year', 'Better styling and business use'],
-          ['business', 'Enterprise', billingCycle === 'monthly' ? '$59 / month' : '$708 / year', 'Premium widget setup'],
+          ['free', text.plans.free.title, formatPlanPrice(extraText.prices.free[billingCycle], language, billingCycle === 'monthly' ? text.month : text.year), text.plans.free.description],
+          ['pro', text.plans.pro.title, formatPlanPrice(extraText.prices.pro[billingCycle], language, billingCycle === 'monthly' ? text.month : text.year), text.plans.pro.description],
+          ['business', text.plans.business.title, formatPlanPrice(extraText.prices.business[billingCycle], language, billingCycle === 'monthly' ? text.month : text.year), text.plans.business.description],
         ] as const).map(([value, title, price, desc]) => (
           <label key={value} className={`option-card ${plan === value ? 'checked' : ''}`}>
             <input type="radio" name="plan" checked={plan === value} onChange={() => onPlanChange(value)} />
@@ -116,7 +143,7 @@ export default function PlanSelector({
               checked={billingCycle === 'monthly'}
               onChange={() => onBillingCycleChange('monthly')}
             />
-            <span>Monthly</span>
+            <span>{text.monthly}</span>
           </label>
 
           <label className={`billing-option ${billingCycle === 'yearly' ? 'active' : ''}`}>
@@ -126,7 +153,7 @@ export default function PlanSelector({
               checked={billingCycle === 'yearly'}
               onChange={() => onBillingCycleChange('yearly')}
             />
-            <span>Yearly</span>
+            <span>{text.yearly}</span>
           </label>
         </div>
       </div>

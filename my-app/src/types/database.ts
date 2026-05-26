@@ -92,6 +92,7 @@ export interface AssistantWidgetIcons {
 export interface ChatWidgetInterfaceIcons {
   launcherIcon?: string;
   avatarIcon?: string;
+  heroIcon?: string;
   closeIcon?: string;
   backIcon?: string;
   sendIcon?: string;

@@ -26,7 +26,8 @@ import {
   FiSliders,
   FiLifeBuoy,
 } from 'react-icons/fi'
-import IconPickerBubble from '@/components/IconPickerBubble'
+import { getWidgetIconOption, renderWidgetIcon, searchWidgetIcons } from '@/lib/widget-icons'
+import { chatWidgetStyleI18n, useVintraLanguage } from '@/lib/i18n'
 import type { BubbleIconChoice, ChatWidgetInterfaceIcons, OrbStyleConfig } from '@/types/database'
 import './StyleSelector.css'
 
@@ -185,6 +186,70 @@ const launcherIconChoiceMap: Partial<Record<BubbleIconChoice, string>> = {
   message: 'FiMessageSquare',
   support: 'FiLifeBuoy',
 }
+
+type InterfaceIconField = keyof ChatWidgetInterfaceIcons
+
+const interfaceIconFields: Array<{
+  field: InterfaceIconField
+  label: string
+  helper: string
+  fallback: string
+}> = [
+  {
+    field: 'launcherIcon',
+    label: 'Chat bubble',
+    helper: 'Floating launch button when orb mode is not active.',
+    fallback: 'FiMessageCircle',
+  },
+  {
+    field: 'avatarIcon',
+    label: 'Avatar',
+    helper: 'Header avatar when no logo is uploaded.',
+    fallback: 'FiMessageCircle',
+  },
+  {
+    field: 'heroIcon',
+    label: 'Hero',
+    helper: 'Starter-card welcome icon and AI visual fallback.',
+    fallback: 'FiMessageCircle',
+  },
+  {
+    field: 'closeIcon',
+    label: 'Close',
+    helper: 'Close button in the chat header.',
+    fallback: 'FiX',
+  },
+  {
+    field: 'backIcon',
+    label: 'Go back',
+    helper: 'Back button inside starter-card option flows.',
+    fallback: 'FiArrowLeft',
+  },
+  {
+    field: 'sendIcon',
+    label: 'Send',
+    helper: 'Message composer send button.',
+    fallback: 'FiSend',
+  },
+  {
+    field: 'aiIcon',
+    label: 'AI',
+    helper: 'Assistant message and typing indicator icon.',
+    fallback: 'FiCpu',
+  },
+  {
+    field: 'supportIcon',
+    label: 'Support',
+    helper: 'Human support message icon.',
+    fallback: 'FiLifeBuoy',
+  },
+  {
+    field: 'userIcon',
+    label: 'User',
+    helper: 'Visitor message icon.',
+    fallback: 'FiUser',
+  },
+]
 
 function OptionDesc({ children }: { children: ReactNode }) {
   return (
@@ -608,6 +673,8 @@ export default function StyleSelector({
   openSections,
   onToggleSection,
 }: StyleSelectorProps) {
+  const { language } = useVintraLanguage()
+  const text = chatWidgetStyleI18n[language]
   const iconChoiceRef = useRef<HTMLDivElement | null>(null)
   const iconChoiceButtonRefs = useRef<Partial<Record<StyleSelectorProps['bubbleStyle']['iconChoice'], HTMLButtonElement | null>>>({})
   const [iconIndicator, setIconIndicator] = useState<{
@@ -617,8 +684,15 @@ export default function StyleSelector({
     height: number
     opacity: number
   } | null>(null)
+  const [activeInterfaceIconField, setActiveInterfaceIconField] = useState<InterfaceIconField>('launcherIcon')
+  const [interfaceIconSearch, setInterfaceIconSearch] = useState('')
 
   const activeIconChoice = useMemo(() => bubbleStyle.iconChoice, [bubbleStyle.iconChoice])
+  const activeInterfaceIcon = interfaceIconFields.find((item) => item.field === activeInterfaceIconField) || interfaceIconFields[0]
+  const activeInterfaceIconRawValue = widgetIcons[activeInterfaceIcon.field] || ''
+  const activeInterfaceIconValue = activeInterfaceIconRawValue || activeInterfaceIcon.fallback
+  const activeInterfaceIconOption = getWidgetIconOption(activeInterfaceIconRawValue)
+  const filteredInterfaceIcons = useMemo(() => searchWidgetIcons(interfaceIconSearch), [interfaceIconSearch])
   const orbStyle = bubbleStyle.orbStyle || {
     hoverEnabled: true,
     hoverGlyph: 'A',
@@ -709,7 +783,7 @@ export default function StyleSelector({
     <>
       <div className="group">
         <button type="button" className={`dropbtn ${openSections.bubble ? 'open' : ''}`} onClick={() => onToggleSection('bubble')}>
-          <SectionLabel icon={<FiMessageCircle />} tone="gray">Chat button</SectionLabel>
+          <SectionLabel icon={<FiMessageCircle />} tone="gray">{text.sections.chatButton}</SectionLabel>
           <span className="dropbtn-icon">
             <FiChevronDown />
           </span>
@@ -728,20 +802,20 @@ export default function StyleSelector({
               )
             }
           >
-            <span className="option-title">Show status dot</span>
-            <OptionDesc>Show online/status dot on widget bubble</OptionDesc>
+            <span className="option-title">{text.labels.showStatusDot}</span>
+            <OptionDesc>{text.labels.showStatusDotDesc}</OptionDesc>
           </div>
 
           <div className="option-card option-card--radio">
-            <span className="option-title">Border type</span>
+            <span className="option-title">{text.labels.borderType}</span>
             <GlassRadioRow
               name="bubble-border-type"
               value={bubbleStyle.borderType}
               options={[
-                { value: 'none', label: 'None' },
-                { value: 'solid', label: 'Solid' },
-                { value: 'rounded', label: 'Rounded' },
-                { value: 'shadow', label: 'Shadow' },
+                { value: 'none', label: text.options.none },
+                { value: 'solid', label: text.options.solid },
+                { value: 'rounded', label: text.options.rounded },
+                { value: 'shadow', label: text.options.shadow },
               ]}
               onChange={(nextValue) =>
                 onBubbleStyleChange({ ...bubbleStyle, borderType: nextValue as BorderType })
@@ -750,15 +824,15 @@ export default function StyleSelector({
           </div>
 
           <div className="option-card option-card--radio">
-            <span className="option-title">Shadow type</span>
+            <span className="option-title">{text.labels.shadowType}</span>
             <GlassRadioRow
               name="bubble-shadow-type"
               value={bubbleStyle.shadowType}
               options={[
-                { value: 'none', label: 'None' },
-                { value: 'light', label: 'Light' },
-                { value: 'medium', label: 'Medium' },
-                { value: 'heavy', label: 'Heavy' },
+                { value: 'none', label: text.options.none },
+                { value: 'light', label: text.options.light },
+                { value: 'medium', label: text.options.medium },
+                { value: 'heavy', label: text.options.heavy },
               ]}
               onChange={(nextValue) =>
                 onBubbleStyleChange({ ...bubbleStyle, shadowType: nextValue as ShadowType })
@@ -767,15 +841,15 @@ export default function StyleSelector({
           </div>
 
           <div className="option-card option-card--radio">
-            <span className="option-title">Animation</span>
+            <span className="option-title">{text.labels.animation}</span>
             <GlassRadioRow
               name="bubble-animation-type"
               value={bubbleStyle.animationType}
               options={[
-                { value: 'none', label: 'None' },
-                { value: 'bounce', label: 'Bounce' },
-                { value: 'fade', label: 'Fade' },
-                { value: 'slide', label: 'Slide' },
+                { value: 'none', label: text.options.none },
+                { value: 'bounce', label: text.options.bounce },
+                { value: 'fade', label: text.options.fade },
+                { value: 'slide', label: text.options.slide },
               ]}
               onChange={(nextValue) =>
                 onBubbleStyleChange({ ...bubbleStyle, animationType: nextValue as AnimationType })
@@ -784,14 +858,14 @@ export default function StyleSelector({
           </div>
 
           <div className="option-card option-card--radio">
-            <span className="option-title">Size</span>
+            <span className="option-title">{text.labels.size}</span>
             <GlassRadioRow
               name="bubble-size-type"
               value={bubbleStyle.sizeType}
               options={[
-                { value: 'small', label: 'Small' },
-                { value: 'medium', label: 'Medium' },
-                { value: 'large', label: 'Large' },
+                { value: 'small', label: text.options.small },
+                { value: 'medium', label: text.options.medium },
+                { value: 'large', label: text.options.large },
               ]}
               onChange={(nextValue) =>
                 onBubbleStyleChange({ ...bubbleStyle, sizeType: nextValue as SizeType })
@@ -804,7 +878,7 @@ export default function StyleSelector({
 
       <div className="group">
         <button type="button" className={`dropbtn ${openSections.header ? 'open' : ''}`} onClick={() => onToggleSection('header')}>
-          <SectionLabel icon={<FiLayout />} tone="gray">Chat top bar</SectionLabel>
+          <SectionLabel icon={<FiLayout />} tone="gray">{text.sections.chatTopBar}</SectionLabel>
           <span className="dropbtn-icon">
             <FiChevronDown />
           </span>
@@ -823,8 +897,8 @@ export default function StyleSelector({
               )
             }
           >
-            <span className="option-title">Show status</span>
-            <OptionDesc>Show online indicator in header</OptionDesc>
+            <span className="option-title">{text.labels.showStatus}</span>
+            <OptionDesc>{text.labels.showStatusDesc}</OptionDesc>
           </div>
 
           <div
@@ -839,8 +913,8 @@ export default function StyleSelector({
               )
             }
           >
-            <span className="option-title">Show close button</span>
-            <OptionDesc>Show close button in header</OptionDesc>
+            <span className="option-title">{text.labels.showCloseButton}</span>
+            <OptionDesc>{text.labels.showCloseButtonDesc}</OptionDesc>
           </div>
 
           <div
@@ -855,8 +929,8 @@ export default function StyleSelector({
               )
             }
           >
-            <span className="option-title">Show avatar</span>
-            <OptionDesc>Show avatar in header</OptionDesc>
+            <span className="option-title">{text.labels.showAvatar}</span>
+            <OptionDesc>{text.labels.showAvatarDesc}</OptionDesc>
           </div>
 
           <div
@@ -871,20 +945,20 @@ export default function StyleSelector({
               )
             }
           >
-            <span className="option-title">Show title</span>
-            <OptionDesc>Show widget title in header</OptionDesc>
+            <span className="option-title">{text.labels.showTitle}</span>
+            <OptionDesc>{text.labels.showTitleDesc}</OptionDesc>
           </div>
 
           <div className="option-card option-card--radio">
-            <span className="option-title">Border type</span>
+            <span className="option-title">{text.labels.borderType}</span>
             <GlassRadioRow
               name="header-border-type"
               value={headerStyle.borderType}
               options={[
-                { value: 'none', label: 'None' },
-                { value: 'solid', label: 'Solid' },
-                { value: 'rounded', label: 'Rounded' },
-                { value: 'shadow', label: 'Shadow' },
+                { value: 'none', label: text.options.none },
+                { value: 'solid', label: text.options.solid },
+                { value: 'rounded', label: text.options.rounded },
+                { value: 'shadow', label: text.options.shadow },
               ]}
               onChange={(nextValue) =>
                 onHeaderStyleChange({ ...headerStyle, borderType: nextValue as BorderType })
@@ -893,15 +967,15 @@ export default function StyleSelector({
           </div>
 
           <div className="option-card option-card--radio">
-            <span className="option-title">Shadow type</span>
+            <span className="option-title">{text.labels.shadowType}</span>
             <GlassRadioRow
               name="header-shadow-type"
               value={headerStyle.shadowType}
               options={[
-                { value: 'none', label: 'None' },
-                { value: 'light', label: 'Light' },
-                { value: 'medium', label: 'Medium' },
-                { value: 'heavy', label: 'Heavy' },
+                { value: 'none', label: text.options.none },
+                { value: 'light', label: text.options.light },
+                { value: 'medium', label: text.options.medium },
+                { value: 'heavy', label: text.options.heavy },
               ]}
               onChange={(nextValue) =>
                 onHeaderStyleChange({ ...headerStyle, shadowType: nextValue as ShadowType })
@@ -913,7 +987,7 @@ export default function StyleSelector({
 
       <div className="group">
         <button type="button" className={`dropbtn ${openSections.body ? 'open' : ''}`} onClick={() => onToggleSection('body')}>
-          <SectionLabel icon={<FiMessageSquare />} tone="gray">Chat messages</SectionLabel>
+          <SectionLabel icon={<FiMessageSquare />} tone="gray">{text.sections.chatMessages}</SectionLabel>
           <span className="dropbtn-icon">
             <FiChevronDown />
           </span>
@@ -921,15 +995,15 @@ export default function StyleSelector({
 
         <div className={`option-grid dropdown-content ${openSections.body ? 'open' : ''}`}>
           <div className="option-card option-card--radio">
-            <span className="option-title">Border type</span>
+            <span className="option-title">{text.labels.borderType}</span>
             <GlassRadioRow
               name="body-border-type"
               value={bodyStyle.borderType}
               options={[
-                { value: 'none', label: 'None' },
-                { value: 'solid', label: 'Solid' },
-                { value: 'rounded', label: 'Rounded' },
-                { value: 'shadow', label: 'Shadow' },
+                { value: 'none', label: text.options.none },
+                { value: 'solid', label: text.options.solid },
+                { value: 'rounded', label: text.options.rounded },
+                { value: 'shadow', label: text.options.shadow },
               ]}
               onChange={(nextValue) =>
                 onBodyStyleChange({ ...bodyStyle, borderType: nextValue as BorderType })
@@ -938,15 +1012,15 @@ export default function StyleSelector({
           </div>
 
           <div className="option-card option-card--radio">
-            <span className="option-title">Shadow type</span>
+            <span className="option-title">{text.labels.shadowType}</span>
             <GlassRadioRow
               name="body-shadow-type"
               value={bodyStyle.shadowType}
               options={[
-                { value: 'none', label: 'None' },
-                { value: 'light', label: 'Light' },
-                { value: 'medium', label: 'Medium' },
-                { value: 'heavy', label: 'Heavy' },
+                { value: 'none', label: text.options.none },
+                { value: 'light', label: text.options.light },
+                { value: 'medium', label: text.options.medium },
+                { value: 'heavy', label: text.options.heavy },
               ]}
               onChange={(nextValue) =>
                 onBodyStyleChange({ ...bodyStyle, shadowType: nextValue as ShadowType })
@@ -955,14 +1029,14 @@ export default function StyleSelector({
           </div>
 
           <div className="option-card option-card--radio">
-            <span className="option-title">Message style</span>
+            <span className="option-title">{text.labels.messageStyle}</span>
             <GlassRadioRow
               name="body-message-style"
               value={bodyStyle.messageStyle}
               options={[
-                { value: 'bubble', label: 'Bubble' },
-                { value: 'flat', label: 'Flat' },
-                { value: 'card', label: 'Card' },
+                { value: 'bubble', label: text.options.bubble },
+                { value: 'flat', label: text.options.flat },
+                { value: 'card', label: text.options.card },
               ]}
               onChange={(nextValue) =>
                 onBodyStyleChange({ ...bodyStyle, messageStyle: nextValue as MessageStyle })
@@ -982,8 +1056,8 @@ export default function StyleSelector({
               )
             }
           >
-            <span className="option-title">Show timestamps</span>
-            <OptionDesc>Show message timestamps</OptionDesc>
+            <span className="option-title">{text.labels.showTimestamps}</span>
+            <OptionDesc>{text.labels.showTimestampsDesc}</OptionDesc>
           </div>
 
           <div
@@ -998,8 +1072,8 @@ export default function StyleSelector({
               )
             }
             >
-            <span className="option-title">Show read receipts</span>
-            <OptionDesc>Show read receipts on messages</OptionDesc>
+            <span className="option-title">{text.labels.showReadReceipts}</span>
+            <OptionDesc>{text.labels.showReadReceiptsDesc}</OptionDesc>
           </div>
 
           <div
@@ -1022,22 +1096,22 @@ export default function StyleSelector({
               )
             }
           >
-            <span className="option-title">Show starter cards</span>
-            <OptionDesc>Show cards and quick choices before the user starts typing</OptionDesc>
+            <span className="option-title">{text.labels.showStarterCards}</span>
+            <OptionDesc>{text.labels.showStarterCardsDesc}</OptionDesc>
           </div>
 
           {bodyStyle.showConversationCards ? (
             <div className="option-card option-card--radio">
-              <span className="option-title">Card style</span>
+              <span className="option-title">{text.labels.cardStyle}</span>
               <GlassRadioRow
                 name="body-conversation-cards-style"
                 value={bodyStyle.conversationCardsStyle}
                 options={[
-                  { value: 'modern', label: 'Modern' },
-                  { value: 'minimal', label: 'Minimal' },
-                  { value: 'bubble', label: 'Bubble / glow' },
-                  { value: 'image', label: 'Image-based' },
-                  { value: 'chips', label: 'Quick chips' },
+                  { value: 'modern', label: text.options.modern },
+                  { value: 'minimal', label: text.options.minimal },
+                  { value: 'bubble', label: text.options.bubbleGlow },
+                  { value: 'image', label: text.options.imageBased },
+                  { value: 'chips', label: text.options.quickChips },
                 ]}
                 onChange={(nextValue) =>
                   onBodyStyleChange({
@@ -1053,7 +1127,7 @@ export default function StyleSelector({
 
       <div className="group">
         <button type="button" className={`dropbtn ${openSections.footer ? 'open' : ''}`} onClick={() => onToggleSection('footer')}>
-          <SectionLabel icon={<FiSend />} tone="gray">Message box</SectionLabel>
+          <SectionLabel icon={<FiSend />} tone="gray">{text.sections.messageBox}</SectionLabel>
           <span className="dropbtn-icon">
             <FiChevronDown />
           </span>
@@ -1072,20 +1146,20 @@ export default function StyleSelector({
               )
             }
           >
-            <span className="option-title">Show send button</span>
-            <OptionDesc>Show send button in footer</OptionDesc>
+            <span className="option-title">{text.labels.showSendButton}</span>
+            <OptionDesc>{text.labels.showSendButtonDesc}</OptionDesc>
           </div>
 
           <div className="option-card option-card--radio">
-            <span className="option-title">Border type</span>
+            <span className="option-title">{text.labels.borderType}</span>
             <GlassRadioRow
               name="footer-border-type"
               value={footerStyle.borderType}
               options={[
-                { value: 'none', label: 'None' },
-                { value: 'solid', label: 'Solid' },
-                { value: 'rounded', label: 'Rounded' },
-                { value: 'shadow', label: 'Shadow' },
+                { value: 'none', label: text.options.none },
+                { value: 'solid', label: text.options.solid },
+                { value: 'rounded', label: text.options.rounded },
+                { value: 'shadow', label: text.options.shadow },
               ]}
               onChange={(nextValue) =>
                 onFooterStyleChange({ ...footerStyle, borderType: nextValue as BorderType })
@@ -1094,15 +1168,15 @@ export default function StyleSelector({
           </div>
 
           <div className="option-card option-card--radio">
-            <span className="option-title">Shadow type</span>
+            <span className="option-title">{text.labels.shadowType}</span>
             <GlassRadioRow
               name="footer-shadow-type"
               value={footerStyle.shadowType}
               options={[
-                { value: 'none', label: 'None' },
-                { value: 'light', label: 'Light' },
-                { value: 'medium', label: 'Medium' },
-                { value: 'heavy', label: 'Heavy' },
+                { value: 'none', label: text.options.none },
+                { value: 'light', label: text.options.light },
+                { value: 'medium', label: text.options.medium },
+                { value: 'heavy', label: text.options.heavy },
               ]}
               onChange={(nextValue) =>
                 onFooterStyleChange({ ...footerStyle, shadowType: nextValue as ShadowType })
@@ -1111,14 +1185,14 @@ export default function StyleSelector({
           </div>
 
           <div className="option-card option-card--radio">
-            <span className="option-title">Input style</span>
+            <span className="option-title">{text.labels.inputStyle}</span>
             <GlassRadioRow
               name="footer-input-style"
               value={footerStyle.inputStyle}
               options={[
-                { value: 'flat', label: 'Flat' },
-                { value: 'rounded', label: 'Rounded' },
-                { value: 'outlined', label: 'Outlined' },
+                { value: 'flat', label: text.options.flat },
+                { value: 'rounded', label: text.options.rounded },
+                { value: 'outlined', label: text.options.outlined },
               ]}
               onChange={(nextValue) =>
                 onFooterStyleChange({ ...footerStyle, inputStyle: nextValue as InputStyle })
@@ -1138,15 +1212,15 @@ export default function StyleSelector({
               )
             }
           >
-            <span className="option-title">Show placeholder</span>
-            <OptionDesc>Show placeholder text in input field</OptionDesc>
+            <span className="option-title">{text.labels.showPlaceholder}</span>
+            <OptionDesc>{text.labels.showPlaceholderDesc}</OptionDesc>
           </div>
         </div>
       </div>
 
       <div className="group">
         <button type="button" className={`dropbtn ${openSections.colorTheme ? 'open' : ''}`} onClick={() => onToggleSection('colorTheme')}>
-          <SectionLabel icon={<FiDroplet />} tone="colorful">Colors</SectionLabel>
+          <SectionLabel icon={<FiDroplet />} tone="colorful">{text.sections.colors}</SectionLabel>
           <span className="dropbtn-icon">
             <FiChevronDown />
           </span>
@@ -1154,7 +1228,7 @@ export default function StyleSelector({
 
         <div className={`option-grid dropdown-content ${openSections.colorTheme ? 'open' : ''}`}>
           <div className="option-card option-card--radio">
-            <span className="option-title">Theme</span>
+            <span className="option-title">{text.labels.theme}</span>
             <GlassRadioRow
               name="color-theme"
               value={colorTheme}
@@ -1172,7 +1246,7 @@ export default function StyleSelector({
 
       <div className="group">
         <button type="button" className={`dropbtn ${openSections.icons ? 'open' : ''}`} onClick={() => onToggleSection('icons')}>
-          <SectionLabel icon={<FiMessageCircle />} tone="colorful">Icons</SectionLabel>
+          <SectionLabel icon={<FiMessageCircle />} tone="colorful">{text.sections.icons}</SectionLabel>
           <span className="dropbtn-icon">
             <FiChevronDown />
           </span>
@@ -1180,8 +1254,8 @@ export default function StyleSelector({
 
         <div className={`icons-content dropdown-content ${openSections.icons ? 'open' : ''}`}>
           <div className="option-card option-card--radio option-card--wide">
-            <span className="option-title">Launcher mode</span>
-            <OptionDesc>Use a normal icon launcher or the animated orb mode.</OptionDesc>
+            <span className="option-title">{text.labels.launcherMode}</span>
+            <OptionDesc>{text.labels.launcherModeDesc}</OptionDesc>
             <div className="iconChoiceGroup" ref={iconChoiceRef} role="radiogroup" aria-label="Launcher mode">
               {iconIndicator ? (
                 <span
@@ -1232,63 +1306,87 @@ export default function StyleSelector({
             </div>
           </div>
 
-          <div className="widget-icon-settings-grid">
-            <IconPickerBubble
-              label="Chat bubble"
-              value={widgetIcons.launcherIcon}
-              onChange={(nextValue) => updateWidgetIcon('launcherIcon', nextValue)}
-              placeholder="Launcher icon"
-              helperText="Used on the floating chat button when orb mode is not active."
-            />
-            <IconPickerBubble
-              label="Header avatar"
-              value={widgetIcons.avatarIcon}
-              onChange={(nextValue) => updateWidgetIcon('avatarIcon', nextValue)}
-              placeholder="Avatar icon"
-              helperText="Shown in the chat header when no logo is uploaded."
-            />
-            <IconPickerBubble
-              label="Close"
-              value={widgetIcons.closeIcon}
-              onChange={(nextValue) => updateWidgetIcon('closeIcon', nextValue)}
-              placeholder="Close icon"
-              helperText="Used on the X / close button."
-            />
-            <IconPickerBubble
-              label="Go back"
-              value={widgetIcons.backIcon}
-              onChange={(nextValue) => updateWidgetIcon('backIcon', nextValue)}
-              placeholder="Back icon"
-              helperText="Used when moving back from starter-card options."
-            />
-            <IconPickerBubble
-              label="Send"
-              value={widgetIcons.sendIcon}
-              onChange={(nextValue) => updateWidgetIcon('sendIcon', nextValue)}
-              placeholder="Send icon"
-              helperText="Used on the message send button."
-            />
-            <IconPickerBubble
-              label="AI"
-              value={widgetIcons.aiIcon}
-              onChange={(nextValue) => updateWidgetIcon('aiIcon', nextValue)}
-              placeholder="AI message icon"
-              helperText="Used beside assistant messages and typing."
-            />
-            <IconPickerBubble
-              label="Support"
-              value={widgetIcons.supportIcon}
-              onChange={(nextValue) => updateWidgetIcon('supportIcon', nextValue)}
-              placeholder="Support icon"
-              helperText="Used beside human support messages."
-            />
-            <IconPickerBubble
-              label="User"
-              value={widgetIcons.userIcon}
-              onChange={(nextValue) => updateWidgetIcon('userIcon', nextValue)}
-              placeholder="User icon"
-              helperText="Used beside visitor messages."
-            />
+          <div className="widget-icon-bubble-board">
+            <div className="widget-icon-bubble-row" role="tablist" aria-label="Editable chatbot icons">
+              {interfaceIconFields.map((item) => {
+                const active = item.field === activeInterfaceIconField
+                const value = widgetIcons[item.field] || item.fallback
+
+                return (
+                  <button
+                    key={item.field}
+                    type="button"
+                    className={`widget-icon-bubble ${active ? 'is-active' : ''}`}
+                    onClick={() => {
+                      setActiveInterfaceIconField(item.field)
+                      setInterfaceIconSearch('')
+                    }}
+                    role="tab"
+                    aria-selected={active}
+                    aria-controls="widget-interface-icon-panel"
+                  >
+                    <span className="widget-icon-bubble__orb" aria-hidden="true">
+                      {renderWidgetIcon(value, { 'aria-hidden': true })}
+                    </span>
+                    <span className="widget-icon-bubble__label">{item.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div
+              id="widget-interface-icon-panel"
+              className="widget-icon-gallery-panel"
+              role="tabpanel"
+              aria-label={`${activeInterfaceIcon.label} icon picker`}
+            >
+              <div className="widget-icon-gallery-panel__header">
+                <span className="widget-icon-gallery-panel__preview" aria-hidden="true">
+                  {renderWidgetIcon(activeInterfaceIconValue, { 'aria-hidden': true })}
+                </span>
+                <span className="widget-icon-gallery-panel__copy">
+                  <strong>{activeInterfaceIcon.label}</strong>
+                  <small>{activeInterfaceIconOption?.label || 'Default icon'} · {activeInterfaceIcon.helper}</small>
+                </span>
+                <button
+                  type="button"
+                  className="widget-icon-gallery-panel__clear"
+                  onClick={() => updateWidgetIcon(activeInterfaceIcon.field, '')}
+                  disabled={!activeInterfaceIconRawValue}
+                >
+                  Clear
+                </button>
+              </div>
+
+              <input
+                className="widget-icon-gallery-panel__search"
+                type="search"
+                value={interfaceIconSearch}
+                onChange={(event) => setInterfaceIconSearch(event.target.value)}
+                placeholder={`Search icon for ${activeInterfaceIcon.label.toLowerCase()}...`}
+              />
+
+              <div className="widget-icon-gallery-panel__grid">
+                {filteredInterfaceIcons.map((option) => {
+                  const active = option.key === activeInterfaceIconRawValue
+                  const Icon = option.icon
+
+                  return (
+                    <button
+                      key={option.key}
+                      type="button"
+                      className={`widget-icon-gallery-option ${active ? 'is-active' : ''}`}
+                      onClick={() => updateWidgetIcon(activeInterfaceIcon.field, option.key)}
+                    >
+                      <span className="widget-icon-gallery-option__icon" aria-hidden="true">
+                        <Icon />
+                      </span>
+                      <span>{option.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
           </div>
 
           {bubbleStyle.iconChoice === 'orb' && (
@@ -1407,7 +1505,7 @@ export default function StyleSelector({
 
       <div className="group">
         <button type="button" className={`dropbtn ${openSections.branding ? 'open' : ''}`} onClick={() => onToggleSection('branding')}>
-          <SectionLabel icon={<FiImage />} tone="neutral">Your branding</SectionLabel>
+          <SectionLabel icon={<FiImage />} tone="neutral">{text.sections.branding}</SectionLabel>
           <span className="dropbtn-icon">
             <FiChevronDown />
           </span>
@@ -1443,7 +1541,7 @@ export default function StyleSelector({
 
       <div className="group">
         <button type="button" className={`dropbtn ${openSections.advanced ? 'open' : ''}`} onClick={() => onToggleSection('advanced')}>
-          <SectionLabel icon={<FiSliders />} tone="neutral">Widget behavior</SectionLabel>
+          <SectionLabel icon={<FiSliders />} tone="neutral">{text.sections.behavior}</SectionLabel>
           <span className="dropbtn-icon">
             <FiChevronDown />
           </span>
@@ -1451,13 +1549,13 @@ export default function StyleSelector({
 
         <div className={`advanced-content dropdown-content ${openSections.advanced ? 'open' : ''}`}>
           <div className="advanced-field advanced-field--position">
-            <label>Screen position</label>
+            <label>{text.labels.screenPosition}</label>
             <GlassRadioRow
               name="widget-position"
               value={position}
               options={[
-                { value: 'bottom-right', label: 'Bottom right', description: 'Bottom right of the screen' },
-                { value: 'bottom-left', label: 'Bottom left', description: 'Bottom left of the screen' },
+                { value: 'bottom-right', label: text.options.bottomRight, description: text.options.bottomRight },
+                { value: 'bottom-left', label: text.options.bottomLeft, description: text.options.bottomLeft },
               ]}
               onChange={(nextValue) => onPositionChange(nextValue as Position)}
             />
@@ -1470,12 +1568,12 @@ export default function StyleSelector({
                 checked={settings.autoOpen || false}
                 onChange={(e) => onSettingsChange({ ...settings, autoOpen: e.target.checked })}
               />
-              Auto-open widget
+              {text.labels.autoOpen}
             </label>
           </div>
 
           <div className="advanced-field">
-            <label>Delay before auto-open (milliseconds)</label>
+            <label>{text.labels.autoOpenDelay}</label>
             <input
               type="number"
               value={settings.delayMs || 3000}

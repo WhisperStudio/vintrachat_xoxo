@@ -45,7 +45,6 @@ import type {
   AssistantKnowledgeBase,
   AssistantStrictness,
   AssistantConversationCard,
-  AssistantWidgetIcons,
   ChatAssistantConfig,
   ChatWidgetConfig,
 } from '@/types/database'
@@ -873,21 +872,10 @@ export default function WidgetAdminPanel({
     })
   }
 
-  const setWidgetIconField = (field: keyof AssistantWidgetIcons, value: string) => {
-    setAssistantConfig((prev) => ({
-      ...prev,
-      widgetIcons: {
-        ...(prev.widgetIcons || {}),
-        [field]: value,
-      },
-    }))
-  }
-
   const renderStarterCardsEditor = () => {
     const cards = normalizedStarterCards
     const activeIndex = Math.min(selectedStarterCardIndex, Math.max(0, cards.length - 1))
     const activeCard = cards[activeIndex]
-    const widgetIcons = assistantConfig.widgetIcons || {}
 
     return (
       <>
@@ -906,44 +894,6 @@ export default function WidgetAdminPanel({
             }
           />
         </label>
-
-        <div className="widget-admin-icon-settings">
-          <IconPickerBubble
-            label="Avatar"
-            value={widgetIcons.avatarIcon}
-            onChange={(nextValue) => setWidgetIconField('avatarIcon', nextValue)}
-            placeholder="No avatar icon"
-            helperText="Shown in the header when no logo is set. Leave blank to hide it."
-          />
-          <IconPickerBubble
-            label="Hero"
-            value={widgetIcons.heroIcon}
-            onChange={(nextValue) => setWidgetIconField('heroIcon', nextValue)}
-            placeholder="Starter hero icon"
-            helperText="Shown in the starter-cards hero, and can also be used as the AI fallback."
-          />
-          <IconPickerBubble
-            label="AI"
-            value={widgetIcons.aiIcon}
-            onChange={(nextValue) => setWidgetIconField('aiIcon', nextValue)}
-            placeholder="AI reply icon"
-            helperText="Used on assistant messages. Leave blank to hide."
-          />
-          <IconPickerBubble
-            label="Support"
-            value={widgetIcons.supportIcon}
-            onChange={(nextValue) => setWidgetIconField('supportIcon', nextValue)}
-            placeholder="Support icon"
-            helperText="Used on support messages. Leave blank to hide."
-          />
-          <IconPickerBubble
-            label="User"
-            value={widgetIcons.userIcon}
-            onChange={(nextValue) => setWidgetIconField('userIcon', nextValue)}
-            placeholder="User icon"
-            helperText="Used on user messages. Leave blank to hide."
-          />
-        </div>
 
         <div className={`widget-admin-starter-cards ${assistantConfig.conversationCardsEnabled ? '' : 'is-disabled'}`}>
           <div className="widget-admin-card-list__toolbar">
@@ -1976,6 +1926,17 @@ export default function WidgetAdminPanel({
         focusX: 50,
         focusY: 50,
       },
+    },
+    widgetIcons: {
+      launcherIcon: 'FiMessageCircle',
+      avatarIcon: 'FiMessageCircle',
+      heroIcon: 'FiMessageCircle',
+      closeIcon: 'FiX',
+      backIcon: 'FiArrowLeft',
+      sendIcon: 'FiSend',
+      aiIcon: 'FiCpu',
+      supportIcon: 'FiLifeBuoy',
+      userIcon: 'FiUser',
     },
     settings: {
       autoOpen: false,
@@ -3148,7 +3109,7 @@ export default function WidgetAdminPanel({
               position={activeConfig.position}
               colorTheme={activeConfig.colorTheme}
               customBranding={activeConfig.customBranding}
-              assistantIcons={{ ...(assistantConfig.widgetIcons || {}), ...(activeConfig.widgetIcons || {}) }}
+              assistantIcons={activeConfig.widgetIcons || {}}
               initialOpen={true}
               variant="embedded"
               enablePreviewChat={true}

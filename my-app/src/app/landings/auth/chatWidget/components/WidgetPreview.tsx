@@ -6,6 +6,7 @@ import GlassOrbAvatar from '../../../../../svgs/GlassOrbAvatar'
 import { getWidgetThemeClass, getWidgetThemeStyle, joinWidgetClasses } from '@/components/chat/widgetDesign'
 import { normalizeConversationCards } from '@/lib/conversation-cards'
 import { renderWidgetIcon } from '@/lib/widget-icons'
+import { chatWidgetPricingI18n, useVintraLanguage } from '@/lib/i18n'
 import FeedbackFormOverlay from '@/components/chat/FeedbackFormOverlay'
 import './WidgetPreview.css'
 import type { AssistantConversationCard, AssistantWidgetIcons, ChatWidgetInterfaceIcons, BubbleIconChoice, OrbStyleConfig } from '@/types/database'
@@ -170,6 +171,14 @@ export default function WidgetPreview({
   conversationCards = [],
   conversationCardsLimit = 4,
 }: WidgetPreviewProps) {
+  const { language } = useVintraLanguage()
+  const pricingText = chatWidgetPricingI18n[language]
+  const safeTotal = typeof total === 'number' ? total : 0
+  const formattedTotal =
+    language === 'no'
+      ? `${new Intl.NumberFormat('nb-NO').format(safeTotal)} kr`
+      : `$${safeTotal}`
+  const billingPeriod = billingCycle === 'yearly' ? pricingText.year : pricingText.month
   const [internalIsChatOpen, setInternalIsChatOpen] = useState(initialOpen)
   const [internalIsReplying, setInternalIsReplying] = useState(false)
   const [internalIsOrbHovered, setInternalIsOrbHovered] = useState(false)
@@ -635,6 +644,34 @@ export default function WidgetPreview({
                   <button type="button" className="chat-header-back" onClick={() => setActiveConversationCardId(null)} aria-label="Go back">
                     {renderWidgetIcon(effectiveAssistantIcons.backIcon, { 'aria-hidden': true }) || <FiArrowLeft aria-hidden="true" />}
                   </button>
+                ) : null}
+
+                {showStarterCardList ? (
+                  <>
+                    {headerStyle.showAvatar && (customBranding.logo || effectiveAssistantIcons.avatarIcon) ? (
+                      <div className={`avatar ${customBranding.logo ? 'avatar--image' : ''}`}>
+                        {customBranding.logo ? (
+                          <div
+                            className="avatar-image"
+                            aria-hidden="true"
+                            style={{
+                              backgroundImage: `url(${customBranding.logo})`,
+                              backgroundRepeat: 'no-repeat',
+                              backgroundSize: `${logoStyle.zoom}% ${logoStyle.zoom}%`,
+                              backgroundPosition: `${logoStyle.focusX}% ${logoStyle.focusY}%`,
+                            }}
+                          />
+                        ) : (
+                          renderWidgetIcon(effectiveAssistantIcons.avatarIcon, { 'aria-hidden': true })
+                        )}
+                      </div>
+                    ) : null}
+
+                    <div className="chat-header-copy">
+                      {headerStyle.showTitle && <h3>{title}</h3>}
+                      <p>{description}</p>
+                    </div>
+                  </>
                 ) : (
                   <>
                     {headerStyle.showAvatar && (customBranding.logo || effectiveAssistantIcons.avatarIcon) ? (
@@ -656,7 +693,7 @@ export default function WidgetPreview({
                       </div>
                     ) : null}
 
-                    <div>
+                    <div className="chat-header-copy">
                       {headerStyle.showTitle && <h3>{title}</h3>}
                       <p>{description}</p>
                     </div>
@@ -957,14 +994,14 @@ export default function WidgetPreview({
       )}
       {typeof total === 'number' ? (
         <div className="widget-preview-total">
-          <p className="widget-preview-total-label">Subscription total</p>
+          <p className="widget-preview-total-label">{pricingText.subscriptionTotal}</p>
           <h3 className="widget-preview-total-price">
-            ${total}
-            <span>/{billingCycle === 'monthly' ? 'month' : 'year'}</span>
+            {formattedTotal}
+            <span>/{billingPeriod}</span>
           </h3>
           <div className="widget-preview-total-meta">
-            <span>{plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : 'Plan'}</span>
-            <span>{billingCycle || 'monthly'}</span>
+            <span>{plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : pricingText.plan}</span>
+            <span>{billingCycle === 'yearly' ? pricingText.year : pricingText.month}</span>
           </div>
         </div>
       ) : null}
