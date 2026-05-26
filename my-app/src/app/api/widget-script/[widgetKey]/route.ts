@@ -24,6 +24,38 @@ function toKebabCase(value: string) {
   return value.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`)
 }
 
+const SVG_ATTRIBUTE_NAME_MAP: Record<string, string> = {
+  className: 'class',
+  viewBox: 'viewBox',
+  preserveAspectRatio: 'preserveAspectRatio',
+  strokeWidth: 'stroke-width',
+  strokeLinecap: 'stroke-linecap',
+  strokeLinejoin: 'stroke-linejoin',
+  strokeMiterlimit: 'stroke-miterlimit',
+  fillRule: 'fill-rule',
+  clipRule: 'clip-rule',
+  clipPath: 'clip-path',
+  stopColor: 'stop-color',
+  stopOpacity: 'stop-opacity',
+  floodColor: 'flood-color',
+  floodOpacity: 'flood-opacity',
+  colorInterpolationFilters: 'color-interpolation-filters',
+  shapeRendering: 'shape-rendering',
+  textAnchor: 'text-anchor',
+  dominantBaseline: 'dominant-baseline',
+  markerStart: 'marker-start',
+  markerMid: 'marker-mid',
+  markerEnd: 'marker-end',
+  xlinkHref: 'xlink:href',
+  tabIndex: 'tabindex',
+}
+
+function getMarkupAttributeName(key: string) {
+  if (SVG_ATTRIBUTE_NAME_MAP[key]) return SVG_ATTRIBUTE_NAME_MAP[key]
+  if (key.startsWith('aria-') || key.startsWith('data-')) return key
+  return toKebabCase(key)
+}
+
 function renderStyleAttribute(value: unknown) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return ''
 
@@ -42,7 +74,7 @@ function renderAttributes(attributes: Record<string, unknown>) {
       return value !== false || key === 'focusable' || key.startsWith('aria-')
     })
     .map(([key, value]) => {
-      const attributeName = key === 'className' ? 'class' : toKebabCase(key)
+      const attributeName = getMarkupAttributeName(key)
       const attributeValue = key === 'style' ? renderStyleAttribute(value) : value
       if (attributeValue === '') return ''
       if (attributeValue === true) return attributeName
