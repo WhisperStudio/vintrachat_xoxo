@@ -408,8 +408,8 @@ export async function GET(
     host.style.zIndex = '10000';
     host.style.pointerEvents = 'none';
     host.style.display = 'block';
-    host.style.visibility = 'visible';
-    host.style.opacity = '1';
+    host.style.visibility = 'hidden';
+    host.style.opacity = '0';
     mountTarget.appendChild(host);
 
     shadowRoot = host.attachShadow({ mode: 'open' });
@@ -421,6 +421,23 @@ export async function GET(
     mount.className = 'vintra-root position-bottom-right';
     shadowRoot.appendChild(mount);
   }
+
+  function showHost() {
+    if (!host) return;
+    host.style.display = 'block';
+    host.style.visibility = 'visible';
+    host.style.opacity = '1';
+  }
+
+  function hideHost() {
+    if (!host) return;
+    host.style.visibility = 'hidden';
+    host.style.opacity = '0';
+    if (mount) {
+      mount.innerHTML = '';
+    }
+  }
+
   function setDebug(message) {
     if (!DEBUG_MODE) return;
     if (window.console && typeof window.console.debug === 'function') {
@@ -1627,6 +1644,13 @@ export async function GET(
   }
 
   function render() {
+    if (!state.configLoaded || !state.config) {
+      hideHost();
+      return;
+    }
+
+    showHost();
+
     var config = state.config || {};
     var bubbleStyle = config.bubbleStyle || {};
     var headerStyle = config.headerStyle || {};
@@ -1856,7 +1880,9 @@ export async function GET(
       render();
     } catch (error) {
       state.error = error instanceof Error ? error.message : 'Failed to load widget config';
-      render();
+      state.configLoaded = false;
+      state.config = null;
+      hideHost();
       setDebug('Script loaded\\nconfig failed\\n' + state.error);
     }
   }
@@ -2144,7 +2170,6 @@ export async function GET(
     bindViewportListeners();
     setDebug('Script loaded');
     bindWidgetActions();
-    render();
     loadConfig();
   }
 
