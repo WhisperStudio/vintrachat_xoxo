@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { WIDGET_THEME_CLASS, WIDGET_THEME_VARS } from '@/components/chat/widgetDesign'
-import { renderToStaticMarkup } from 'react-dom/server'
+import { isValidElement, type ReactElement, type ReactNode } from 'react'
 import { WIDGET_ICON_ALIAS_MAP, WIDGET_ICON_OPTIONS, renderWidgetIcon } from '@/lib/widget-icons'
 
 function serializeForJs(value: unknown) {
@@ -20,10 +20,105 @@ function escapeHtml(value: unknown) {
     .replace(/'/g, '&#39;')
 }
 
+function toKebabCase(value: string) {
+  return value.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`)
+}
+
+function renderStyleAttribute(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return ''
+
+  return Object.entries(value as Record<string, unknown>)
+    .filter(([, styleValue]) => styleValue !== undefined && styleValue !== null && styleValue !== '')
+    .map(([styleName, styleValue]) => `${toKebabCase(styleName)}:${String(styleValue)}`)
+    .join(';')
+}
+
+function renderAttributes(attributes: Record<string, unknown>) {
+  return Object.entries(attributes)
+    .filter(([key, value]) => {
+      if (key === 'children' || key === 'key' || key === 'ref' || value === undefined || value === null) {
+        return false
+      }
+      return value !== false || key === 'focusable' || key.startsWith('aria-')
+    })
+    .map(([key, value]) => {
+      const attributeName = key === 'className' ? 'class' : toKebabCase(key)
+      const attributeValue = key === 'style' ? renderStyleAttribute(value) : value
+      if (attributeValue === '') return ''
+      if (attributeValue === true) return attributeName
+      return `${attributeName}="${escapeHtml(attributeValue)}"`
+    })
+    .filter(Boolean)
+    .join(' ')
+}
+
+function renderIconBaseToMarkup(props: Record<string, unknown>) {
+  const { attr, size, title, children, ...svgProps } = props
+  const inheritedAttributes = attr && typeof attr === 'object' && !Array.isArray(attr)
+    ? (attr as Record<string, unknown>)
+    : {}
+
+  const attributes = {
+    stroke: 'currentColor',
+    fill: 'currentColor',
+    strokeWidth: '0',
+    ...inheritedAttributes,
+    ...svgProps,
+    width: '100%',
+    height: '100%',
+    focusable: false,
+    xmlns: 'http://www.w3.org/2000/svg',
+    preserveAspectRatio: 'xMidYMid meet',
+  }
+  const titleMarkup = title ? `<title>${escapeHtml(title)}</title>` : ''
+  const renderedAttributes = renderAttributes(attributes)
+
+  return `<svg ${renderedAttributes}>${titleMarkup}${renderNodeToMarkup(children as ReactNode)}</svg>`
+}
+
+function renderNodeToMarkup(node: ReactNode): string {
+  if (node === null || node === undefined || typeof node === 'boolean') {
+    return ''
+  }
+
+  if (typeof node === 'string' || typeof node === 'number') {
+    return escapeHtml(node)
+  }
+
+  if (Array.isArray(node)) {
+    return node.map((child) => renderNodeToMarkup(child)).join('')
+  }
+
+  if (!isValidElement(node)) {
+    return ''
+  }
+
+  const { type, props } = node as ReactElement<Record<string, unknown>, any>
+  const elementProps = props || {}
+
+  if (typeof type === 'function') {
+    if (type.name === 'IconBase') {
+      return renderIconBaseToMarkup(elementProps)
+    }
+
+    const Component = type as (props: Record<string, unknown>) => ReactNode
+    return renderNodeToMarkup(Component(elementProps))
+  }
+
+  if (typeof type !== 'string') {
+    return ''
+  }
+
+  const children = 'children' in elementProps ? renderNodeToMarkup(elementProps.children as ReactNode) : ''
+  const attributes = renderAttributes(elementProps)
+  const openTag = attributes ? `<${type} ${attributes}>` : `<${type}>`
+  return `${openTag}${children}</${type}>`
+}
+
 const WIDGET_ICON_MARKUP_BY_KEY = Object.fromEntries(
   WIDGET_ICON_OPTIONS.map((option) => {
     const icon = renderWidgetIcon(option.key, { 'aria-hidden': true, focusable: false })
-    return [option.key, icon ? renderToStaticMarkup(icon) : '']
+    return [option.key, icon ? renderNodeToMarkup(icon) : '']
   })
 )
 
