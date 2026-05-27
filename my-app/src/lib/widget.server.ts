@@ -4,6 +4,7 @@ import type {
   ChatAssistantConfig,
   ChatWidgetConfig,
 } from '@/types/database'
+import { getEffectiveBusinessPlan, sanitizeChatWidgetConfigForPlan } from '@/lib/subscription'
 
 const launcherIconChoiceMap: Record<string, string> = {
   chat: 'FiMessageCircle',
@@ -18,6 +19,9 @@ function buildDefaultWidgetConfig(businessName = 'Chat Widget'): ChatWidgetConfi
     plan: 'free',
     billingCycle: 'monthly',
     colorTheme: 'modern',
+    appearance: {
+      glassLookEnabled: false,
+    },
     position: 'bottom-right',
     bubbleStyle: {
       showStatus: true,
@@ -92,18 +96,24 @@ function buildDefaultWidgetConfig(businessName = 'Chat Widget'): ChatWidgetConfi
 
 function mergeWidgetConfig(
   config: Partial<ChatWidgetConfig> | undefined,
-  businessName: string
+  businessName: string,
+  enforcedPlan?: ChatWidgetConfig['plan']
 ): ChatWidgetConfig {
   const defaults = buildDefaultWidgetConfig(businessName)
 
-  if (!config) return defaults
+  if (!config) return sanitizeChatWidgetConfigForPlan(defaults, enforcedPlan || defaults.plan)
 
-  return {
+  const mergedConfig: ChatWidgetConfig = {
     ...defaults,
     ...config,
+    plan: enforcedPlan || config.plan || defaults.plan,
     allowedDomains: Array.isArray(config.allowedDomains)
       ? config.allowedDomains
       : defaults.allowedDomains,
+    appearance: {
+      ...defaults.appearance,
+      ...(config.appearance || {}),
+    },
     bubbleStyle: {
       ...defaults.bubbleStyle,
       ...(config.bubbleStyle || {}),
@@ -154,6 +164,8 @@ function mergeWidgetConfig(
         defaults.widgetIcons?.launcherIcon,
     },
   }
+
+  return sanitizeChatWidgetConfigForPlan(mergedConfig, enforcedPlan || mergedConfig.plan)
 }
 
 export interface WidgetBusinessRecord {
@@ -180,6 +192,22 @@ export async function getBusinessByWidgetKey(
       const businessSnap = await businessDoc.ref.get()
       const businessData = businessSnap.data() || {}
       const isDefaultWidget = Boolean(widgetData.isDefault)
+      const enforcedPlan = getEffectiveBusinessPlan(
+        {
+          chatWidgetConfig: businessData.chatWidgetConfig,
+          chatWidgets: [{
+            id: widgetDoc.id,
+            widgetKey: String(widgetData.widgetKey || widgetDoc.id),
+            name: String(widgetData.name || 'Chat Widget'),
+            config: widgetData.config,
+            isDefault: isDefaultWidget,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }],
+          activeChatWidgetKey: String(businessData.activeChatWidgetKey || businessData.chatWidgetKey || ''),
+        },
+        widgetData.config
+      )
 
         return {
           id: businessDoc.id,
@@ -188,7 +216,8 @@ export async function getBusinessByWidgetKey(
           chatWidgetName: String(widgetData.name || 'Chat Widget'),
           chatWidgetConfig: mergeWidgetConfig(
             widgetData.config || businessData.chatWidgetConfig,
-            String(businessData.name || widgetData.name || 'Chat Widget')
+            String(businessData.name || widgetData.name || 'Chat Widget'),
+            enforcedPlan
           ),
           chatAssistantConfig:
             widgetData.assistantConfig ||
@@ -201,13 +230,19 @@ export async function getBusinessByWidgetKey(
 
     const businessData = businessDoc.data() || {}
     if (String(businessData.chatWidgetKey || '') === widgetKey) {
+      const enforcedPlan = getEffectiveBusinessPlan(
+        { chatWidgetConfig: businessData.chatWidgetConfig },
+        businessData.chatWidgetConfig
+      )
+
       return {
         id: businessDoc.id,
         name: String(businessData.name || ''),
         chatWidgetKey: String(businessData.chatWidgetKey || widgetKey),
         chatWidgetConfig: mergeWidgetConfig(
           businessData.chatWidgetConfig,
-          String(businessData.name || 'Chat Widget')
+          String(businessData.name || 'Chat Widget'),
+          enforcedPlan
         ),
         chatAssistantConfig: businessData.chatAssistantConfig,
         chatAnalytics: businessData.chatAnalytics,

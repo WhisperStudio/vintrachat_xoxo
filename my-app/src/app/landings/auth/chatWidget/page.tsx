@@ -21,7 +21,12 @@ import { useAuth } from '@/context/AuthContext'
 import { setActiveChatWidget, updateChatWidgetConfig } from '@/lib/auth.service'
 import { defaultConversationCards } from '@/lib/conversation-cards'
 import { chatWidgetBuilderExtraI18n, chatWidgetBuilderI18n, useVintraLanguage } from '@/lib/i18n'
-import { sanitizeBubbleStyleForPlan } from '@/lib/subscription'
+import {
+  getEffectiveBusinessPlan,
+  isPlanFeatureAvailable,
+  sanitizeBubbleStyleForPlan,
+  sanitizeChatWidgetConfigForPlan,
+} from '@/lib/subscription'
 import type { BubbleIconChoice, ChatWidgetConfig, ChatWidgetInterfaceIcons, OrbStyleConfig } from '@/types/database'
 import './ChatWidget.css'
 
@@ -66,6 +71,9 @@ type InputsState = {
   plan: Plan
   billingCycle: BillingCycle
   colorTheme: ColorTheme
+  appearance: {
+    glassLookEnabled: boolean
+  }
   position: Position
   widgetIcons: ChatWidgetInterfaceIcons
   bubbleStyle: {
@@ -122,6 +130,9 @@ const defaultInputs: InputsState = {
   plan: 'pro',
   billingCycle: 'monthly',
   colorTheme: 'modern',
+  appearance: {
+    glassLookEnabled: false,
+  },
   position: 'bottom-right',
   widgetIcons: {
     launcherIcon: 'FiMessageCircle',
@@ -212,10 +223,6 @@ export default function ChatWidgetBuilderPage() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [resetAnimating, setResetAnimating] = useState(false)
 
-  const total = useMemo(
-    () => builderExtraText.prices[inputs.plan][inputs.billingCycle],
-    [builderExtraText.prices, inputs.plan, inputs.billingCycle]
-  )
   const widgetList = business?.chatWidgets || []
   const selectedWidget = useMemo(() => {
     if (!widgetList.length) return null
@@ -226,11 +233,20 @@ export default function ChatWidgetBuilderPage() {
       null
     )
   }, [business?.activeChatWidgetKey, selectedWidgetKey, widgetList])
+  const databasePlan = useMemo(
+    () => getEffectiveBusinessPlan(business, selectedWidget?.config),
+    [business, selectedWidget?.config]
+  )
+  const total = useMemo(
+    () => builderExtraText.prices[databasePlan][inputs.billingCycle],
+    [builderExtraText.prices, databasePlan, inputs.billingCycle]
+  )
 
   const applyWidgetConfig = (config: ChatWidgetConfig | undefined) => {
     if (!config) return
 
-    const bubbleStyle = config.bubbleStyle || defaultInputs.bubbleStyle
+    const effectivePlan = getEffectiveBusinessPlan(business, config)
+    const bubbleStyle = sanitizeBubbleStyleForPlan(config.bubbleStyle || defaultInputs.bubbleStyle, effectivePlan)
     const configIcons = config.widgetIcons || {}
     const migratedIcons: ChatWidgetInterfaceIcons = {
       ...defaultInputs.widgetIcons,
@@ -248,9 +264,16 @@ export default function ChatWidgetBuilderPage() {
     })
 
     setInputs({
-      plan: config.plan || defaultInputs.plan,
+      plan: effectivePlan,
       billingCycle: config.billingCycle || defaultInputs.billingCycle,
       colorTheme: config.colorTheme || defaultInputs.colorTheme,
+      appearance: {
+        ...defaultInputs.appearance,
+        ...(config.appearance || {}),
+        glassLookEnabled: isPlanFeatureAvailable(effectivePlan, 'glassLook')
+          ? Boolean(config.appearance?.glassLookEnabled)
+          : false,
+      },
       position: config.position || defaultInputs.position,
       widgetIcons: {
         ...migratedIcons,
@@ -300,14 +323,20 @@ export default function ChatWidgetBuilderPage() {
   }, [isAuthenticated, business, hasLoadedDbConfig, selectedWidget])
 
   useEffect(() => {
-    if (inputs.plan !== 'free') return
-    if (inputs.bubbleStyle.iconChoice !== 'orb') return
+    if (!hasLoadedDbConfig) return
 
     setInputs((prev) => ({
       ...prev,
-      bubbleStyle: sanitizeBubbleStyleForPlan(prev.bubbleStyle, prev.plan),
+      plan: databasePlan,
+      appearance: {
+        ...prev.appearance,
+        glassLookEnabled: isPlanFeatureAvailable(databasePlan, 'glassLook')
+          ? prev.appearance.glassLookEnabled
+          : false,
+      },
+      bubbleStyle: sanitizeBubbleStyleForPlan(prev.bubbleStyle, databasePlan),
     }))
-  }, [inputs.plan, inputs.bubbleStyle.iconChoice])
+  }, [databasePlan, hasLoadedDbConfig])
 
   useEffect(() => {
     const syncHeaderCollapse = () => {
@@ -400,20 +429,22 @@ export default function ChatWidgetBuilderPage() {
 
     try {
       const newConfig = {
-        plan: inputs.plan,
+        plan: databasePlan,
         billingCycle: inputs.billingCycle,
         colorTheme: inputs.colorTheme,
+        appearance: inputs.appearance,
         position: inputs.position,
         widgetIcons: inputs.widgetIcons,
-        bubbleStyle: sanitizeBubbleStyleForPlan(inputs.bubbleStyle, inputs.plan),
+        bubbleStyle: sanitizeBubbleStyleForPlan(inputs.bubbleStyle, databasePlan),
         headerStyle: inputs.headerStyle,
         bodyStyle: inputs.bodyStyle,
         footerStyle: inputs.footerStyle,
         customBranding: inputs.customBranding,
         settings: inputs.settings,
       }
+      const planSafeConfig = sanitizeChatWidgetConfigForPlan(newConfig, databasePlan)
 
-      const result = await updateChatWidgetConfig(dbUser.businessId, newConfig, selectedWidgetKey || undefined)
+      const result = await updateChatWidgetConfig(dbUser.businessId, planSafeConfig, selectedWidgetKey || undefined)
 
       if (result.success) {
         await refreshBusiness()
@@ -421,14 +452,14 @@ export default function ChatWidgetBuilderPage() {
         // Send localStorage event for real-time updates in admin panel
         if (typeof window !== 'undefined') {
           const storageKey = `widget-config-${dbUser.businessId}`
-          const payload = JSON.stringify(newConfig)
+          const payload = JSON.stringify(planSafeConfig)
           localStorage.setItem(storageKey, payload)
 
           window.dispatchEvent(
             new CustomEvent('vintra-widget-config-updated', {
               detail: {
                 businessId: dbUser.businessId,
-                config: newConfig,
+                config: planSafeConfig,
                 serializedConfig: payload,
               },
             })
@@ -502,27 +533,30 @@ export default function ChatWidgetBuilderPage() {
               </h2>
 
               <div className="panel-actions">
-                {isAuthenticated && (
-                  <div className="auto-save-indicator">
-                    {isSaving && (
-                      <span className="saving-status">
-                        <FiRefreshCw className="spinning" /> {t.saving}
-                      </span>
-                    )}
-                    {saveStatus === 'success' && (
-                      <span className="saved-status">
-                        <FiSave /> {t.saved}
-                      </span>
-                    )}
-                    {saveStatus === 'error' && (
-                      <span className="error-status">{t.saveFailed}</span>
-                    )}
-                  </div>
-                )}
+                <div className="previewModeSwitcher" role="tablist" aria-label={t.previewDevice}>
+                  <button
+                    type="button"
+                    className={previewMode === 'desktop' ? 'active' : ''}
+                    onClick={() => setPreviewMode('desktop')}
+                    aria-pressed={previewMode === 'desktop'}
+                  >
+                    <FiMonitor />
+                    <span>{t.desktop}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={previewMode === 'mobile' ? 'active' : ''}
+                    onClick={() => setPreviewMode('mobile')}
+                    aria-pressed={previewMode === 'mobile'}
+                  >
+                    <FiSmartphone />
+                    <span>{t.mobile}</span>
+                  </button>
+                </div>
 
                 {isAuthenticated ? (
                   <button
-                    className={`save-btn ${isSaving ? 'save-btn--saving' : ''} ${saveStatus === 'success' ? 'save-btn--success' : ''}`}
+                    className={`save-btn ${isSaving ? 'save-btn--saving' : ''} ${saveStatus === 'success' ? 'save-btn--success' : ''} ${saveStatus === 'error' ? 'save-btn--error' : ''}`}
                     onClick={saveConfig}
                     disabled={isSaving}
                     type="button"
@@ -536,7 +570,7 @@ export default function ChatWidgetBuilderPage() {
                         <FiSave />
                       )}
                     </span>
-                    <span>{isSaving ? t.saving : saveStatus === 'success' ? t.savedButton : t.saveConfiguration}</span>
+                    <span>{isSaving ? t.saving : saveStatus === 'success' ? t.savedButton : saveStatus === 'error' ? t.saveFailed : t.saveConfiguration}</span>
                   </button>
                 ) : null}
 
@@ -582,6 +616,7 @@ export default function ChatWidgetBuilderPage() {
                 <PlanSelector
                   plan={inputs.plan}
                   billingCycle={inputs.billingCycle}
+                  lockedPlan={databasePlan}
                   onPlanChange={(plan) => updateInput('plan', plan)}
                   onBillingCycleChange={(cycle) => updateInput('billingCycle', cycle)}
                   isOpen={openSections.plan}
@@ -590,7 +625,7 @@ export default function ChatWidgetBuilderPage() {
 
                 <StyleSelector
                   bubbleStyle={inputs.bubbleStyle}
-                  plan={inputs.plan}
+                  plan={databasePlan}
                   headerStyle={inputs.headerStyle}
                   bodyStyle={inputs.bodyStyle}
                   footerStyle={inputs.footerStyle}
@@ -599,11 +634,13 @@ export default function ChatWidgetBuilderPage() {
                   onBodyStyleChange={(style) => updateInput('bodyStyle', style)}
                   onFooterStyleChange={(style) => updateInput('footerStyle', style)}
                   colorTheme={inputs.colorTheme}
+                  appearance={inputs.appearance}
                   position={inputs.position}
                   widgetIcons={inputs.widgetIcons}
                   customBranding={inputs.customBranding}
                   settings={inputs.settings}
                   onColorThemeChange={(theme) => updateInput('colorTheme', theme)}
+                  onAppearanceChange={(appearance) => updateInput('appearance', appearance)}
                   onPositionChange={(position) => updateInput('position', position)}
                   onWidgetIconsChange={(widgetIcons) => updateInput('widgetIcons', widgetIcons)}
                   onCustomBrandingChange={(branding) => updateInput('customBranding', branding)}
@@ -616,36 +653,17 @@ export default function ChatWidgetBuilderPage() {
           </div>
 
           <div className="preview-panel">
-            <div className="previewModeSwitcher" role="tablist" aria-label={t.previewDevice}>
-              <button
-                type="button"
-                className={previewMode === 'desktop' ? 'active' : ''}
-                onClick={() => setPreviewMode('desktop')}
-                aria-pressed={previewMode === 'desktop'}
-              >
-                <FiMonitor />
-                <span>{t.desktop}</span>
-              </button>
-              <button
-                type="button"
-                className={previewMode === 'mobile' ? 'active' : ''}
-                onClick={() => setPreviewMode('mobile')}
-                aria-pressed={previewMode === 'mobile'}
-              >
-                <FiSmartphone />
-                <span>{t.mobile}</span>
-              </button>
-            </div>
             <WidgetPreview
               total={total}
               billingCycle={inputs.billingCycle}
-              plan={inputs.plan}
+              plan={databasePlan}
               bubbleStyle={inputs.bubbleStyle}
               headerStyle={inputs.headerStyle}
               bodyStyle={inputs.bodyStyle}
               footerStyle={inputs.footerStyle}
               position={inputs.position}
               colorTheme={inputs.colorTheme}
+              appearance={inputs.appearance}
               customBranding={inputs.customBranding}
               assistantIcons={inputs.widgetIcons}
               enablePreviewChat={true}

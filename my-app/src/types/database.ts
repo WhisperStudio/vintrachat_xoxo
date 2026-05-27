@@ -270,6 +270,11 @@ export interface ChatWidgetConfig {
     | 'red-velvet'
     | 'deep-blue'
     | 'banana-bonanza';
+
+  // Visual effects layered on top of the selected theme
+  appearance?: {
+    glassLookEnabled?: boolean;
+  };
   
   // Position (affects widget placement)
   position: 'bottom-right' | 'bottom-left';

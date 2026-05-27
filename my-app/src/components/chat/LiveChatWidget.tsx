@@ -459,6 +459,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         footerStyle={config.footerStyle}
         position={config.position}
         colorTheme={config.colorTheme}
+        appearance={config.appearance}
         customBranding={{
           title,
           description,

@@ -1064,6 +1064,10 @@ export async function GET(
     return config && config.colorTheme ? config.colorTheme : 'modern';
   }
 
+  function getAppearance(config) {
+    return config && config.appearance ? config.appearance : {};
+  }
+
   function getTitle(config) {
     return config && config.customBranding && config.customBranding.title ? config.customBranding.title : 'Support Chat';
   }
@@ -1804,7 +1808,11 @@ export async function GET(
     var footerStyle = config.footerStyle || {};
     var assistantConfig = getAssistantConfig();
     var theme = getThemeName(config);
-    var themeClass = THEME_CLASS_BY_NAME[theme] || THEME_CLASS_BY_NAME.modern || 'theme-modern';
+    var appearance = getAppearance(config);
+    var themeClass = classes([
+      THEME_CLASS_BY_NAME[theme] || THEME_CLASS_BY_NAME.modern || 'theme-modern',
+      appearance.glassLookEnabled ? 'theme-glass-look' : ''
+    ]);
     var position = getPosition(config);
     var iconChoice = bubbleStyle.iconChoice || 'chat';
     var orbStyle = getOrbStyle(config);

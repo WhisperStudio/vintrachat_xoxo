@@ -21,6 +21,15 @@ export const WIDGET_THEME_CLASS: Record<WidgetTheme, string> = {
   'banana-bonanza': 'theme-banana-bonanza',
 }
 
+function glassVars(primaryRgb: string, secondaryRgb: string, surfaceRgb: string, highlightRgb = '255, 255, 255') {
+  return {
+    '--chat-glass-primary-rgb': primaryRgb,
+    '--chat-glass-secondary-rgb': secondaryRgb,
+    '--chat-glass-surface-rgb': surfaceRgb,
+    '--chat-glass-highlight-rgb': highlightRgb,
+  }
+}
+
 export const WIDGET_THEME_VARS: Record<WidgetTheme, Record<string, string>> = {
   modern: {
     '--chat-primary': '#2563eb',
@@ -39,6 +48,7 @@ export const WIDGET_THEME_VARS: Record<WidgetTheme, Record<string, string>> = {
     '--chat-header-action-text': '#ffffff',
     '--chat-icon-shadow': 'rgba(59, 130, 246, 0.3)',
     '--chat-send-shadow': 'rgba(59, 130, 246, 0.24)',
+    ...glassVars('37, 99, 235', '30, 58, 138', '238, 242, 255'),
   },
   chilling: {
     '--chat-primary': '#047857',
@@ -57,6 +67,7 @@ export const WIDGET_THEME_VARS: Record<WidgetTheme, Record<string, string>> = {
     '--chat-header-action-text': '#ffffff',
     '--chat-icon-shadow': 'rgba(16, 185, 129, 0.28)',
     '--chat-send-shadow': 'rgba(16, 185, 129, 0.22)',
+    ...glassVars('4, 120, 87', '6, 95, 70', '197, 255, 226'),
   },
   corporate: {
     '--chat-primary': '#4b5563',
@@ -75,6 +86,7 @@ export const WIDGET_THEME_VARS: Record<WidgetTheme, Record<string, string>> = {
     '--chat-header-action-text': '#ffffff',
     '--chat-icon-shadow': 'rgba(107, 114, 128, 0.26)',
     '--chat-send-shadow': 'rgba(107, 114, 128, 0.2)',
+    ...glassVars('75, 85, 99', '31, 41, 55', '239, 239, 239'),
   },
   luxury: {
     '--chat-primary': '#6d28d9',
@@ -93,6 +105,7 @@ export const WIDGET_THEME_VARS: Record<WidgetTheme, Record<string, string>> = {
     '--chat-header-action-text': '#ffffff',
     '--chat-icon-shadow': 'rgba(124, 58, 237, 0.3)',
     '--chat-send-shadow': 'rgba(124, 58, 237, 0.22)',
+    ...glassVars('109, 40, 217', '76, 29, 149', '216, 228, 251'),
   },
   'pink-blast': {
     '--chat-primary': '#f472b6',
@@ -111,6 +124,7 @@ export const WIDGET_THEME_VARS: Record<WidgetTheme, Record<string, string>> = {
     '--chat-header-action-text': '#ffffff',
     '--chat-icon-shadow': 'rgba(244, 114, 182, 0.28)',
     '--chat-send-shadow': 'rgba(244, 114, 182, 0.22)',
+    ...glassVars('244, 114, 182', '244, 114, 182', '255, 222, 238'),
   },
   'red-velvet': {
     '--chat-primary': '#d50101',
@@ -129,6 +143,7 @@ export const WIDGET_THEME_VARS: Record<WidgetTheme, Record<string, string>> = {
     '--chat-header-action-text': '#ffffff',
     '--chat-icon-shadow': 'rgba(185, 28, 28, 0.28)',
     '--chat-send-shadow': 'rgba(185, 28, 28, 0.22)',
+    ...glassVars('213, 1, 1', '185, 28, 28', '254, 226, 226'),
   },
   'deep-blue': {
     '--chat-primary': '#002fcf',
@@ -147,6 +162,7 @@ export const WIDGET_THEME_VARS: Record<WidgetTheme, Record<string, string>> = {
     '--chat-header-action-text': '#ffffff',
     '--chat-icon-shadow': 'rgba(0, 47, 207, 0.3)',
     '--chat-send-shadow': 'rgba(0, 47, 207, 0.24)',
+    ...glassVars('0, 47, 207', '0, 26, 117', '219, 232, 255'),
   },
   'banana-bonanza': {
     '--chat-primary': '#f59e0b',
@@ -165,6 +181,7 @@ export const WIDGET_THEME_VARS: Record<WidgetTheme, Record<string, string>> = {
     '--chat-header-action-text': '#3b2a10',
     '--chat-icon-shadow': 'rgba(245, 158, 11, 0.28)',
     '--chat-send-shadow': 'rgba(194, 65, 12, 0.22)',
+    ...glassVars('245, 158, 11', '146, 64, 14', '255, 240, 168', '255, 250, 240'),
   },
 }
 

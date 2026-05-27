@@ -43,7 +43,9 @@ import {
 } from "@/types/database";
 import { defaultConversationCards, normalizeConversationCards } from '@/lib/conversation-cards'
 import {
+  getEffectiveBusinessPlan,
   sanitizeBubbleStyleForPlan,
+  sanitizeChatWidgetConfigForPlan,
   getPlanLimits,
   type SubscriptionPlan,
 } from "@/lib/subscription";
@@ -185,6 +187,9 @@ function buildDefaultWidgetConfig(businessName: string): ChatWidgetConfig {
     plan: 'free',
     billingCycle: 'monthly',
     colorTheme: 'modern',
+    appearance: {
+      glassLookEnabled: false,
+    },
     position: 'bottom-right',
     bubbleStyle: {
       showStatus: true,
@@ -341,6 +346,10 @@ function mergeWidgetConfig(
     ...defaults,
     ...config,
     allowedDomains: parseAllowedDomainsInput(config.allowedDomains ?? defaults.allowedDomains),
+    appearance: {
+      ...defaults.appearance,
+      ...(config.appearance || {}),
+    },
     bubbleStyle: {
       ...defaults.bubbleStyle,
       ...(config.bubbleStyle || {}),
@@ -658,6 +667,9 @@ const defaultWidgetConfig: ChatWidgetConfig = {
   plan: "free",
   billingCycle: "monthly",
   colorTheme: "modern",
+  appearance: {
+    glassLookEnabled: false,
+  },
   position: "bottom-right",
   bubbleStyle: {
     showStatus: true,
@@ -1267,19 +1279,37 @@ export async function updateChatWidgetConfig(
     const widgetSnap = await getDoc(widgetRef)
     const widgetData = widgetSnap.exists() ? widgetSnap.data() || {} : {}
     const baseConfig = (widgetData.config || existingConfig || {}) as Partial<ChatWidgetConfig>
-    const plan = (config?.plan || baseConfig.plan || 'free') as SubscriptionPlan
+    const plan = getEffectiveBusinessPlan(
+      {
+        chatWidgetConfig: existingConfig as ChatWidgetConfig | undefined,
+        chatWidgets: widgetSnap.exists()
+          ? [{
+              id: targetWidgetKey,
+              widgetKey: targetWidgetKey,
+              name: String(widgetData.name || 'Chat Widget'),
+              config: baseConfig as ChatWidgetConfig,
+              isDefault: Boolean(widgetData.isDefault),
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }]
+          : undefined,
+        activeChatWidgetKey: String(existingData.activeChatWidgetKey || existingData.chatWidgetKey || ''),
+      },
+      baseConfig
+    )
     const allowedDomains =
       config?.allowedDomains !== undefined
         ? parseAllowedDomainsInput(config.allowedDomains)
         : parseAllowedDomainsInput(baseConfig.allowedDomains)
-    const mergedConfig: Partial<ChatWidgetConfig> = {
+    const mergedConfig = sanitizeChatWidgetConfigForPlan({
       ...baseConfig,
       ...config,
+      plan,
       allowedDomains,
       bubbleStyle: config?.bubbleStyle
         ? sanitizeBubbleStyleForPlan(config.bubbleStyle, plan)
         : baseConfig.bubbleStyle,
-    }
+    }, plan)
 
     const widgetDocPayload = {
       widgetKey: targetWidgetKey,

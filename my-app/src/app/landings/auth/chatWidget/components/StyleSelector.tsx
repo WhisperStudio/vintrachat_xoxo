@@ -28,6 +28,7 @@ import {
 } from 'react-icons/fi'
 import { getWidgetIconOption, renderWidgetIcon, searchWidgetIcons } from '@/lib/widget-icons'
 import { chatWidgetStyleI18n, useVintraLanguage } from '@/lib/i18n'
+import { isPlanFeatureAvailable } from '@/lib/subscription'
 import type { BubbleIconChoice, ChatWidgetInterfaceIcons, OrbStyleConfig } from '@/types/database'
 import './StyleSelector.css'
 
@@ -105,10 +106,14 @@ interface StyleSelectorProps {
     inputStyle: InputStyle
     showPlaceholder: boolean
   }
+  appearance: {
+    glassLookEnabled: boolean
+  }
   onBubbleStyleChange: (style: StyleSelectorProps['bubbleStyle']) => void
   onHeaderStyleChange: (style: StyleSelectorProps['headerStyle']) => void
   onBodyStyleChange: (style: StyleSelectorProps['bodyStyle']) => void
   onFooterStyleChange: (style: StyleSelectorProps['footerStyle']) => void
+  onAppearanceChange: (appearance: StyleSelectorProps['appearance']) => void
   colorTheme: ColorTheme
   plan: Plan
   position: Position
@@ -655,10 +660,12 @@ export default function StyleSelector({
   headerStyle,
   bodyStyle,
   footerStyle,
+  appearance,
   onBubbleStyleChange,
   onHeaderStyleChange,
   onBodyStyleChange,
   onFooterStyleChange,
+  onAppearanceChange,
   colorTheme,
   plan,
   position,
@@ -693,6 +700,9 @@ export default function StyleSelector({
   const activeInterfaceIconValue = activeInterfaceIconRawValue || activeInterfaceIcon.fallback
   const activeInterfaceIconOption = getWidgetIconOption(activeInterfaceIconRawValue)
   const filteredInterfaceIcons = useMemo(() => searchWidgetIcons(interfaceIconSearch), [interfaceIconSearch])
+  const customInterfaceIconsAvailable = isPlanFeatureAvailable(plan, 'customInterfaceIcons')
+  const orbLauncherAvailable = isPlanFeatureAvailable(plan, 'orbLauncher')
+  const glassLookAvailable = isPlanFeatureAvailable(plan, 'glassLook')
   const orbStyle = bubbleStyle.orbStyle || {
     hoverEnabled: true,
     hoverGlyph: 'A',
@@ -1241,6 +1251,33 @@ export default function StyleSelector({
               onChange={(nextValue) => onColorThemeChange(nextValue as ColorTheme)}
             />
           </div>
+
+          <div
+            className={`option-card ${appearance.glassLookEnabled ? 'checked' : ''} ${!glassLookAvailable ? 'option-card--locked' : ''}`}
+            role="button"
+            tabIndex={glassLookAvailable ? 0 : -1}
+            aria-pressed={appearance.glassLookEnabled}
+            aria-disabled={!glassLookAvailable}
+            onClick={() => {
+              if (!glassLookAvailable) return
+              onAppearanceChange({
+                ...appearance,
+                glassLookEnabled: !appearance.glassLookEnabled,
+              })
+            }}
+            onKeyDown={(event) =>
+              handleToggleCardKeyDown(event, () => {
+                if (!glassLookAvailable) return
+                onAppearanceChange({
+                  ...appearance,
+                  glassLookEnabled: !appearance.glassLookEnabled,
+                })
+              })
+            }
+          >
+            <span className="option-title">{text.labels.glassLook}</span>
+            <OptionDesc>{glassLookAvailable ? text.labels.glassLookDesc : text.labels.glassLookLocked}</OptionDesc>
+          </div>
         </div>
       </div>
 
@@ -1269,7 +1306,7 @@ export default function StyleSelector({
                 />
               ) : null}
               {iconChoices.map((choice) => {
-                const locked = choice.minPlan === 'pro' && plan === 'free'
+                const locked = choice.value === 'orb' && !orbLauncherAvailable
                 const active = bubbleStyle.iconChoice === choice.value && !locked
                 return (
                   <button
@@ -1317,7 +1354,9 @@ export default function StyleSelector({
                     key={item.field}
                     type="button"
                     className={`widget-icon-bubble ${active ? 'is-active' : ''}`}
+                    disabled={!customInterfaceIconsAvailable}
                     onClick={() => {
+                      if (!customInterfaceIconsAvailable) return
                       setActiveInterfaceIconField(item.field)
                       setInterfaceIconSearch('')
                     }}
@@ -1340,6 +1379,13 @@ export default function StyleSelector({
               role="tabpanel"
               aria-label={`${activeInterfaceIcon.label} icon picker`}
             >
+              {!customInterfaceIconsAvailable ? (
+                <div className="widget-icon-gallery-lock">
+                  {language === 'no'
+                    ? 'Ikonbytte er tilgjengelig pa Pro og Enterprise. Planen leses fra bedriftens database.'
+                    : 'Icon customization is available on Pro and Enterprise. The plan is read from the business database.'}
+                </div>
+              ) : null}
               <div className="widget-icon-gallery-panel__header">
                 <span className="widget-icon-gallery-panel__preview" aria-hidden="true">
                   {renderWidgetIcon(activeInterfaceIconValue, { 'aria-hidden': true })}
@@ -1352,7 +1398,7 @@ export default function StyleSelector({
                   type="button"
                   className="widget-icon-gallery-panel__clear"
                   onClick={() => updateWidgetIcon(activeInterfaceIcon.field, '')}
-                  disabled={!activeInterfaceIconRawValue}
+                  disabled={!activeInterfaceIconRawValue || !customInterfaceIconsAvailable}
                 >
                   Clear
                 </button>
@@ -1364,6 +1410,7 @@ export default function StyleSelector({
                 value={interfaceIconSearch}
                 onChange={(event) => setInterfaceIconSearch(event.target.value)}
                 placeholder={`Search icon for ${activeInterfaceIcon.label.toLowerCase()}...`}
+                disabled={!customInterfaceIconsAvailable}
               />
 
               <div className="widget-icon-gallery-panel__grid">
@@ -1376,6 +1423,7 @@ export default function StyleSelector({
                       key={option.key}
                       type="button"
                       className={`widget-icon-gallery-option ${active ? 'is-active' : ''}`}
+                      disabled={!customInterfaceIconsAvailable}
                       onClick={() => updateWidgetIcon(activeInterfaceIcon.field, option.key)}
                     >
                       <span className="widget-icon-gallery-option__icon" aria-hidden="true">

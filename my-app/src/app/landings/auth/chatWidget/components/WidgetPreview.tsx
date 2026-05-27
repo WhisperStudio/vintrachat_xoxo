@@ -63,6 +63,9 @@ interface WidgetPreviewProps {
     | 'red-velvet'
     | 'deep-blue'
     | 'banana-bonanza'
+  appearance?: {
+    glassLookEnabled?: boolean
+  }
   customBranding: {
     title?: string
     description?: string
@@ -146,6 +149,7 @@ export default function WidgetPreview({
   footerStyle,
   position,
   colorTheme,
+  appearance,
   customBranding,
   assistantIcons,
   initialOpen = false,
@@ -483,7 +487,10 @@ export default function WidgetPreview({
     }, enablePreviewChat ? 850 : 180)
   }
 
-  const themeClass = getWidgetThemeClass(colorTheme)
+  const themeClass = joinWidgetClasses(
+    getWidgetThemeClass(colorTheme),
+    appearance?.glassLookEnabled ? 'theme-glass-look' : ''
+  )
   const themeVars = getWidgetThemeStyle(colorTheme)
   const bubbleClasses = joinWidgetClasses(
     `border-${bubbleStyle.borderType}`,
