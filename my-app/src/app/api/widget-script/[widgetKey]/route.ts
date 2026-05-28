@@ -1594,8 +1594,8 @@ export async function GET(
     supportPollTimer = window.setInterval(syncSupportChat, 3000);
   }
 
-  async function loadEmbedToken() {
-    if (EMBED_TOKEN) return EMBED_TOKEN;
+  async function loadEmbedToken(forceRefresh) {
+    if (EMBED_TOKEN && !forceRefresh) return EMBED_TOKEN;
 
     var response = await fetch(ORIGIN + '/api/widget/embed-token?key=' + encodeURIComponent(WIDGET_KEY), {
       method: 'GET',
@@ -1619,6 +1619,30 @@ export async function GET(
     }
 
     return EMBED_TOKEN;
+  }
+
+  async function fetchWithEmbedToken(url, options, retryOnForbidden) {
+    await loadEmbedToken();
+
+    var nextOptions = options || {};
+    nextOptions.headers = {
+      ...widgetHeaders(),
+      ...(nextOptions.headers || {})
+    };
+
+    var response = await fetch(url, nextOptions);
+    if (response.status !== 403 || retryOnForbidden === false) {
+      return response;
+    }
+
+    EMBED_TOKEN = '';
+    await loadEmbedToken(true);
+    nextOptions.headers = {
+      ...widgetHeaders(),
+      ...(options && options.headers ? options.headers : {})
+    };
+
+    return fetch(url, nextOptions);
   }
 
   async function solveCaptchaChallenge(challengeQuestion, challengeToken) {
@@ -2066,9 +2090,8 @@ export async function GET(
       render();
 
       try {
-        var humanSupportResponse = await fetch(ORIGIN + '/api/widget/chat', {
+        var humanSupportResponse = await fetchWithEmbedToken(ORIGIN + '/api/widget/chat', {
           method: 'POST',
-          headers: widgetHeaders(),
           mode: 'cors',
           body: JSON.stringify({
             widgetKey: WIDGET_KEY,
@@ -2161,9 +2184,8 @@ export async function GET(
     render();
 
     try {
-      var response = await fetch(ORIGIN + (inHumanSupportMode ? '/api/widget/support' : '/api/widget/chat'), {
+      var response = await fetchWithEmbedToken(ORIGIN + (inHumanSupportMode ? '/api/widget/support' : '/api/widget/chat'), {
         method: 'POST',
-        headers: widgetHeaders(),
         mode: 'cors',
         body: JSON.stringify(
           inHumanSupportMode

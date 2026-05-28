@@ -94,7 +94,13 @@ export function getRequestOrigin(req: NextRequest) {
   if (origin) return origin
 
   const referer = req.headers.get('referer')
-  if (referer) return referer
+  if (referer) {
+    try {
+      return new URL(referer).origin
+    } catch {
+      return ''
+    }
+  }
 
   return ''
 }
