@@ -2236,8 +2236,9 @@ export async function GET(
               '<div class="chat-footer-row">' +
                 '<textarea rows="1" ' +
                   ((state.sending || state.feedbackOpen) ? 'disabled ' : '') +
-                  'value="' + escapeHtml(truncateTextByCharacters(String(state.inputValue || ''), MAX_WIDGET_MESSAGE_CHARS)) + '" ' +
-                  'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : ((state.supportStatus === 'needs-human' || state.supportStatus === 'open') ? 'Write a message for human support...' : 'Write a message...')) + '"></textarea>' +
+                  'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : ((state.supportStatus === 'needs-human' || state.supportStatus === 'open') ? 'Write a message for human support...' : 'Write a message...')) + '">' +
+                  escapeHtml(truncateTextByCharacters(String(state.inputValue || ''), MAX_WIDGET_MESSAGE_CHARS)) +
+                '</textarea>' +
                 (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + ((state.sending || state.feedbackOpen) ? 'disabled' : '') + '>' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('sendIcon', 'FiSend')) || renderIconSlot(icons.send)) + '</button>') +
               '</div>' +
             '</div>'
@@ -2494,7 +2495,18 @@ export async function GET(
 
       if (inHumanSupportMode) {
         setSupportStatus(json.status || state.supportStatus || 'needs-human');
-        updateMessages(Array.isArray(json.messages) ? json.messages : state.messages);
+        if (Array.isArray(json.messages)) {
+          updateMessages(json.messages);
+        } else {
+          updateMessages([
+            {
+              id: 'user-' + Date.now(),
+              role: 'user',
+              text: text,
+              createdAt: new Date().toISOString()
+            }
+          ]);
+        }
         startSupportPolling();
       } else {
         updateMessages(

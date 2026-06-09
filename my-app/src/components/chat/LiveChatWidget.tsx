@@ -540,12 +540,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         window.localStorage.setItem(sessionStorageKey(widgetKey), nextSessionId)
         setSupportChatStatus((String(data.status || 'needs-human') as SupportChatState) || 'needs-human')
         if (Array.isArray(data.messages)) {
-          setMessages((prev) =>
-            dedupeMessages([
-              ...prev,
-              ...data.messages.map((message: any) => toWidgetMessage(message)),
-            ])
-          )
+          setMessages(data.messages.map((message: any) => toWidgetMessage(message)))
         } else {
           setMessages((prev) =>
             dedupeMessages([
@@ -658,12 +653,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
             if (supportResponse.ok && Array.isArray(supportData.messages)) {
               setSupportChatStatus((String(supportData.status || data.status || 'needs-human') as SupportChatState) || 'needs-human')
               setSupportTypingAt(supportData.supportTypingAt ? String(supportData.supportTypingAt) : null)
-              setMessages((prev) =>
-                dedupeMessages([
-                  ...prev,
-                  ...supportData.messages.map((message: any) => toWidgetMessage(message)),
-                ])
-              )
+              setMessages(supportData.messages.map((message: any) => toWidgetMessage(message)))
             }
           } catch (err) {
             console.error('Support sync after handoff failed:', err)
