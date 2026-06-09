@@ -876,7 +876,7 @@ export async function POST(req: NextRequest) {
       requiresName
       ? buildNameRequestReply()
         : needsHumanSupport && assistantConfig.handoffMessage
-        ? `${aiReply}\n\n${assistantConfig.handoffMessage}`.trim()
+        ? assistantConfig.handoffMessage
         : aiReply
 
     const now = new Date()
@@ -900,6 +900,69 @@ export async function POST(req: NextRequest) {
     const supportChatRef = businessRef.collection('supportChats').doc(sessionId)
     const supportChatSnap = await supportChatRef.get()
     const existingSupportChat = supportChatSnap.exists ? supportChatSnap.data() || {} : null
+
+    if (
+      existingSupportChat &&
+      existingSupportChat.status !== 'ai-active' &&
+      existingSupportChat.status !== 'closed'
+    ) {
+      const nextSupportMessage = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        text: message,
+        createdAt: new Date().toISOString(),
+      }
+      const nextSupportMessages = Array.isArray(existingSupportChat.messages)
+        ? [...existingSupportChat.messages, nextSupportMessage]
+        : [nextSupportMessage]
+
+      await supportChatRef.set(
+        {
+          sessionId,
+          widgetKey,
+          businessId: business.id,
+          status: existingSupportChat.status || 'needs-human',
+          source: 'widget',
+          preview: message,
+          visitorName: visitorName || existingSupportChat.visitorName || null,
+          countryCode: countryCode || existingSupportChat.countryCode || null,
+          pageTitle: pageTitle || existingSupportChat.pageTitle || null,
+          pageUrl: pageUrl || existingSupportChat.pageUrl || null,
+          messageCount: nextSupportMessages.length,
+          messages: nextSupportMessages,
+          supportRequestedAt:
+            existingSupportChat.supportRequestedAt || FieldValue.serverTimestamp(),
+          createdAt: existingSupportChat.createdAt || FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      )
+
+      await businessRef.update({
+        updatedAt: FieldValue.serverTimestamp(),
+        'chatAnalytics.totalMessages': FieldValue.increment(1),
+        'chatAnalytics.lastChatAt': FieldValue.serverTimestamp(),
+        [`chatAnalytics.countryCounts.${countryCode}`]: FieldValue.increment(1),
+        'chatAnalytics.timeline': FieldValue.arrayUnion(
+          createAnalyticsEvent('visitor-message', sessionId, countryCode, widgetKey)
+        ),
+      })
+
+      return NextResponse.json(
+        {
+          sessionId,
+          reply:
+            existingSupportChat.status === 'open'
+              ? assistantConfig.handoffMessage || 'A human is currently handling this chat.'
+              : assistantConfig.handoffMessage || 'The chat has been handed over to human support.',
+          supportRequested: true,
+          visitorNameRequired: false,
+          countryCode,
+        },
+        { headers }
+      )
+    }
+
     const isNewSupportChat = needsHumanSupport && !requiresName && !supportChatSnap.exists
 
     const analyticsTimelineEvents = [

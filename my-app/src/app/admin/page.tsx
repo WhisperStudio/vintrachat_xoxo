@@ -549,7 +549,10 @@ export default function AdminPage() {
 
           {activeTab === 'chats' && (
             <div ref={chatsPanelRef}>
-              <AdminChatsPanel selectedWidgetKey={resolvedWidgetKey} />
+              <AdminChatsPanel
+                selectedWidgetKey={resolvedWidgetKey}
+                onWidgetSelected={setSelectedWidgetKey}
+              />
             </div>
           )}
 

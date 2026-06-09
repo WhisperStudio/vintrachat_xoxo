@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import WidgetPreview from '@/app/landings/auth/chatWidget/components/WidgetPreview'
 import '@/app/landings/auth/chatWidget/ChatWidget.css'
 import './LiveChatWidget.css'
@@ -8,10 +8,12 @@ import type { ChatAssistantConfig, ChatWidgetConfig } from '@/types/database'
 
 type WidgetMessage = {
   id: string
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'support' | 'system'
   text: string
   createdAt: string
 }
+
+type SupportChatState = 'none' | 'needs-human' | 'open' | 'ai-active' | 'closed'
 
 type WidgetConfigResponse = {
   businessName: string
@@ -27,8 +29,35 @@ function sessionStorageKey(widgetKey: string) {
   return `vintra-widget-session:${widgetKey}`
 }
 
+function draftStorageKey(widgetKey: string) {
+  return `vintra-widget-draft:${widgetKey}`
+}
+
 function messageId() {
   return crypto.randomUUID()
+}
+
+function toWidgetMessage(message: {
+  id: string
+  role?: 'user' | 'assistant' | 'support' | 'system'
+  text: string
+  createdAt: string
+}): WidgetMessage {
+  return {
+    id: message.id,
+    role: message.role || 'user',
+    text: message.text,
+    createdAt: message.createdAt,
+  }
+}
+
+function dedupeMessages(messages: WidgetMessage[]) {
+  const seen = new Set<string>()
+  return messages.filter((message) => {
+    if (seen.has(message.id)) return false
+    seen.add(message.id)
+    return true
+  })
 }
 
 export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
@@ -41,6 +70,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   const [isOpen, setIsOpen] = useState(forceOpen)
   const [inputValue, setInputValue] = useState('')
   const [isSending, setIsSending] = useState(false)
+  const [supportChatStatus, setSupportChatStatus] = useState<SupportChatState>('none')
   const [error, setError] = useState<string | null>(null)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [feedbackRating, setFeedbackRating] = useState(5)
@@ -49,6 +79,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   const [rateLimitUntil, setRateLimitUntil] = useState(0)
   const [captchaToken, setCaptchaToken] = useState('')
   const [keyboardOffset, setKeyboardOffset] = useState(0)
+  const sendLockRef = useRef(false)
 
   useEffect(() => {
     window.parent.postMessage(
@@ -157,6 +188,17 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   }, [widgetKey])
 
   useEffect(() => {
+    const savedDraft = window.localStorage.getItem(draftStorageKey(widgetKey))
+    if (savedDraft !== null) {
+      setInputValue(savedDraft)
+    }
+  }, [widgetKey])
+
+  useEffect(() => {
+    window.localStorage.setItem(draftStorageKey(widgetKey), inputValue)
+  }, [inputValue, widgetKey])
+
+  useEffect(() => {
     const viewport = window.visualViewport
 
     const updateKeyboardOffset = () => {
@@ -182,6 +224,48 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       viewport?.removeEventListener('scroll', updateKeyboardOffset)
     }
   }, [])
+
+  useEffect(() => {
+    if (!sessionId) return
+
+    let active = true
+    let pollTimer: number | null = null
+
+    async function syncSupportChat() {
+      try {
+        const response = await fetch(
+          `/api/widget/support?key=${encodeURIComponent(widgetKey)}&sessionId=${encodeURIComponent(sessionId || '')}`
+        )
+        const data = await response.json()
+
+        if (!response.ok || !active) return
+
+        const status = String(data.status || 'none') as SupportChatState
+        setSupportChatStatus(status)
+
+        if (Array.isArray(data.messages) && data.messages.length > 0) {
+          setMessages((prev) =>
+            dedupeMessages([
+              ...prev,
+              ...data.messages.map((message: any) => toWidgetMessage(message)),
+            ])
+          )
+        }
+      } catch (err) {
+        if (active) {
+          console.error('Support sync error:', err)
+        }
+      }
+    }
+
+    void syncSupportChat()
+    pollTimer = window.setInterval(syncSupportChat, 3500)
+
+    return () => {
+      active = false
+      if (pollTimer) window.clearInterval(pollTimer)
+    }
+  }, [sessionId, widgetKey])
 
   useEffect(() => {
     if (!configResponse) return
@@ -214,6 +298,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   }, [configResponse, isOpen, widgetKey])
 
   const config = configResponse?.widgetConfig
+  const isHumanHandoffActive = supportChatStatus === 'needs-human' || supportChatStatus === 'open'
 
   const handleToggle = (nextOpen: boolean) => {
     setIsOpen(nextOpen)
@@ -224,7 +309,9 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
 
   const handleSend = async (messageOverride?: string) => {
     const text = String(messageOverride ?? inputValue).trim()
-    if (!text || isSending || isRateLimited) return
+    if (!text || isSending || isRateLimited || sendLockRef.current) return
+
+    sendLockRef.current = true
 
     const userMessage: WidgetMessage = {
       id: messageId(),
@@ -233,109 +320,227 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       createdAt: new Date().toISOString(),
     }
 
-    const nextMessages = [...messages, userMessage]
-    setMessages(nextMessages)
-    setInputValue('')
-    setIsSending(true)
-    setError(null)
-
     try {
-      const response = await fetch('/api/widget/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Vintra-Fingerprint': fingerprintLight,
-          ...(captchaToken ? { 'X-Vintra-Captcha-Token': captchaToken } : {}),
-        },
-        body: JSON.stringify({
-          widgetKey,
-          sessionId,
-          message: text,
-          history: messages,
-          pageTitle: document.title,
-          pageUrl: window.location.href,
-        }),
-      })
+      setIsSending(true)
+      setError(null)
 
-      const data = await response.json()
+      if (isHumanHandoffActive) {
+        const response = await fetch('/api/widget/support', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Vintra-Fingerprint': fingerprintLight,
+            ...(captchaToken ? { 'X-Vintra-Captcha-Token': captchaToken } : {}),
+          },
+          body: JSON.stringify({
+            widgetKey,
+            sessionId,
+            message: text,
+            countryCode: '',
+          }),
+        })
 
-      if (!response.ok) {
-        if (response.status === 429 && data.captchaRequired && data.captchaQuestion && data.captchaToken) {
-          setMessages((prev) => prev.filter((message) => message.id !== userMessage.id))
-          setInputValue(text)
+        const data = await response.json()
 
-          const answer = window.prompt(`${data.captchaQuestion}\n\nEnter the answer to continue:`)
-          if (!answer) {
-            throw new Error('Verification cancelled.')
+        if (!response.ok) {
+          if (response.status === 429 && data.captchaRequired && data.captchaQuestion && data.captchaToken) {
+            setInputValue(text)
+
+            const answer = window.prompt(`${data.captchaQuestion}\n\nEnter the answer to continue:`)
+            if (!answer) {
+              throw new Error('Verification cancelled.')
+            }
+
+            const verifyResponse = await fetch('/api/widget/captcha/verify', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Vintra-Fingerprint': fingerprintLight,
+              },
+              body: JSON.stringify({
+                widgetKey,
+                sessionId: sessionId || '',
+                fingerprint: fingerprintLight,
+                challengeToken: data.captchaToken,
+                answer,
+              }),
+            })
+
+            const verifyJson = await verifyResponse.json()
+            if (!verifyResponse.ok) {
+              throw new Error(verifyJson.error || 'Failed to verify captcha')
+            }
+
+            const nextCaptchaToken = String(verifyJson.captchaToken || '')
+            setCaptchaToken(nextCaptchaToken)
+            window.sessionStorage.setItem(`vintra-widget-captcha:${widgetKey}`, nextCaptchaToken)
+            window.setTimeout(() => {
+              void handleSend(text)
+            }, 0)
+            return
           }
 
-          const verifyResponse = await fetch('/api/widget/captcha/verify', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Vintra-Fingerprint': fingerprintLight,
+          if (response.status === 429 && data.retryAfterSeconds) {
+            setRateLimitUntil(Date.now() + Number(data.retryAfterSeconds) * 1000)
+            throw new Error(`You're sending messages too quickly. Try again in ${data.retryAfterSeconds}s.`)
+          }
+          throw new Error(data.error || 'Failed to send message')
+        }
+
+        const nextSessionId = String(data.sessionId || sessionId || messageId())
+        setSessionId(nextSessionId)
+        window.localStorage.setItem(sessionStorageKey(widgetKey), nextSessionId)
+        setSupportChatStatus((String(data.status || 'needs-human') as SupportChatState) || 'needs-human')
+        if (Array.isArray(data.messages)) {
+          setMessages((prev) =>
+            dedupeMessages([
+              ...prev,
+              ...data.messages.map((message: any) => toWidgetMessage(message)),
+            ])
+          )
+        } else {
+          setMessages((prev) =>
+            dedupeMessages([
+              ...prev,
+              userMessage,
+            ])
+          )
+        }
+        setInputValue('')
+        window.localStorage.removeItem(draftStorageKey(widgetKey))
+      } else {
+        setMessages((prev) =>
+          dedupeMessages([
+            ...prev,
+            userMessage,
+          ])
+        )
+        const response = await fetch('/api/widget/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Vintra-Fingerprint': fingerprintLight,
+            ...(captchaToken ? { 'X-Vintra-Captcha-Token': captchaToken } : {}),
+          },
+          body: JSON.stringify({
+            widgetKey,
+            sessionId,
+            message: text,
+            history: [...messages, userMessage],
+            pageTitle: document.title,
+            pageUrl: window.location.href,
+          }),
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          if (response.status === 429 && data.captchaRequired && data.captchaQuestion && data.captchaToken) {
+            setMessages((prev) => prev.filter((message) => message.id !== userMessage.id))
+            setInputValue(text)
+
+            const answer = window.prompt(`${data.captchaQuestion}\n\nEnter the answer to continue:`)
+            if (!answer) {
+              throw new Error('Verification cancelled.')
+            }
+
+            const verifyResponse = await fetch('/api/widget/captcha/verify', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Vintra-Fingerprint': fingerprintLight,
+              },
+              body: JSON.stringify({
+                widgetKey,
+                sessionId: sessionId || '',
+                fingerprint: fingerprintLight,
+                challengeToken: data.captchaToken,
+                answer,
+              }),
+            })
+
+            const verifyJson = await verifyResponse.json()
+            if (!verifyResponse.ok) {
+              throw new Error(verifyJson.error || 'Failed to verify captcha')
+            }
+
+            const nextCaptchaToken = String(verifyJson.captchaToken || '')
+            setCaptchaToken(nextCaptchaToken)
+            window.sessionStorage.setItem(`vintra-widget-captcha:${widgetKey}`, nextCaptchaToken)
+
+            setMessages((prev) => prev.filter((message) => message.id !== userMessage.id))
+            setInputValue(text)
+            window.setTimeout(() => {
+              void handleSend(text)
+            }, 0)
+            return
+          }
+
+          if (response.status === 429 && data.retryAfterSeconds) {
+            setRateLimitUntil(Date.now() + Number(data.retryAfterSeconds) * 1000)
+            throw new Error(`You're sending messages too quickly. Try again in ${data.retryAfterSeconds}s.`)
+          }
+          throw new Error(data.error || 'Failed to send message')
+        }
+
+        const nextSessionId = String(data.sessionId || sessionId || messageId())
+        setSessionId(nextSessionId)
+        window.localStorage.setItem(sessionStorageKey(widgetKey), nextSessionId)
+
+        if (data.supportRequested) {
+          setSupportChatStatus('needs-human')
+        }
+
+        if (data.visitorNameRequired) {
+          setInputValue(text)
+        } else {
+          setInputValue('')
+          window.localStorage.removeItem(draftStorageKey(widgetKey))
+        }
+
+        if (data.supportRequested) {
+          try {
+            const supportResponse = await fetch(
+              `/api/widget/support?key=${encodeURIComponent(widgetKey)}&sessionId=${encodeURIComponent(nextSessionId)}`
+            )
+            const supportData = await supportResponse.json()
+            if (supportResponse.ok && Array.isArray(supportData.messages)) {
+              setMessages(
+                supportData.messages.map((message: any) => toWidgetMessage(message))
+              )
+            }
+          } catch (err) {
+            console.error('Support sync after handoff failed:', err)
+          }
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: messageId(),
+              role: 'assistant',
+              text: String(data.reply || ''),
+              createdAt: new Date().toISOString(),
             },
-            body: JSON.stringify({
-              widgetKey,
-              sessionId: sessionId || '',
-              fingerprint: fingerprintLight,
-              challengeToken: data.captchaToken,
-              answer,
-            }),
-          })
-
-          const verifyJson = await verifyResponse.json()
-          if (!verifyResponse.ok) {
-            throw new Error(verifyJson.error || 'Failed to verify captcha')
-          }
-
-          const nextCaptchaToken = String(verifyJson.captchaToken || '')
-          setCaptchaToken(nextCaptchaToken)
-          window.sessionStorage.setItem(`vintra-widget-captcha:${widgetKey}`, nextCaptchaToken)
-
-          setMessages((prev) => prev.filter((message) => message.id !== userMessage.id))
-          setInputValue(text)
-          window.setTimeout(() => {
-            void handleSend(text)
-          }, 0)
-          return
+          ])
         }
 
-        if (response.status === 429 && data.retryAfterSeconds) {
-          setRateLimitUntil(Date.now() + Number(data.retryAfterSeconds) * 1000)
-          setError(null)
-          throw new Error(`You're sending messages too quickly. Try again in ${data.retryAfterSeconds}s.`)
+        if (data.feedbackFormRequested) {
+          setFeedbackOpen(true)
         }
-        throw new Error(data.error || 'Failed to send message')
-      }
-
-      const nextSessionId = String(data.sessionId || sessionId || messageId())
-      setSessionId(nextSessionId)
-      window.localStorage.setItem(sessionStorageKey(widgetKey), nextSessionId)
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: messageId(),
-          role: 'assistant',
-          text: String(data.reply || ''),
-          createdAt: new Date().toISOString(),
-        },
-      ])
-
-      if (data.feedbackFormRequested) {
-        setFeedbackOpen(true)
       }
     } catch (err) {
       console.error(err)
       const message = err instanceof Error ? err.message : ''
       if (!message.toLowerCase().includes('too quickly')) {
-        setError('The assistant could not reply right now.')
+        setError(isHumanHandoffActive ? 'Support message could not be sent right now.' : 'The assistant could not reply right now.')
       }
-      setMessages((prev) => prev.filter((message) => message.id !== userMessage.id))
+      if (!isHumanHandoffActive) {
+        setMessages((prev) => prev.filter((message) => message.id !== userMessage.id))
+      }
       setInputValue(text)
     } finally {
       setIsSending(false)
+      sendLockRef.current = false
     }
   }
 
@@ -482,7 +687,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         onToggleOpen={handleToggle}
         statusText={configResponse?.assistantEnabled ? 'AI live' : 'AI off'}
         disableInput={isSending || feedbackOpen || isRateLimited}
-        bubbleActivityState={isSending ? 'replying' : 'idle'}
+        bubbleActivityState={isSending && !isHumanHandoffActive ? 'replying' : 'idle'}
         feedbackOverlay={{
           open: feedbackOpen,
           rating: feedbackRating,
