@@ -1298,6 +1298,12 @@ export async function GET(
     }
   }
 
+  function syncHandoffSubmitState() {
+    var submitButton = mount.querySelector('.widget-handoff-submit');
+    if (!submitButton) return;
+    submitButton.disabled = !String(state.handoffName || '').trim() || Boolean(state.sending);
+  }
+
   function getPosition(config) {
     return config && config.position === 'bottom-left' ? 'bottom-left' : 'bottom-right';
   }
@@ -1615,6 +1621,7 @@ export async function GET(
 
   async function syncSupportChat() {
     if (!state.sessionId) return;
+    if (state.sending) return;
 
     try {
       var response = await fetch(
@@ -1825,18 +1832,32 @@ export async function GET(
       state.supportTypingAt = '';
       setSupportStatus('needs-human');
 
-      updateMessages(state.messages.concat([
-        {
-          id: 'assistant-' + Date.now(),
-          role: 'assistant',
-          text: String(humanSupportJson.reply || 'Takk for info, jeg har flagget det inn til et menneske. Mens vi venter, er det noe annet du lurer på?'),
-          createdAt: new Date().toISOString()
-        }
-      ]));
+      var humanSupportAck = {
+        id: 'assistant-' + Date.now(),
+        role: 'assistant',
+        text: String(humanSupportJson.reply || 'Takk for info, jeg har flagget det inn til et menneske. Mens vi venter, er det noe annet du lurer på?'),
+        createdAt: new Date().toISOString()
+      };
+
+      updateMessages(state.messages.concat([humanSupportAck]));
+      state.supportSnapshot = JSON.stringify({
+        status: 'needs-human',
+        messageCount: Number(humanSupportJson.messageCount || state.messages.length || 0),
+        messages: state.messages.map(function (msg) {
+          return {
+            id: msg.id,
+            role: msg.role,
+            text: msg.text,
+            createdAt: msg.createdAt,
+          };
+        }),
+      });
 
       startSupportPolling();
-      void syncSupportChat();
     } catch (error) {
+      updateMessages(state.messages.filter(function (message) {
+        return message.id !== userMessageId;
+      }));
       state.error = error instanceof Error ? error.message : 'Failed to process chat';
     } finally {
       void updateVisitorTyping(false);
@@ -2133,7 +2154,7 @@ export async function GET(
           phone: state.handoffPhone,
           pendingText: state.pendingHumanSupportText
         });
-        render();
+        syncHandoffSubmitState();
       }
     });
   }
@@ -2414,14 +2435,10 @@ export async function GET(
     }
 
     var inHumanSupportMode = state.supportStatus === 'needs-human' || state.supportStatus === 'open';
-    if (state.sessionId && inHumanSupportMode) {
-      await syncSupportChat();
-      inHumanSupportMode = state.supportStatus === 'needs-human' || state.supportStatus === 'open';
-    }
-
+    var userMessageId = 'user-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
     updateMessages(state.messages.concat([
       {
-        id: 'user-' + Date.now(),
+        id: userMessageId,
         role: 'user',
         text: text,
         createdAt: new Date().toISOString()
@@ -2444,7 +2461,8 @@ export async function GET(
             ? {
                 widgetKey: WIDGET_KEY,
                 sessionId: state.sessionId || undefined,
-                message: text
+                message: text,
+                clientMessageId: userMessageId
               }
             : {
                 widgetKey: WIDGET_KEY,
@@ -2497,10 +2515,22 @@ export async function GET(
         setSupportStatus(json.status || state.supportStatus || 'needs-human');
         if (Array.isArray(json.messages)) {
           updateMessages(json.messages);
+          state.supportSnapshot = JSON.stringify({
+            status: String(json.status || state.supportStatus || 'needs-human'),
+            messageCount: Number(json.messageCount || json.messages.length || 0),
+            messages: json.messages.map(function (msg) {
+              return {
+                id: String(msg.id || ''),
+                role: normalizeRole(msg.role),
+                text: String(msg.text || ''),
+                createdAt: String(msg.createdAt || '')
+              };
+            }),
+          });
         } else {
           updateMessages([
             {
-              id: 'user-' + Date.now(),
+              id: userMessageId,
               role: 'user',
               text: text,
               createdAt: new Date().toISOString()
@@ -2542,7 +2572,6 @@ export async function GET(
         if (json.supportRequested) {
           setSupportStatus('needs-human');
           startSupportPolling();
-          void syncSupportChat();
         } else if (state.supportStatus === 'ai-active') {
           stopSupportPolling();
         }

@@ -581,17 +581,19 @@ export default function AdminChatsPanel({
         </div>
       </div>
 
-      <div className="adminChatsToolbar">
-        <label className="adminChatsSearch">
-          <FiSearch />
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder={text.searchPlaceholder}
-          />
-        </label>
+     
 
+      {isFilteredEmpty ? (
+        <div className="adminChatsEmptyState">
+          <h2>{text.emptyFiltered}</h2>
+          <p>
+            {selectedWidgetKey ? text.emptySelectedWidget : text.empty}
+          </p>
+        </div>
+      ) : (
+        <div className="adminChatsLayout">
+          <aside className="adminChatsInbox">
+             <div className="adminChatsToolbar">
         <div className="adminChatsToolbarActions">
           <button
             type="button"
@@ -615,19 +617,17 @@ export default function AdminChatsPanel({
             <FiClock />
             {sortMode === 'newest' ? text.newestFirst : text.oldestFirst}
           </button>
+          <label className="adminChatsSearch">
+          <FiSearch />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder={text.searchPlaceholder}
+          />
+        </label>
         </div>
       </div>
-
-      {isFilteredEmpty ? (
-        <div className="adminChatsEmptyState">
-          <h2>{text.emptyFiltered}</h2>
-          <p>
-            {selectedWidgetKey ? text.emptySelectedWidget : text.empty}
-          </p>
-        </div>
-      ) : (
-        <div className="adminChatsLayout">
-          <aside className="adminChatsInbox">
             <div className="adminChatsListHeader">
               <strong>{text.chatList}</strong>
               <span>
@@ -657,14 +657,15 @@ export default function AdminChatsPanel({
                     <div className="adminChatsListCopy">
                       <div className="adminChatsListTopRow">
                         <strong>{title}</strong>
-                        <span className="adminChatsListStamp">
+                        <div className="adminChatsListMeta">
+                          <span className="adminChatsListStamp">
                           {stamp}
                         </span>
-                      </div>
-                      <p>{preview}</p>
-                      <div className="adminChatsListMeta">
                         <span>{chat.messageCount} {text.messages}</span>
                       </div>
+                      </div>
+                      <p>{preview}</p>
+                    
                     </div>
 
                     {isUnread ? <span className="adminChatsUnreadDot" aria-label={text.unread} /> : null}

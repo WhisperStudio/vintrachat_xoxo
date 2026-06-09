@@ -140,6 +140,7 @@ export async function POST(req: NextRequest) {
     const widgetKey = String(body.widgetKey || '')
     const sessionId = String(body.sessionId || '')
     const message = String(body.message || '').trim()
+    const clientMessageId = String(body.clientMessageId || body.messageId || '').trim()
     const typing = Boolean(body.typing)
     const countryCode = String(body.countryCode || getRequestCountryCode(req) || 'XX').toUpperCase()
     const fingerprint = String(req.headers.get('x-vintra-fingerprint') || body.fingerprint || '').trim()
@@ -327,14 +328,18 @@ export async function POST(req: NextRequest) {
 
     const data = snap.data() || {}
     const businessRef = adminDb.collection('businesses').doc(business.id)
+    const nextMessageId = clientMessageId || crypto.randomUUID()
 
     const nextMessage = {
-      id: crypto.randomUUID(),
+      id: nextMessageId,
       role: 'user',
       text: message,
       createdAt: new Date().toISOString(),
     }
 
+    const existingMessages = Array.isArray(data.messages) ? data.messages : []
+    const alreadyStored = existingMessages.some((entry: any) => String(entry?.id || '') === nextMessageId)
+    const mergedMessages = alreadyStored ? existingMessages : [...existingMessages, nextMessage]
     await chatRef.set(
       {
         sessionId,
@@ -349,8 +354,8 @@ export async function POST(req: NextRequest) {
         countryCode: countryCode || data.countryCode || null,
         pageTitle: data.pageTitle || null,
         pageUrl: data.pageUrl || null,
-        messageCount: FieldValue.increment(1),
-        messages: FieldValue.arrayUnion(nextMessage),
+        messageCount: FieldValue.increment(alreadyStored ? 0 : 1),
+        messages: mergedMessages,
         supportRequestedAt: data.supportRequestedAt || FieldValue.serverTimestamp(),
         visitorTypingAt: FieldValue.delete(),
         visitorTypingBy: FieldValue.delete(),

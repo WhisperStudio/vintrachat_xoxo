@@ -154,6 +154,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   const [keyboardOffset, setKeyboardOffset] = useState(0)
   const sendLockRef = useRef(false)
   const visitorTypingTimerRef = useRef<number | null>(null)
+  const supportSnapshotRef = useRef('')
 
   useEffect(() => {
     window.parent.postMessage(
@@ -322,6 +323,8 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
 
     async function syncSupportChat() {
       try {
+        if (sendLockRef.current) return
+
         const response = await fetch(
           `/api/widget/support?key=${encodeURIComponent(widgetKey)}&sessionId=${encodeURIComponent(sessionId || '')}`
         )
@@ -333,13 +336,21 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         setSupportChatStatus(status)
         setSupportTypingAt(data.supportTypingAt ? String(data.supportTypingAt) : null)
 
-        if (Array.isArray(data.messages) && data.messages.length > 0) {
-          setMessages((prev) =>
-            dedupeMessages([
-              ...prev,
-              ...data.messages.map((message: any) => toWidgetMessage(message)),
-            ])
-          )
+        const nextMessages = Array.isArray(data.messages) ? data.messages.map((message: any) => toWidgetMessage(message)) : []
+        const nextSnapshot = JSON.stringify({
+          status,
+          messageCount: Number(data.messageCount || nextMessages.length || 0),
+          messages: nextMessages.map((message: WidgetMessage) => ({
+            id: message.id,
+            role: message.role,
+            text: message.text,
+            createdAt: message.createdAt,
+          })),
+        })
+
+        if (nextSnapshot !== supportSnapshotRef.current) {
+          supportSnapshotRef.current = nextSnapshot
+          setMessages(nextMessages)
         }
       } catch (err) {
         if (active) {
@@ -473,6 +484,15 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       setError(null)
 
       if (isHumanSupportOpen || isHumanSupportPending) {
+        setMessages((prev) =>
+          dedupeMessages([
+            ...prev,
+            userMessage,
+          ])
+        )
+        setInputValue('')
+        window.localStorage.removeItem(draftStorageKey(widgetKey))
+
         const response = await fetch('/api/widget/support', {
           method: 'POST',
           headers: {
@@ -484,6 +504,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
             widgetKey,
             sessionId,
             message: text,
+            clientMessageId: userMessage.id,
             countryCode: '',
           }),
         })
@@ -492,7 +513,9 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
 
         if (!response.ok) {
           if (response.status === 429 && data.captchaRequired && data.captchaQuestion && data.captchaToken) {
+            setMessages((prev) => prev.filter((message) => message.id !== userMessage.id))
             setInputValue(text)
+            window.localStorage.setItem(draftStorageKey(widgetKey), text)
 
             const answer = window.prompt(`${data.captchaQuestion}\n\nEnter the answer to continue:`)
             if (!answer) {
@@ -529,6 +552,9 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
           }
 
           if (response.status === 429 && data.retryAfterSeconds) {
+            setMessages((prev) => prev.filter((message) => message.id !== userMessage.id))
+            setInputValue(text)
+            window.localStorage.setItem(draftStorageKey(widgetKey), text)
             setRateLimitUntil(Date.now() + Number(data.retryAfterSeconds) * 1000)
             throw new Error(`You're sending messages too quickly. Try again in ${data.retryAfterSeconds}s.`)
           }
@@ -540,17 +566,19 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         window.localStorage.setItem(sessionStorageKey(widgetKey), nextSessionId)
         setSupportChatStatus((String(data.status || 'needs-human') as SupportChatState) || 'needs-human')
         if (Array.isArray(data.messages)) {
-          setMessages(data.messages.map((message: any) => toWidgetMessage(message)))
-        } else {
-          setMessages((prev) =>
-            dedupeMessages([
-              ...prev,
-              userMessage,
-            ])
-          )
+          const nextMessages = data.messages.map((message: any) => toWidgetMessage(message))
+          supportSnapshotRef.current = JSON.stringify({
+            status: String(data.status || 'needs-human'),
+            messageCount: Number(data.messageCount || nextMessages.length || 0),
+            messages: nextMessages.map((message: WidgetMessage) => ({
+              id: message.id,
+              role: message.role,
+              text: message.text,
+              createdAt: message.createdAt,
+            })),
+          })
+          setMessages(nextMessages)
         }
-        setInputValue('')
-        window.localStorage.removeItem(draftStorageKey(widgetKey))
       } else {
         setMessages((prev) =>
           dedupeMessages([
@@ -680,10 +708,13 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       if (!message.toLowerCase().includes('too quickly')) {
         setError(isHumanSupportOpen || isHumanSupportPending ? 'Support message could not be sent right now.' : 'The assistant could not reply right now.')
       }
-      if (!(isHumanSupportOpen || isHumanSupportPending)) {
+      if (isHumanSupportOpen || isHumanSupportPending) {
+        setMessages((prev) => prev.filter((message) => message.id !== userMessage.id))
+      } else {
         setMessages((prev) => prev.filter((message) => message.id !== userMessage.id))
       }
       setInputValue(text)
+      window.localStorage.setItem(draftStorageKey(widgetKey), text)
     } finally {
       void updateVisitorTyping(false)
       setIsSending(false)
@@ -778,43 +809,27 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       setInputValue('')
       window.localStorage.removeItem(draftStorageKey(widgetKey))
 
-      try {
-        const supportResponse = await fetch(
-          `/api/widget/support?key=${encodeURIComponent(widgetKey)}&sessionId=${encodeURIComponent(nextSessionId)}`
-        )
-        const supportData = await supportResponse.json()
-        if (supportResponse.ok) {
-          setSupportChatStatus((String(supportData.status || data.status || 'needs-human') as SupportChatState) || 'needs-human')
-          setSupportTypingAt(supportData.supportTypingAt ? String(supportData.supportTypingAt) : null)
-          setMessages((prev) =>
-            dedupeMessages([
-              ...prev,
-              ...(Array.isArray(supportData.messages) ? supportData.messages.map((message: any) => toWidgetMessage(message)) : []),
-            ])
-          )
-        } else {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: messageId(),
-              role: 'assistant',
-              text: String(data.reply || 'Takk for info, jeg har flagget det inn til et menneske.'),
-              createdAt: new Date().toISOString(),
-            },
-          ])
-        }
-      } catch (err) {
-        console.error('Support sync after human handoff failed:', err)
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: messageId(),
-            role: 'assistant',
-            text: String(data.reply || 'Takk for info, jeg har flagget det inn til et menneske.'),
-            createdAt: new Date().toISOString(),
-          },
-        ])
+      const acknowledgementMessage = {
+        id: messageId(),
+        role: 'assistant' as const,
+        text: String(data.reply || 'Takk for info, jeg har flagget det inn til et menneske. Mens vi venter, er det noe annet du lurer på?'),
+        createdAt: new Date().toISOString(),
       }
+
+      setMessages((prev) => {
+        const nextMessages = [...prev, acknowledgementMessage]
+        supportSnapshotRef.current = JSON.stringify({
+          status: String(data.status || 'needs-human'),
+          messageCount: Number(data.messageCount || nextMessages.length || 0),
+            messages: nextMessages.map((message: WidgetMessage) => ({
+            id: message.id,
+            role: message.role,
+            text: message.text,
+            createdAt: message.createdAt,
+          })),
+        })
+        return nextMessages
+      })
     } catch (err) {
       console.error(err)
       const message = err instanceof Error ? err.message : ''
