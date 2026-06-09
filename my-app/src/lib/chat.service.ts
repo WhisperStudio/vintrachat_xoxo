@@ -141,6 +141,8 @@ export async function getSupportChats(businessId: string): Promise<SupportChatSe
       createdAt: toDate(data.createdAt),
       updatedAt: toDate(data.updatedAt),
       supportRequestedAt: data.supportRequestedAt ? toDate(data.supportRequestedAt) : undefined,
+      supportTypingAt: data.supportTypingAt ? toDate(data.supportTypingAt) : undefined,
+      supportTypingBy: data.supportTypingBy || undefined,
       messageCount: Number(data.messageCount || 0),
       messages: Array.isArray(data.messages) ? data.messages.map(mapSupportMessage) : [],
     } as SupportChatSession

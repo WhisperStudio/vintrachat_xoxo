@@ -19,9 +19,20 @@ function corsHeaders(origin?: string | null) {
   }
 }
 
+function getFallbackMessageId(message: any) {
+  const role = String(message.role || 'user')
+  const text = String(message.text || '')
+  const createdAt =
+    typeof message.createdAt?.toDate === 'function'
+      ? message.createdAt.toDate().toISOString()
+      : String(message.createdAt || '')
+
+  return `${role}:${createdAt}:${text}`
+}
+
 function mapMessage(message: any) {
   return {
-    id: message.id || crypto.randomUUID(),
+    id: String(message.id || getFallbackMessageId(message)),
     role:
       message.role === 'assistant' ||
       message.role === 'support' ||
@@ -101,6 +112,10 @@ export async function GET(req: NextRequest) {
         messageCount: Number(data.messageCount || 0),
         visitorName: data.visitorName,
         countryCode: data.countryCode,
+        supportTypingAt:
+          typeof data.supportTypingAt?.toDate === 'function'
+            ? data.supportTypingAt.toDate().toISOString()
+            : data.supportTypingAt || null,
         messages: Array.isArray(data.messages) ? data.messages.map(mapMessage) : [],
       },
       { headers }

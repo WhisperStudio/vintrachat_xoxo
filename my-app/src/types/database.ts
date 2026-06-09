@@ -192,6 +192,8 @@ export interface SupportChatSession {
   createdAt: Date;
   updatedAt: Date;
   supportRequestedAt?: Date;
+  supportTypingAt?: Date;
+  supportTypingBy?: string;
   messageCount: number;
   messages: SupportChatMessage[];
 }

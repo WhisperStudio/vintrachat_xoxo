@@ -37,14 +37,24 @@ function messageId() {
   return crypto.randomUUID()
 }
 
+function stableMessageId(message: {
+  id?: string
+  role?: 'user' | 'assistant' | 'support' | 'system'
+  text: string
+  createdAt: string
+}) {
+  if (message.id) return message.id
+  return `${message.role || 'user'}:${message.createdAt}:${message.text}`
+}
+
 function toWidgetMessage(message: {
-  id: string
+  id?: string
   role?: 'user' | 'assistant' | 'support' | 'system'
   text: string
   createdAt: string
 }): WidgetMessage {
   return {
-    id: message.id,
+    id: stableMessageId(message),
     role: message.role || 'user',
     text: message.text,
     createdAt: message.createdAt,
@@ -68,9 +78,13 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   const [messages, setMessages] = useState<WidgetMessage[]>(emptyMessages)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [isOpen, setIsOpen] = useState(forceOpen)
-  const [inputValue, setInputValue] = useState('')
+  const [inputValue, setInputValue] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    return window.localStorage.getItem(draftStorageKey(widgetKey)) || ''
+  })
   const [isSending, setIsSending] = useState(false)
   const [supportChatStatus, setSupportChatStatus] = useState<SupportChatState>('none')
+  const [supportTypingAt, setSupportTypingAt] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [feedbackRating, setFeedbackRating] = useState(5)
@@ -188,13 +202,6 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   }, [widgetKey])
 
   useEffect(() => {
-    const savedDraft = window.localStorage.getItem(draftStorageKey(widgetKey))
-    if (savedDraft !== null) {
-      setInputValue(savedDraft)
-    }
-  }, [widgetKey])
-
-  useEffect(() => {
     window.localStorage.setItem(draftStorageKey(widgetKey), inputValue)
   }, [inputValue, widgetKey])
 
@@ -242,6 +249,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
 
         const status = String(data.status || 'none') as SupportChatState
         setSupportChatStatus(status)
+        setSupportTypingAt(data.supportTypingAt ? String(data.supportTypingAt) : null)
 
         if (Array.isArray(data.messages) && data.messages.length > 0) {
           setMessages((prev) =>
@@ -299,6 +307,11 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
 
   const config = configResponse?.widgetConfig
   const isHumanHandoffActive = supportChatStatus === 'needs-human' || supportChatStatus === 'open'
+  const isSupportTyping =
+    isHumanHandoffActive &&
+    supportChatStatus === 'open' &&
+    Boolean(supportTypingAt) &&
+    Date.now() - new Date(supportTypingAt || 0).getTime() < 4500
 
   const handleToggle = (nextOpen: boolean) => {
     setIsOpen(nextOpen)
@@ -505,8 +518,13 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
             )
             const supportData = await supportResponse.json()
             if (supportResponse.ok && Array.isArray(supportData.messages)) {
-              setMessages(
-                supportData.messages.map((message: any) => toWidgetMessage(message))
+              setSupportChatStatus((String(supportData.status || data.status || 'needs-human') as SupportChatState) || 'needs-human')
+              setSupportTypingAt(supportData.supportTypingAt ? String(supportData.supportTypingAt) : null)
+              setMessages((prev) =>
+                dedupeMessages([
+                  ...prev,
+                  ...supportData.messages.map((message: any) => toWidgetMessage(message)),
+                ])
               )
             }
           } catch (err) {
@@ -688,6 +706,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         statusText={configResponse?.assistantEnabled ? 'AI live' : 'AI off'}
         disableInput={isSending || feedbackOpen || isRateLimited}
         bubbleActivityState={isSending && !isHumanHandoffActive ? 'replying' : 'idle'}
+        supportTypingIndicator={isSupportTyping}
         feedbackOverlay={{
           open: feedbackOpen,
           rating: feedbackRating,

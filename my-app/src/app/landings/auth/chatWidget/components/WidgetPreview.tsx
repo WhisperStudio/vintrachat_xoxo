@@ -99,6 +99,7 @@ interface WidgetPreviewProps {
   statusText?: string
   disableInput?: boolean
   bubbleActivityState?: 'idle' | 'replying'
+  supportTypingIndicator?: boolean
   feedbackOverlay?: {
     open: boolean
     title?: string
@@ -171,6 +172,7 @@ export default function WidgetPreview({
   statusText = 'Online',
   disableInput = false,
   bubbleActivityState = 'idle',
+  supportTypingIndicator = false,
   feedbackOverlay,
   conversationCardsEnabled = false,
   conversationCards = [],
@@ -229,6 +231,7 @@ export default function WidgetPreview({
   const inputValue = inputValueOverride ?? internalInputValue
   const isReplying = bubbleActivityState === 'replying' || internalIsReplying
   const showTypingIndicator = isReplying
+  const showSupportTypingIndicator = supportTypingIndicator
   const feedbackKeywords = ['feedback', 'review', 'rating', 'star', 'stars', 'vurdering', 'anmeldelse', 'tilbakemelding']
   const internalRequestedFeedback = (text: string) =>
     feedbackKeywords.some((keyword) => text.toLowerCase().includes(keyword))
@@ -906,6 +909,20 @@ export default function WidgetPreview({
                       </div>
                     </div>
                   )}
+                  {showSupportTypingIndicator ? (
+                    <div className="message message-support message-typing" aria-live="polite" aria-label="Support is typing">
+                      {effectiveAssistantIcons.supportIcon ? (
+                        <span className="message-role-icon" aria-hidden="true">
+                          {renderWidgetIcon(effectiveAssistantIcons.supportIcon, { 'aria-hidden': true })}
+                        </span>
+                      ) : null}
+                      <div className="typing-dots">
+                        <span />
+                        <span />
+                        <span />
+                      </div>
+                    </div>
+                  ) : null}
                 </>
               )}
               </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { doc, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { deleteField, doc, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { FiClock, FiPlus, FiSearch, FiSend, FiShield, FiUsers } from 'react-icons/fi'
 
 import { useAuth } from '@/context/AuthContext'
@@ -144,6 +144,7 @@ export default function AdminChatsPanel({
     status: 'open',
   })
   const messagesRef = useRef<HTMLDivElement | null>(null)
+  const typingTimerRef = useRef<number | null>(null)
   const readStorageKey = dbUser?.businessId ? `vintra-admin-chat-read:${dbUser.businessId}` : ''
 
   useEffect(() => {
@@ -276,6 +277,15 @@ export default function AdminChatsPanel({
     [filteredChats, selectedChatId]
   )
 
+  const clearSupportTyping = async () => {
+    if (!dbUser?.businessId || !selectedChat?.id) return
+
+    await updateDoc(doc(db, `businesses/${dbUser.businessId}/supportChats/${selectedChat.id}`), {
+      supportTypingAt: deleteField(),
+      supportTypingBy: deleteField(),
+    })
+  }
+
   useEffect(() => {
     if (!filteredChats.length) {
       setSelectedChatId(null)
@@ -310,6 +320,38 @@ export default function AdminChatsPanel({
   useEffect(() => {
     setTaskComposerOpen(false)
   }, [selectedChat?.id])
+
+  useEffect(() => {
+    if (typingTimerRef.current) {
+      window.clearTimeout(typingTimerRef.current)
+      typingTimerRef.current = null
+    }
+
+    if (!dbUser?.businessId || !selectedChat?.id || selectedChat.status !== 'open') {
+      void clearSupportTyping()
+      return
+    }
+
+    const trimmed = replyText.trim()
+    if (!trimmed) {
+      void clearSupportTyping()
+      return
+    }
+
+    typingTimerRef.current = window.setTimeout(() => {
+      void updateDoc(doc(db, `businesses/${dbUser.businessId}/supportChats/${selectedChat.id}`), {
+        supportTypingAt: serverTimestamp(),
+        supportTypingBy: dbUser.id,
+      })
+    }, 500)
+
+    return () => {
+      if (typingTimerRef.current) {
+        window.clearTimeout(typingTimerRef.current)
+        typingTimerRef.current = null
+      }
+    }
+  }, [dbUser?.businessId, dbUser?.id, replyText, selectedChat?.id, selectedChat?.status])
 
   const unreadCount = useMemo(
     () => chatsForWidget.filter((chat) => (readAtMap[chat.id] || 0) < new Date(chat.updatedAt).getTime()).length,
@@ -351,6 +393,14 @@ export default function AdminChatsPanel({
     }
   }
 
+  const stopSupportTyping = async () => {
+    try {
+      await clearSupportTyping()
+    } catch (err) {
+      console.error('Failed to clear support typing state:', err)
+    }
+  }
+
   const handleSelectChat = (chat: SupportChatSession) => {
     setSelectedChatId(chat.id)
     setReadAtMap((prev) => {
@@ -362,16 +412,19 @@ export default function AdminChatsPanel({
 
   const handleAccept = async () => {
     if (!dbUser?.businessId || !selectedChat) return
+    await stopSupportTyping()
     await runChatAction(() => acceptSupportChat(dbUser.businessId, selectedChat.id))
   }
 
   const handleReturnToAi = async () => {
     if (!dbUser?.businessId || !selectedChat) return
+    await stopSupportTyping()
     await runChatAction(() => returnSupportChatToAi(dbUser.businessId, selectedChat.id))
   }
 
   const handleClose = async () => {
     if (!dbUser?.businessId || !selectedChat) return
+    await stopSupportTyping()
     await runChatAction(async () => {
       await closeSupportChat(dbUser.businessId, selectedChat.id)
       setReplyText('')
@@ -386,6 +439,7 @@ export default function AdminChatsPanel({
     setReplySending(true)
 
     try {
+      await stopSupportTyping()
       await runChatAction(() =>
         sendSupportReply(dbUser.businessId, selectedChat.id, nextReply, selectedChat.countryCode)
       )
