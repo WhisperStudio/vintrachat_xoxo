@@ -472,7 +472,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       setIsSending(true)
       setError(null)
 
-      if (isHumanSupportOpen) {
+      if (isHumanSupportOpen || isHumanSupportPending) {
         const response = await fetch('/api/widget/support', {
           method: 'POST',
           headers: {
@@ -688,9 +688,9 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       console.error(err)
       const message = err instanceof Error ? err.message : ''
       if (!message.toLowerCase().includes('too quickly')) {
-        setError(isHumanSupportOpen ? 'Support message could not be sent right now.' : 'The assistant could not reply right now.')
+        setError(isHumanSupportOpen || isHumanSupportPending ? 'Support message could not be sent right now.' : 'The assistant could not reply right now.')
       }
-      if (!isHumanSupportOpen) {
+      if (!(isHumanSupportOpen || isHumanSupportPending)) {
         setMessages((prev) => prev.filter((message) => message.id !== userMessage.id))
       }
       setInputValue(text)
@@ -980,7 +980,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         onToggleOpen={handleToggle}
         statusText={configResponse?.assistantEnabled ? 'AI live' : 'AI off'}
         disableInput={isSending || feedbackOpen || isRateLimited || handoffFormOpen}
-        bubbleActivityState={isSending && !isHumanSupportOpen ? 'replying' : 'idle'}
+        bubbleActivityState={isSending && !(isHumanSupportOpen || isHumanSupportPending) ? 'replying' : 'idle'}
         supportTypingIndicator={isSupportTyping}
         humanHandoffOverlay={{
           open: handoffFormOpen,

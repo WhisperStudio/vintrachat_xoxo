@@ -654,6 +654,68 @@ export async function GET(
     } catch (error) {}
   }
 
+  function draftStorageKey() {
+    return '__vintraWidgetDraft__' + WIDGET_KEY;
+  }
+
+  function readStoredDraftValue() {
+    try {
+      return window.localStorage.getItem(draftStorageKey()) || '';
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function writeStoredDraftValue(value) {
+    try {
+      var trimmed = String(value || '');
+      if (trimmed) {
+        window.localStorage.setItem(draftStorageKey(), trimmed);
+      } else {
+        window.localStorage.removeItem(draftStorageKey());
+      }
+    } catch (error) {}
+  }
+
+  function handoffStorageKey() {
+    return '__vintraWidgetHandoff__' + WIDGET_KEY;
+  }
+
+  function readStoredHandoffValue() {
+    try {
+      var raw = window.localStorage.getItem(handoffStorageKey()) || '';
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return null;
+      return {
+        open: Boolean(parsed.open),
+        name: String(parsed.name || ''),
+        email: String(parsed.email || ''),
+        phone: String(parsed.phone || ''),
+        pendingText: String(parsed.pendingText || '')
+      };
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function writeStoredHandoffValue(value) {
+    try {
+      if (!value) {
+        window.localStorage.removeItem(handoffStorageKey());
+        return;
+      }
+
+      window.localStorage.setItem(handoffStorageKey(), JSON.stringify({
+        open: Boolean(value.open),
+        name: String(value.name || ''),
+        email: String(value.email || ''),
+        phone: String(value.phone || ''),
+        pendingText: String(value.pendingText || '')
+      }));
+    } catch (error) {}
+  }
+
   function readStoredSupportStatus() {
     try {
       var value = window.localStorage.getItem(SUPPORT_STATUS_STORAGE_KEY) || '';
@@ -681,6 +743,8 @@ export async function GET(
 
   var storedSessionId = readStoredSessionId();
   var storedSupportStatus = storedSessionId ? readStoredSupportStatus() : '';
+  var storedDraftValue = readStoredDraftValue();
+  var storedHandoffValue = readStoredHandoffValue();
 
   function captchaStorageKey() {
     return '__vintraWidgetCaptcha__' + WIDGET_KEY;
@@ -708,7 +772,7 @@ export async function GET(
     open: FORCE_OPEN,
     sessionId: storedSessionId,
     sending: false,
-    inputValue: '',
+    inputValue: storedDraftValue,
     error: '',
     assistantEnabled: true,
     config: null,
@@ -718,8 +782,13 @@ export async function GET(
     supportStatus: storedSupportStatus,
     supportPolling: false,
     supportSnapshot: '',
-    awaitingVisitorName: false,
+    supportTypingAt: '',
+    awaitingVisitorName: Boolean(storedHandoffValue && storedHandoffValue.open),
     pendingHumanSupportText: '',
+    handoffFormOpen: Boolean(storedHandoffValue && storedHandoffValue.open),
+    handoffName: storedHandoffValue ? storedHandoffValue.name : '',
+    handoffEmail: storedHandoffValue ? storedHandoffValue.email : '',
+    handoffPhone: storedHandoffValue ? storedHandoffValue.phone : '',
     countryCode: '',
     hasOpenedOnce: FORCE_OPEN,
     hasUnreadWhileClosed: false,
@@ -1241,21 +1310,25 @@ export async function GET(
   }
 
   function shouldShowSupportGate() {
-    return state.supportStatus === 'needs-human';
+    return false;
   }
 
   function getMessagesMarkup(config) {
     var bodyStyle = (config && config.bodyStyle) || {};
     var typingIconMarkup = renderConfiguredWidgetIconSlot(getInterfaceIcon('aiIcon', getInterfaceIcon('heroIcon', '')));
+    var supportTypingIconMarkup = renderConfiguredWidgetIconSlot(getInterfaceIcon('supportIcon', ''));
     var waitingLine = state.supportStatus === 'needs-human'
       ? '<div class="chat-status-line">Waiting for a support assistant</div>'
       : '';
-    var typingMarkup = state.sending && !state.awaitingVisitorName
+    var typingMarkup = state.sending && !state.awaitingVisitorName && state.supportStatus !== 'needs-human' && state.supportStatus !== 'open'
       ? '<div class="message message-bot message-typing" aria-live="polite" aria-label="Assistant is typing">' + (typingIconMarkup ? '<span class="message-role-icon">' + typingIconMarkup + '</span>' : '') + '<div class="typing-dots"><span></span><span></span><span></span></div></div>'
+      : '';
+    var supportTypingMarkup = state.supportStatus === 'open' && state.supportTypingAt && (Date.now() - new Date(state.supportTypingAt).getTime() < 4500)
+      ? '<div class="message message-support message-typing" aria-live="polite" aria-label="Support is typing">' + (supportTypingIconMarkup ? '<span class="message-role-icon">' + supportTypingIconMarkup + '</span>' : '') + '<div class="typing-dots"><span></span><span></span><span></span></div></div>'
       : '';
 
     if (!state.messages.length) {
-      return waitingLine + '<div class="message message-bot">Chat is ready. Send a message to start.</div>' + typingMarkup;
+      return waitingLine + '<div class="message message-bot">Chat is ready. Send a message to start.</div>' + typingMarkup + supportTypingMarkup;
     }
 
     return waitingLine + state.messages.map(function (msg) {
@@ -1295,7 +1368,7 @@ export async function GET(
           (messageIconMarkup ? '<span class="message-role-icon">' + messageIconMarkup + '</span>' : '') +
         '</div>'
       );
-    }).join('') + typingMarkup;
+    }).join('') + typingMarkup + supportTypingMarkup;
   }
 
   function getStarterCardsMarkup(config) {
@@ -1473,11 +1546,48 @@ export async function GET(
           '<div class="widget-feedback-rating" aria-label="Rating selector">' + stars + '</div>' +
           '<label class="widget-feedback-field">' +
             '<span>Your feedback</span>' +
-            '<textarea rows="5" placeholder="What went well, and what could be better?">' + escapeHtml(state.feedbackText) + '</textarea>' +
+            '<textarea rows="5" class="widget-feedback-textarea" placeholder="What went well, and what could be better?">' + escapeHtml(state.feedbackText) + '</textarea>' +
           '</label>' +
           '<div class="widget-feedback-actions">' +
             '<button type="button" class="widget-feedback-secondary" ' + (state.feedbackSubmitting ? 'disabled' : '') + '>Cancel</button>' +
             '<button type="button" class="widget-feedback-primary" ' + (state.feedbackSubmitting ? 'disabled' : '') + '>' + (state.feedbackSubmitting ? 'Submitting...' : 'Submit feedback') + '</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function getHandoffOverlayMarkup() {
+    if (!state.awaitingVisitorName) return '';
+
+    return (
+      '<div class="widget-handoff-overlay" role="dialog" aria-modal="true" aria-label="Human support request">' +
+        '<div class="widget-handoff-card">' +
+          '<div class="widget-handoff-header">' +
+            '<div>' +
+              '<h4>Connect with human support</h4>' +
+              '<p>Fill in your name, email and phone number so we can follow up.</p>' +
+            '</div>' +
+            '<button type="button" class="widget-handoff-close" aria-label="Close human handoff form">' +
+              '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>' +
+            '</button>' +
+          '</div>' +
+          '<div class="widget-handoff-grid">' +
+            '<label class="widget-handoff-field">' +
+              '<span>Name</span>' +
+              '<input type="text" class="widget-handoff-input" data-handoff-field="name" value="' + escapeHtml(state.handoffName) + '" placeholder="Your name" autocomplete="name" />' +
+            '</label>' +
+            '<label class="widget-handoff-field">' +
+              '<span>Email</span>' +
+              '<input type="email" class="widget-handoff-input" data-handoff-field="email" value="' + escapeHtml(state.handoffEmail) + '" placeholder="you@example.com" autocomplete="email" />' +
+            '</label>' +
+            '<label class="widget-handoff-field">' +
+              '<span>Phone</span>' +
+              '<input type="tel" class="widget-handoff-input" data-handoff-field="phone" value="' + escapeHtml(state.handoffPhone) + '" placeholder="+47 123 45 678" autocomplete="tel" />' +
+            '</label>' +
+          '</div>' +
+          '<div class="widget-handoff-actions">' +
+            '<button type="button" class="widget-handoff-submit" ' + ((!String(state.handoffName || '').trim() || state.sending) ? 'disabled' : '') + '>Send request</button>' +
           '</div>' +
         '</div>' +
       '</div>'
@@ -1491,6 +1601,7 @@ export async function GET(
     setSupportStatus('');
     state.sessionId = '';
     state.supportSnapshot = '';
+    state.supportTypingAt = '';
     writeStoredSessionId('');
   }
 
@@ -1554,6 +1665,9 @@ export async function GET(
       if (json.countryCode) {
         state.countryCode = String(json.countryCode).toUpperCase();
       }
+      var nextSupportTypingAt = json.supportTypingAt ? String(json.supportTypingAt) : '';
+      var supportTypingChanged = nextSupportTypingAt !== state.supportTypingAt;
+      state.supportTypingAt = nextSupportTypingAt;
       var nextMessages = Array.isArray(json.messages) ? json.messages.map(mapMessage) : [];
       var nextSnapshot = JSON.stringify({
         status: nextStatus,
@@ -1570,6 +1684,9 @@ export async function GET(
 
       if (nextSnapshot === state.supportSnapshot) {
         setSupportStatus(nextStatus);
+        if (supportTypingChanged) {
+          render();
+        }
         return;
       }
 
@@ -1592,6 +1709,140 @@ export async function GET(
     if (supportPollTimer) return;
     state.supportPolling = true;
     supportPollTimer = window.setInterval(syncSupportChat, 3000);
+  }
+
+  var visitorTypingTimer = null;
+
+  async function updateVisitorTyping(isTyping) {
+    if (!state.sessionId || !(state.supportStatus === 'needs-human' || state.supportStatus === 'open')) {
+      return;
+    }
+
+    try {
+      await fetchWithEmbedToken(ORIGIN + '/api/widget/support', {
+        method: 'POST',
+        mode: 'cors',
+        body: JSON.stringify({
+          widgetKey: WIDGET_KEY,
+          sessionId: state.sessionId,
+          typing: Boolean(isTyping)
+        })
+      }, true);
+    } catch (error) {
+      setDebug('Visitor typing sync failed\\n' + (error && error.message ? error.message : String(error)));
+    }
+  }
+
+  function scheduleVisitorTypingSync() {
+    if (visitorTypingTimer) {
+      window.clearTimeout(visitorTypingTimer);
+      visitorTypingTimer = null;
+    }
+
+    if (!state.sessionId || !(state.supportStatus === 'needs-human' || state.supportStatus === 'open')) {
+      void updateVisitorTyping(false);
+      return;
+    }
+
+    if (!String(state.inputValue || '').trim()) {
+      void updateVisitorTyping(false);
+      return;
+    }
+
+    visitorTypingTimer = window.setTimeout(function () {
+      void updateVisitorTyping(true);
+    }, 450);
+  }
+
+  async function submitHumanHandoff() {
+    var name = String(state.handoffName || '').trim();
+    var email = String(state.handoffEmail || '').trim();
+    var phone = String(state.handoffPhone || '').trim();
+    var pendingText = String(state.pendingHumanSupportText || '').trim();
+
+    if (!name || !pendingText || state.sending) return;
+
+    state.sending = true;
+    state.error = '';
+    render();
+
+    try {
+      var humanSupportResponse = await fetchWithEmbedToken(ORIGIN + '/api/widget/chat', {
+        method: 'POST',
+        mode: 'cors',
+        body: JSON.stringify({
+          widgetKey: WIDGET_KEY,
+          sessionId: state.sessionId || undefined,
+          requestHumanSupport: true,
+          visitorName: name,
+          visitorEmail: email,
+          visitorPhone: phone,
+          supportRequestText: pendingText,
+          countryCode: state.countryCode || undefined,
+          pageTitle: document.title,
+          pageUrl: window.location.href
+        })
+      });
+
+      var humanSupportJson = await humanSupportResponse.json();
+
+      if (!humanSupportResponse.ok) {
+        if (humanSupportResponse.status === 429 && humanSupportJson && humanSupportJson.captchaRequired && humanSupportJson.captchaQuestion && humanSupportJson.captchaToken) {
+          try {
+            var humanSolved = await solveCaptchaChallenge(humanSupportJson.captchaQuestion, humanSupportJson.captchaToken);
+            if (humanSolved) {
+              window.setTimeout(submitHumanHandoff, 0);
+              return;
+            }
+          } catch (captchaError) {
+            state.error = captchaError instanceof Error ? captchaError.message : 'Failed to verify captcha';
+            render();
+            return;
+          }
+        }
+        if (humanSupportResponse.status === 429 && humanSupportJson && humanSupportJson.retryAfterSeconds) {
+          state.error = 'Please wait ' + humanSupportJson.retryAfterSeconds + 's before sending another message.';
+          render();
+          return;
+        }
+        throw new Error(humanSupportJson && humanSupportJson.error ? humanSupportJson.error : 'Failed to process chat');
+      }
+
+      state.sessionId = humanSupportJson.sessionId || state.sessionId;
+      writeStoredSessionId(state.sessionId);
+      state.countryCode = String(humanSupportJson.countryCode || state.countryCode || '').toUpperCase();
+      state.awaitingVisitorName = false;
+      state.pendingHumanSupportText = '';
+      state.handoffFormOpen = false;
+      state.handoffName = '';
+      state.handoffEmail = '';
+      state.handoffPhone = '';
+      state.inputValue = '';
+      writeStoredDraftValue('');
+      writeStoredHandoffValue(null);
+      state.activeConversationCardId = '';
+      state.starterCardPageIndex = 0;
+      state.supportTypingAt = '';
+      setSupportStatus('needs-human');
+
+      updateMessages(state.messages.concat([
+        {
+          id: 'assistant-' + Date.now(),
+          role: 'assistant',
+          text: String(humanSupportJson.reply || 'Takk for info, jeg har flagget det inn til et menneske. Mens vi venter, er det noe annet du lurer på?'),
+          createdAt: new Date().toISOString()
+        }
+      ]));
+
+      startSupportPolling();
+      void syncSupportChat();
+    } catch (error) {
+      state.error = error instanceof Error ? error.message : 'Failed to process chat';
+    } finally {
+      void updateVisitorTyping(false);
+      state.sending = false;
+      render();
+    }
   }
 
   async function loadEmbedToken(forceRefresh) {
@@ -1726,6 +1977,23 @@ export async function GET(
         state.composerFocused = false;
         state.activeConversationCardId = '';
         state.starterCardPageIndex = 0;
+        void updateVisitorTyping(false);
+        render();
+        return;
+      }
+
+      if (button.classList.contains('widget-handoff-close')) {
+        state.awaitingVisitorName = false;
+        state.handoffFormOpen = false;
+        state.sending = false;
+        state.error = '';
+        writeStoredHandoffValue({
+          open: false,
+          name: state.handoffName,
+          email: state.handoffEmail,
+          phone: state.handoffPhone,
+          pendingText: state.pendingHumanSupportText
+        });
         render();
         return;
       }
@@ -1807,13 +2075,66 @@ export async function GET(
       if (button.classList.contains('send-btn')) {
         markOrbActivity();
         sendMessage();
+        return;
+      }
+
+      if (button.classList.contains('widget-handoff-submit')) {
+        submitHumanHandoff();
       }
     });
 
     mount.addEventListener('input', function (event) {
       var target = event.target;
-      if (!target || target.tagName !== 'TEXTAREA') return;
-      state.feedbackText = target.value;
+      if (!target) return;
+
+      if (target.tagName === 'TEXTAREA' && target.classList && target.classList.contains('widget-feedback-textarea')) {
+        state.feedbackText = target.value;
+        return;
+      }
+
+      if (target.tagName === 'TEXTAREA') {
+        var nextValue = truncateTextByCharacters(String(target.value || ''), MAX_WIDGET_MESSAGE_CHARS);
+        if (target.value !== nextValue) {
+          target.value = nextValue;
+        }
+        state.inputValue = nextValue;
+        writeStoredDraftValue(nextValue);
+        if (nextValue) {
+          state.activeConversationCardId = '';
+          state.starterCardPageIndex = 0;
+        }
+        syncComposerMode();
+        markOrbActivity();
+        scheduleVisitorTypingSync();
+        return;
+      }
+
+      if (target.classList && target.classList.contains('widget-handoff-input')) {
+        var field = String(target.getAttribute('data-handoff-field') || '').trim();
+        var nextFieldValue = truncateTextByCharacters(String(target.value || ''), 120);
+        if (target.value !== nextFieldValue) {
+          target.value = nextFieldValue;
+        }
+
+        if (field === 'name') {
+          state.handoffName = nextFieldValue;
+        } else if (field === 'email') {
+          state.handoffEmail = nextFieldValue;
+        } else if (field === 'phone') {
+          state.handoffPhone = nextFieldValue;
+        }
+
+        state.awaitingVisitorName = true;
+        state.handoffFormOpen = true;
+        writeStoredHandoffValue({
+          open: true,
+          name: state.handoffName,
+          email: state.handoffEmail,
+          phone: state.handoffPhone,
+          pendingText: state.pendingHumanSupportText
+        });
+        render();
+      }
     });
   }
 
@@ -1904,21 +2225,23 @@ export async function GET(
           '<div class="' + classes(['chat-body', 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '">' +
             (showStarterCards ? starterCardsMarkup : getMessagesMarkup(config) + getFaqSuggestionsMarkup()) +
           '</div>' +
-          '<div class="' + classes([
-            'chat-footer',
-            'border-' + (footerStyle.borderType || 'none'),
-            'shadow-' + (footerStyle.shadowType || 'none'),
-            'input-' + (footerStyle.inputStyle || 'flat')
-          ]) + '">' +
-            '<div class="chat-footer-row">' +
-              '<textarea rows="1" ' +
-                ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled ' : '') +
-                'value="' + escapeHtml(truncateTextByCharacters(String(state.inputValue || ''), MAX_WIDGET_MESSAGE_CHARS)) + '" ' +
-                'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : (state.awaitingVisitorName ? 'Write your name to contact human support...' : (state.supportStatus === 'needs-human' ? 'Waiting for human support...' : 'Write a message...'))) + '"></textarea>' +
-              (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + ((state.sending || state.feedbackOpen || (state.supportStatus === 'needs-human' && !state.awaitingVisitorName)) ? 'disabled' : '') + '>' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('sendIcon', 'FiSend')) || renderIconSlot(icons.send)) + '</button>') +
-            '</div>' +
-          '</div>' +
-          (state.awaitingVisitorName ? '<div class="name-request-hint">Please write your name to connect with human support.</div>' : '') +
+          getHandoffOverlayMarkup() +
+          (state.awaitingVisitorName ? '' : (
+            '<div class="' + classes([
+              'chat-footer',
+              'border-' + (footerStyle.borderType || 'none'),
+              'shadow-' + (footerStyle.shadowType || 'none'),
+              'input-' + (footerStyle.inputStyle || 'flat')
+            ]) + '">' +
+              '<div class="chat-footer-row">' +
+                '<textarea rows="1" ' +
+                  ((state.sending || state.feedbackOpen) ? 'disabled ' : '') +
+                  'value="' + escapeHtml(truncateTextByCharacters(String(state.inputValue || ''), MAX_WIDGET_MESSAGE_CHARS)) + '" ' +
+                  'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : ((state.supportStatus === 'needs-human' || state.supportStatus === 'open') ? 'Write a message for human support...' : 'Write a message...')) + '"></textarea>' +
+                (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + ((state.sending || state.feedbackOpen) ? 'disabled' : '') + '>' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('sendIcon', 'FiSend')) || renderIconSlot(icons.send)) + '</button>') +
+              '</div>' +
+            '</div>'
+          )) +
           (state.error ? '<div class="widget-inline-error">' + escapeHtml(state.error) + '</div>' : '') +
           getFeedbackOverlayMarkup() +
           '</div>' +
@@ -2085,82 +2408,9 @@ export async function GET(
     state.starterCardPageIndex = 0;
 
     if (state.awaitingVisitorName) {
-      state.sending = true;
-      state.error = '';
-      render();
-
-      try {
-        var humanSupportResponse = await fetchWithEmbedToken(ORIGIN + '/api/widget/chat', {
-          method: 'POST',
-          mode: 'cors',
-          body: JSON.stringify({
-            widgetKey: WIDGET_KEY,
-            sessionId: state.sessionId || undefined,
-            requestHumanSupport: true,
-            visitorName: text,
-            supportRequestText: state.pendingHumanSupportText,
-            countryCode: state.countryCode || undefined,
-            pageTitle: document.title,
-            pageUrl: window.location.href
-          })
-        });
-
-        var humanSupportJson = await humanSupportResponse.json();
-
-        if (!humanSupportResponse.ok) {
-          if (humanSupportResponse.status === 429 && humanSupportJson && humanSupportJson.captchaRequired && humanSupportJson.captchaQuestion && humanSupportJson.captchaToken) {
-            try {
-              var humanSolved = await solveCaptchaChallenge(humanSupportJson.captchaQuestion, humanSupportJson.captchaToken);
-              if (humanSolved) {
-                window.setTimeout(sendMessage, 0);
-                return;
-              }
-            } catch (captchaError) {
-              state.error = captchaError instanceof Error ? captchaError.message : 'Failed to verify captcha';
-              render();
-              return;
-            }
-          }
-          if (humanSupportResponse.status === 429 && humanSupportJson && humanSupportJson.retryAfterSeconds) {
-            state.error = 'Please wait ' + humanSupportJson.retryAfterSeconds + 's before sending another message.';
-            render();
-            return;
-          }
-          throw new Error(humanSupportJson && humanSupportJson.error ? humanSupportJson.error : 'Failed to process chat');
-        }
-
-        state.sessionId = humanSupportJson.sessionId || state.sessionId;
-        writeStoredSessionId(state.sessionId);
-        state.countryCode = String(humanSupportJson.countryCode || state.countryCode || '').toUpperCase();
-        state.awaitingVisitorName = false;
-        state.pendingHumanSupportText = '';
-        state.inputValue = '';
-        state.activeConversationCardId = '';
-        state.starterCardPageIndex = 0;
-        setSupportStatus('needs-human');
-
-        updateMessages(state.messages.concat([
-          {
-            id: 'assistant-' + Date.now(),
-            role: 'assistant',
-            text: String(humanSupportJson.reply || 'The chat has been handed over to human support.'),
-            createdAt: new Date().toISOString()
-          }
-        ]));
-
-        startSupportPolling();
-        void syncSupportChat();
-      } catch (error) {
-        state.error = error instanceof Error ? error.message : 'Failed to process chat';
-      } finally {
-        state.sending = false;
-        render();
-      }
-
+      await submitHumanHandoff();
       return;
     }
-
-    if (state.supportStatus === 'needs-human') return;
 
     var inHumanSupportMode = state.supportStatus === 'needs-human' || state.supportStatus === 'open';
     if (state.sessionId && inHumanSupportMode) {
@@ -2177,6 +2427,7 @@ export async function GET(
       }
     ]));
     state.inputValue = '';
+    writeStoredDraftValue('');
     state.error = '';
     state.activeConversationCardId = '';
     state.starterCardPageIndex = 0;
@@ -2259,7 +2510,15 @@ export async function GET(
 
         if (json.visitorNameRequired) {
           state.awaitingVisitorName = true;
+          state.handoffFormOpen = true;
           state.pendingHumanSupportText = text;
+          writeStoredHandoffValue({
+            open: true,
+            name: state.handoffName,
+            email: state.handoffEmail,
+            phone: state.handoffPhone,
+            pendingText: text
+          });
         }
 
         if (json.feedbackFormRequested) {
@@ -2279,6 +2538,7 @@ export async function GET(
     } catch (error) {
       state.error = error instanceof Error ? error.message : 'Failed to process chat';
     } finally {
+      void updateVisitorTyping(false);
       state.sending = false;
       render();
     }

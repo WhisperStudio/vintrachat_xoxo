@@ -179,7 +179,50 @@ export async function POST(req: NextRequest) {
         })
       : { valid: false as const }
 
-    if (!typing && !message) {
+    if (typing && !message) {
+      const chatRef = adminDb.collection('businesses').doc(business.id).collection('supportChats').doc(sessionId)
+      const snap = await chatRef.get()
+      const data = snap.data() || {}
+
+      if (snap.exists) {
+        await chatRef.set(
+          {
+            sessionId,
+            businessId: business.id,
+            widgetKey,
+            status: data.status || 'needs-human',
+            source: 'widget',
+            preview: data.preview || '',
+            visitorName: data.visitorName || null,
+            visitorEmail: data.visitorEmail || null,
+            visitorPhone: data.visitorPhone || null,
+            countryCode: countryCode || data.countryCode || null,
+            pageTitle: data.pageTitle || null,
+            pageUrl: data.pageUrl || null,
+            visitorTypingAt: FieldValue.serverTimestamp(),
+            visitorTypingBy: fingerprint || data.visitorTypingBy || null,
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        )
+      }
+
+      return NextResponse.json(
+        {
+          sessionId,
+          status: data.status || 'needs-human',
+          messageCount: Number(data.messageCount || 0),
+          visitorName: data.visitorName,
+          visitorEmail: data.visitorEmail,
+          visitorPhone: data.visitorPhone,
+          countryCode: data.countryCode || countryCode,
+          messages: Array.isArray(data.messages) ? data.messages.map(mapMessage) : [],
+        },
+        { headers }
+      )
+    }
+
+    if (!message) {
       const chatRef = adminDb.collection('businesses').doc(business.id).collection('supportChats').doc(sessionId)
       const snap = await chatRef.get()
       const data = snap.data() || {}
@@ -220,7 +263,7 @@ export async function POST(req: NextRequest) {
         },
         { headers }
       )
-    } else if (message) {
+    } else {
       const rateLimitCheck = await enforceWidgetRateLimit({
         businessId: business.id,
         widgetKey,
@@ -284,43 +327,6 @@ export async function POST(req: NextRequest) {
 
     const data = snap.data() || {}
     const businessRef = adminDb.collection('businesses').doc(business.id)
-
-    if (typing && !message) {
-      await chatRef.set(
-        {
-          sessionId,
-          businessId: business.id,
-          widgetKey,
-          status: data.status || 'needs-human',
-          source: 'widget',
-          preview: data.preview || '',
-          visitorName: data.visitorName || null,
-          visitorEmail: data.visitorEmail || null,
-          visitorPhone: data.visitorPhone || null,
-          countryCode: countryCode || data.countryCode || null,
-          pageTitle: data.pageTitle || null,
-          pageUrl: data.pageUrl || null,
-          visitorTypingAt: FieldValue.serverTimestamp(),
-          visitorTypingBy: fingerprint || data.visitorTypingBy || null,
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      )
-
-      return NextResponse.json(
-        {
-          sessionId,
-          status: data.status || 'needs-human',
-          messageCount: Number(data.messageCount || 0),
-          visitorName: data.visitorName,
-          visitorEmail: data.visitorEmail,
-          visitorPhone: data.visitorPhone,
-          countryCode: data.countryCode || countryCode,
-          messages: Array.isArray(data.messages) ? data.messages.map(mapMessage) : [],
-        },
-        { headers }
-      )
-    }
 
     const nextMessage = {
       id: crypto.randomUUID(),
