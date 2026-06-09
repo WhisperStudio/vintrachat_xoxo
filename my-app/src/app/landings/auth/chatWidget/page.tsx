@@ -9,6 +9,7 @@ import {
   FiLayout,
   FiMessageCircle,
   FiMessageSquare,
+  FiPlus,
   FiRefreshCw,
   FiSave,
   FiSend,
@@ -18,11 +19,12 @@ import {
 } from 'react-icons/fi'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
-import { setActiveChatWidget, updateChatWidgetConfig } from '@/lib/auth.service'
+import { createChatWidget, setActiveChatWidget, updateChatWidgetConfig } from '@/lib/auth.service'
 import { defaultConversationCards } from '@/lib/conversation-cards'
 import { chatWidgetBuilderExtraI18n, chatWidgetBuilderI18n, useVintraLanguage } from '@/lib/i18n'
 import {
   getEffectiveBusinessPlan,
+  getPlanLimits,
   isPlanFeatureAvailable,
   sanitizeBubbleStyleForPlan,
   sanitizeChatWidgetConfigForPlan,
@@ -220,6 +222,7 @@ export default function ChatWidgetBuilderPage() {
   })
 
   const [isSaving, setIsSaving] = useState(false)
+  const [isCreatingWidget, setIsCreatingWidget] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [resetAnimating, setResetAnimating] = useState(false)
 
@@ -241,6 +244,8 @@ export default function ChatWidgetBuilderPage() {
     () => builderExtraText.prices[databasePlan][inputs.billingCycle],
     [builderExtraText.prices, databasePlan, inputs.billingCycle]
   )
+  const widgetLimit = getPlanLimits(databasePlan).maxWidgets
+  const canCreateWidget = widgetLimit === null || widgetList.length < widgetLimit
 
   const applyWidgetConfig = (config: ChatWidgetConfig | undefined) => {
     if (!config) return
@@ -418,6 +423,40 @@ export default function ChatWidgetBuilderPage() {
     await refreshBusiness()
   }
 
+  const handleCreateWidget = async () => {
+    if (!isAuthenticated || !dbUser?.businessId || isCreatingWidget || !canCreateWidget) {
+      return
+    }
+
+    setIsCreatingWidget(true)
+    setSaveStatus('idle')
+
+    try {
+      const nextName = `${t.newWidgetDefaultName} ${widgetList.length + 1}`
+      const result = await createChatWidget(
+        dbUser.businessId,
+        nextName,
+        selectedWidgetKey || selectedWidget?.widgetKey || business?.activeChatWidgetKey || business?.chatWidgetKey || undefined
+      )
+
+      if (!result.success || !result.widgetKey) {
+        setSaveStatus('error')
+        return
+      }
+
+      await setActiveChatWidget(dbUser.businessId, result.widgetKey)
+      setSelectedWidgetKey(result.widgetKey)
+      await refreshBusiness()
+      setSaveStatus('success')
+      setTimeout(() => setSaveStatus('idle'), 1800)
+    } catch (error) {
+      console.error('Failed to create chat widget:', error)
+      setSaveStatus('error')
+    } finally {
+      setIsCreatingWidget(false)
+    }
+  }
+
   const saveConfig = async () => {
     if (!isAuthenticated || !dbUser?.businessId) {
       router.push('/auth/login')
@@ -497,25 +536,39 @@ export default function ChatWidgetBuilderPage() {
 
           <div className="chatbuilder-widget-switcher">
             <label htmlFor="builder-widget-select">{t.activeWidget}</label>
-            <select
-              id="builder-widget-select"
-              value={selectedWidgetKey || business?.activeChatWidgetKey || business?.chatWidgetKey || ''}
-              onChange={(event) => void handleSelectWidget(event.target.value)}
-              disabled={!widgetList.length}
-            >
-              {widgetList.length ? (
-                widgetList.map((widget) => (
-                  <option key={widget.widgetKey} value={widget.widgetKey}>
-                    {widget.name}
-                    {widget.isDefault ? ` (${t.defaultWidget})` : ''}
-                  </option>
-                ))
-              ) : (
-                <option value="">{t.noWidgets}</option>
-              )}
-            </select>
+            <div className="chatbuilder-widget-switcher-row">
+              <select
+                id="builder-widget-select"
+                value={selectedWidgetKey || business?.activeChatWidgetKey || business?.chatWidgetKey || ''}
+                onChange={(event) => void handleSelectWidget(event.target.value)}
+                disabled={!widgetList.length}
+              >
+                {widgetList.length ? (
+                  widgetList.map((widget) => (
+                    <option key={widget.widgetKey} value={widget.widgetKey}>
+                      {widget.name}
+                      {widget.isDefault ? ` (${t.defaultWidget})` : ''}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">{t.noWidgets}</option>
+                )}
+              </select>
+              <button
+                type="button"
+                className="chatbuilder-widget-create-btn"
+                onClick={() => void handleCreateWidget()}
+                disabled={!isAuthenticated || isCreatingWidget || !canCreateWidget}
+                title={!canCreateWidget ? t.widgetLimitReached : undefined}
+              >
+                <FiPlus aria-hidden="true" />
+                <span>{isCreatingWidget ? t.creatingWidget : t.addWidget}</span>
+              </button>
+            </div>
             <span className="chatbuilder-widget-switcher-hint">
-              {widgetList.length > 1
+              {!canCreateWidget
+                ? t.widgetLimitReached
+                : widgetList.length > 1
                 ? t.editingWidgets(widgetList.length)
                 : inputs.plan === 'free'
                   ? t.freeSingleWidget

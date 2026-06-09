@@ -57,6 +57,30 @@ import { parseAllowedDomainsInput } from "@/lib/widget-security";
 // ----------------------
 const googleProvider = new GoogleAuthProvider();
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object') return false
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
+}
+
+function stripUndefinedForFirestore<T>(value: T): T {
+  if (value === undefined) return undefined as T
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => stripUndefinedForFirestore(item))
+      .filter((item) => item !== undefined) as T
+  }
+
+  if (!isPlainObject(value)) return value
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([key, item]) => [key, stripUndefinedForFirestore(item)] as const)
+      .filter(([, item]) => item !== undefined)
+  ) as T
+}
+
 export async function signInWithGoogle(): Promise<AuthResponse> {
   try {
     const result = await signInWithPopup(auth, googleProvider);
@@ -893,7 +917,7 @@ export async function createBusinessWithWidgets(
     updatedAt: serverTimestamp(),
   })
 
-  await setDoc(doc(db, `businesses/${businessId}/chatWidgets/${widgetKey}`), {
+  await setDoc(doc(db, `businesses/${businessId}/chatWidgets/${widgetKey}`), stripUndefinedForFirestore({
     widgetKey,
     name: 'Main widget',
     config: widgetConfig,
@@ -901,7 +925,7 @@ export async function createBusinessWithWidgets(
     isDefault: true,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  })
+  }))
 
   return businessId
 }
@@ -1311,24 +1335,24 @@ export async function updateChatWidgetConfig(
         : baseConfig.bubbleStyle,
     }, plan)
 
-    const widgetDocPayload = {
+    const widgetDocPayload = stripUndefinedForFirestore({
       widgetKey: targetWidgetKey,
       name: String(widgetData.name || config?.customBranding?.title || existingData.name || 'Chat Widget'),
       config: mergedConfig,
       isDefault: Boolean(widgetData.isDefault || targetWidgetKey === existingData.chatWidgetKey || targetWidgetKey === existingData.activeChatWidgetKey),
       createdAt: widgetData.createdAt || serverTimestamp(),
       updatedAt: serverTimestamp(),
-    }
+    })
 
     await setDoc(widgetRef, widgetDocPayload, { merge: true })
 
     if (!widgetKey || targetWidgetKey === existingData.chatWidgetKey || targetWidgetKey === existingData.activeChatWidgetKey) {
-      await updateDoc(businessRef, {
+      await updateDoc(businessRef, stripUndefinedForFirestore({
         chatWidgetKey: targetWidgetKey,
         activeChatWidgetKey: targetWidgetKey,
         chatWidgetConfig: mergedConfig,
         updatedAt: serverTimestamp(),
-      })
+      }))
     } else {
       await updateDoc(businessRef, {
         updatedAt: serverTimestamp(),
@@ -1414,25 +1438,29 @@ export async function createChatWidget(
   const widgetRef = doc(db, `businesses/${businessId}/chatWidgets/${widgetKey}`)
   const widgetName = String(name || `Widget ${widgets.length + 1}`)
 
-  await setDoc(widgetRef, {
-    widgetKey,
-    name: widgetName,
-    config: {
-      ...sourceWidget.config,
-      customBranding: {
-        ...sourceWidget.config.customBranding,
-        title: name || sourceWidget.config.customBranding?.title || widgetName,
-      },
+  const nextConfig = stripUndefinedForFirestore({
+    ...sourceWidget.config,
+    customBranding: {
+      ...sourceWidget.config.customBranding,
+      title: name || sourceWidget.config.customBranding?.title || widgetName,
     },
-    assistantConfig:
-      assistantConfigOverride ||
+  })
+  const nextAssistantConfig = stripUndefinedForFirestore(
+    assistantConfigOverride ||
       sourceWidget.assistantConfig ||
       (businessData.chatAssistantConfig as ChatAssistantConfig | undefined) ||
-      buildDefaultAssistantConfig(),
+      buildDefaultAssistantConfig()
+  )
+
+  await setDoc(widgetRef, stripUndefinedForFirestore({
+    widgetKey,
+    name: widgetName,
+    config: nextConfig,
+    assistantConfig: nextAssistantConfig,
     isDefault: false,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  })
+  }))
 
   return { success: true, widgetKey, message: 'Chat widget created' }
 }
@@ -1451,13 +1479,13 @@ export async function setActiveChatWidget(
 
   const widgetData = widgetSnap.data() || {}
 
-  await updateDoc(businessRef, {
+  await updateDoc(businessRef, stripUndefinedForFirestore({
     chatWidgetKey: widgetKey,
     activeChatWidgetKey: widgetKey,
     chatWidgetConfig: widgetData.config || null,
     chatAssistantConfig: widgetData.assistantConfig || null,
     updatedAt: serverTimestamp(),
-  })
+  }))
 
   return { success: true, message: 'Active widget updated' }
 }

@@ -112,8 +112,8 @@ function createAnalyticsEvent(
     id: crypto.randomUUID(),
     kind,
     sessionId,
-    widgetKey,
-    countryCode,
+    ...(widgetKey ? { widgetKey } : {}),
+    ...(countryCode ? { countryCode } : {}),
     createdAt: new Date(),
   }
 }

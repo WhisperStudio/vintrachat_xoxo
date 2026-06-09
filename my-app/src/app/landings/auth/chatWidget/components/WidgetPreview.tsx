@@ -8,6 +8,7 @@ import { normalizeConversationCards } from '@/lib/conversation-cards'
 import { renderWidgetIcon } from '@/lib/widget-icons'
 import { chatWidgetPricingI18n, useVintraLanguage } from '@/lib/i18n'
 import FeedbackFormOverlay from '@/components/chat/FeedbackFormOverlay'
+import WebGLLiquidGlassSendButton from './glass/WebGLLiquidGlassSendButton'
 import './WidgetPreview.css'
 import type { AssistantConversationCard, AssistantWidgetIcons, ChatWidgetInterfaceIcons, BubbleIconChoice, OrbStyleConfig } from '@/types/database'
 
@@ -491,6 +492,7 @@ export default function WidgetPreview({
     getWidgetThemeClass(colorTheme),
     appearance?.glassLookEnabled ? 'theme-glass-look' : ''
   )
+  const useLiquidGlassControls = Boolean(appearance?.glassLookEnabled)
   const themeVars = getWidgetThemeStyle(colorTheme)
   const bubbleClasses = joinWidgetClasses(
     `border-${bubbleStyle.borderType}`,
@@ -718,9 +720,23 @@ export default function WidgetPreview({
                 )}
 
                 {headerStyle.showCloseButton && isChatOpen && (
-                  <button type="button" className="close-btn" onClick={() => setIsChatOpen(false)}>
-                    {renderWidgetIcon(effectiveAssistantIcons.closeIcon, { 'aria-hidden': true }) || 'x'}
-                  </button>
+                  useLiquidGlassControls ? (
+                    <WebGLLiquidGlassSendButton
+                      type="button"
+                      className="close-btn"
+                      radius="50%"
+                      width={40}
+                      height={40}
+                      onClick={() => setIsChatOpen(false)}
+                      aria-label="Close chat"
+                    >
+                      {renderWidgetIcon(effectiveAssistantIcons.closeIcon, { 'aria-hidden': true }) || 'x'}
+                    </WebGLLiquidGlassSendButton>
+                  ) : (
+                    <button type="button" className="close-btn" onClick={() => setIsChatOpen(false)} aria-label="Close chat">
+                      {renderWidgetIcon(effectiveAssistantIcons.closeIcon, { 'aria-hidden': true }) || 'x'}
+                    </button>
+                  )
                 )}
               </div>
             </div>
@@ -922,9 +938,23 @@ export default function WidgetPreview({
                 />
 
                 {footerStyle.showSendButton && (
-                  <button type="button" onClick={() => handleSend()} disabled={disableInput}>
-                    {renderWidgetIcon(effectiveAssistantIcons.sendIcon, { 'aria-hidden': true }) || <FiSend />}
-                  </button>
+                  useLiquidGlassControls ? (
+                    <WebGLLiquidGlassSendButton
+                      type="button"
+                      radius={14}
+                      width={52}
+                      height={52}
+                      onClick={() => handleSend()}
+                      disabled={disableInput}
+                      aria-label="Send message"
+                    >
+                      {renderWidgetIcon(effectiveAssistantIcons.sendIcon, { 'aria-hidden': true }) || <FiSend />}
+                    </WebGLLiquidGlassSendButton>
+                  ) : (
+                    <button type="button" onClick={() => handleSend()} disabled={disableInput} aria-label="Send message">
+                      {renderWidgetIcon(effectiveAssistantIcons.sendIcon, { 'aria-hidden': true }) || <FiSend />}
+                    </button>
+                  )
                 )}
               </div>
             </div>
@@ -1015,4 +1045,3 @@ export default function WidgetPreview({
     </div>
   )
 }
-

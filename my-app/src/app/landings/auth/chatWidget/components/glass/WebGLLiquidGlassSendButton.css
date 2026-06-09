@@ -1,0 +1,63 @@
+.webgl-liquid-glass-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+}
+
+.send-button {
+  position: relative;
+  z-index: 5;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.send-button:focus-visible {
+  outline: 2px solid rgba(168, 147, 255, 0.9);
+  outline-offset: 10px;
+}
+
+.send-button > svg,
+.send-button .widget-svg-icon {
+  width: 25px !important;
+  height: 25px !important;
+  position: relative;
+  z-index: 2;
+  filter:
+    drop-shadow(0 1px 1px rgba(255, 255, 255, 0.42))
+    drop-shadow(0 8px 18px rgba(0, 0, 0, 0.32));
+  transition:
+    transform 220ms cubic-bezier(.2, .9, .2, 1),
+    opacity 220ms ease,
+    filter 220ms ease;
+}
+
+.send-button::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.34), transparent 30%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.04));
+  mix-blend-mode: screen;
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+.send-button.is-pressed > svg,
+.send-button.is-pressed .widget-svg-icon {
+  transform: translateY(1px) scale(0.88) rotate(-6deg);
+  opacity: 0.96;
+  filter:
+    drop-shadow(0 1px 1px rgba(255, 255, 255, 0.38))
+    drop-shadow(0 5px 12px rgba(0, 0, 0, 0.38));
+}

@@ -2738,8 +2738,8 @@
   -webkit-backdrop-filter: none;
 }
 
-.theme-glass-look .chat-footer button,
-.theme-glass-look .close-btn,
+.theme-glass-look .chat-footer button:not(.webgl-liquid-glass-button),
+.theme-glass-look .close-btn:not(.webgl-liquid-glass-button),
 .theme-glass-look .chat-header-back,
 .theme-glass-look .status-pill {
   position: relative;
@@ -2778,7 +2778,7 @@
 .theme-glass-look .chat-header::before,
 .theme-glass-look .chat-body::before,
 .theme-glass-look .chat-footer::before,
-.theme-glass-look .chat-footer button::before,
+.theme-glass-look .chat-footer button:not(.webgl-liquid-glass-button)::before,
 .theme-glass-look .widget-icon:not(.widget-icon--orb)::before {
   content: '';
   position: absolute;
@@ -2800,7 +2800,7 @@
 .theme-glass-look .chat-header::after,
 .theme-glass-look .chat-body::after,
 .theme-glass-look .chat-footer::after,
-.theme-glass-look .chat-footer button::after,
+.theme-glass-look .chat-footer button:not(.webgl-liquid-glass-button)::after,
 .theme-glass-look .widget-icon:not(.widget-icon--orb)::after {
   content: '';
   position: absolute;

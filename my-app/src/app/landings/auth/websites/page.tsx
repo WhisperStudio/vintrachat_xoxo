@@ -21,16 +21,8 @@ export default function AuthChatWidget() {
     <>
       <main className="page narrow">
         <div className="infoCard">
-          <h1>Your Chat Widgets</h1>
-          <p>Administrer dine widget-produkter.</p>
-        </div>
-
-        <div className="infoCard">
-          <h2>Access</h2>
-          <p>
-            Produkt aktivt:{' '}
-            <strong>{dbUser ? 'Ja' : 'Nei'}</strong>
-          </p>
+          <h1>This page is currently under development</h1>
+          <p>Contact us for more information. support@vintrachat.com or use our chatbot.</p>
         </div>
       </main>
     </>
