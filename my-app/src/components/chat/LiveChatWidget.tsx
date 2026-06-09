@@ -33,6 +33,10 @@ function draftStorageKey(widgetKey: string) {
   return `vintra-widget-draft:${widgetKey}`
 }
 
+function handoffStorageKey(widgetKey: string) {
+  return `vintra-widget-handoff:${widgetKey}`
+}
+
 function messageId() {
   return crypto.randomUUID()
 }
@@ -82,6 +86,61 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     if (typeof window === 'undefined') return ''
     return window.localStorage.getItem(draftStorageKey(widgetKey)) || ''
   })
+  const [handoffFormOpen, setHandoffFormOpen] = useState(() => {
+    if (typeof window === 'undefined') return false
+    try {
+      const raw = window.localStorage.getItem(handoffStorageKey(widgetKey))
+      if (!raw) return false
+      const parsed = JSON.parse(raw)
+      return Boolean(parsed?.open)
+    } catch {
+      return false
+    }
+  })
+  const [handoffName, setHandoffName] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    try {
+      const raw = window.localStorage.getItem(handoffStorageKey(widgetKey))
+      if (!raw) return ''
+      const parsed = JSON.parse(raw)
+      return String(parsed?.name || '')
+    } catch {
+      return ''
+    }
+  })
+  const [handoffEmail, setHandoffEmail] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    try {
+      const raw = window.localStorage.getItem(handoffStorageKey(widgetKey))
+      if (!raw) return ''
+      const parsed = JSON.parse(raw)
+      return String(parsed?.email || '')
+    } catch {
+      return ''
+    }
+  })
+  const [handoffPhone, setHandoffPhone] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    try {
+      const raw = window.localStorage.getItem(handoffStorageKey(widgetKey))
+      if (!raw) return ''
+      const parsed = JSON.parse(raw)
+      return String(parsed?.phone || '')
+    } catch {
+      return ''
+    }
+  })
+  const [pendingHumanSupportText, setPendingHumanSupportText] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    try {
+      const raw = window.localStorage.getItem(handoffStorageKey(widgetKey))
+      if (!raw) return ''
+      const parsed = JSON.parse(raw)
+      return String(parsed?.pendingText || '')
+    } catch {
+      return ''
+    }
+  })
   const [isSending, setIsSending] = useState(false)
   const [supportChatStatus, setSupportChatStatus] = useState<SupportChatState>('none')
   const [supportTypingAt, setSupportTypingAt] = useState<string | null>(null)
@@ -94,6 +153,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   const [captchaToken, setCaptchaToken] = useState('')
   const [keyboardOffset, setKeyboardOffset] = useState(0)
   const sendLockRef = useRef(false)
+  const visitorTypingTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     window.parent.postMessage(
@@ -206,6 +266,28 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   }, [inputValue, widgetKey])
 
   useEffect(() => {
+    try {
+      if (!handoffFormOpen && !pendingHumanSupportText && !handoffName && !handoffEmail && !handoffPhone) {
+        window.localStorage.removeItem(handoffStorageKey(widgetKey))
+        return
+      }
+
+      window.localStorage.setItem(
+        handoffStorageKey(widgetKey),
+        JSON.stringify({
+          open: handoffFormOpen,
+          name: handoffName,
+          email: handoffEmail,
+          phone: handoffPhone,
+          pendingText: pendingHumanSupportText,
+        })
+      )
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [handoffEmail, handoffFormOpen, handoffName, handoffPhone, pendingHumanSupportText, widgetKey])
+
+  useEffect(() => {
     const viewport = window.visualViewport
 
     const updateKeyboardOffset = () => {
@@ -306,19 +388,72 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   }, [configResponse, isOpen, widgetKey])
 
   const config = configResponse?.widgetConfig
-  const isHumanHandoffActive = supportChatStatus === 'needs-human' || supportChatStatus === 'open'
+  const isHumanSupportOpen = supportChatStatus === 'open'
+  const isHumanSupportPending = supportChatStatus === 'needs-human'
   const isSupportTyping =
-    isHumanHandoffActive &&
-    supportChatStatus === 'open' &&
+    isHumanSupportOpen &&
     Boolean(supportTypingAt) &&
     Date.now() - new Date(supportTypingAt || 0).getTime() < 4500
 
   const handleToggle = (nextOpen: boolean) => {
     setIsOpen(nextOpen)
+    if (!nextOpen) {
+      void updateVisitorTyping(false)
+    }
   }
 
   const isRateLimited = rateLimitUntil > Date.now()
   const cooldownSeconds = isRateLimited ? Math.max(1, Math.ceil((rateLimitUntil - Date.now()) / 1000)) : 0
+
+  const updateVisitorTyping = async (isTyping: boolean) => {
+    if (!sessionId || (!isHumanSupportPending && !isHumanSupportOpen)) return
+
+    try {
+      await fetch('/api/widget/support', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Vintra-Fingerprint': fingerprintLight,
+          ...(captchaToken ? { 'X-Vintra-Captcha-Token': captchaToken } : {}),
+        },
+        body: JSON.stringify({
+          widgetKey,
+          sessionId,
+          typing: isTyping,
+        }),
+      })
+    } catch (err) {
+      console.error('Failed to sync visitor typing state:', err)
+    }
+  }
+
+  useEffect(() => {
+    if (visitorTypingTimerRef.current) {
+      window.clearTimeout(visitorTypingTimerRef.current)
+      visitorTypingTimerRef.current = null
+    }
+
+    if (!sessionId || (!isHumanSupportPending && !isHumanSupportOpen)) {
+      void updateVisitorTyping(false)
+      return
+    }
+
+    if (!String(inputValue || '').trim()) {
+      void updateVisitorTyping(false)
+      return
+    }
+
+    visitorTypingTimerRef.current = window.setTimeout(() => {
+      void updateVisitorTyping(true)
+    }, 450)
+
+    return () => {
+      if (visitorTypingTimerRef.current) {
+        window.clearTimeout(visitorTypingTimerRef.current)
+        visitorTypingTimerRef.current = null
+      }
+    }
+  }, [captchaToken, inputValue, isHumanSupportOpen, isHumanSupportPending, sessionId, widgetKey])
 
   const handleSend = async (messageOverride?: string) => {
     const text = String(messageOverride ?? inputValue).trim()
@@ -337,7 +472,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       setIsSending(true)
       setError(null)
 
-      if (isHumanHandoffActive) {
+      if (isHumanSupportOpen) {
         const response = await fetch('/api/widget/support', {
           method: 'POST',
           headers: {
@@ -505,7 +640,10 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         }
 
         if (data.visitorNameRequired) {
+          setPendingHumanSupportText(text)
+          setHandoffFormOpen(true)
           setInputValue(text)
+          setError(null)
         } else {
           setInputValue('')
           window.localStorage.removeItem(draftStorageKey(widgetKey))
@@ -550,15 +688,152 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       console.error(err)
       const message = err instanceof Error ? err.message : ''
       if (!message.toLowerCase().includes('too quickly')) {
-        setError(isHumanHandoffActive ? 'Support message could not be sent right now.' : 'The assistant could not reply right now.')
+        setError(isHumanSupportOpen ? 'Support message could not be sent right now.' : 'The assistant could not reply right now.')
       }
-      if (!isHumanHandoffActive) {
+      if (!isHumanSupportOpen) {
         setMessages((prev) => prev.filter((message) => message.id !== userMessage.id))
       }
       setInputValue(text)
     } finally {
+      void updateVisitorTyping(false)
       setIsSending(false)
       sendLockRef.current = false
+    }
+  }
+
+  const handleSubmitHumanHandoff = async () => {
+    const name = handoffName.trim()
+    if (!name || !pendingHumanSupportText.trim() || isSending || isRateLimited) return
+
+    setIsSending(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/widget/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Vintra-Fingerprint': fingerprintLight,
+          ...(captchaToken ? { 'X-Vintra-Captcha-Token': captchaToken } : {}),
+        },
+        body: JSON.stringify({
+          widgetKey,
+          sessionId,
+          requestHumanSupport: true,
+          visitorName: name,
+          visitorEmail: handoffEmail.trim(),
+          visitorPhone: handoffPhone.trim(),
+          supportRequestText: pendingHumanSupportText,
+          countryCode: '',
+          pageTitle: document.title,
+          pageUrl: window.location.href,
+        }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        if (response.status === 429 && data.captchaRequired && data.captchaQuestion && data.captchaToken) {
+          const answer = window.prompt(`${data.captchaQuestion}\n\nEnter the answer to continue:`)
+          if (!answer) {
+            throw new Error('Verification cancelled.')
+          }
+
+          const verifyResponse = await fetch('/api/widget/captcha/verify', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Vintra-Fingerprint': fingerprintLight,
+            },
+            body: JSON.stringify({
+              widgetKey,
+              sessionId: sessionId || '',
+              fingerprint: fingerprintLight,
+              challengeToken: data.captchaToken,
+              answer,
+            }),
+          })
+
+          const verifyJson = await verifyResponse.json()
+          if (!verifyResponse.ok) {
+            throw new Error(verifyJson.error || 'Failed to verify captcha')
+          }
+
+          const nextCaptchaToken = String(verifyJson.captchaToken || '')
+          setCaptchaToken(nextCaptchaToken)
+          window.sessionStorage.setItem(`vintra-widget-captcha:${widgetKey}`, nextCaptchaToken)
+
+          window.setTimeout(() => {
+            void handleSubmitHumanHandoff()
+          }, 0)
+          return
+        }
+
+        if (response.status === 429 && data.retryAfterSeconds) {
+          setRateLimitUntil(Date.now() + Number(data.retryAfterSeconds) * 1000)
+          throw new Error(`You're sending messages too quickly. Try again in ${data.retryAfterSeconds}s.`)
+        }
+
+        throw new Error(data.error || 'Failed to request human support')
+      }
+
+      const nextSessionId = String(data.sessionId || sessionId || messageId())
+      setSessionId(nextSessionId)
+      window.localStorage.setItem(sessionStorageKey(widgetKey), nextSessionId)
+      setSupportChatStatus((String(data.status || 'needs-human') as SupportChatState) || 'needs-human')
+      setHandoffFormOpen(false)
+      setPendingHumanSupportText('')
+      setHandoffName('')
+      setHandoffEmail('')
+      setHandoffPhone('')
+      setInputValue('')
+      window.localStorage.removeItem(draftStorageKey(widgetKey))
+
+      try {
+        const supportResponse = await fetch(
+          `/api/widget/support?key=${encodeURIComponent(widgetKey)}&sessionId=${encodeURIComponent(nextSessionId)}`
+        )
+        const supportData = await supportResponse.json()
+        if (supportResponse.ok) {
+          setSupportChatStatus((String(supportData.status || data.status || 'needs-human') as SupportChatState) || 'needs-human')
+          setSupportTypingAt(supportData.supportTypingAt ? String(supportData.supportTypingAt) : null)
+          setMessages((prev) =>
+            dedupeMessages([
+              ...prev,
+              ...(Array.isArray(supportData.messages) ? supportData.messages.map((message: any) => toWidgetMessage(message)) : []),
+            ])
+          )
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: messageId(),
+              role: 'assistant',
+              text: String(data.reply || 'Takk for info, jeg har flagget det inn til et menneske.'),
+              createdAt: new Date().toISOString(),
+            },
+          ])
+        }
+      } catch (err) {
+        console.error('Support sync after human handoff failed:', err)
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: messageId(),
+            role: 'assistant',
+            text: String(data.reply || 'Takk for info, jeg har flagget det inn til et menneske.'),
+            createdAt: new Date().toISOString(),
+          },
+        ])
+      }
+    } catch (err) {
+      console.error(err)
+      const message = err instanceof Error ? err.message : ''
+      if (!message.toLowerCase().includes('too quickly')) {
+        setError('Human support could not be requested right now.')
+      }
+    } finally {
+      void updateVisitorTyping(false)
+      setIsSending(false)
     }
   }
 
@@ -704,9 +979,30 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         openOverride={isOpen}
         onToggleOpen={handleToggle}
         statusText={configResponse?.assistantEnabled ? 'AI live' : 'AI off'}
-        disableInput={isSending || feedbackOpen || isRateLimited}
-        bubbleActivityState={isSending && !isHumanHandoffActive ? 'replying' : 'idle'}
+        disableInput={isSending || feedbackOpen || isRateLimited || handoffFormOpen}
+        bubbleActivityState={isSending && !isHumanSupportOpen ? 'replying' : 'idle'}
         supportTypingIndicator={isSupportTyping}
+        humanHandoffOverlay={{
+          open: handoffFormOpen,
+          name: handoffName,
+          email: handoffEmail,
+          phone: handoffPhone,
+          submitting: isSending,
+          onNameChange: setHandoffName,
+          onEmailChange: setHandoffEmail,
+          onPhoneChange: setHandoffPhone,
+          onSubmit: () => {
+            void handleSubmitHumanHandoff()
+          },
+          onClose: () => {
+            setHandoffFormOpen(false)
+            setPendingHumanSupportText('')
+            setHandoffName('')
+            setHandoffEmail('')
+            setHandoffPhone('')
+            setError(null)
+          },
+        }}
         feedbackOverlay={{
           open: feedbackOpen,
           rating: feedbackRating,

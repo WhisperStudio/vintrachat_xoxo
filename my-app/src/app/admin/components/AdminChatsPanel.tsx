@@ -539,6 +539,12 @@ export default function AdminChatsPanel({
   }
 
   const awaitingAcceptance = selectedChat?.status === 'needs-human'
+  const visitorTypingAt = selectedChat?.visitorTypingAt ? new Date(selectedChat.visitorTypingAt).getTime() : 0
+  const showVisitorTyping =
+    Boolean(selectedChat) &&
+    selectedChat?.status !== 'closed' &&
+    visitorTypingAt > 0 &&
+    Date.now() - visitorTypingAt < 4500
   const canHumanReply = selectedChat?.status === 'open'
   const canReturnToAi = selectedChat?.status === 'open'
   const canReturnToHuman = selectedChat?.status === 'ai-active'
@@ -759,6 +765,20 @@ export default function AdminChatsPanel({
                         aria-label="Support is typing"
                       >
                         <strong>{text.speakers.support}</strong>
+                        <div className="adminTypingDots">
+                          <span />
+                          <span />
+                          <span />
+                        </div>
+                      </div>
+                    ) : null}
+                    {showVisitorTyping ? (
+                      <div
+                        className="adminTranscriptBubble adminTranscriptBubbleTyping adminTranscriptBubbleVisitorTyping"
+                        aria-live="polite"
+                        aria-label="Visitor is typing"
+                      >
+                        <strong>{text.speakers.visitor}</strong>
                         <div className="adminTypingDots">
                           <span />
                           <span />

@@ -188,12 +188,16 @@ export interface SupportChatSession {
   pageTitle?: string;
   pageUrl?: string;
   visitorName?: string;
+  visitorEmail?: string;
+  visitorPhone?: string;
   countryCode?: string;
   createdAt: Date;
   updatedAt: Date;
   supportRequestedAt?: Date;
   supportTypingAt?: Date;
   supportTypingBy?: string;
+  visitorTypingAt?: Date;
+  visitorTypingBy?: string;
   messageCount: number;
   messages: SupportChatMessage[];
 }

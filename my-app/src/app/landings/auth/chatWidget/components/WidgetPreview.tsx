@@ -100,6 +100,18 @@ interface WidgetPreviewProps {
   disableInput?: boolean
   bubbleActivityState?: 'idle' | 'replying'
   supportTypingIndicator?: boolean
+  humanHandoffOverlay?: {
+    open: boolean
+    name: string
+    email: string
+    phone: string
+    submitting?: boolean
+    onNameChange: (value: string) => void
+    onEmailChange: (value: string) => void
+    onPhoneChange: (value: string) => void
+    onSubmit: () => void
+    onClose: () => void
+  }
   feedbackOverlay?: {
     open: boolean
     title?: string
@@ -173,6 +185,7 @@ export default function WidgetPreview({
   disableInput = false,
   bubbleActivityState = 'idle',
   supportTypingIndicator = false,
+  humanHandoffOverlay,
   feedbackOverlay,
   conversationCardsEnabled = false,
   conversationCards = [],
@@ -270,6 +283,18 @@ export default function WidgetPreview({
       setInternalFeedbackText('')
       setInternalFeedbackRating(5)
     },
+  }
+  const activeHumanHandoffOverlay = humanHandoffOverlay || {
+    open: false,
+    name: '',
+    email: '',
+    phone: '',
+    submitting: false,
+    onNameChange: () => {},
+    onEmailChange: () => {},
+    onPhoneChange: () => {},
+    onSubmit: () => {},
+    onClose: () => {},
   }
   const showFaqSuggestions =
     isChatOpen && faqSuggestionsEnabled && !faqSuggestionsDismissed && messages.length <= 1 && activeFaqSuggestions.length > 0
@@ -927,7 +952,64 @@ export default function WidgetPreview({
               )}
               </div>
 
-            <div className={footerClasses}>
+            {activeHumanHandoffOverlay.open ? (
+              <div className="widget-handoff-overlay" role="dialog" aria-modal="true" aria-label="Human support request">
+                <div className="widget-handoff-card">
+                  <div className="widget-handoff-header">
+                    <div>
+                      <h4>Connect with human support</h4>
+                      <p>Fill in your name, email and phone number so we can follow up.</p>
+                    </div>
+                    <button type="button" className="widget-handoff-close" onClick={activeHumanHandoffOverlay.onClose} aria-label="Close human handoff form">
+                      <FiArrowLeft aria-hidden="true" />
+                    </button>
+                  </div>
+                  <div className="widget-handoff-grid">
+                    <label className="widget-handoff-field">
+                      <span>Name</span>
+                      <input
+                        type="text"
+                        value={activeHumanHandoffOverlay.name}
+                        onChange={(event) => activeHumanHandoffOverlay.onNameChange(event.target.value)}
+                        placeholder="Your name"
+                        autoComplete="name"
+                      />
+                    </label>
+                    <label className="widget-handoff-field">
+                      <span>Email</span>
+                      <input
+                        type="email"
+                        value={activeHumanHandoffOverlay.email}
+                        onChange={(event) => activeHumanHandoffOverlay.onEmailChange(event.target.value)}
+                        placeholder="you@example.com"
+                        autoComplete="email"
+                      />
+                    </label>
+                    <label className="widget-handoff-field">
+                      <span>Phone</span>
+                      <input
+                        type="tel"
+                        value={activeHumanHandoffOverlay.phone}
+                        onChange={(event) => activeHumanHandoffOverlay.onPhoneChange(event.target.value)}
+                        placeholder="+47 123 45 678"
+                        autoComplete="tel"
+                      />
+                    </label>
+                  </div>
+                  <div className="widget-handoff-actions">
+                    <button
+                      type="button"
+                      className="widget-handoff-submit"
+                      onClick={activeHumanHandoffOverlay.onSubmit}
+                      disabled={!String(activeHumanHandoffOverlay.name || '').trim() || Boolean(activeHumanHandoffOverlay.submitting)}
+                    >
+                      {activeHumanHandoffOverlay.submitting ? 'Sending...' : 'Send request'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className={footerClasses}>
               <div className="chat-footer-row">
                 <textarea
                   id="widget-message-input"
@@ -974,7 +1056,8 @@ export default function WidgetPreview({
                   )
                 )}
               </div>
-            </div>
+              </div>
+            )}
 
             {visibleErrorMessage && <div className="widget-inline-error">{visibleErrorMessage}</div>}
             <FeedbackFormOverlay

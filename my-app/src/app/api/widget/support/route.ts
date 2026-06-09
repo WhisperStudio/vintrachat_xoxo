@@ -111,11 +111,17 @@ export async function GET(req: NextRequest) {
         status: data.status || 'needs-human',
         messageCount: Number(data.messageCount || 0),
         visitorName: data.visitorName,
+        visitorEmail: data.visitorEmail,
+        visitorPhone: data.visitorPhone,
         countryCode: data.countryCode,
         supportTypingAt:
           typeof data.supportTypingAt?.toDate === 'function'
             ? data.supportTypingAt.toDate().toISOString()
             : data.supportTypingAt || null,
+        visitorTypingAt:
+          typeof data.visitorTypingAt?.toDate === 'function'
+            ? data.visitorTypingAt.toDate().toISOString()
+            : data.visitorTypingAt || null,
         messages: Array.isArray(data.messages) ? data.messages.map(mapMessage) : [],
       },
       { headers }
@@ -134,13 +140,17 @@ export async function POST(req: NextRequest) {
     const widgetKey = String(body.widgetKey || '')
     const sessionId = String(body.sessionId || '')
     const message = String(body.message || '').trim()
+    const typing = Boolean(body.typing)
     const countryCode = String(body.countryCode || getRequestCountryCode(req) || 'XX').toUpperCase()
     const fingerprint = String(req.headers.get('x-vintra-fingerprint') || body.fingerprint || '').trim()
     const captchaToken = String(req.headers.get('x-vintra-captcha-token') || body.captchaToken || '').trim()
+    const visitorName = typeof body.visitorName === 'string' ? body.visitorName.trim() : ''
+    const visitorEmail = typeof body.visitorEmail === 'string' ? body.visitorEmail.trim() : ''
+    const visitorPhone = typeof body.visitorPhone === 'string' ? body.visitorPhone.trim() : ''
 
-    if (!widgetKey || !sessionId || !message) {
+    if (!widgetKey || !sessionId) {
       return NextResponse.json(
-        { error: 'Missing widget key, sessionId or message' },
+        { error: 'Missing widget key or sessionId' },
         { status: 400, headers }
       )
     }
@@ -169,54 +179,97 @@ export async function POST(req: NextRequest) {
         })
       : { valid: false as const }
 
-    const rateLimitCheck = await enforceWidgetRateLimit({
-      businessId: business.id,
-      widgetKey,
-      clientId: getClientIp(req),
-      sessionId,
-      fingerprint,
-      action: 'widget-support',
-      rules: [
-        { windowMs: 10_000, maxRequests: 4 },
-        { windowMs: 60_000, maxRequests: 12 },
-      ],
-      captchaRules: [
-        { windowMs: 60_000, maxRequests: 60 },
-        { windowMs: 3_600_000, maxRequests: 240 },
-      ],
-      captchaTokenValid: captchaVerification.valid,
-    })
+    if (!typing && !message) {
+      const chatRef = adminDb.collection('businesses').doc(business.id).collection('supportChats').doc(sessionId)
+      const snap = await chatRef.get()
+      const data = snap.data() || {}
 
-    if (!rateLimitCheck.allowed) {
-      if (rateLimitCheck.captchaRequired) {
-        const challenge = createWidgetCaptchaChallenge({
-          secret: captchaSecret,
-          businessId: business.id,
-          widgetKey,
-          sessionId,
-          fingerprint,
-          clientIp: getClientIp(req),
-        })
-
-        return NextResponse.json(
+      if (snap.exists) {
+        await chatRef.set(
           {
-            error: 'Captcha required',
-            captchaRequired: true,
-            captchaQuestion: challenge.question,
-            captchaToken: challenge.challengeToken,
-            captchaExpiresInSeconds: challenge.expiresInSeconds,
+            sessionId,
+            businessId: business.id,
+            widgetKey,
+            status: data.status || 'needs-human',
+            source: 'widget',
+            preview: data.preview || '',
+            visitorName: data.visitorName || null,
+            visitorEmail: data.visitorEmail || null,
+            visitorPhone: data.visitorPhone || null,
+            countryCode: countryCode || data.countryCode || null,
+            pageTitle: data.pageTitle || null,
+            pageUrl: data.pageUrl || null,
+            visitorTypingAt: FieldValue.delete(),
+            visitorTypingBy: FieldValue.delete(),
+            updatedAt: FieldValue.serverTimestamp(),
           },
-          { status: 429, headers }
+          { merge: true }
         )
       }
 
       return NextResponse.json(
         {
-          error: `You're sending messages too quickly. Please wait ${rateLimitCheck.retryAfterSeconds}s and try again.`,
-          retryAfterSeconds: rateLimitCheck.retryAfterSeconds,
+          sessionId,
+          status: data.status || 'needs-human',
+          messageCount: Number(data.messageCount || 0),
+          visitorName: data.visitorName,
+          visitorEmail: data.visitorEmail,
+          visitorPhone: data.visitorPhone,
+          countryCode: data.countryCode || countryCode,
+          messages: Array.isArray(data.messages) ? data.messages.map(mapMessage) : [],
         },
-        { status: 429, headers }
+        { headers }
       )
+    } else if (message) {
+      const rateLimitCheck = await enforceWidgetRateLimit({
+        businessId: business.id,
+        widgetKey,
+        clientId: getClientIp(req),
+        sessionId,
+        fingerprint,
+        action: 'widget-support',
+        rules: [
+          { windowMs: 10_000, maxRequests: 4 },
+          { windowMs: 60_000, maxRequests: 12 },
+        ],
+        captchaRules: [
+          { windowMs: 60_000, maxRequests: 60 },
+          { windowMs: 3_600_000, maxRequests: 240 },
+        ],
+        captchaTokenValid: captchaVerification.valid,
+      })
+
+      if (!rateLimitCheck.allowed) {
+        if (rateLimitCheck.captchaRequired) {
+          const challenge = createWidgetCaptchaChallenge({
+            secret: captchaSecret,
+            businessId: business.id,
+            widgetKey,
+            sessionId,
+            fingerprint,
+            clientIp: getClientIp(req),
+          })
+
+          return NextResponse.json(
+            {
+              error: 'Captcha required',
+              captchaRequired: true,
+              captchaQuestion: challenge.question,
+              captchaToken: challenge.challengeToken,
+              captchaExpiresInSeconds: challenge.expiresInSeconds,
+            },
+            { status: 429, headers }
+          )
+        }
+
+        return NextResponse.json(
+          {
+            error: `You're sending messages too quickly. Please wait ${rateLimitCheck.retryAfterSeconds}s and try again.`,
+            retryAfterSeconds: rateLimitCheck.retryAfterSeconds,
+          },
+          { status: 429, headers }
+        )
+      }
     }
 
     if (countCharacters(message) > MAX_WIDGET_MESSAGE_CHARS) {
@@ -231,6 +284,43 @@ export async function POST(req: NextRequest) {
 
     const data = snap.data() || {}
     const businessRef = adminDb.collection('businesses').doc(business.id)
+
+    if (typing && !message) {
+      await chatRef.set(
+        {
+          sessionId,
+          businessId: business.id,
+          widgetKey,
+          status: data.status || 'needs-human',
+          source: 'widget',
+          preview: data.preview || '',
+          visitorName: data.visitorName || null,
+          visitorEmail: data.visitorEmail || null,
+          visitorPhone: data.visitorPhone || null,
+          countryCode: countryCode || data.countryCode || null,
+          pageTitle: data.pageTitle || null,
+          pageUrl: data.pageUrl || null,
+          visitorTypingAt: FieldValue.serverTimestamp(),
+          visitorTypingBy: fingerprint || data.visitorTypingBy || null,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      )
+
+      return NextResponse.json(
+        {
+          sessionId,
+          status: data.status || 'needs-human',
+          messageCount: Number(data.messageCount || 0),
+          visitorName: data.visitorName,
+          visitorEmail: data.visitorEmail,
+          visitorPhone: data.visitorPhone,
+          countryCode: data.countryCode || countryCode,
+          messages: Array.isArray(data.messages) ? data.messages.map(mapMessage) : [],
+        },
+        { headers }
+      )
+    }
 
     const nextMessage = {
       id: crypto.randomUUID(),
@@ -248,12 +338,16 @@ export async function POST(req: NextRequest) {
         source: 'widget',
         preview: message,
         visitorName: data.visitorName || null,
+        visitorEmail: data.visitorEmail || null,
+        visitorPhone: data.visitorPhone || null,
         countryCode: countryCode || data.countryCode || null,
         pageTitle: data.pageTitle || null,
         pageUrl: data.pageUrl || null,
         messageCount: FieldValue.increment(1),
         messages: FieldValue.arrayUnion(nextMessage),
         supportRequestedAt: data.supportRequestedAt || FieldValue.serverTimestamp(),
+        visitorTypingAt: FieldValue.delete(),
+        visitorTypingBy: FieldValue.delete(),
         createdAt: data.createdAt || FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       },
@@ -283,6 +377,8 @@ export async function POST(req: NextRequest) {
         status: nextData.status || data.status || 'needs-human',
         messageCount: Number(nextData.messageCount || 0),
         visitorName: nextData.visitorName || data.visitorName,
+        visitorEmail: nextData.visitorEmail || data.visitorEmail,
+        visitorPhone: nextData.visitorPhone || data.visitorPhone,
         countryCode: nextData.countryCode || data.countryCode || countryCode,
         messages: Array.isArray(nextData.messages) ? nextData.messages.map(mapMessage) : [],
       },

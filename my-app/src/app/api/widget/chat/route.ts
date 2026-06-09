@@ -65,6 +65,9 @@ const fallbackFeedbackKeywords = [
 ]
 
 const MAX_WIDGET_MESSAGE_CHARS = 300
+function buildHumanHandoffReply() {
+  return 'Takk for info, jeg har flagget det inn til et menneske. Mens vi venter, er det noe annet du lurer på?'
+}
 function normalizeGeminiModel(model: string | null | undefined) {
   const value = String(model || '').trim()
   const allowed = ['gemini-2.5-flash-lite', 'gemma-4-26b-a4b-it', 'gemma-4-31b-it']
@@ -476,6 +479,8 @@ export async function POST(req: NextRequest) {
     const pageTitle = body.pageTitle ? String(body.pageTitle) : undefined
     const pageUrl = body.pageUrl ? String(body.pageUrl) : undefined
     const visitorName = body.visitorName ? String(body.visitorName).trim() : ''
+    const visitorEmail = body.visitorEmail ? String(body.visitorEmail).trim() : ''
+    const visitorPhone = body.visitorPhone ? String(body.visitorPhone).trim() : ''
     const countryCode = getRequestCountryCode(req)
     const requestHumanSupport = Boolean(body.requestHumanSupport)
     const supportRequestText = body.supportRequestText ? String(body.supportRequestText).trim() : ''
@@ -741,7 +746,7 @@ export async function POST(req: NextRequest) {
       const assistantSupportMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        text: assistantConfig.handoffMessage || buildNameRequestReply(),
+        text: buildHumanHandoffReply(),
         createdAt: now.toISOString(),
       }
       const supportMessages = [userSupportMessage, assistantSupportMessage]
@@ -759,6 +764,8 @@ export async function POST(req: NextRequest) {
           source: 'widget',
           preview: supportRequestText,
           visitorName,
+          visitorEmail: visitorEmail || null,
+          visitorPhone: visitorPhone || null,
           countryCode,
           pageTitle: pageTitle || null,
           pageUrl: pageUrl || null,
@@ -767,6 +774,8 @@ export async function POST(req: NextRequest) {
           supportRequestedAt: supportChatSnap.exists
             ? supportChatSnap.data()?.supportRequestedAt || FieldValue.serverTimestamp()
             : FieldValue.serverTimestamp(),
+          visitorTypingAt: FieldValue.delete(),
+          visitorTypingBy: FieldValue.delete(),
           createdAt: supportChatSnap.exists
             ? supportChatSnap.data()?.createdAt || FieldValue.serverTimestamp()
             : FieldValue.serverTimestamp(),
@@ -792,7 +801,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           sessionId,
-          reply: assistantConfig.handoffMessage || 'The chat has been handed over to human support.',
+          reply: buildHumanHandoffReply(),
           supportRequested: true,
           countryCode,
         },
@@ -872,12 +881,7 @@ export async function POST(req: NextRequest) {
 
     const needsHumanSupport = humanSupportEnabled && (heuristicsTriggered || aiWantsHumanSupport)
     const requiresName = needsHumanSupport && !visitorName
-    const finalReply =
-      requiresName
-      ? buildNameRequestReply()
-        : needsHumanSupport && assistantConfig.handoffMessage
-        ? assistantConfig.handoffMessage
-        : aiReply
+    const finalReply = requiresName ? buildNameRequestReply() : aiReply
 
     const now = new Date()
     const messageTimeline: IncomingMessage[] = [
@@ -901,11 +905,7 @@ export async function POST(req: NextRequest) {
     const supportChatSnap = await supportChatRef.get()
     const existingSupportChat = supportChatSnap.exists ? supportChatSnap.data() || {} : null
 
-    if (
-      existingSupportChat &&
-      existingSupportChat.status !== 'ai-active' &&
-      existingSupportChat.status !== 'closed'
-    ) {
+    if (existingSupportChat && existingSupportChat.status === 'open') {
       const nextSupportMessage = {
         id: crypto.randomUUID(),
         role: 'user',
@@ -925,6 +925,8 @@ export async function POST(req: NextRequest) {
           source: 'widget',
           preview: message,
           visitorName: visitorName || existingSupportChat.visitorName || null,
+          visitorEmail: visitorEmail || existingSupportChat.visitorEmail || null,
+          visitorPhone: visitorPhone || existingSupportChat.visitorPhone || null,
           countryCode: countryCode || existingSupportChat.countryCode || null,
           pageTitle: pageTitle || existingSupportChat.pageTitle || null,
           pageUrl: pageUrl || existingSupportChat.pageUrl || null,
@@ -932,6 +934,8 @@ export async function POST(req: NextRequest) {
           messages: nextSupportMessages,
           supportRequestedAt:
             existingSupportChat.supportRequestedAt || FieldValue.serverTimestamp(),
+          visitorTypingAt: FieldValue.delete(),
+          visitorTypingBy: FieldValue.delete(),
           createdAt: existingSupportChat.createdAt || FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         },
@@ -951,11 +955,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           sessionId,
-          reply:
-            existingSupportChat.status === 'open'
-              ? assistantConfig.handoffMessage || 'A human is currently handling this chat.'
-              : assistantConfig.handoffMessage || 'The chat has been handed over to human support.',
-          supportRequested: true,
+          reply: buildHumanHandoffReply(),
+          supportRequested: false,
           visitorNameRequired: false,
           countryCode,
         },
@@ -1020,6 +1021,8 @@ export async function POST(req: NextRequest) {
           source: 'widget',
           preview: message,
           visitorName: visitorName || null,
+          visitorEmail: visitorEmail || null,
+          visitorPhone: visitorPhone || null,
           countryCode,
           pageTitle: pageTitle || null,
           pageUrl: pageUrl || null,
@@ -1028,6 +1031,8 @@ export async function POST(req: NextRequest) {
           supportRequestedAt: supportChatSnap.exists
             ? supportChatSnap.data()?.supportRequestedAt || FieldValue.serverTimestamp()
             : FieldValue.serverTimestamp(),
+          visitorTypingAt: FieldValue.delete(),
+          visitorTypingBy: FieldValue.delete(),
           createdAt: supportChatSnap.exists
             ? supportChatSnap.data()?.createdAt || FieldValue.serverTimestamp()
             : FieldValue.serverTimestamp(),
@@ -1048,6 +1053,8 @@ export async function POST(req: NextRequest) {
           source: 'widget',
           preview: message,
           visitorName: visitorName || existingSupportChat.visitorName || null,
+          visitorEmail: visitorEmail || existingSupportChat.visitorEmail || null,
+          visitorPhone: visitorPhone || existingSupportChat.visitorPhone || null,
           countryCode: countryCode || existingSupportChat.countryCode || null,
           pageTitle: pageTitle || existingSupportChat.pageTitle || null,
           pageUrl: pageUrl || existingSupportChat.pageUrl || null,
@@ -1055,6 +1062,8 @@ export async function POST(req: NextRequest) {
           messages: messageTimeline,
           supportRequestedAt:
             existingSupportChat.supportRequestedAt || FieldValue.serverTimestamp(),
+          visitorTypingAt: FieldValue.delete(),
+          visitorTypingBy: FieldValue.delete(),
           createdAt: existingSupportChat.createdAt || FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         },
@@ -1067,7 +1076,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       sessionId,
       reply: finalReply,
-      supportRequested: needsHumanSupport && !requiresName,
+      supportRequested: needsHumanSupport && !requiresName && !existingSupportChat,
       visitorNameRequired: requiresName,
       countryCode,
     }, { headers })
