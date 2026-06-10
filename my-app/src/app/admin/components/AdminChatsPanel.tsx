@@ -552,256 +552,179 @@ export default function AdminChatsPanel({
 
   return (
     <div className="infoCard adminChatsPanel">
-      <div className="adminChatsTopBar">
-        <div className="adminChatsTitleBlock">
-          <span className="adminChatsEyebrow">
-            <FiUsers />
-            {text.inbox}
-          </span>
-          <div className="adminChatsTitleRow">
-            <h1>{text.title}</h1>
-            <span className="adminChatsUnreadPill">
-              {unreadCount} {text.unread}
+      <div className="adminChatsLayout">
+        <aside className="adminChatsInbox">
+          <div className="adminChatsTitleBlock">
+            <span className="adminChatsEyebrow">
+              <FiUsers />
+              {text.inbox}
+              <span className="adminChatsUnreadPill">
+                {unreadCount} {text.unread}
+              </span>
             </span>
+
+            <AdminDropdown
+              value={selectedWidgetKey}
+              options={widgetOptions}
+              onChange={handleWidgetChange}
+              placeholder={text.allWidgets}
+            />
           </div>
-          <p>
-            {text.showingWidget}{' '}
-            <strong>{selectedWidgetLabel}</strong>
-          </p>
-        </div>
-
-        <div className="adminChatsWidgetPicker">
-          <span>{text.widget}</span>
-          <AdminDropdown
-            value={selectedWidgetKey}
-            options={widgetOptions}
-            onChange={handleWidgetChange}
-            placeholder={text.allWidgets}
-          />
-        </div>
-      </div>
-
-     
-
-      {isFilteredEmpty ? (
-        <div className="adminChatsEmptyState">
-          <h2>{text.emptyFiltered}</h2>
-          <p>
-            {selectedWidgetKey ? text.emptySelectedWidget : text.empty}
-          </p>
-        </div>
-      ) : (
-        <div className="adminChatsLayout">
-          <aside className="adminChatsInbox">
-             <div className="adminChatsToolbar">
-        <div className="adminChatsToolbarActions">
-          <button
-            type="button"
-            className={filterMode === 'all' ? 'adminChatsFilterButton active' : 'adminChatsFilterButton'}
-            onClick={() => setFilterMode('all')}
-          >
-            {text.all}
-          </button>
-          <button
-            type="button"
-            className={filterMode === 'unread' ? 'adminChatsFilterButton active' : 'adminChatsFilterButton'}
-            onClick={() => setFilterMode('unread')}
-          >
-            {text.unread}
-          </button>
-          <button
-            type="button"
-            className="adminChatsFilterButton adminChatsSortButton"
-            onClick={() => setSortMode((current) => (current === 'newest' ? 'oldest' : 'newest'))}
-          >
-            <FiClock />
-            {sortMode === 'newest' ? text.newestFirst : text.oldestFirst}
-          </button>
-          <label className="adminChatsSearch">
-          <FiSearch />
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder={text.searchPlaceholder}
-          />
-        </label>
-        </div>
-      </div>
+          <div className="middleinbox">
+            <div className="adminChatsToolbar">
+              <div className="adminChatsToolbarActions">
+                <button
+                  type="button"
+                  className={filterMode === 'all' ? 'adminChatsFilterButton active' : 'adminChatsFilterButton'}
+                  onClick={() => setFilterMode('all')}
+                >
+                  {text.all}
+                </button>
+                <button
+                  type="button"
+                  className={filterMode === 'unread' ? 'adminChatsFilterButton active' : 'adminChatsFilterButton'}
+                  onClick={() => setFilterMode('unread')}
+                >
+                  {text.unread}
+                </button>
+                <button
+                  type="button"
+                  className="adminChatsFilterButton adminChatsSortButton"
+                  onClick={() => setSortMode((current) => (current === 'newest' ? 'oldest' : 'newest'))}
+                >
+                  <FiClock />
+                  {sortMode === 'newest' ? text.newestFirst : text.oldestFirst}
+                </button>
+                <label className="adminChatsSearch">
+                  <FiSearch />
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder={text.searchPlaceholder}
+                  />
+                </label>
+              </div>
+            </div>
             <div className="adminChatsListHeader">
-              <strong>{text.chatList}</strong>
               <span>
                 {filteredChats.length} {text.messages}
               </span>
             </div>
+            {isFilteredEmpty ? (
+              <div className="adminChatsEmptyState">
+                <h2>{text.emptyFiltered}</h2>
+                <p>
+                  {selectedWidgetKey ? text.emptySelectedWidget : text.empty}
+                </p>
+              </div>
+            ) : (
+              <div className="adminChatsList">
+                {filteredChats.map((chat) => {
+                  const title = getChatTitle(chat, text)
+                  const preview = getChatPreview(chat, text)
+                  const isUnread = (readAtMap[chat.id] || 0) < new Date(chat.updatedAt).getTime()
+                  const stamp = formatInboxStamp(new Date(chat.updatedAt), language === 'no' ? 'no-NO' : 'en-US', text)
+                  const initials = getInitials(title)
 
-            <div className="adminChatsList">
-              {filteredChats.map((chat) => {
-                const title = getChatTitle(chat, text)
-                const preview = getChatPreview(chat, text)
-                const isUnread = (readAtMap[chat.id] || 0) < new Date(chat.updatedAt).getTime()
-                const stamp = formatInboxStamp(new Date(chat.updatedAt), language === 'no' ? 'no-NO' : 'en-US', text)
-                const initials = getInitials(title)
+                  return (
+                    <button
+                      key={chat.id}
+                      type="button"
+                      className={`adminChatsListItem ${chat.id === selectedChat?.id ? 'active' : ''}`}
+                      onClick={() => handleSelectChat(chat)}
+                    >
+                      <span className="adminChatsAvatar" aria-hidden="true">
+                        {initials}
+                      </span>
 
-                return (
-                  <button
-                    key={chat.id}
-                    type="button"
-                    className={`adminChatsListItem ${chat.id === selectedChat?.id ? 'active' : ''}`}
-                    onClick={() => handleSelectChat(chat)}
-                  >
-                    <span className="adminChatsAvatar" aria-hidden="true">
-                      {initials}
-                    </span>
+                      <div className="adminChatsListCopy">
+                        <div className="adminChatsListTopRow">
+                          <strong>{title}</strong>
+                          <div className="adminChatsListMeta">
+                            <span className="adminChatsListStamp">
+                              <FiClock />
+                              {stamp}
+                            </span>
 
-                    <div className="adminChatsListCopy">
-                      <div className="adminChatsListTopRow">
-                        <strong>{title}</strong>
-                        <div className="adminChatsListMeta">
-                          <span className="adminChatsListStamp">
-                          {stamp}
-                        </span>
-                        <span>{chat.messageCount} {text.messages}</span>
+                          </div>
+                        </div>
+                        <p>{preview}</p>
+
                       </div>
-                      </div>
-                      <p>{preview}</p>
-                    
-                    </div>
 
-                    {isUnread ? <span className="adminChatsUnreadDot" aria-label={text.unread} /> : null}
-                  </button>
-                )
-              })}
-            </div>
-          </aside>
+                      {isUnread ? <span className="adminChatsUnreadDot" aria-label={text.unread} /> : null}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </aside>
 
-          <section className="adminChatsTranscript">
-            {selectedChat ? (
-              <>
-                <div className="adminChatMeta">
+        <section className="adminChatsTranscript">
+          {selectedChat ? (
+            <>
+              <div className="adminChatMeta">
+                <section className="adminChatMetaSection">
                   <div className="adminChatMetaTop">
-                    <span className="adminChatMetaAvatar" aria-hidden="true">
+                    <span className="adminChatsAvatar" aria-hidden="true">
                       {getInitials(getChatTitle(selectedChat, text))}
                     </span>
                     <div>
                       <strong>{getChatTitle(selectedChat, text)}</strong>
-                      <span>{selectedChat.pageTitle || selectedChat.pageUrl || selectedChat.widgetKey}</span>
                     </div>
                   </div>
 
+
                   <div className="adminChatMetaDetails">
-                    <span>{text.visitor}: {selectedChat.visitorName || text.unnamed}</span>
                     <span>{text.time}: {formatInboxStamp(new Date(selectedChat.updatedAt), language === 'no' ? 'no-NO' : 'en-US', text)}</span>
                     <span>{text.messages}: {selectedChat.messageCount}</span>
                   </div>
-                </div>
-
-                <div className="adminChatActions">
-                  {canReturnToAi ? (
-                    <button
-                      type="button"
-                      className="secondaryBtn"
-                      onClick={handleReturnToAi}
-                      disabled={actionBusy}
-                    >
-                      {text.returnToAi}
-                    </button>
-                  ) : null}
-                  {awaitingAcceptance ? (
-                    <button
-                      type="button"
-                      className="secondaryBtn"
-                      onClick={handleAccept}
-                      disabled={actionBusy}
-                    >
-                      {text.acceptChat}
-                    </button>
-                  ) : null}
-                  {canReturnToHuman ? (
-                    <button
-                      type="button"
-                      className="secondaryBtn"
-                      onClick={handleAccept}
-                      disabled={actionBusy}
-                    >
-                      {text.returnToHuman}
-                    </button>
-                  ) : null}
-                  {(selectedChat.status === 'open' || selectedChat.status === 'ai-active') ? (
-                    <button
-                      type="button"
-                      className="dangerBtn"
-                      onClick={handleClose}
-                      disabled={actionBusy}
-                    >
-                      {text.closeChat}
-                    </button>
-                  ) : null}
-                </div>
-
-                <div className={`adminChatTranscriptStack ${awaitingAcceptance ? 'adminChatTranscriptLocked' : ''}`}>
-                  <div className="adminChatMessages" ref={messagesRef}>
-                    {selectedChat.messages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={`adminTranscriptBubble ${
-                          message.role === 'assistant'
-                            ? 'adminTranscriptBubbleAssistant'
-                            : message.role === 'support'
-                              ? 'adminTranscriptBubbleSupport'
-                              : message.role === 'system'
-                                ? 'adminTranscriptBubbleSystem'
-                                : 'adminTranscriptBubbleUser'
-                        }`}
+                </section>
+                <section className="adminChatMetaSection">
+                  <div className="adminChatActions">
+                    {canReturnToAi ? (
+                      <button
+                        type="button"
+                        className="secondaryBtn"
+                        onClick={handleReturnToAi}
+                        disabled={actionBusy}
                       >
-                        <strong>{speakerLabel(message.role, text)}</strong>
-                        <p>{message.text}</p>
-                        <span className="adminTranscriptTime">{formatClock(message.createdAt, language === 'no' ? 'no-NO' : 'en-US')}</span>
-                      </div>
-                    ))}
-                    {replySending ? (
-                      <div
-                        className="adminTranscriptBubble adminTranscriptBubbleTyping"
-                        aria-live="polite"
-                        aria-label="Support is typing"
-                      >
-                        <strong>{text.speakers.support}</strong>
-                        <div className="adminTypingDots">
-                          <span />
-                          <span />
-                          <span />
-                        </div>
-                      </div>
+                        {text.returnToAi}
+                      </button>
                     ) : null}
-                    {showVisitorTyping ? (
-                      <div
-                        className="adminTranscriptBubble adminTranscriptBubbleTyping adminTranscriptBubbleVisitorTyping"
-                        aria-live="polite"
-                        aria-label="Visitor is typing"
+                    {awaitingAcceptance ? (
+                      <button
+                        type="button"
+                        className="secondaryBtn"
+                        onClick={handleAccept}
+                        disabled={actionBusy}
                       >
-                        <strong>{text.speakers.visitor}</strong>
-                        <div className="adminTypingDots">
-                          <span />
-                          <span />
-                          <span />
-                        </div>
-                      </div>
+                        {text.acceptChat}
+                      </button>
+                    ) : null}
+                    {canReturnToHuman ? (
+                      <button
+                        type="button"
+                        className="secondaryBtn"
+                        onClick={handleAccept}
+                        disabled={actionBusy}
+                      >
+                        {text.returnToHuman}
+                      </button>
+                    ) : null}
+                    {(selectedChat.status === 'open' || selectedChat.status === 'ai-active') ? (
+                      <button
+                        type="button"
+                        className="dangerBtn"
+                        onClick={handleClose}
+                        disabled={actionBusy}
+                      >
+                        {text.closeChat}
+                      </button>
                     ) : null}
                   </div>
-
-                  {awaitingAcceptance ? (
-                    <div className="adminChatGate">
-                      <div className="adminChatGateCard">
-                        <p>{text.waitingAccept}</p>
-                        <button type="button" className="adminChatGateButton" onClick={handleAccept} disabled={actionBusy}>
-                          {text.acceptChat}
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="adminChatTools">
                   <div className="adminChatToolsRow">
                     <button
                       type="button"
@@ -919,38 +842,105 @@ export default function AdminChatsPanel({
                       </div>
                     </div>
                   ) : null}
-
-                  <div className="adminChatReplyBox">
-                    <textarea
-                      value={replyText}
-                      onChange={(event) => setReplyText(event.target.value)}
-                      placeholder={selectedChat.status === 'open' ? text.replyPlaceholder : text.replyLocked}
-                      disabled={!canHumanReply || actionBusy}
-                      rows={4}
-                    />
-                    <button
-                      type="button"
-                      className="primaryBtn adminSendButton"
-                      onClick={handleSendReply}
-                      disabled={!canHumanReply || actionBusy || replySending || !replyText.trim()}
-                    >
-                      <FiSend />
-                      {text.sendHumanReply}
-                    </button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="adminChatsEmptyState adminChatsTranscriptEmpty">
-                <h2>{text.emptyFiltered}</h2>
-                <p>
-                  {text.emptySelectedWidget}
-                </p>
+                </section>
               </div>
-            )}
-          </section>
-        </div>
-      )}
+
+
+
+              <div className={`adminChatTranscriptStack ${awaitingAcceptance ? 'adminChatTranscriptLocked' : ''}`}>
+                <div className="adminChatMessages" ref={messagesRef}>
+                  {selectedChat.messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`adminTranscriptBubble ${message.role === 'assistant'
+                        ? 'adminTranscriptBubbleAssistant'
+                        : message.role === 'support'
+                          ? 'adminTranscriptBubbleSupport'
+                          : message.role === 'system'
+                            ? 'adminTranscriptBubbleSystem'
+                            : 'adminTranscriptBubbleUser'
+                        }`}
+                    >
+                      <strong>{speakerLabel(message.role, text)}</strong>
+                      <p>{message.text}</p>
+                      <span className="adminTranscriptTime">{formatClock(message.createdAt, language === 'no' ? 'no-NO' : 'en-US')}</span>
+                    </div>
+                  ))}
+                  {replySending ? (
+                    <div
+                      className="adminTranscriptBubble adminTranscriptBubbleTyping"
+                      aria-live="polite"
+                      aria-label="Support is typing"
+                    >
+                      <strong>{text.speakers.support}</strong>
+                      <div className="adminTypingDots">
+                        <span />
+                        <span />
+                        <span />
+                      </div>
+                    </div>
+                  ) : null}
+                  {showVisitorTyping ? (
+                    <div
+                      className="adminTranscriptBubble adminTranscriptBubbleTyping adminTranscriptBubbleVisitorTyping"
+                      aria-live="polite"
+                      aria-label="Visitor is typing"
+                    >
+                      <strong>{text.speakers.visitor}</strong>
+                      <div className="adminTypingDots">
+                        <span />
+                        <span />
+                        <span />
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
+                {awaitingAcceptance ? (
+                  <div className="adminChatGate">
+                    <div className="adminChatGateCard">
+                      <p>{text.waitingAccept}</p>
+                      <button type="button" className="adminChatGateButton" onClick={handleAccept} disabled={actionBusy}>
+                        {text.acceptChat}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="adminChatTools">
+
+
+                <div className="adminChatReplyBox">
+                  <textarea
+                    value={replyText}
+                    onChange={(event) => setReplyText(event.target.value)}
+                    placeholder={selectedChat.status === 'open' ? text.replyPlaceholder : text.replyLocked}
+                    disabled={!canHumanReply || actionBusy}
+                    rows={4}
+                  />
+                  <button
+                    type="button"
+                    className="primaryBtn adminSendButton"
+                    onClick={handleSendReply}
+                    disabled={!canHumanReply || actionBusy || replySending || !replyText.trim()}
+                  >
+                    <FiSend />
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="adminChatsEmptyState adminChatsTranscriptEmpty">
+              <h2>{text.emptyFiltered}</h2>
+              <p>
+                {text.emptySelectedWidget}
+              </p>
+            </div>
+          )}
+        </section>
+      </div>
+
     </div>
   )
 }
