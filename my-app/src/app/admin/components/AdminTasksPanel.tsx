@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { FiClock, FiFilter, FiMessageSquare, FiPlus, FiSettings, FiTag, FiUser } from 'react-icons/fi'
+import { FiArrowLeft, FiClock, FiFilter, FiMessageSquare, FiPlus, FiSettings, FiTag, FiUser } from 'react-icons/fi'
 import AdminDropdown from './AdminDropdown'
 import { useAuth } from '@/context/AuthContext'
 import {
@@ -94,6 +94,14 @@ function formatMessageTime(value?: Date) {
   }).format(new Date(value))
 }
 
+function getInitials(label: string) {
+  const clean = label.trim()
+  if (!clean) return '??'
+  const parts = clean.split(/\s+/).filter(Boolean)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase()
+}
+
 export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWidgetKey?: string }) {
   const { dbUser, business } = useAuth()
   const { language } = useVintraLanguage()
@@ -139,7 +147,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
   )
 
   const selectedTask = useMemo(
-    () => tasks.find((task) => task.id === selectedTaskId) || tasks[0] || null,
+    () => tasks.find((task) => task.id === selectedTaskId) || null,
     [selectedTaskId, tasks]
   )
 
@@ -169,8 +177,6 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
 
   const filteredTasks = useMemo(() => {
     const nextTasks = tasks.filter((task) => {
-      if (selectedWidgetKey && task.widgetKey && task.widgetKey !== selectedWidgetKey) return false
-      if (selectedWidgetKey && !task.widgetKey) return false
       if (filters.status !== 'all' && task.status !== filters.status) return false
       if (filters.priority !== 'all' && task.priority !== filters.priority) return false
       if (filters.categoryId !== 'all' && task.categoryId !== filters.categoryId) return false
@@ -182,7 +188,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
       const bTime = new Date(b.createdAt).getTime()
       return filters.sortBy === 'newest' ? bTime - aTime : aTime - bTime
     })
-  }, [filters.categoryId, filters.priority, filters.sortBy, filters.status, selectedWidgetKey, tasks])
+  }, [filters.categoryId, filters.priority, filters.sortBy, filters.status, tasks])
 
   useEffect(() => {
     let mounted = true
@@ -204,8 +210,8 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
       setTasks(nextTasks)
       setChats(nextChats)
       setSelectedTaskId((prev) => {
-        if (prev && nextTasks.some((task) => task.id === prev)) return prev
-        return nextTasks[0]?.id || null
+        if (!prev) return null
+        return nextTasks.some((task) => task.id === prev) ? prev : null
       })
       setCreatorDraft((prev) => ({
         ...prev,
@@ -255,8 +261,8 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
     setTasks(nextTasks)
     setChats(nextChats)
     setSelectedTaskId((prev) => {
-      if (prev && nextTasks.some((task) => task.id === prev)) return prev
-      return nextTasks[0]?.id || null
+      if (!prev) return null
+      return nextTasks.some((task) => task.id === prev) ? prev : null
     })
   }
 
@@ -386,6 +392,8 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
     }
   }
 
+  const backLabel = language === 'no' ? 'Tilbake til oppgaver' : 'Back to tasks'
+
   if (loading) {
     return (
       <div className="infoCard adminDataCard">
@@ -401,11 +409,6 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
         <div>
           <h1>{text.title}</h1>
           <p>{text.body}</p>
-          {selectedWidgetKey ? (
-            <p className="adminDataHint">
-              {text.showingWidget} <strong>{selectedWidgetKey}</strong>.
-            </p>
-          ) : null}
           {!humanSupportEnabled ? (
             <p className="adminDataHint">
               {text.humanSupportOff}
@@ -680,220 +683,246 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
         </section>
       ) : null}
 
-      <div className="adminTasksWorkspace">
-        <section className="adminTaskList">
-          {filteredTasks.length === 0 ? (
-            <p>
-              {selectedWidgetKey
-                ? text.emptySelectedWidget
-                : humanSupportEnabled
+      <div className={`adminTasksWorkspace ${selectedTask ? 'adminTasksWorkspaceOpen' : 'adminTasksWorkspaceListOnly'}`}>
+        {!selectedTask ? (
+          <section className="adminTaskList">
+            {filteredTasks.length === 0 ? (
+              <p>
+                {humanSupportEnabled
                   ? text.emptyFiltered
                   : text.humanSupportOff}
-            </p>
-          ) : (
-            filteredTasks.map((task) => {
-              const isSelected = task.id === selectedTask?.id
+              </p>
+            ) : (
+              filteredTasks.map((task) => {
+                const isSelected = task.id === selectedTaskId
 
-              return (
-                <button
-                  key={task.id}
-                  type="button"
-                  className={`adminTaskCard adminTaskCardButton adminTaskCardStatus-${task.status} adminTaskCardPriority-${task.priority} ${isSelected ? 'adminTaskCardActive' : ''}`}
-                  onClick={() => setSelectedTaskId(task.id)}
-                >
-                  <div className="adminTaskCardTop">
-                    <div>
-                      <h3>{task.title}</h3>
-                      <p className="adminTaskCardMetaLine">
-                        <FiUser />
-                        <span>{task.visitorName || text.unnamedVisitor}</span>
-                      </p>
+                return (
+                  <button
+                    key={task.id}
+                    type="button"
+                    className={`adminTaskCard adminTaskCardButton adminTaskCardStatus-${task.status} adminTaskCardPriority-${task.priority} ${isSelected ? 'adminTaskCardActive' : ''}`}
+                    onClick={() => setSelectedTaskId(task.id)}
+                  >
+                    <div className="adminTaskCardTop">
+                      <div>
+                        <h3>{task.title}</h3>
+                        <p className="adminTaskCardMetaLine">
+                          <FiUser />
+                          <span>{task.visitorName || text.unnamedVisitor}</span>
+                        </p>
+                      </div>
+                      <div className="adminTaskMeta">
+                        <span className={`taskPriority taskPriority-${task.priority}`}>
+                          {taskPriorityLabels[task.priority]} priority
+                        </span>
+                      </div>
                     </div>
-                    <div className="adminTaskMeta">
-                      <span className={`taskPriority taskPriority-${task.priority}`}>
-                        {taskPriorityLabels[task.priority]} priority
+
+                    <div className="adminTaskCardChips">
+                      <span className={`taskStatus taskStatus-${task.status}`}>
+                        {taskStatusLabels[task.status]}
                       </span>
+                      <span className="taskCategoryChip">{task.categoryName}</span>
                     </div>
-                  </div>
 
-                  <div className="adminTaskCardChips">
-                    <span className={`taskStatus taskStatus-${task.status}`}>
-                      {taskStatusLabels[task.status]}
-                    </span>
-                    <span className="taskCategoryChip">{task.categoryName}</span>
-                  </div>
-
-                  <p className="adminTaskCardPreview">{task.description}</p>
-                  <div className="adminTaskCardFooter">
-                    <span>{formatDate(task.createdAt)}</span>
-                    <span>{task.comments?.length || 0} {text.notes}</span>
-                  </div>
-                </button>
-              )
-            })
-          )}
-        </section>
+                    <p className="adminTaskCardPreview">{task.description}</p>
+                    <div className="adminTaskCardFooter">
+                      <span>{formatDate(task.createdAt)}</span>
+                      <span>{task.comments?.length || 0} {text.notes}</span>
+                    </div>
+                  </button>
+                )
+              })
+            )}
+          </section>
+        ) : null}
 
         {selectedTask ? (
           <section
             className={`adminTaskDetail adminTaskDetailStatus-${selectedTask.status}`}
             ref={detailScrollRef}
           >
-            <div className="adminTaskDetailHeader">
-              <div>
-                <h2>{selectedTask.title}</h2>
-                <p className="adminTaskDetailNote">{selectedTask.description}</p>
-              </div>
-              <div className="adminTaskDetailBadges">
-                <span className={`taskPriority taskPriority-${selectedTask.priority}`}>
-                  {taskPriorityLabels[selectedTask.priority]} priority
-                </span>
-                <span className={`taskStatus taskStatus-${selectedTask.status}`}>
-                  {taskStatusLabels[selectedTask.status]}
-                </span>
-              </div>
-            </div>
+            <div className="adminTaskDetailLayout">
+              <aside className="adminTaskDetailSidebar">
+                <button
+                  type="button"
+                  className="adminChatsBackButton"
+                  onClick={() => setSelectedTaskId(null)}
+                  aria-label={backLabel}
+                >
+                  <FiArrowLeft />
+                </button>
 
-              <div className="adminTaskDetailMeta">
-              <div>
-                <span>
-                  <FiClock /> Created
-                </span>
-                <strong>{formatDate(selectedTask.createdAt)}</strong>
-              </div>
-              <div>
-                <span>
-                  <FiUser /> {text.visitor}
-                </span>
-                <strong>{selectedTask.visitorName || text.unnamedVisitor}</strong>
-              </div>
-              <div>
-                <span>
-                  <FiTag /> {text.category}
-                </span>
-                <strong>{selectedTask.categoryName}</strong>
-              </div>
-            </div>
-
-            <div className="adminTaskDetailControls">
-              <label className="adminTaskFilter">
-                <span>{text.priority}</span>
-              <AdminDropdown
-                value={selectedTask.priority}
-                options={taskPriorityOrder.map((value) => ({
-                  value,
-                  label: taskPriorityLabels[value],
-                  accent: taskPriorityAccents[value].color,
-                  accentSoft: taskPriorityAccents[value].soft,
-                }))}
-                onChange={(nextValue) =>
-                  void updateTaskField(
-                      selectedTask.id,
-                      'priority',
-                      nextValue as SupportTaskPriority
-                    )
-                  }
-                />
-              </label>
-
-              <label className="adminTaskFilter">
-                <span>{text.status}</span>
-                <AdminDropdown
-                  value={selectedTask.status}
-                  options={Object.entries(taskStatusLabels).map(([value, label]) => ({
-                    value,
-                    label,
-                  }))}
-                  onChange={(nextValue) =>
-                    void updateTaskField(
-                      selectedTask.id,
-                      'status',
-                      nextValue as SupportTaskStatus
-                    )
-                  }
-                />
-              </label>
-
-              <label className="adminTaskFilter">
-                <span>{text.category}</span>
-                <AdminDropdown
-                  value={selectedTask.categoryId}
-                  options={categoryOptions}
-                  onChange={(nextValue) =>
-                    void updateTaskField(selectedTask.id, 'categoryId', nextValue)
-                  }
-                />
-              </label>
-            </div>
-
-            <details className="adminTaskFold">
-              <summary>
-                <span>
-                  <FiMessageSquare /> {text.chatSnapshot}
-                </span>
-                <span>{taskChatMessages.length ? `${taskChatMessages.length} ${text.messages}` : text.noSavedChatSnapshot}</span>
-              </summary>
-              <div className="adminTaskFoldBody">
-                {taskChatMessages.length ? (
-                  <div className="adminTaskHistoryList" ref={historyScrollRef}>
-                    {taskChatMessages.map((message) => (
-                      <article
-                        key={message.id}
-                        className={`adminTaskHistoryItem adminTaskHistoryItem-${message.role}`}
-                      >
-                        <strong>{speakerLabel(message.role, language)}</strong>
-                        <p>{message.text}</p>
-                        <span>{formatMessageTime(message.createdAt)}</span>
-                      </article>
-                    ))}
+                <div className="adminTaskDetailCustomer">
+                  <span className="adminChatsAvatar" aria-hidden="true">
+                    {getInitials(selectedTask.visitorName || text.unnamedVisitor)}
+                  </span>
+                  <div>
+                    <strong>{selectedTask.visitorName || text.unnamedVisitor}</strong>
+                    <p>{selectedTask.categoryName}</p>
                   </div>
-                ) : (
-                  <p className="adminTaskEmptyState">{text.noSavedChatSnapshot}</p>
-                )}
-              </div>
-            </details>
+                </div>
 
-            <details className="adminTaskFold">
-              <summary>
-                <span>{text.comments}</span>
-                <span>{selectedTask.comments?.length || 0} {text.notes}</span>
-              </summary>
-              <div className="adminTaskFoldBody">
-                <div className="adminTaskCommentsList">
-                {selectedTask.comments?.length ? (
-                  selectedTask.comments.map((comment) => (
-                    <article key={comment.id} className="adminTaskCommentItem">
-                      <div>
-                        <strong>{comment.createdByName || text.support}</strong>
-                        <span>{new Date(comment.createdAt).toLocaleString()}</span>
+                <div className="adminTaskDetailMeta adminTaskDetailMetaSidebar">
+                  <div>
+                    <span>
+                      <FiClock /> Created
+                    </span>
+                    <strong>{formatDate(selectedTask.createdAt)}</strong>
+                  </div>
+                  <div>
+                    <span>
+                      <FiUser /> {text.visitor}
+                    </span>
+                    <strong>{selectedTask.visitorName || text.unnamedVisitor}</strong>
+                  </div>
+                  <div>
+                    <span>
+                      <FiTag /> {text.category}
+                    </span>
+                    <strong>{selectedTask.categoryName}</strong>
+                  </div>
+                </div>
+
+                <div className="adminTaskDetailBadges adminTaskDetailBadgesSidebar">
+                  <span className={`taskPriority taskPriority-${selectedTask.priority}`}>
+                    {taskPriorityLabels[selectedTask.priority]} priority
+                  </span>
+                  <span className={`taskStatus taskStatus-${selectedTask.status}`}>
+                    {taskStatusLabels[selectedTask.status]}
+                  </span>
+                </div>
+
+                <div className="adminTaskDetailControls adminTaskDetailControlsSidebar">
+                  <label className="adminTaskFilter">
+                    <span>{text.priority}</span>
+                    <AdminDropdown
+                      value={selectedTask.priority}
+                      options={taskPriorityOrder.map((value) => ({
+                        value,
+                        label: taskPriorityLabels[value],
+                        accent: taskPriorityAccents[value].color,
+                        accentSoft: taskPriorityAccents[value].soft,
+                      }))}
+                      onChange={(nextValue) =>
+                        void updateTaskField(
+                          selectedTask.id,
+                          'priority',
+                          nextValue as SupportTaskPriority
+                        )
+                      }
+                    />
+                  </label>
+
+                  <label className="adminTaskFilter">
+                    <span>{text.status}</span>
+                    <AdminDropdown
+                      value={selectedTask.status}
+                      options={Object.entries(taskStatusLabels).map(([value, label]) => ({
+                        value,
+                        label,
+                      }))}
+                      onChange={(nextValue) =>
+                        void updateTaskField(
+                          selectedTask.id,
+                          'status',
+                          nextValue as SupportTaskStatus
+                        )
+                      }
+                    />
+                  </label>
+
+                  <label className="adminTaskFilter">
+                    <span>{text.category}</span>
+                    <AdminDropdown
+                      value={selectedTask.categoryId}
+                      options={categoryOptions}
+                      onChange={(nextValue) =>
+                        void updateTaskField(selectedTask.id, 'categoryId', nextValue)
+                      }
+                    />
+                  </label>
+                </div>
+              </aside>
+
+              <div className="adminTaskDetailMain">
+                <div className="adminTaskDetailHeader">
+                  <div>
+                    <h2>{selectedTask.title}</h2>
+                    <p className="adminTaskDetailNote">{selectedTask.description}</p>
+                  </div>
+                </div>
+
+                <details className="adminTaskFold">
+                  <summary>
+                    <span>
+                      <FiMessageSquare /> {text.chatSnapshot}
+                    </span>
+                    <span>{taskChatMessages.length ? `${taskChatMessages.length} ${text.messages}` : text.noSavedChatSnapshot}</span>
+                  </summary>
+                  <div className="adminTaskFoldBody">
+                    {taskChatMessages.length ? (
+                      <div className="adminTaskHistoryList" ref={historyScrollRef}>
+                        {taskChatMessages.map((message) => (
+                          <article
+                            key={message.id}
+                            className={`adminTaskHistoryItem adminTaskHistoryItem-${message.role}`}
+                          >
+                            <strong>{speakerLabel(message.role, language)}</strong>
+                            <p>{message.text}</p>
+                            <span>{formatMessageTime(message.createdAt)}</span>
+                          </article>
+                        ))}
                       </div>
-                      <p>{comment.text}</p>
-                    </article>
-                  ))
-                  ) : (
-                    <p className="adminTaskEmptyState">{text.noComments}</p>
-                  )}
-                </div>
+                    ) : (
+                      <p className="adminTaskEmptyState">{text.noSavedChatSnapshot}</p>
+                    )}
+                  </div>
+                </details>
 
-                <div className="adminTaskCommentComposer">
-                  <textarea
-                    value={commentText}
-                    onChange={(event) => setCommentText(event.target.value)}
-                    placeholder={text.commentPlaceholder}
-                    rows={3}
-                  />
-                  <button
-                    type="button"
-                    className="primaryBtn adminSendButton"
-                    onClick={addComment}
-                    disabled={commentSaving || !commentText.trim()}
-                  >
-                    <span>{commentSaving ? text.savingComment : text.addComment}</span>
-                    <FiPlus />
-                  </button>
-                </div>
+                <details className="adminTaskFold">
+                  <summary>
+                    <span>{text.comments}</span>
+                    <span>{selectedTask.comments?.length || 0} {text.notes}</span>
+                  </summary>
+                  <div className="adminTaskFoldBody">
+                    <div className="adminTaskCommentsList">
+                    {selectedTask.comments?.length ? (
+                      selectedTask.comments.map((comment) => (
+                        <article key={comment.id} className="adminTaskCommentItem">
+                          <div>
+                            <strong>{comment.createdByName || text.support}</strong>
+                            <span>{new Date(comment.createdAt).toLocaleString()}</span>
+                          </div>
+                          <p>{comment.text}</p>
+                        </article>
+                      ))
+                      ) : (
+                        <p className="adminTaskEmptyState">{text.noComments}</p>
+                      )}
+                    </div>
+
+                    <div className="adminTaskCommentComposer">
+                      <textarea
+                        value={commentText}
+                        onChange={(event) => setCommentText(event.target.value)}
+                        placeholder={text.commentPlaceholder}
+                        rows={3}
+                      />
+                      <button
+                        type="button"
+                        className="primaryBtn adminSendButton"
+                        onClick={addComment}
+                        disabled={commentSaving || !commentText.trim()}
+                      >
+                        <span>{commentSaving ? text.savingComment : text.addComment}</span>
+                        <FiPlus />
+                      </button>
+                    </div>
+                  </div>
+                </details>
               </div>
-            </details>
+            </div>
           </section>
         ) : (
           <section className="adminTaskDetail adminTaskDetailEmpty">

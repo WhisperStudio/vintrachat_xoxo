@@ -119,6 +119,27 @@
   border-bottom: 1px solid rgba(148, 163, 184, 0.18);
 }
 
+.adminSidebarBrand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.adminSidebarLogo {
+  width: 46px;
+  height: 38px;
+  object-fit: contain;
+  flex: 0 0 auto;
+  display: block;
+}
+
+.adminSidebarBrandCopy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .adminSidebarEyebrow {
   color: #2563eb;
   font-size: 0.72rem;

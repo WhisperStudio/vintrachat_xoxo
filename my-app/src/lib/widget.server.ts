@@ -86,6 +86,10 @@ function buildDefaultWidgetConfig(businessName = 'Chat Widget'): ChatWidgetConfi
       supportIcon: 'FiLifeBuoy',
       userIcon: 'FiUser',
     },
+    visibility: {
+      showOnPaths: [],
+      hideOnPaths: [],
+    },
     settings: {
       autoOpen: false,
       delayMs: 3000,
@@ -162,6 +166,14 @@ function mergeWidgetConfig(
         config.widgetIcons?.launcherIcon ||
         launcherIconChoiceMap[String(config.bubbleStyle?.iconChoice || '')] ||
         defaults.widgetIcons?.launcherIcon,
+    },
+    visibility: {
+      showOnPaths: Array.isArray(config.visibility?.showOnPaths)
+        ? config.visibility?.showOnPaths.filter(Boolean)
+        : defaults.visibility?.showOnPaths || [],
+      hideOnPaths: Array.isArray(config.visibility?.hideOnPaths)
+        ? config.visibility?.hideOnPaths.filter(Boolean)
+        : defaults.visibility?.hideOnPaths || [],
     },
   }
 

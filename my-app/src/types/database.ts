@@ -101,6 +101,11 @@ export interface ChatWidgetInterfaceIcons {
   userIcon?: string;
 }
 
+export interface ChatWidgetVisibilityRules {
+  showOnPaths?: string[];
+  hideOnPaths?: string[];
+}
+
 export interface ChatAssistantConfig {
   enabled: boolean;
   provider: 'gemini';
@@ -287,6 +292,7 @@ export interface ChatWidgetConfig {
 
   // Interface icons (does not affect starter card icons)
   widgetIcons?: ChatWidgetInterfaceIcons;
+  visibility?: ChatWidgetVisibilityRules;
   
   // Design options (affects shapes, shadows, borders, elements)
   bubbleStyle: {

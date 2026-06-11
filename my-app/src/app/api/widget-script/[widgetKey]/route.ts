@@ -559,6 +559,50 @@ export async function GET(
     }
   }
 
+  function normalizeVisibilityPathRule(rule) {
+    var trimmed = String(rule || '').trim();
+    if (!trimmed) return '';
+    if (trimmed === '*') return '*';
+    return trimmed.charAt(0) === '/' ? trimmed : '/' + trimmed;
+  }
+
+  function getCurrentPathname() {
+    var pathname = String(window.location.pathname || '/').trim() || '/';
+    return pathname.charAt(0) === '/' ? pathname : '/' + pathname;
+  }
+
+  function matchesVisibilityRule(pathname, rule) {
+    var normalizedRule = normalizeVisibilityPathRule(rule);
+    if (!normalizedRule) return false;
+    if (normalizedRule === '*') return true;
+
+    if (normalizedRule.charAt(normalizedRule.length - 1) === '*') {
+      var prefix = normalizedRule.slice(0, -1);
+      if (!prefix || prefix === '/') return true;
+      return pathname === prefix || pathname.indexOf(prefix + '/') === 0;
+    }
+
+    return pathname === normalizedRule;
+  }
+
+  function shouldShowForCurrentLocation(config) {
+    var visibility = config && config.visibility ? config.visibility : {};
+    var showOnPaths = Array.isArray(visibility.showOnPaths) ? visibility.showOnPaths : [];
+    var hideOnPaths = Array.isArray(visibility.hideOnPaths) ? visibility.hideOnPaths : [];
+    var pathname = getCurrentPathname();
+
+    if (showOnPaths.length > 0) {
+      var allowed = showOnPaths.some(function (rule) {
+        return matchesVisibilityRule(pathname, rule);
+      });
+      if (!allowed) return false;
+    }
+
+    return !hideOnPaths.some(function (rule) {
+      return matchesVisibilityRule(pathname, rule);
+    });
+  }
+
   function setDebug(message) {
     if (!DEBUG_MODE) return;
     if (window.console && typeof window.console.debug === 'function') {
@@ -2165,6 +2209,11 @@ export async function GET(
       return;
     }
 
+    if (!shouldShowForCurrentLocation(state.config)) {
+      hideHost();
+      return;
+    }
+
     showHost();
 
     var config = state.config || {};
@@ -2644,10 +2693,44 @@ export async function GET(
     }
   }
 
+  var lastKnownPathname = getCurrentPathname();
+
+  function handleLocationChange() {
+    var nextPathname = getCurrentPathname();
+    if (nextPathname === lastKnownPathname) return;
+    lastKnownPathname = nextPathname;
+    render();
+  }
+
+  function bindLocationListeners() {
+    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('hashchange', handleLocationChange);
+
+    if (window.history && !window.history.__vintraWidgetPatched) {
+      var originalPushState = window.history.pushState;
+      var originalReplaceState = window.history.replaceState;
+
+      window.history.pushState = function () {
+        var result = originalPushState.apply(this, arguments);
+        handleLocationChange();
+        return result;
+      };
+
+      window.history.replaceState = function () {
+        var result = originalReplaceState.apply(this, arguments);
+        handleLocationChange();
+        return result;
+      };
+
+      window.history.__vintraWidgetPatched = true;
+    }
+  }
+
   function startWidget() {
     createHost();
     syncViewportMetrics();
     bindViewportListeners();
+    bindLocationListeners();
     setDebug('Script loaded');
     bindWidgetActions();
     loadConfig();

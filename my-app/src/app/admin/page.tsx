@@ -390,8 +390,13 @@ export default function AdminPage() {
             />
           ) : null}
           <div className="adminSidebarHeader" ref={adminHeaderRef}>
-            <span className="adminSidebarEyebrow">{text.sidebar.eyebrow}</span>
-            <h2>{text.sidebar.title}</h2>
+            <div className="adminSidebarBrand">
+              <img className="adminSidebarLogo" src="/image/logo.png" alt="" aria-hidden="true" />
+              <div className="adminSidebarBrandCopy">
+                <span className="adminSidebarEyebrow">{text.sidebar.eyebrow}</span>
+                <h2>{text.sidebar.title}</h2>
+              </div>
+            </div>
           </div>
           <div className="adminSidebarGroup">
             <div className="adminSidebarGroupLabel">{text.sidebar.general}</div>

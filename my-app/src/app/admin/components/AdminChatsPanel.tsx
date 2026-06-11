@@ -2,7 +2,8 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { deleteField, doc, serverTimestamp, updateDoc } from 'firebase/firestore'
-import { FiClock, FiPlus, FiSearch, FiSend, FiShield, FiUsers } from 'react-icons/fi'
+import { FiArrowLeft, FiClock, FiPlus, FiSearch, FiSend, FiShield, FiUsers, FiX } from 'react-icons/fi'
+import { LuMessagesSquare } from "react-icons/lu";
 
 import { useAuth } from '@/context/AuthContext'
 import { db } from '@/lib/firebase'
@@ -16,7 +17,9 @@ import {
   sendSupportReply,
 } from '@/lib/chat.service'
 import { adminChatsI18n, useVintraLanguage } from '@/lib/i18n'
+import { renderWidgetIcon } from '@/lib/widget-icons'
 import type {
+  ChatWidgetInterfaceIcons,
   SupportChatMessage,
   SupportChatSession,
   SupportTaskCategory,
@@ -34,7 +37,11 @@ type AdminChatsPanelProps = {
 type InboxFilter = 'all' | 'unread'
 type InboxSort = 'newest' | 'oldest'
 
-function speakerLabel(role: SupportChatMessage['role'], text: (typeof adminChatsI18n)[keyof typeof adminChatsI18n]) {
+function speakerLabel(
+  role: SupportChatMessage['role'],
+  text: (typeof adminChatsI18n)[keyof typeof adminChatsI18n],
+  visitorName?: string
+) {
   switch (role) {
     case 'assistant':
       return text.speakers.ai
@@ -43,8 +50,15 @@ function speakerLabel(role: SupportChatMessage['role'], text: (typeof adminChats
     case 'system':
       return text.speakers.system
     default:
-      return text.speakers.visitor
+      return visitorName?.trim() || text.speakers.visitor
   }
+}
+
+function getMessageIconKey(role: SupportChatMessage['role'], widgetIcons?: ChatWidgetInterfaceIcons) {
+  if (role === 'assistant') return widgetIcons?.aiIcon || widgetIcons?.heroIcon || ''
+  if (role === 'support') return widgetIcons?.supportIcon || widgetIcons?.aiIcon || widgetIcons?.heroIcon || ''
+  if (role === 'user') return widgetIcons?.userIcon || ''
+  return ''
 }
 
 function formatClock(value: Date, locale: string) {
@@ -122,12 +136,13 @@ export default function AdminChatsPanel({
   const [replyText, setReplyText] = useState('')
   const [actionBusy, setActionBusy] = useState(false)
   const [replySending, setReplySending] = useState(false)
-  const [taskComposerOpen, setTaskComposerOpen] = useState(false)
+  const [taskComposerMode, setTaskComposerMode] = useState<'quick' | 'full' | null>(null)
   const [taskSaving, setTaskSaving] = useState(false)
   const [taskCategories, setTaskCategories] = useState<SupportTaskCategory[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [filterMode, setFilterMode] = useState<InboxFilter>('all')
   const [sortMode, setSortMode] = useState<InboxSort>('newest')
+  const [chatListPage, setChatListPage] = useState(0)
   const [readAtMap, setReadAtMap] = useState<Record<string, number>>({})
   const [enablingHumanSupport, setEnablingHumanSupport] = useState(false)
   const [taskDraft, setTaskDraft] = useState<{
@@ -146,6 +161,8 @@ export default function AdminChatsPanel({
   const messagesRef = useRef<HTMLDivElement | null>(null)
   const typingTimerRef = useRef<number | null>(null)
   const readStorageKey = dbUser?.businessId ? `vintra-admin-chat-read:${dbUser.businessId}` : ''
+  const taskComposerOpen = taskComposerMode !== null
+  const isQuickTaskComposer = taskComposerMode === 'quick'
 
   useEffect(() => {
     let mounted = true
@@ -272,8 +289,15 @@ export default function AdminChatsPanel({
     [filteredChats]
   )
 
+  const chatsPerPage = 8
+  const totalChatPages = Math.max(1, Math.ceil(filteredChats.length / chatsPerPage))
+  const paginatedChats = useMemo(() => {
+    const start = chatListPage * chatsPerPage
+    return filteredChats.slice(start, start + chatsPerPage)
+  }, [chatListPage, filteredChats])
+
   const selectedChat = useMemo(
-    () => filteredChats.find((chat) => chat.id === selectedChatId) || filteredChats[0] || null,
+    () => filteredChats.find((chat) => chat.id === selectedChatId) || null,
     [filteredChats, selectedChatId]
   )
 
@@ -293,13 +317,17 @@ export default function AdminChatsPanel({
     }
 
     setSelectedChatId((prev) => {
-      if (prev && filteredChats.some((chat) => chat.id === prev)) {
-        return prev
-      }
-
-      return filteredChats[0]?.id || null
+      if (!prev) return null
+      return filteredChats.some((chat) => chat.id === prev) ? prev : null
     })
   }, [visibleChatIdsKey])
+
+  useEffect(() => {
+    setChatListPage((prev) => {
+      if (!filteredChats.length) return 0
+      return Math.min(prev, totalChatPages - 1)
+    })
+  }, [filteredChats.length, totalChatPages])
 
   useEffect(() => {
     if (!selectedChat) return
@@ -318,8 +346,21 @@ export default function AdminChatsPanel({
   }, [selectedChat?.id, selectedChat?.messages.length, selectedChat?.status])
 
   useEffect(() => {
-    setTaskComposerOpen(false)
+    closeTaskComposer()
   }, [selectedChat?.id])
+
+  useEffect(() => {
+    if (!taskComposerOpen) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeTaskComposer()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [taskComposerOpen])
 
   useEffect(() => {
     if (typingTimerRef.current) {
@@ -357,6 +398,11 @@ export default function AdminChatsPanel({
     () => chatsForWidget.filter((chat) => (readAtMap[chat.id] || 0) < new Date(chat.updatedAt).getTime()).length,
     [chatsForWidget, readAtMap]
   )
+
+  const selectedChatWidgetIcons = useMemo(() => {
+    if (!selectedChat?.widgetKey) return undefined
+    return business?.chatWidgets?.find((widget) => widget.widgetKey === selectedChat.widgetKey)?.config?.widgetIcons
+  }, [business?.chatWidgets, selectedChat?.widgetKey])
 
   const refreshChats = async () => {
     if (!dbUser?.businessId) return
@@ -465,15 +511,61 @@ export default function AdminChatsPanel({
       priority: 'medium',
       status: 'open',
     })
-    setTaskComposerOpen(true)
+    setTaskComposerMode(quick ? 'quick' : 'full')
   }
 
-  const handleSaveTask = async () => {
+  const closeTaskComposer = () => {
+    setTaskComposerMode(null)
+  }
+
+  const getTaskCategory = () => taskCategories.find((item) => item.id === taskDraft.categoryId) || taskCategories[0] || {
+    id: 'general',
+    name: 'General',
+    default: true,
+  }
+
+  const handleSaveQuickTask = async () => {
+    if (!dbUser?.businessId || !selectedChat) return
+    const category = getTaskCategory()
+    const firstUserMessage = selectedChat.messages.find((message) => message.role === 'user')
+    const title = taskDraft.title.trim() || selectedChat.preview || firstUserMessage?.text || text.fallbackTaskTitle
+    const description = taskDraft.description.trim() || firstUserMessage?.text || selectedChat.preview || title
+
+    if (!title.trim() || !description.trim()) return
+
+    setTaskSaving(true)
+    try {
+      await createSupportTask(dbUser.businessId, {
+        widgetKey: selectedChat.widgetKey,
+        chatId: selectedChat.id,
+        sessionId: selectedChat.sessionId,
+        visitorName: selectedChat.visitorName,
+        title,
+        description,
+        categoryId: category.id,
+        categoryName: category.name,
+        priority: 'medium',
+        status: 'open',
+        createdBy: dbUser.id,
+      })
+      closeTaskComposer()
+      setTaskDraft({
+        title: '',
+        description: '',
+        categoryId: taskCategories[0]?.id || 'general',
+        priority: 'medium',
+        status: 'open',
+      })
+    } finally {
+      setTaskSaving(false)
+    }
+  }
+
+  const handleSaveFullTask = async () => {
     if (!dbUser?.businessId || !selectedChat) return
     if (!taskDraft.title.trim() || !taskDraft.description.trim()) return
 
-    const category = taskCategories.find((item) => item.id === taskDraft.categoryId) || taskCategories[0]
-    if (!category) return
+    const category = getTaskCategory()
 
     setTaskSaving(true)
     try {
@@ -495,7 +587,7 @@ export default function AdminChatsPanel({
         status: taskDraft.status,
         createdBy: dbUser.id,
       })
-      setTaskComposerOpen(false)
+      closeTaskComposer()
       setTaskDraft({
         title: '',
         description: '',
@@ -549,10 +641,11 @@ export default function AdminChatsPanel({
   const canReturnToAi = selectedChat?.status === 'open'
   const canReturnToHuman = selectedChat?.status === 'ai-active'
   const isFilteredEmpty = filteredChats.length === 0
+  const backLabel = language === 'no' ? 'Tilbake til chatter' : 'Back to chats'
 
   return (
     <div className="infoCard adminChatsPanel">
-      <div className="adminChatsLayout">
+      <div className={`adminChatsLayout ${selectedChat ? 'adminChatsLayoutChatOpen' : 'adminChatsLayoutListOnly'}`}>
         <aside className="adminChatsInbox">
           <div className="adminChatsTitleBlock">
             <span className="adminChatsEyebrow">
@@ -571,119 +664,29 @@ export default function AdminChatsPanel({
             />
           </div>
           <div className="middleinbox">
-            <div className="adminChatsToolbar">
-              <div className="adminChatsToolbarActions">
-                <button
-                  type="button"
-                  className={filterMode === 'all' ? 'adminChatsFilterButton active' : 'adminChatsFilterButton'}
-                  onClick={() => setFilterMode('all')}
-                >
-                  {text.all}
-                </button>
-                <button
-                  type="button"
-                  className={filterMode === 'unread' ? 'adminChatsFilterButton active' : 'adminChatsFilterButton'}
-                  onClick={() => setFilterMode('unread')}
-                >
-                  {text.unread}
-                </button>
-                <button
-                  type="button"
-                  className="adminChatsFilterButton adminChatsSortButton"
-                  onClick={() => setSortMode((current) => (current === 'newest' ? 'oldest' : 'newest'))}
-                >
-                  <FiClock />
-                  {sortMode === 'newest' ? text.newestFirst : text.oldestFirst}
-                </button>
-                <label className="adminChatsSearch">
-                  <FiSearch />
-                  <input
-                    type="search"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder={text.searchPlaceholder}
-                  />
-                </label>
-              </div>
-            </div>
-            <div className="adminChatsListHeader">
-              <span>
-                {filteredChats.length} {text.messages}
-              </span>
-            </div>
-            {isFilteredEmpty ? (
-              <div className="adminChatsEmptyState">
-                <h2>{text.emptyFiltered}</h2>
-                <p>
-                  {selectedWidgetKey ? text.emptySelectedWidget : text.empty}
-                </p>
-              </div>
-            ) : (
-              <div className="adminChatsList">
-                {filteredChats.map((chat) => {
-                  const title = getChatTitle(chat, text)
-                  const preview = getChatPreview(chat, text)
-                  const isUnread = (readAtMap[chat.id] || 0) < new Date(chat.updatedAt).getTime()
-                  const stamp = formatInboxStamp(new Date(chat.updatedAt), language === 'no' ? 'no-NO' : 'en-US', text)
-                  const initials = getInitials(title)
+            {selectedChat ? (
+              <div className="adminChatsSelectedHeader">
+                <div className="adminChatsSelectedHeaderTop">
+                  <button
+                    type="button"
+                    className="adminChatsBackButton"
+                    onClick={() => setSelectedChatId(null)}
+                    aria-label={backLabel}
+                  >
+                    <FiArrowLeft />
+                  </button>
 
-                  return (
-                    <button
-                      key={chat.id}
-                      type="button"
-                      className={`adminChatsListItem ${chat.id === selectedChat?.id ? 'active' : ''}`}
-                      onClick={() => handleSelectChat(chat)}
-                    >
-                      <span className="adminChatsAvatar" aria-hidden="true">
-                        {initials}
-                      </span>
-
-                      <div className="adminChatsListCopy">
-                        <div className="adminChatsListTopRow">
-                          <strong>{title}</strong>
-                          <div className="adminChatsListMeta">
-                            <span className="adminChatsListStamp">
-                              <FiClock />
-                              {stamp}
-                            </span>
-
-                          </div>
-                        </div>
-                        <p>{preview}</p>
-
-                      </div>
-
-                      {isUnread ? <span className="adminChatsUnreadDot" aria-label={text.unread} /> : null}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </aside>
-
-        <section className="adminChatsTranscript">
-          {selectedChat ? (
-            <>
-              <div className="adminChatMeta">
-                <section className="adminChatMetaSection">
-                  <div className="adminChatMetaTop">
-                    <span className="adminChatsAvatar" aria-hidden="true">
-                      {getInitials(getChatTitle(selectedChat, text))}
-                    </span>
-                    <div>
-                      <strong>{getChatTitle(selectedChat, text)}</strong>
-                    </div>
-                  </div>
-
-
-                  <div className="adminChatMetaDetails">
-                    <span>{text.time}: {formatInboxStamp(new Date(selectedChat.updatedAt), language === 'no' ? 'no-NO' : 'en-US', text)}</span>
-                    <span>{text.messages}: {selectedChat.messageCount}</span>
-                  </div>
-                </section>
-                <section className="adminChatMetaSection">
-                  <div className="adminChatActions">
+                  <div className="adminChatActions adminChatActionsHeader">
+                    {(selectedChat.status === 'open' || selectedChat.status === 'ai-active') ? (
+                      <button
+                        type="button"
+                        className="dangerBtn"
+                        onClick={handleClose}
+                        disabled={actionBusy}
+                      >
+                        {text.closeChat}
+                      </button>
+                    ) : null}
                     {canReturnToAi ? (
                       <button
                         type="button"
@@ -714,136 +717,337 @@ export default function AdminChatsPanel({
                         {text.returnToHuman}
                       </button>
                     ) : null}
-                    {(selectedChat.status === 'open' || selectedChat.status === 'ai-active') ? (
+                  </div>
+                </div>
+
+                <div className="adminChatsSelectedHeaderMain">
+                  <div className="adminChatsSelectedHeaderCopy">
+                    <div className="adminChatMetaTop">
+                      <span className="adminChatsAvatar" aria-hidden="true">
+                        {getInitials(getChatTitle(selectedChat, text))}
+                      </span>
+                      <div className="adminChatMetaIdentity">
+                        <strong>{getChatTitle(selectedChat, text)}</strong>
+                      </div>
+                    </div>
+
+                    <div className="adminChatMetaDetails">
+                      <span><FiClock /> {formatInboxStamp(new Date(selectedChat.updatedAt), language === 'no' ? 'no-NO' : 'en-US', text)}</span>
+                      <span><LuMessagesSquare /> {selectedChat.messageCount}</span>
+                    </div>
+
+                    <div className="adminChatToolsRow adminChatToolsRowHeader">
                       <button
                         type="button"
-                        className="dangerBtn"
-                        onClick={handleClose}
-                        disabled={actionBusy}
+                        className="secondaryBtn adminToolBtn"
+                        onClick={() => openTaskComposer(false)}
+                        disabled={actionBusy || taskSaving}
                       >
-                        {text.closeChat}
+                        <FiPlus />
+                        {text.createTask}
                       </button>
-                    ) : null}
+                      <button
+                        type="button"
+                        className="secondaryBtn adminToolBtn"
+                        onClick={() => openTaskComposer(true)}
+                        disabled={actionBusy || taskSaving}
+                      >
+                        <FiPlus />
+                        {text.quickTask}
+                      </button>
+                    </div>
                   </div>
-                  <div className="adminChatToolsRow">
+                </div>
+              </div>
+            ) : null}
+            {!selectedChat ? (
+              <>
+                <div className="adminChatsToolbar">
+                  <div className="adminChatsToolbarActions">
                     <button
                       type="button"
-                      className="secondaryBtn adminToolBtn"
-                      onClick={() => openTaskComposer(false)}
-                      disabled={actionBusy || taskSaving}
+                      className={filterMode === 'all' ? 'adminChatsFilterButton active' : 'adminChatsFilterButton'}
+                      onClick={() => {
+                        setFilterMode('all')
+                        setChatListPage(0)
+                      }}
                     >
-                      <FiPlus />
-                      {text.createTask}
+                      {text.all}
                     </button>
                     <button
                       type="button"
-                      className="secondaryBtn adminToolBtn"
-                      onClick={() => openTaskComposer(true)}
-                      disabled={actionBusy || taskSaving}
+                      className={filterMode === 'unread' ? 'adminChatsFilterButton active' : 'adminChatsFilterButton'}
+                      onClick={() => {
+                        setFilterMode('unread')
+                        setChatListPage(0)
+                      }}
                     >
-                      <FiPlus />
-                      {text.quickTask}
+                      {text.unread}
                     </button>
+                    <button
+                      type="button"
+                      className="adminChatsFilterButton adminChatsSortButton"
+                      onClick={() => {
+                        setSortMode((current) => (current === 'newest' ? 'oldest' : 'newest'))
+                        setChatListPage(0)
+                      }}
+                    >
+                      <FiClock />
+                      {sortMode === 'newest' ? text.newestFirst : text.oldestFirst}
+                    </button>
+                    <label className="adminChatsSearch">
+                      <FiSearch />
+                      <input
+                        type="search"
+                        value={searchQuery}
+                        onChange={(event) => {
+                          setSearchQuery(event.target.value)
+                          setChatListPage(0)
+                        }}
+                        placeholder={text.searchPlaceholder}
+                      />
+                    </label>
                   </div>
+                </div>
+                <div className="adminChatsListHeader">
+                  <span>
+                    {filteredChats.length} {text.messages}
+                  </span>
+                </div>
+              </>
+            ) : null}
+            {!selectedChat && isFilteredEmpty ? (
+              <div className="adminChatsEmptyState">
+                <h2>{text.emptyFiltered}</h2>
+                <p>
+                  {selectedWidgetKey ? text.emptySelectedWidget : text.empty}
+                </p>
+              </div>
+            ) : !selectedChat ? (
+              <div className="adminChatsListWrap">
+                <div className="adminChatsList">
+                  {paginatedChats.map((chat) => {
+                  const title = getChatTitle(chat, text)
+                  const preview = getChatPreview(chat, text)
+                  const isUnread = (readAtMap[chat.id] || 0) < new Date(chat.updatedAt).getTime()
+                  const stamp = formatInboxStamp(new Date(chat.updatedAt), language === 'no' ? 'no-NO' : 'en-US', text)
+                  const initials = getInitials(title)
 
-                  {taskComposerOpen ? (
-                    <div className="adminTaskComposer">
-                      <div className="adminTaskComposerGrid">
-                        <label className="adminTaskField adminTaskFieldFull">
-                          <span>{text.taskTitle}</span>
-                          <input
-                            type="text"
-                            value={taskDraft.title}
-                            onChange={(event) =>
-                              setTaskDraft((prev) => ({ ...prev, title: event.target.value }))
-                            }
-                            placeholder={text.taskTitlePlaceholder}
-                          />
-                        </label>
+                  return (
+                    <button
+                      key={chat.id}
+                      type="button"
+                      className={`adminChatsListItem ${chat.id === selectedChatId ? 'active' : ''}`}
+                      onClick={() => handleSelectChat(chat)}
+                    >
+                      <span className="adminChatsAvatar" aria-hidden="true">
+                        {initials}
+                      </span>
 
-                        <label className="adminTaskField adminTaskFieldFull">
-                          <span>{text.description}</span>
-                          <textarea
-                            value={taskDraft.description}
-                            onChange={(event) =>
-                              setTaskDraft((prev) => ({ ...prev, description: event.target.value }))
-                            }
-                            rows={4}
-                            placeholder={text.descriptionPlaceholder}
-                          />
-                        </label>
+                      <div className="adminChatsListCopy">
+                        <div className="adminChatsListTopRow">
+                          <strong>{title}</strong>
+                          <div className="adminChatsListMeta">
+                            <span className="adminChatsListStamp">
+                              <FiClock />
+                              {stamp}
+                            </span>
 
-                        <label className="adminTaskField">
-                          <span>{text.category}</span>
-                          <AdminDropdown
-                            value={taskDraft.categoryId}
-                            options={taskCategories.map((category) => ({
-                              value: category.id,
-                              label: category.name,
-                              description: category.default ? text.defaultCategory : text.customCategory,
-                            }))}
-                            onChange={(nextValue) =>
-                              setTaskDraft((prev) => ({ ...prev, categoryId: nextValue }))
-                            }
-                          />
-                        </label>
+                          </div>
+                        </div>
+                        <p>{preview}</p>
 
-                        <label className="adminTaskField">
-                          <span>{text.priority}</span>
-                          <AdminDropdown
-                            value={taskDraft.priority}
-                            options={[
-                              { value: 'low', label: text.priorities.low },
-                              { value: 'medium', label: text.priorities.medium },
-                              { value: 'high', label: text.priorities.high },
-                              { value: 'critical', label: text.priorities.critical },
-                            ]}
-                            onChange={(nextValue) =>
-                              setTaskDraft((prev) => ({
-                                ...prev,
-                                priority: nextValue as SupportTaskPriority,
-                              }))
-                            }
-                          />
-                        </label>
-
-                        <label className="adminTaskField">
-                          <span>{text.statusLabel}</span>
-                          <AdminDropdown
-                            value={taskDraft.status}
-                            options={[
-                              { value: 'open', label: text.statuses.open },
-                              { value: 'in-progress', label: text.statuses.inProgress },
-                              { value: 'blocked', label: text.statuses.blocked },
-                              { value: 'done', label: text.statuses.done },
-                            ]}
-                            onChange={(nextValue) =>
-                              setTaskDraft((prev) => ({
-                                ...prev,
-                                status: nextValue as SupportTaskStatus,
-                              }))
-                            }
-                          />
-                        </label>
                       </div>
 
-                      <div className="adminTaskComposerActions">
-                        <button type="button" className="secondaryBtn" onClick={() => setTaskComposerOpen(false)}>
-                          {text.cancel}
-                        </button>
-                        <button
-                          type="button"
-                          className="primaryBtn"
-                          onClick={() => void handleSaveTask()}
-                          disabled={taskSaving}
-                        >
-                          {taskSaving ? text.saving : text.saveTask}
-                        </button>
+                      {isUnread ? <span className="adminChatsUnreadDot" aria-label={text.unread} /> : null}
+                    </button>
+                  )
+                  })}
+                </div>
+
+                {totalChatPages > 1 ? (
+                  <div className="adminChatsPagination">
+                    <button
+                      type="button"
+                      className="adminChatsPageButton"
+                      onClick={() => setChatListPage((current) => Math.max(0, current - 1))}
+                      disabled={chatListPage === 0}
+                    >
+                      <FiArrowLeft />
+                    </button>
+                    <span className="adminChatsPageStatus">
+                      {chatListPage + 1}/{totalChatPages}
+                    </span>
+                    <button
+                      type="button"
+                      className="adminChatsPageButton"
+                      onClick={() => setChatListPage((current) => Math.min(totalChatPages - 1, current + 1))}
+                      disabled={chatListPage >= totalChatPages - 1}
+                    >
+                      <FiArrowLeft className="adminChatsPageButtonNextIcon" />
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        </aside>
+
+        <section className={`adminChatsTranscript ${selectedChat ? 'adminChatsTranscriptOpen' : 'adminChatsTranscriptHidden'}`}>
+          {selectedChat ? (
+            <>
+              {taskComposerOpen ? (
+                    <div
+                      className="adminTaskComposerOverlay"
+                      role="presentation"
+                      onClick={closeTaskComposer}
+                    >
+                      <div
+                        className={`adminTaskComposerSheet ${isQuickTaskComposer ? 'adminTaskComposerSheetQuick' : 'adminTaskComposerSheetFull'}`}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="admin-task-composer-title"
+                        aria-describedby="admin-task-composer-description"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <div className="adminTaskComposerHeader">
+                          <div>
+                            <span className="adminTaskComposerEyebrow">
+                              {isQuickTaskComposer ? text.quickTask : text.createTask}
+                            </span>
+                            <h2 id="admin-task-composer-title">
+                              {isQuickTaskComposer ? text.quickTask : text.createTask}
+                            </h2>
+                            <p id="admin-task-composer-description">
+                              {isQuickTaskComposer
+                                ? text.quickTaskHint
+                                : text.createTaskHint}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            className="adminTaskComposerClose"
+                            onClick={closeTaskComposer}
+                            aria-label={text.cancel}
+                          >
+                            <FiX />
+                          </button>
+                        </div>
+
+                        <div className="adminTaskComposerBody">
+                          <div className="adminTaskComposerGrid">
+                            <label className="adminTaskField adminTaskFieldFull">
+                              <span>{text.taskTitle}</span>
+                              <input
+                                type="text"
+                                value={taskDraft.title}
+                                onChange={(event) =>
+                                  setTaskDraft((prev) => ({ ...prev, title: event.target.value }))
+                                }
+                                placeholder={text.taskTitlePlaceholder}
+                              />
+                            </label>
+
+                            <label className="adminTaskField adminTaskFieldFull">
+                              <span>{text.description}</span>
+                              <textarea
+                                value={taskDraft.description}
+                                onChange={(event) =>
+                                  setTaskDraft((prev) => ({
+                                    ...prev,
+                                    description: event.target.value,
+                                  }))
+                                }
+                                rows={isQuickTaskComposer ? 3 : 4}
+                                placeholder={text.descriptionPlaceholder}
+                              />
+                            </label>
+
+                            {isQuickTaskComposer ? (
+                              <p className="adminTaskComposerHint">
+                                {text.quickTaskDefaultHint} <strong>{getTaskCategory().name}</strong>.
+                              </p>
+                            ) : (
+                              <>
+                                <label className="adminTaskField">
+                                  <span>{text.category}</span>
+                                  <AdminDropdown
+                                    value={taskDraft.categoryId}
+                                    options={taskCategories.map((category) => ({
+                                      value: category.id,
+                                      label: category.name,
+                                      description: category.default
+                                        ? text.defaultCategory
+                                        : text.customCategory,
+                                    }))}
+                                    onChange={(nextValue) =>
+                                      setTaskDraft((prev) => ({ ...prev, categoryId: nextValue }))
+                                    }
+                                  />
+                                </label>
+
+                                <label className="adminTaskField">
+                                  <span>{text.priority}</span>
+                                  <AdminDropdown
+                                    value={taskDraft.priority}
+                                    options={[
+                                      { value: 'low', label: text.priorities.low },
+                                      { value: 'medium', label: text.priorities.medium },
+                                      { value: 'high', label: text.priorities.high },
+                                      { value: 'critical', label: text.priorities.critical },
+                                    ]}
+                                    onChange={(nextValue) =>
+                                      setTaskDraft((prev) => ({
+                                        ...prev,
+                                        priority: nextValue as SupportTaskPriority,
+                                      }))
+                                    }
+                                  />
+                                </label>
+
+                                <label className="adminTaskField">
+                                  <span>{text.statusLabel}</span>
+                                  <AdminDropdown
+                                    value={taskDraft.status}
+                                    options={[
+                                      { value: 'open', label: text.statuses.open },
+                                      { value: 'in-progress', label: text.statuses.inProgress },
+                                      { value: 'blocked', label: text.statuses.blocked },
+                                      { value: 'done', label: text.statuses.done },
+                                    ]}
+                                    onChange={(nextValue) =>
+                                      setTaskDraft((prev) => ({
+                                        ...prev,
+                                        status: nextValue as SupportTaskStatus,
+                                      }))
+                                    }
+                                  />
+                                </label>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="adminTaskComposerActions">
+                          <button type="button" className="secondaryBtn" onClick={closeTaskComposer}>
+                            {text.cancel}
+                          </button>
+                          <button
+                            type="button"
+                            className="primaryBtn"
+                            onClick={() => void (isQuickTaskComposer ? handleSaveQuickTask() : handleSaveFullTask())}
+                            disabled={taskSaving}
+                          >
+                            {taskSaving
+                              ? text.saving
+                              : isQuickTaskComposer
+                                ? text.saveQuickTask
+                                : text.saveTask}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ) : null}
-                </section>
-              </div>
 
 
 
@@ -852,45 +1056,86 @@ export default function AdminChatsPanel({
                   {selectedChat.messages.map((message) => (
                     <div
                       key={message.id}
-                      className={`adminTranscriptBubble ${message.role === 'assistant'
-                        ? 'adminTranscriptBubbleAssistant'
-                        : message.role === 'support'
-                          ? 'adminTranscriptBubbleSupport'
-                          : message.role === 'system'
-                            ? 'adminTranscriptBubbleSystem'
-                            : 'adminTranscriptBubbleUser'
-                        }`}
+                      className={`adminTranscriptMessage ${
+                        message.role === 'system'
+                          ? 'adminTranscriptMessageCenter'
+                          : message.role === 'user'
+                            ? 'adminTranscriptMessageRight'
+                            : 'adminTranscriptMessageLeft'
+                      }`}
                     >
-                      <strong>{speakerLabel(message.role, text)}</strong>
-                      <p>{message.text}</p>
-                      <span className="adminTranscriptTime">{formatClock(message.createdAt, language === 'no' ? 'no-NO' : 'en-US')}</span>
+                      <div
+                        className={`adminTranscriptBubble ${message.role === 'assistant'
+                          ? 'adminTranscriptBubbleAssistant'
+                          : message.role === 'support'
+                            ? 'adminTranscriptBubbleSupport'
+                            : message.role === 'system'
+                              ? 'adminTranscriptBubbleSystem'
+                              : 'adminTranscriptBubbleUser'
+                          } ${message.role === 'user' ? 'adminTranscriptBubbleRight' : 'adminTranscriptBubbleLeft'}`}
+                      >
+                        <strong>{speakerLabel(message.role, text, selectedChat.visitorName)}</strong>
+                        <p>{message.text}</p>
+                        <div className={`adminTranscriptBubbleTimeRow ${message.role === 'user' ? 'adminTranscriptBubbleTimeRowRight' : 'adminTranscriptBubbleTimeRowLeft'}`}>
+                          <span className="adminTranscriptTime">{formatClock(message.createdAt, language === 'no' ? 'no-NO' : 'en-US')}</span>
+                        </div>
+                      </div>
+
+                      {message.role !== 'system' ? (
+                        <div className={`adminTranscriptMetaRow ${message.role === 'user' ? 'adminTranscriptMetaRowRight' : 'adminTranscriptMetaRowLeft'}`}>
+                          {message.role === 'user' ? (
+                            <span className="adminTranscriptRoleIcon" aria-hidden="true">
+                              {renderWidgetIcon(getMessageIconKey(message.role, selectedChatWidgetIcons), { 'aria-hidden': true })}
+                            </span>
+                          ) : null}
+                          {message.role !== 'user' ? (
+                            <span className="adminTranscriptRoleIcon" aria-hidden="true">
+                              {renderWidgetIcon(getMessageIconKey(message.role, selectedChatWidgetIcons), { 'aria-hidden': true })}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                   {replySending ? (
                     <div
-                      className="adminTranscriptBubble adminTranscriptBubbleTyping"
+                      className="adminTranscriptMessage adminTranscriptMessageLeft"
                       aria-live="polite"
                       aria-label="Support is typing"
                     >
-                      <strong>{text.speakers.support}</strong>
-                      <div className="adminTypingDots">
-                        <span />
-                        <span />
-                        <span />
+                      <div className="adminTranscriptBubble adminTranscriptBubbleTyping adminTranscriptBubbleLeft">
+                        <strong>{text.speakers.support}</strong>
+                        <div className="adminTypingDots">
+                          <span />
+                          <span />
+                          <span />
+                        </div>
+                      </div>
+                      <div className="adminTranscriptMetaRow adminTranscriptMetaRowLeft">
+                        <span className="adminTranscriptRoleIcon" aria-hidden="true">
+                          {renderWidgetIcon(getMessageIconKey('support', selectedChatWidgetIcons), { 'aria-hidden': true })}
+                        </span>
                       </div>
                     </div>
                   ) : null}
                   {showVisitorTyping ? (
                     <div
-                      className="adminTranscriptBubble adminTranscriptBubbleTyping adminTranscriptBubbleVisitorTyping"
+                      className="adminTranscriptMessage adminTranscriptMessageRight"
                       aria-live="polite"
                       aria-label="Visitor is typing"
                     >
-                      <strong>{text.speakers.visitor}</strong>
-                      <div className="adminTypingDots">
-                        <span />
-                        <span />
-                        <span />
+                      <div className="adminTranscriptBubble adminTranscriptBubbleTyping adminTranscriptBubbleVisitorTyping adminTranscriptBubbleRight">
+                        <strong>{selectedChat.visitorName?.trim() || text.speakers.visitor}</strong>
+                        <div className="adminTypingDots">
+                          <span />
+                          <span />
+                          <span />
+                        </div>
+                      </div>
+                      <div className="adminTranscriptMetaRow adminTranscriptMetaRowRight">
+                        <span className="adminTranscriptRoleIcon" aria-hidden="true">
+                          {renderWidgetIcon(getMessageIconKey('user', selectedChatWidgetIcons), { 'aria-hidden': true })}
+                        </span>
                       </div>
                     </div>
                   ) : null}

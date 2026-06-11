@@ -661,6 +661,7 @@ export default function Header() {
   const text = headerI18n[language]
   const router = useRouter()
   const pathname = usePathname()
+  const isAdminRoute = pathname === '/admin' || pathname?.startsWith('/admin/')
   const [pendingInvites, setPendingInvites] = useState<BusinessInvitation[]>([])
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
@@ -860,8 +861,8 @@ export default function Header() {
     <StyledHeader ref={headerRef} $scrolled={isScrolled} $mobileHidden={isMobileHidden} $tone={headerTone}>
       <HeaderFrame>
         <HeaderInner>
-          <LeftSide>
-            <Brand href="/landings/main" aria-label={text.brandAria}>
+          <LeftSide aria-hidden={isAdminRoute ? 'true' : undefined} style={isAdminRoute ? { visibility: 'hidden' } : undefined}>
+            <Brand href="/landings/main" aria-label={text.brandAria} tabIndex={isAdminRoute ? -1 : undefined}>
               <BrandIcon src="/image/logo.png" alt="" aria-hidden="true" />
               <BrandText>
                 <BrandTitle>VINTRA</BrandTitle>

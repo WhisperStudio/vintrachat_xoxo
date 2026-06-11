@@ -156,7 +156,7 @@ input {
 
 .primaryBtn,
 .secondaryBtn {
-  padding: 11px 16px;
+  padding: 5px 10px;
   border-radius: 12px;
   cursor: pointer;
   transition: 0.2s ease;

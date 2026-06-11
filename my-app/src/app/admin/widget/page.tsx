@@ -172,6 +172,10 @@ const createDefaultWidgetConfig = (businessName: string): ChatWidgetConfig => ({
       focusY: 50,
     },
   },
+  visibility: {
+    showOnPaths: [],
+    hideOnPaths: [],
+  },
   settings: {
     autoOpen: false,
     delayMs: 3000,
@@ -228,6 +232,14 @@ const mergeWidgetConfig = (
         focusY: config.customBranding?.logoStyle?.focusY ?? defaults.customBranding.logoStyle!.focusY,
       },
     },
+    visibility: {
+      showOnPaths: Array.isArray(config.visibility?.showOnPaths)
+        ? config.visibility.showOnPaths.filter(Boolean)
+        : defaults.visibility?.showOnPaths || [],
+      hideOnPaths: Array.isArray(config.visibility?.hideOnPaths)
+        ? config.visibility.hideOnPaths.filter(Boolean)
+        : defaults.visibility?.hideOnPaths || [],
+    },
     settings: {
       ...defaults.settings,
       ...(config.settings || {}),
@@ -236,6 +248,26 @@ const mergeWidgetConfig = (
 }
 
 const allowedDomainSeed = ['chat.vintrastudio.com', 'http://localhost:3000/', 'app://com.company.app']
+const visibilityPathSeed = ['/admin*', '/checkout', '/auth/login']
+
+function normalizeVisibilityPathRule(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  if (trimmed === '*') return '*'
+  if (trimmed.startsWith('/')) return trimmed
+  return `/${trimmed}`
+}
+
+function parseVisibilityPathInput(input: string) {
+  return Array.from(
+    new Set(
+      input
+        .split(/\r?\n/)
+        .map(normalizeVisibilityPathRule)
+        .filter(Boolean)
+    )
+  )
+}
 
 type LanguageOption = {
   value: string
@@ -684,6 +716,8 @@ export default function WidgetAdminPanel({
   const [copied, setCopied] = useState(false)
   const [lastConfigUpdate, setLastConfigUpdate] = useState<string | null>(null)
   const [allowedDomainsText, setAllowedDomainsText] = useState('')
+  const [showOnPathsText, setShowOnPathsText] = useState('')
+  const [hideOnPathsText, setHideOnPathsText] = useState('')
   const [domainsSaving, setDomainsSaving] = useState(false)
   const [domainsStatus, setDomainsStatus] = useState<'idle' | 'saved' | 'error'>('idle')
   const [assistantSaving, setAssistantSaving] = useState(false)
@@ -750,6 +784,12 @@ export default function WidgetAdminPanel({
     setConfig(mergedConfig)
     setAllowedDomainsText(
       Array.isArray(mergedConfig.allowedDomains) ? mergedConfig.allowedDomains.join('\n') : ''
+    )
+    setShowOnPathsText(
+      Array.isArray(mergedConfig.visibility?.showOnPaths) ? mergedConfig.visibility?.showOnPaths.join('\n') : ''
+    )
+    setHideOnPathsText(
+      Array.isArray(mergedConfig.visibility?.hideOnPaths) ? mergedConfig.visibility?.hideOnPaths.join('\n') : ''
     )
     setLastConfigUpdate(JSON.stringify(mergedConfig))
   }
@@ -1825,9 +1865,15 @@ export default function WidgetAdminPanel({
     setDomainsStatus('idle')
 
     const parsedDomains = parseAllowedDomainsInput(allowedDomainsText)
+    const parsedShowOnPaths = parseVisibilityPathInput(showOnPathsText)
+    const parsedHideOnPaths = parseVisibilityPathInput(hideOnPathsText)
     const mergedConfig = {
       ...(config || {}),
       allowedDomains: parsedDomains,
+      visibility: {
+        showOnPaths: parsedShowOnPaths,
+        hideOnPaths: parsedHideOnPaths,
+      },
     } as ChatWidgetConfig
     const result = await updateChatWidgetConfig(
       dbUser.businessId,
@@ -1842,6 +1888,8 @@ export default function WidgetAdminPanel({
       setSelectedWidgetKey(targetWidgetKey)
       setConfig(mergedConfig)
       setAllowedDomainsText(parsedDomains.join('\n'))
+      setShowOnPathsText(parsedShowOnPaths.join('\n'))
+      setHideOnPathsText(parsedHideOnPaths.join('\n'))
       if (typeof window !== 'undefined') {
         const storageKey = `widget-config-${dbUser.businessId}`
         const nextConfigPayload = JSON.stringify(mergedConfig)
@@ -3144,14 +3192,14 @@ export default function WidgetAdminPanel({
 
         <section className="widget-admin-card widget-admin-security">
           <div className="widget-card-header widget-card-header--compact">
-            <span className="widget-admin-section-label">Domain allowlist</span>
+            <span className="widget-admin-section-label">Domain and visibility rules</span>
             <button type="button" className="widget-admin-save-button" onClick={saveAllowedDomains} disabled={domainsSaving}>
-              {domainsSaving ? 'Saving...' : domainsStatus === 'saved' ? 'Saved!' : 'Save domains'}
+              {domainsSaving ? 'Saving...' : domainsStatus === 'saved' ? 'Saved!' : 'Save rules'}
             </button>
           </div>
 
           <p className="widget-card-desc">
-            Add one allowed domain, full origin, or mobile app id per line. If this list is empty, external sites and mobile apps are blocked.
+            Control where the widget is allowed to load and which page paths should show or hide it.
           </p>
 
           <div className="widget-ai-grid">
@@ -3171,6 +3219,36 @@ export default function WidgetAdminPanel({
                 <code>{allowedDomainSeed[0]}</code>, or mobile app ids like{' '}
                 <code>{allowedDomainSeed[2]}</code>. React Native/WebView embeds must send this as{' '}
                 <code>X-Vintra-App-Origin</code>.
+              </p>
+            </label>
+
+            <label className="widget-ai-field">
+              <span>Only show on paths</span>
+              <AutoGrowTextarea
+                id="show-on-paths"
+                name="show-on-paths"
+                value={showOnPathsText}
+                onChange={(event) => setShowOnPathsText(event.target.value)}
+                minRows={5}
+                placeholder={'/\n/products*\n/pricing'}
+              />
+              <p className="field-note">
+                Optional. One path rule per line. Leave empty to allow all paths unless hidden below.
+              </p>
+            </label>
+
+            <label className="widget-ai-field">
+              <span>Hide on paths</span>
+              <AutoGrowTextarea
+                id="hide-on-paths"
+                name="hide-on-paths"
+                value={hideOnPathsText}
+                onChange={(event) => setHideOnPathsText(event.target.value)}
+                minRows={5}
+                placeholder={visibilityPathSeed.join('\n')}
+              />
+              <p className="field-note">
+                One path rule per line. Supports exact paths like <code>/checkout</code> and prefixes like <code>/admin*</code>.
               </p>
             </label>
           </div>
