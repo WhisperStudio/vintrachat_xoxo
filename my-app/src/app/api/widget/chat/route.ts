@@ -64,6 +64,21 @@ const fallbackFeedbackKeywords = [
   'tilbakemelding',
 ]
 
+const fallbackTaskKeywords = [
+  'ticket',
+  'task',
+  'case',
+  'issue',
+  'problem',
+  'support ticket',
+  'create ticket',
+  'open ticket',
+  'lag oppgave',
+  'lag ticket',
+  'opprett ticket',
+  'opprett sak',
+]
+
 const MAX_WIDGET_MESSAGE_CHARS = 300
 function buildHumanHandoffReply() {
   return 'Takk for info, jeg har flagget det inn til et menneske. Mens vi venter, er det noe annet du lurer på?'
@@ -101,6 +116,11 @@ function didUserRequestHumanSupport(message: string, keywords: string[]) {
 }
 
 function didUserRequestFeedback(message: string, keywords: string[]) {
+  const normalized = message.toLowerCase()
+  return keywords.some((keyword) => normalized.includes(keyword.toLowerCase()))
+}
+
+function didUserRequestTask(message: string, keywords: string[]) {
   const normalized = message.toLowerCase()
   return keywords.some((keyword) => normalized.includes(keyword.toLowerCase()))
 }
@@ -486,6 +506,7 @@ export async function POST(req: NextRequest) {
     const supportRequestText = body.supportRequestText ? String(body.supportRequestText).trim() : ''
     const history = trimHistory(Array.isArray(body.history) ? body.history : [])
     const requestFeedbackForm = didUserRequestFeedback(message, fallbackFeedbackKeywords)
+    const requestTaskForm = didUserRequestTask(message, fallbackTaskKeywords)
     const fingerprint = String(req.headers.get('x-vintra-fingerprint') || body.fingerprint || '').trim()
     const captchaToken = String(req.headers.get('x-vintra-captcha-token') || body.captchaToken || '').trim()
 
@@ -655,8 +676,10 @@ export async function POST(req: NextRequest) {
       forceSelectedModelOnly: false,
     }
     const humanSupportEnabled = assistantConfig.humanSupportEnabled !== false
+    const taskTabEnabled = business.chatWidgetConfig?.settings?.tasksEnabled === true
+    const reviewTabEnabled = business.chatWidgetConfig?.settings?.reviewsEnabled === true
 
-    if (requestFeedbackForm) {
+    if (requestFeedbackForm && reviewTabEnabled) {
       const businessRef = adminDb.collection('businesses').doc(business.id)
       const todayKey = getTodayUsageKey()
       const analyticsTimelineEvents = [
@@ -689,6 +712,43 @@ export async function POST(req: NextRequest) {
           sessionId,
           reply: finalReply,
           feedbackFormRequested: true,
+          countryCode,
+        },
+        { headers }
+      )
+    }
+
+    if (requestTaskForm && taskTabEnabled) {
+      const businessRef = adminDb.collection('businesses').doc(business.id)
+      const todayKey = getTodayUsageKey()
+      const analyticsTimelineEvents = [
+        createAnalyticsEvent('visitor-message', sessionId, countryCode, widgetKey),
+      ]
+
+      if (!body.sessionId) {
+        analyticsTimelineEvents.unshift(
+          createAnalyticsEvent('session-start', sessionId, countryCode, widgetKey)
+        )
+      }
+
+      await businessRef.update({
+        updatedAt: FieldValue.serverTimestamp(),
+        'chatAnalytics.totalMessages': FieldValue.increment(1),
+        'chatAnalytics.lastChatAt': FieldValue.serverTimestamp(),
+        [`chatAnalytics.countryCounts.${countryCode}`]: FieldValue.increment(1),
+        'chatAnalytics.timeline': FieldValue.arrayUnion(...analyticsTimelineEvents),
+        ...(body.sessionId ? {} : {
+          'chatAnalytics.totalSessions': FieldValue.increment(1),
+          'chatAnalytics.aiOnlySessions': FieldValue.increment(1),
+          [`chatAnalytics.dailyConversationCounts.${todayKey}`]: FieldValue.increment(1),
+        }),
+      })
+
+      return NextResponse.json(
+        {
+          sessionId,
+          reply: 'Absolutely. I opened a support ticket form for you.',
+          taskFormRequested: true,
           countryCode,
         },
         { headers }

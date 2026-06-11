@@ -179,7 +179,18 @@ export interface SupportChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'support' | 'system';
   text: string;
+  attachments?: SupportChatAttachment[];
   createdAt: Date;
+}
+
+export interface SupportChatAttachment {
+  id: string;
+  kind: 'image' | 'file';
+  name: string;
+  url: string;
+  storagePath: string;
+  contentType?: string;
+  size?: number;
 }
 
 export interface SupportChatSession {
@@ -349,6 +360,8 @@ export interface ChatWidgetConfig {
   settings: {
     autoOpen: boolean;
     delayMs: number;
+    tasksEnabled?: boolean;
+    reviewsEnabled?: boolean;
   };
 
   // Security settings

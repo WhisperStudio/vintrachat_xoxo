@@ -1,12 +1,27 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { deleteField, doc, serverTimestamp, updateDoc } from 'firebase/firestore'
-import { FiArrowLeft, FiClock, FiPlus, FiSearch, FiSend, FiShield, FiUsers, FiX } from 'react-icons/fi'
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
+import {
+  FiArrowLeft,
+  FiCheck,
+  FiClock,
+  FiMail,
+  FiPaperclip,
+  FiPhone,
+  FiPlus,
+  FiSearch,
+  FiSend,
+  FiShield,
+  FiUsers,
+  FiX,
+  FiEdit2,
+} from 'react-icons/fi'
 import { LuMessagesSquare } from "react-icons/lu";
 
 import { useAuth } from '@/context/AuthContext'
-import { db } from '@/lib/firebase'
+import { db, storage } from '@/lib/firebase'
 import {
   acceptSupportChat,
   closeSupportChat,
@@ -20,6 +35,7 @@ import { adminChatsI18n, useVintraLanguage } from '@/lib/i18n'
 import { renderWidgetIcon } from '@/lib/widget-icons'
 import type {
   ChatWidgetInterfaceIcons,
+  SupportChatAttachment,
   SupportChatMessage,
   SupportChatSession,
   SupportTaskCategory,
@@ -36,6 +52,13 @@ type AdminChatsPanelProps = {
 
 type InboxFilter = 'all' | 'unread'
 type InboxSort = 'newest' | 'oldest'
+type ContactField = 'email' | 'phone'
+
+type PendingAttachment = {
+  id: string
+  file: File
+  previewUrl?: string
+}
 
 function speakerLabel(
   role: SupportChatMessage['role'],
@@ -122,6 +145,13 @@ function normalize(value: string) {
   return value.trim().toLowerCase()
 }
 
+function formatFileSize(bytes?: number) {
+  if (!bytes || Number.isNaN(bytes)) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 export default function AdminChatsPanel({
   selectedWidgetKey = '',
   onWidgetSelected,
@@ -134,8 +164,14 @@ export default function AdminChatsPanel({
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [replyText, setReplyText] = useState('')
+  const [replyAttachments, setReplyAttachments] = useState<PendingAttachment[]>([])
   const [actionBusy, setActionBusy] = useState(false)
   const [replySending, setReplySending] = useState(false)
+  const [replyUploading, setReplyUploading] = useState(false)
+  const [isReplyComposerFocused, setIsReplyComposerFocused] = useState(false)
+  const [editingContactField, setEditingContactField] = useState<ContactField | null>(null)
+  const [contactDraft, setContactDraft] = useState({ email: '', phone: '' })
+  const [contactSavingField, setContactSavingField] = useState<ContactField | null>(null)
   const [taskComposerMode, setTaskComposerMode] = useState<'quick' | 'full' | null>(null)
   const [taskSaving, setTaskSaving] = useState(false)
   const [taskCategories, setTaskCategories] = useState<SupportTaskCategory[]>([])
@@ -160,6 +196,9 @@ export default function AdminChatsPanel({
   })
   const messagesRef = useRef<HTMLDivElement | null>(null)
   const typingTimerRef = useRef<number | null>(null)
+  const replyTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const attachmentInputRef = useRef<HTMLInputElement | null>(null)
+  const attachmentPreviewUrlsRef = useRef<string[]>([])
   const readStorageKey = dbUser?.businessId ? `vintra-admin-chat-read:${dbUser.businessId}` : ''
   const taskComposerOpen = taskComposerMode !== null
   const isQuickTaskComposer = taskComposerMode === 'quick'
@@ -289,7 +328,7 @@ export default function AdminChatsPanel({
     [filteredChats]
   )
 
-  const chatsPerPage = 8
+  const chatsPerPage = 16
   const totalChatPages = Math.max(1, Math.ceil(filteredChats.length / chatsPerPage))
   const paginatedChats = useMemo(() => {
     const start = chatListPage * chatsPerPage
@@ -344,6 +383,49 @@ export default function AdminChatsPanel({
     if (!el) return
     el.scrollTop = el.scrollHeight
   }, [selectedChat?.id, selectedChat?.messages.length, selectedChat?.status])
+
+  useEffect(() => {
+    setContactDraft({
+      email: selectedChat?.visitorEmail || '',
+      phone: selectedChat?.visitorPhone || '',
+    })
+    setEditingContactField(null)
+  }, [selectedChat?.id, selectedChat?.visitorEmail, selectedChat?.visitorPhone])
+
+  useEffect(() => {
+    const node = replyTextareaRef.current
+    if (!node) return
+
+    const baseHeight = 52
+    if (!isReplyComposerFocused) {
+      node.style.height = `${baseHeight}px`
+      return
+    }
+
+    node.style.height = 'auto'
+    node.style.height = `${Math.max(baseHeight, node.scrollHeight)}px`
+  }, [isReplyComposerFocused, replyText])
+
+  useEffect(() => {
+    const nextUrls = replyAttachments
+      .map((attachment) => attachment.previewUrl)
+      .filter((value): value is string => Boolean(value))
+    const previousUrls = attachmentPreviewUrlsRef.current
+
+    previousUrls.forEach((url) => {
+      if (!nextUrls.includes(url)) {
+        URL.revokeObjectURL(url)
+      }
+    })
+
+    attachmentPreviewUrlsRef.current = nextUrls
+  }, [replyAttachments])
+
+  useEffect(() => {
+    return () => {
+      attachmentPreviewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
+    }
+  }, [])
 
   useEffect(() => {
     closeTaskComposer()
@@ -447,8 +529,66 @@ export default function AdminChatsPanel({
     }
   }
 
+  const resetReplyComposer = () => {
+    setReplyText('')
+    setReplyAttachments([])
+    setIsReplyComposerFocused(false)
+    if (attachmentInputRef.current) {
+      attachmentInputRef.current.value = ''
+    }
+  }
+
+  const handleAttachmentSelection = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || [])
+    if (!files.length) return
+
+    setReplyAttachments((current) => [
+      ...current,
+      ...files.map((file) => ({
+        id: crypto.randomUUID(),
+        file,
+        previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
+      })),
+    ])
+
+    event.target.value = ''
+  }
+
+  const handleRemoveAttachment = (attachmentId: string) => {
+    setReplyAttachments((current) => current.filter((attachment) => attachment.id !== attachmentId))
+  }
+
+  const handleSaveContactField = async (field: ContactField) => {
+    if (!dbUser?.businessId || !selectedChat) return
+
+    const rawValue = field === 'email' ? contactDraft.email : contactDraft.phone
+    const nextValue = rawValue.trim()
+
+    setContactSavingField(field)
+    try {
+      await updateDoc(doc(db, `businesses/${dbUser.businessId}/supportChats/${selectedChat.id}`), {
+        [field === 'email' ? 'visitorEmail' : 'visitorPhone']: nextValue || null,
+        updatedAt: serverTimestamp(),
+      })
+      setChats((current) =>
+        current.map((chat) =>
+          chat.id === selectedChat.id
+            ? {
+                ...chat,
+                [field === 'email' ? 'visitorEmail' : 'visitorPhone']: nextValue || undefined,
+              }
+            : chat
+        )
+      )
+      setEditingContactField(null)
+    } finally {
+      setContactSavingField(null)
+    }
+  }
+
   const handleSelectChat = (chat: SupportChatSession) => {
     setSelectedChatId(chat.id)
+    resetReplyComposer()
     setReadAtMap((prev) => {
       const updatedAt = new Date(chat.updatedAt).getTime()
       if ((prev[chat.id] || 0) >= updatedAt) return prev
@@ -473,23 +613,73 @@ export default function AdminChatsPanel({
     await stopSupportTyping()
     await runChatAction(async () => {
       await closeSupportChat(dbUser.businessId, selectedChat.id)
-      setReplyText('')
+      resetReplyComposer()
     })
   }
 
   const handleSendReply = async () => {
-    if (!dbUser?.businessId || !selectedChat || selectedChat.status !== 'open' || !replyText.trim()) return
+    if (!dbUser?.businessId || !selectedChat || selectedChat.status !== 'open') return
 
     const nextReply = replyText.trim()
-    setReplyText('')
+    if (!nextReply && replyAttachments.length === 0) return
+
+    const pendingAttachments = [...replyAttachments]
+    resetReplyComposer()
     setReplySending(true)
 
     try {
       await stopSupportTyping()
+      setReplyUploading(true)
+      const uploadedAttachments =
+        pendingAttachments.length > 0
+          ? await Promise.all(
+              pendingAttachments.map(async (attachment) => {
+                const extension = attachment.file.name.includes('.')
+                  ? attachment.file.name.split('.').pop()
+                  : ''
+                const safeExtension = extension ? `.${extension}` : ''
+                const storagePath = [
+                  'businesses',
+                  dbUser.businessId,
+                  'supportChats',
+                  selectedChat.id,
+                  'attachments',
+                  `${Date.now()}-${attachment.id}${safeExtension}`,
+                ].join('/')
+                const storageRef = ref(storage, storagePath)
+                await uploadBytes(storageRef, attachment.file, {
+                  contentType: attachment.file.type || 'application/octet-stream',
+                })
+                const url = await getDownloadURL(storageRef)
+
+                return {
+                  id: attachment.id,
+                  kind: attachment.file.type.startsWith('image/') ? 'image' : 'file',
+                  name: attachment.file.name,
+                  url,
+                  storagePath,
+                  contentType: attachment.file.type || undefined,
+                  size: attachment.file.size,
+                } satisfies SupportChatAttachment
+              })
+            )
+          : []
+      setReplyUploading(false)
       await runChatAction(() =>
-        sendSupportReply(dbUser.businessId, selectedChat.id, nextReply, selectedChat.countryCode)
+        sendSupportReply(
+          dbUser.businessId,
+          selectedChat.id,
+          nextReply,
+          selectedChat.countryCode,
+          uploadedAttachments
+        )
       )
+    } catch (error) {
+      setReplyText(nextReply)
+      setReplyAttachments(pendingAttachments)
+      console.error('Failed to send support reply:', error)
     } finally {
+      setReplyUploading(false)
       setReplySending(false)
     }
   }
@@ -670,27 +860,20 @@ export default function AdminChatsPanel({
                   <button
                     type="button"
                     className="adminChatsBackButton"
-                    onClick={() => setSelectedChatId(null)}
+                    onClick={() => {
+                      resetReplyComposer()
+                      setSelectedChatId(null)
+                    }}
                     aria-label={backLabel}
                   >
                     <FiArrowLeft />
                   </button>
 
                   <div className="adminChatActions adminChatActionsHeader">
-                    {(selectedChat.status === 'open' || selectedChat.status === 'ai-active') ? (
-                      <button
-                        type="button"
-                        className="dangerBtn"
-                        onClick={handleClose}
-                        disabled={actionBusy}
-                      >
-                        {text.closeChat}
-                      </button>
-                    ) : null}
                     {canReturnToAi ? (
                       <button
                         type="button"
-                        className="secondaryBtn"
+                        className="secondaryBtn adminChatActionBtn adminChatActionBtnAi"
                         onClick={handleReturnToAi}
                         disabled={actionBusy}
                       >
@@ -700,7 +883,7 @@ export default function AdminChatsPanel({
                     {awaitingAcceptance ? (
                       <button
                         type="button"
-                        className="secondaryBtn"
+                        className="secondaryBtn adminChatActionBtn adminChatActionBtnHuman"
                         onClick={handleAccept}
                         disabled={actionBusy}
                       >
@@ -710,11 +893,21 @@ export default function AdminChatsPanel({
                     {canReturnToHuman ? (
                       <button
                         type="button"
-                        className="secondaryBtn"
+                        className="secondaryBtn adminChatActionBtn adminChatActionBtnHuman"
                         onClick={handleAccept}
                         disabled={actionBusy}
                       >
                         {text.returnToHuman}
+                      </button>
+                    ) : null}
+                    {(selectedChat.status === 'open' || selectedChat.status === 'ai-active') ? (
+                      <button
+                        type="button"
+                        className="dangerBtn adminChatActionBtn"
+                        onClick={handleClose}
+                        disabled={actionBusy}
+                      >
+                        {text.closeChat}
                       </button>
                     ) : null}
                   </div>
@@ -734,6 +927,76 @@ export default function AdminChatsPanel({
                     <div className="adminChatMetaDetails">
                       <span><FiClock /> {formatInboxStamp(new Date(selectedChat.updatedAt), language === 'no' ? 'no-NO' : 'en-US', text)}</span>
                       <span><LuMessagesSquare /> {selectedChat.messageCount}</span>
+                    </div>
+
+                    <div className="adminChatContactCard">
+                      <div className="adminChatContactRow">
+                        <span className="adminChatContactIcon">
+                          <FiMail />
+                        </span>
+                        <div className="adminChatContactValue">
+                          {editingContactField === 'email' ? (
+                            <input
+                              type="email"
+                              value={contactDraft.email}
+                              onChange={(event) =>
+                                setContactDraft((current) => ({ ...current, email: event.target.value }))
+                              }
+                              placeholder="kunde@epost.no"
+                              autoFocus
+                            />
+                          ) : (
+                            <span>{selectedChat.visitorEmail?.trim() || 'Ingen e-post lagt til'}</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          className={`adminChatContactEdit ${editingContactField === 'email' ? 'is-visible' : ''}`}
+                          onClick={() =>
+                            editingContactField === 'email'
+                              ? void handleSaveContactField('email')
+                              : setEditingContactField('email')
+                          }
+                          disabled={contactSavingField === 'email'}
+                          aria-label={editingContactField === 'email' ? 'Save email' : 'Edit email'}
+                        >
+                          {editingContactField === 'email' ? <FiCheck /> : <FiEdit2 />}
+                        </button>
+                      </div>
+
+                      <div className="adminChatContactRow">
+                        <span className="adminChatContactIcon">
+                          <FiPhone />
+                        </span>
+                        <div className="adminChatContactValue">
+                          {editingContactField === 'phone' ? (
+                            <input
+                              type="tel"
+                              value={contactDraft.phone}
+                              onChange={(event) =>
+                                setContactDraft((current) => ({ ...current, phone: event.target.value }))
+                              }
+                              placeholder="+47 99 99 99 99"
+                              autoFocus
+                            />
+                          ) : (
+                            <span>{selectedChat.visitorPhone?.trim() || 'Ingen telefon lagt til'}</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          className={`adminChatContactEdit ${editingContactField === 'phone' ? 'is-visible' : ''}`}
+                          onClick={() =>
+                            editingContactField === 'phone'
+                              ? void handleSaveContactField('phone')
+                              : setEditingContactField('phone')
+                          }
+                          disabled={contactSavingField === 'phone'}
+                          aria-label={editingContactField === 'phone' ? 'Save phone' : 'Edit phone'}
+                        >
+                          {editingContactField === 'phone' ? <FiCheck /> : <FiEdit2 />}
+                        </button>
+                      </div>
                     </div>
 
                     <div className="adminChatToolsRow adminChatToolsRowHeader">
@@ -1075,7 +1338,35 @@ export default function AdminChatsPanel({
                           } ${message.role === 'user' ? 'adminTranscriptBubbleRight' : 'adminTranscriptBubbleLeft'}`}
                       >
                         <strong>{speakerLabel(message.role, text, selectedChat.visitorName)}</strong>
-                        <p>{message.text}</p>
+                        {message.text ? <p>{message.text}</p> : null}
+                        {message.attachments?.length ? (
+                          <div className="adminTranscriptAttachments">
+                            {message.attachments.map((attachment) =>
+                              attachment.kind === 'image' ? (
+                                <a
+                                  key={attachment.id}
+                                  href={attachment.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="adminTranscriptAttachment adminTranscriptAttachmentImage"
+                                >
+                                  <img src={attachment.url} alt={attachment.name} />
+                                </a>
+                              ) : (
+                                <a
+                                  key={attachment.id}
+                                  href={attachment.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="adminTranscriptAttachment"
+                                >
+                                  <FiPaperclip />
+                                  <span>{attachment.name}</span>
+                                </a>
+                              )
+                            )}
+                          </div>
+                        ) : null}
                         <div className={`adminTranscriptBubbleTimeRow ${message.role === 'user' ? 'adminTranscriptBubbleTimeRowRight' : 'adminTranscriptBubbleTimeRowLeft'}`}>
                           <span className="adminTranscriptTime">{formatClock(message.createdAt, language === 'no' ? 'no-NO' : 'en-US')}</span>
                         </div>
@@ -1154,24 +1445,87 @@ export default function AdminChatsPanel({
               </div>
 
               <div className="adminChatTools">
-
-
                 <div className="adminChatReplyBox">
+                  {replyAttachments.length ? (
+                    <div className="adminReplyAttachmentTray">
+                      {replyAttachments.map((attachment) => (
+                        <div
+                          key={attachment.id}
+                          className={`adminReplyAttachmentChip ${attachment.previewUrl ? 'adminReplyAttachmentChipImage' : ''}`}
+                        >
+                          {attachment.previewUrl ? (
+                            <img src={attachment.previewUrl} alt={attachment.file.name} />
+                          ) : (
+                            <span className="adminReplyAttachmentFileIcon">
+                              <FiPaperclip />
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            className="adminReplyAttachmentRemove"
+                            onClick={() => handleRemoveAttachment(attachment.id)}
+                            aria-label={`Remove ${attachment.file.name}`}
+                          >
+                            <FiX />
+                          </button>
+                          <div className="adminReplyAttachmentMeta">
+                            <strong>{attachment.file.name}</strong>
+                            <span>{formatFileSize(attachment.file.size)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <div className={`adminChatReplyShell ${isReplyComposerFocused ? 'is-focused' : ''}`}>
+                    <button
+                      type="button"
+                      className="adminChatAttachmentButton"
+                      onClick={() => attachmentInputRef.current?.click()}
+                      disabled={!canHumanReply || actionBusy || replySending || replyUploading}
+                      aria-label="Legg til vedlegg"
+                    >
+                      <FiPaperclip />
+                    </button>
+                    <input
+                      ref={attachmentInputRef}
+                      type="file"
+                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+                      multiple
+                      hidden
+                      onChange={handleAttachmentSelection}
+                    />
                   <textarea
+                    ref={replyTextareaRef}
                     value={replyText}
                     onChange={(event) => setReplyText(event.target.value)}
+                    onFocus={() => setIsReplyComposerFocused(true)}
+                    onBlur={() => setIsReplyComposerFocused(false)}
+                    onKeyDown={(event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+                      if (event.key === 'Enter' && !event.shiftKey) {
+                        event.preventDefault()
+                        void handleSendReply()
+                      }
+                    }}
                     placeholder={selectedChat.status === 'open' ? text.replyPlaceholder : text.replyLocked}
-                    disabled={!canHumanReply || actionBusy}
-                    rows={4}
+                    disabled={!canHumanReply || actionBusy || replySending || replyUploading}
+                    rows={1}
                   />
                   <button
                     type="button"
-                    className="primaryBtn adminSendButton"
-                    onClick={handleSendReply}
-                    disabled={!canHumanReply || actionBusy || replySending || !replyText.trim()}
+                    className="adminSendButton"
+                    onClick={() => void handleSendReply()}
+                    disabled={
+                      !canHumanReply ||
+                      actionBusy ||
+                      replySending ||
+                      replyUploading ||
+                      (!replyText.trim() && replyAttachments.length === 0)
+                    }
                   >
                     <FiSend />
                   </button>
+                  </div>
                 </div>
               </div>
             </>

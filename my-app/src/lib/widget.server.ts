@@ -93,6 +93,8 @@ function buildDefaultWidgetConfig(businessName = 'Chat Widget'): ChatWidgetConfi
     settings: {
       autoOpen: false,
       delayMs: 3000,
+      tasksEnabled: false,
+      reviewsEnabled: false,
     },
     allowedDomains: [],
   }

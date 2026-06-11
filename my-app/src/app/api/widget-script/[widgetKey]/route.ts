@@ -841,6 +841,14 @@ export async function GET(
     feedbackRating: 5,
     feedbackText: '',
     feedbackSubmitting: false,
+    activePanel: 'chats',
+    tasks: [],
+    tasksLoading: false,
+    taskSubmitting: false,
+    taskTitle: '',
+    taskDescription: '',
+    taskNotice: '',
+    lightboxImageUrl: '',
     faqSuggestions: [],
     faqSuggestionsDismissed: false,
     activeConversationCardId: '',
@@ -1144,6 +1152,16 @@ export async function GET(
       id: message && message.id ? String(message.id) : 'message-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
       role: normalizeRole(message && message.role),
       text: String((message && message.text) || ''),
+      attachments: Array.isArray(message && message.attachments)
+        ? message.attachments.map(function (attachment) {
+            return {
+              id: String((attachment && attachment.id) || ('attachment-' + Math.random().toString(36).slice(2, 8))),
+              kind: attachment && attachment.kind === 'image' ? 'image' : 'file',
+              name: String((attachment && attachment.name) || 'Attachment'),
+              url: String((attachment && attachment.url) || ''),
+            };
+          }).filter(function (attachment) { return Boolean(attachment.url); })
+        : [],
       createdAt: message && message.createdAt ? String(message.createdAt) : new Date().toISOString()
     };
   }
@@ -1359,8 +1377,165 @@ export async function GET(
     return state.assistantEnabled ? 'AI live' : 'Offline';
   }
 
+  function getWidgetSettings() {
+    var config = state.config || {};
+    return (config && config.settings) || {};
+  }
+
+  function isTasksTabEnabled() {
+    return Boolean(getWidgetSettings().tasksEnabled);
+  }
+
+  function isReviewsTabEnabled() {
+    return Boolean(getWidgetSettings().reviewsEnabled);
+  }
+
+  function shouldShowPortalTabs() {
+    return isTasksTabEnabled() || isReviewsTabEnabled();
+  }
+
+  function getAvailablePanels() {
+    var panels = [{ id: 'chats', label: 'Chats' }];
+    if (isTasksTabEnabled()) panels.push({ id: 'tasks', label: 'Tasks' });
+    if (isReviewsTabEnabled()) panels.push({ id: 'review', label: 'Review' });
+    return panels;
+  }
+
   function shouldShowSupportGate() {
     return false;
+  }
+
+  function getMessageAttachmentsMarkup(msg) {
+    if (!msg || !Array.isArray(msg.attachments) || !msg.attachments.length) return '';
+
+    return (
+      '<div class="message-attachments">' +
+        msg.attachments.map(function (attachment) {
+          if (attachment.kind === 'image') {
+            return (
+              '<button type="button" class="message-attachment-thumb" data-lightbox-image="' + escapeHtml(attachment.url) + '" aria-label="Open image">' +
+                '<img src="' + escapeHtml(attachment.url) + '" alt="' + escapeHtml(attachment.name || 'Image attachment') + '" />' +
+              '</button>'
+            );
+          }
+
+          return (
+            '<a class="message-attachment-file" href="' + escapeHtml(attachment.url) + '" target="_blank" rel="noreferrer">' +
+              renderIconSlot(icons.message) +
+              '<span>' + escapeHtml(attachment.name || 'Attachment') + '</span>' +
+            '</a>'
+          );
+        }).join('') +
+      '</div>'
+    );
+  }
+
+  function getPanelTabsMarkup() {
+    if (!shouldShowPortalTabs()) return '';
+
+    var panels = getAvailablePanels();
+
+    return (
+      '<div class="widget-panel-tabs" role="tablist" aria-label="Widget pages">' +
+        panels.map(function (panel) {
+          return (
+            '<button type="button" class="widget-panel-tab' + (state.activePanel === panel.id ? ' is-active' : '') + '" data-widget-panel="' + panel.id + '" role="tab" aria-selected="' + (state.activePanel === panel.id ? 'true' : 'false') + '">' +
+              escapeHtml(panel.label) +
+            '</button>'
+          );
+        }).join('') +
+      '</div>'
+    );
+  }
+
+  function getTaskPanelMarkup() {
+    if (!isTasksTabEnabled()) return '';
+
+    var tasksMarkup = state.tasksLoading
+      ? '<div class="widget-panel-empty">Loading tickets...</div>'
+      : state.tasks.length
+        ? '<div class="widget-task-list">' + state.tasks.map(function (task) {
+            return (
+              '<article class="widget-task-card">' +
+                '<div class="widget-task-card__top">' +
+                  '<strong>' + escapeHtml(task.title || 'Untitled ticket') + '</strong>' +
+                  '<span class="widget-task-badge widget-task-badge--' + escapeHtml(String(task.status || 'open').toLowerCase()) + '">' + escapeHtml(task.status || 'open') + '</span>' +
+                '</div>' +
+                '<p>' + escapeHtml(task.description || '') + '</p>' +
+                '<div class="widget-task-card__meta">' +
+                  '<span>' + escapeHtml(task.categoryName || 'General') + '</span>' +
+                  '<span>' + escapeHtml(formatTime(task.createdAt)) + '</span>' +
+                '</div>' +
+              '</article>'
+            );
+          }).join('') + '</div>'
+        : '<div class="widget-panel-empty">No tickets yet. Use the form below to create one.</div>';
+
+    return (
+      '<div class="widget-panel-page widget-panel-page--tasks">' +
+        '<div class="widget-panel-page__hero">' +
+          '<strong>Create a ticket</strong>' +
+          '<p>Send a task directly to the support team and track it here.</p>' +
+        '</div>' +
+        '<label class="widget-feedback-field">' +
+          '<span>Title</span>' +
+          '<input type="text" class="widget-task-input" data-task-field="title" value="' + escapeHtml(state.taskTitle) + '" placeholder="What do you need help with?" />' +
+        '</label>' +
+        '<label class="widget-feedback-field">' +
+          '<span>Description</span>' +
+          '<textarea rows="5" class="widget-task-textarea" data-task-field="description" placeholder="Describe the issue and what you want us to do next.">' + escapeHtml(state.taskDescription) + '</textarea>' +
+        '</label>' +
+        '<div class="widget-feedback-actions">' +
+          '<button type="button" class="widget-feedback-primary widget-task-submit" ' + ((state.taskSubmitting || !String(state.taskTitle || '').trim() || !String(state.taskDescription || '').trim()) ? 'disabled' : '') + '>' + (state.taskSubmitting ? 'Submitting...' : 'Create ticket') + '</button>' +
+        '</div>' +
+        (state.taskNotice ? '<div class="widget-panel-inline-note">' + escapeHtml(state.taskNotice) + '</div>' : '') +
+        tasksMarkup +
+      '</div>'
+    );
+  }
+
+  function getReviewPanelMarkup() {
+    if (!isReviewsTabEnabled()) return '';
+
+    var stars = Array.from({ length: 5 }, function (_, index) {
+      var value = index + 1;
+      return (
+        '<button type="button" class="widget-feedback-star' + (value <= state.feedbackRating ? ' is-active' : '') + '" data-feedback-rating="' + value + '" aria-label="' + value + ' star' + (value === 1 ? '' : 's') + '">' +
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.6 3.1 6.29 6.94 1.01-5.02 4.9 1.18 6.9L12 18.98 5.8 21.7l1.18-6.9-5.02-4.9 6.94-1.01Z"></path></svg>' +
+        '</button>'
+      );
+    }).join('');
+
+    return (
+      '<div class="widget-panel-page widget-panel-page--review">' +
+        '<div class="widget-panel-page__hero">' +
+          '<strong>Leave a review</strong>' +
+          '<p>Tell us how the chat went and give us a star rating.</p>' +
+        '</div>' +
+        '<div class="widget-feedback-rating" aria-label="Rating selector">' + stars + '</div>' +
+        '<label class="widget-feedback-field">' +
+          '<span>Your feedback</span>' +
+          '<textarea rows="5" class="widget-feedback-textarea" placeholder="What went well, and what could be better?">' + escapeHtml(state.feedbackText) + '</textarea>' +
+        '</label>' +
+        '<div class="widget-feedback-actions">' +
+          '<button type="button" class="widget-feedback-primary" ' + (state.feedbackSubmitting ? 'disabled' : '') + '>' + (state.feedbackSubmitting ? 'Submitting...' : 'Submit feedback') + '</button>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function getImageLightboxMarkup() {
+    if (!state.lightboxImageUrl) return '';
+
+    return (
+      '<div class="widget-image-lightbox" role="dialog" aria-modal="true" aria-label="Image preview">' +
+        '<button type="button" class="widget-image-lightbox__backdrop" data-close-lightbox="true" aria-label="Close image preview"></button>' +
+        '<div class="widget-image-lightbox__card">' +
+          '<button type="button" class="widget-image-lightbox__close" data-close-lightbox="true" aria-label="Close image preview">×</button>' +
+          '<img src="' + escapeHtml(state.lightboxImageUrl) + '" alt="Expanded chat attachment" />' +
+        '</div>' +
+      '</div>'
+    );
   }
 
   function getMessagesMarkup(config) {
@@ -1409,6 +1584,7 @@ export async function GET(
       return (
         '<div class="' + classes(['message', roleClass, 'message--' + msg.role]) + '">' +
           '<div class="message-content">' + escapeHtml(msg.text) + '</div>' +
+          getMessageAttachmentsMarkup(msg) +
           ((bodyStyle.showTimestamps || (bodyStyle.showReadReceipts && msg.role === 'user')) ? (
             '<div class="message-meta">' +
               (bodyStyle.showTimestamps ? '<span class="message-time">' + escapeHtml(formatTime(msg.createdAt)) + '</span>' : '') +
@@ -1728,6 +1904,7 @@ export async function GET(
             id: msg.id,
             role: msg.role,
             text: msg.text,
+            attachments: Array.isArray(msg.attachments) ? msg.attachments.map(function (attachment) { return attachment.url; }) : [],
             createdAt: msg.createdAt,
           };
         }),
@@ -1781,6 +1958,76 @@ export async function GET(
       }, true);
     } catch (error) {
       setDebug('Visitor typing sync failed\\n' + (error && error.message ? error.message : String(error)));
+    }
+  }
+
+  async function loadTasks() {
+    if (!state.sessionId || !isTasksTabEnabled()) return;
+
+    state.tasksLoading = true;
+    render();
+
+    try {
+      var response = await fetch(
+        ORIGIN + '/api/widget/tasks?key=' + encodeURIComponent(WIDGET_KEY) + '&sessionId=' + encodeURIComponent(state.sessionId),
+        {
+          mode: 'cors',
+          headers: widgetHeaders()
+        }
+      );
+      var json = await response.json();
+      if (!response.ok) {
+        throw new Error(json && json.error ? json.error : 'Failed to load tasks');
+      }
+
+      state.tasks = Array.isArray(json.tasks) ? json.tasks : [];
+    } catch (error) {
+      state.taskNotice = error instanceof Error ? error.message : 'Failed to load tasks';
+    } finally {
+      state.tasksLoading = false;
+      render();
+    }
+  }
+
+  async function submitTask() {
+    if (!state.sessionId || state.taskSubmitting || !String(state.taskTitle || '').trim() || !String(state.taskDescription || '').trim()) {
+      return;
+    }
+
+    state.taskSubmitting = true;
+    state.taskNotice = '';
+    render();
+
+    try {
+      var response = await fetch(ORIGIN + '/api/widget/tasks', {
+        method: 'POST',
+        headers: widgetHeaders(),
+        mode: 'cors',
+        body: JSON.stringify({
+          widgetKey: WIDGET_KEY,
+          sessionId: state.sessionId,
+          title: state.taskTitle,
+          description: state.taskDescription,
+          visitorName: state.handoffName || ''
+        })
+      });
+      var json = await response.json();
+
+      if (!response.ok) {
+        throw new Error(json && json.error ? json.error : 'Failed to create task');
+      }
+
+      if (json.task) {
+        state.tasks = [json.task].concat(state.tasks || []);
+      }
+      state.taskTitle = '';
+      state.taskDescription = '';
+      state.taskNotice = 'Ticket created successfully.';
+    } catch (error) {
+      state.taskNotice = error instanceof Error ? error.message : 'Failed to create task';
+    } finally {
+      state.taskSubmitting = false;
+      render();
     }
   }
 
@@ -2027,6 +2274,9 @@ export async function GET(
           state.hasUnreadWhileClosed = false;
           refreshFaqSuggestions();
           state.composerFocused = false;
+          if (state.activePanel === 'tasks') {
+            void loadTasks();
+          }
         }
         if (!state.open) {
           state.composerFocused = false;
@@ -2132,8 +2382,36 @@ export async function GET(
         return;
       }
 
+      if (button.hasAttribute('data-widget-panel')) {
+        var nextPanel = String(button.getAttribute('data-widget-panel') || 'chats');
+        state.activePanel = nextPanel;
+        if (nextPanel === 'tasks') {
+          void loadTasks();
+        } else {
+          render();
+        }
+        return;
+      }
+
+      if (button.hasAttribute('data-lightbox-image')) {
+        state.lightboxImageUrl = String(button.getAttribute('data-lightbox-image') || '');
+        render();
+        return;
+      }
+
+      if (button.hasAttribute('data-close-lightbox')) {
+        state.lightboxImageUrl = '';
+        render();
+        return;
+      }
+
       if (button.classList.contains('widget-feedback-primary')) {
         submitFeedback();
+        return;
+      }
+
+      if (button.classList.contains('widget-task-submit')) {
+        submitTask();
         return;
       }
 
@@ -2157,6 +2435,11 @@ export async function GET(
         return;
       }
 
+      if (target.tagName === 'TEXTAREA' && target.classList && target.classList.contains('widget-task-textarea')) {
+        state.taskDescription = target.value;
+        return;
+      }
+
       if (target.tagName === 'TEXTAREA') {
         var nextValue = truncateTextByCharacters(String(target.value || ''), MAX_WIDGET_MESSAGE_CHARS);
         if (target.value !== nextValue) {
@@ -2171,6 +2454,11 @@ export async function GET(
         syncComposerMode();
         markOrbActivity();
         scheduleVisitorTypingSync();
+        return;
+      }
+
+      if (target.classList && target.classList.contains('widget-task-input')) {
+        state.taskTitle = target.value;
         return;
       }
 
@@ -2263,6 +2551,12 @@ export async function GET(
     var starterCardsMarkup = starterCardsMarkupState.html;
     var showStarterCards = starterCardsMarkupState.showStarterCards;
     var showStarterCardList = starterCardsMarkupState.showStarterCardList;
+    var showPortalTabs = shouldShowPortalTabs();
+    var panelMarkup = state.activePanel === 'tasks'
+      ? getTaskPanelMarkup()
+      : state.activePanel === 'review'
+        ? getReviewPanelMarkup()
+        : (showStarterCards ? starterCardsMarkup : getMessagesMarkup(config) + getFaqSuggestionsMarkup());
 
     mount.className = 'vintra-root position-' + position;
     applyViewportStateToMount();
@@ -2292,11 +2586,12 @@ export async function GET(
               (headerStyle.showCloseButton && state.open ? '<button type="button" class="close-btn" aria-label="Close chat">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('closeIcon', 'FiX')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">×</span>') + '</button>' : '') +
             '</div>' +
           '</div>' +
+          getPanelTabsMarkup() +
           '<div class="' + classes(['chat-body', 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '">' +
-            (showStarterCards ? starterCardsMarkup : getMessagesMarkup(config) + getFaqSuggestionsMarkup()) +
+            panelMarkup +
           '</div>' +
           getHandoffOverlayMarkup() +
-          (state.awaitingVisitorName ? '' : (
+          (state.awaitingVisitorName || state.activePanel !== 'chats' ? '' : (
             '<div class="' + classes([
               'chat-footer',
               'border-' + (footerStyle.borderType || 'none'),
@@ -2314,7 +2609,7 @@ export async function GET(
             '</div>'
           )) +
           (state.error ? '<div class="widget-inline-error">' + escapeHtml(state.error) + '</div>' : '') +
-          getFeedbackOverlayMarkup() +
+          getImageLightboxMarkup() +
           '</div>' +
           (shouldShowSupportGate() ? (
             '<div class="chat-lock-overlay">' +
@@ -2572,6 +2867,7 @@ export async function GET(
                 id: String(msg.id || ''),
                 role: normalizeRole(msg.role),
                 text: String(msg.text || ''),
+                attachments: Array.isArray(msg.attachments) ? msg.attachments.map(function (attachment) { return String(attachment.url || ''); }) : [],
                 createdAt: String(msg.createdAt || '')
               };
             }),
@@ -2616,6 +2912,13 @@ export async function GET(
           state.feedbackOpen = true;
           state.feedbackText = '';
           state.feedbackRating = 5;
+          state.activePanel = 'review';
+        }
+
+        if (json.taskFormRequested) {
+          state.activePanel = 'tasks';
+          state.taskNotice = '';
+          void loadTasks();
         }
 
         if (json.supportRequested) {

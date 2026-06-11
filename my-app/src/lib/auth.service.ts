@@ -280,6 +280,8 @@ function buildDefaultWidgetConfig(businessName: string): ChatWidgetConfig {
     settings: {
       autoOpen: false,
       delayMs: 3000,
+      tasksEnabled: false,
+      reviewsEnabled: false,
     },
     allowedDomains: [],
   }
@@ -768,6 +770,8 @@ const defaultWidgetConfig: ChatWidgetConfig = {
   settings: {
     autoOpen: false,
     delayMs: 3000,
+    tasksEnabled: false,
+    reviewsEnabled: false,
   },
   allowedDomains: [],
 };

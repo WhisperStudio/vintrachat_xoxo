@@ -1038,6 +1038,48 @@
   word-break: break-word;
 }
 
+.message-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.7rem;
+}
+
+.message-attachment-thumb {
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.message-attachment-thumb img {
+  display: block;
+  width: 110px;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 16px;
+}
+
+.message-attachment-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: 220px;
+  padding: 0.7rem 0.85rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.7);
+  color: inherit;
+  text-decoration: none;
+}
+
+.message-attachment-file span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .message-meta {
   display: inline-flex;
   align-items: center;
@@ -1081,6 +1123,168 @@
 
 .message-system .message-content {
   color: inherit;
+}
+
+.widget-panel-tabs {
+  display: flex;
+  gap: 0.55rem;
+  padding: 0.65rem 1rem 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.widget-panel-tab {
+  padding: 0.62rem 0.95rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #475569;
+  font-weight: 700;
+}
+
+.widget-panel-tab.is-active {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.24);
+  color: #312e81;
+}
+
+.widget-panel-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+  min-height: 100%;
+  padding: 0.25rem 0 0.2rem;
+}
+
+.widget-panel-page__hero strong {
+  display: block;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.widget-panel-page__hero p,
+.widget-panel-inline-note,
+.widget-panel-empty {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+}
+
+.widget-task-input,
+.widget-task-textarea {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+}
+
+.widget-task-textarea {
+  resize: vertical;
+  min-height: 110px;
+}
+
+.widget-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.widget-task-card {
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.widget-task-card__top,
+.widget-task-card__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.widget-task-card p {
+  margin: 0.55rem 0;
+  color: #475569;
+  white-space: pre-wrap;
+}
+
+.widget-task-card__meta {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.widget-task-badge {
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.widget-task-badge--done {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.widget-task-badge--blocked {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
+.widget-task-badge--in-progress {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+.widget-image-lightbox {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 12;
+}
+
+.widget-image-lightbox__backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.widget-image-lightbox__card {
+  position: relative;
+  z-index: 1;
+  max-width: min(92%, 520px);
+  max-height: min(84%, 520px);
+  padding: 0.9rem;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 28px 54px rgba(15, 23, 42, 0.28);
+}
+
+.widget-image-lightbox__card img {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: 16px;
+}
+
+.widget-image-lightbox__close {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.74);
+  color: #fff;
+  font-size: 1.2rem;
 }
 
 .message-bot {

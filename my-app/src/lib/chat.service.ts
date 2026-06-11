@@ -18,6 +18,7 @@ import type {
   BusinessFeedback,
   ChatAnalytics,
   ChatAnalyticsEvent,
+  SupportChatAttachment,
   SupportChatMessage,
   SupportChatSession,
   SupportTaskComment,
@@ -57,6 +58,19 @@ function mapSupportMessage(message: any): SupportChatMessage {
         ? message.role
         : 'user',
     text: message.text || '',
+    attachments: Array.isArray(message.attachments)
+      ? message.attachments
+          .map((attachment: any) => ({
+            id: String(attachment?.id || crypto.randomUUID()),
+            kind: attachment?.kind === 'image' ? 'image' : 'file',
+            name: String(attachment?.name || 'Attachment'),
+            url: String(attachment?.url || ''),
+            storagePath: String(attachment?.storagePath || ''),
+            contentType: attachment?.contentType ? String(attachment.contentType) : undefined,
+            size: Number.isFinite(Number(attachment?.size)) ? Number(attachment.size) : undefined,
+          }))
+          .filter((attachment: SupportChatAttachment) => Boolean(attachment.url))
+      : [],
     createdAt: toDate(message.createdAt),
   }
 }
@@ -92,12 +106,14 @@ function mapFeedbackEntry(entry: any): BusinessFeedback {
 
 function createSupportMessage(
   role: SupportChatMessage['role'],
-  text: string
+  text: string,
+  attachments: SupportChatAttachment[] = []
 ): Omit<SupportChatMessage, 'createdAt'> & { createdAt: Date } {
   return {
     id: crypto.randomUUID(),
     role,
     text,
+    attachments,
     createdAt: new Date(),
   }
 }
@@ -232,16 +248,17 @@ export async function sendSupportReply(
   businessId: string,
   chatId: string,
   text: string,
-  countryCode?: string
+  countryCode?: string,
+  attachments: SupportChatAttachment[] = []
 ) {
   const trimmed = text.trim()
-  if (!trimmed) return
+  if (!trimmed && attachments.length === 0) return
 
   const chatRef = doc(db, `businesses/${businessId}/supportChats/${chatId}`)
   const businessRef = doc(db, 'businesses', businessId)
   const chatSnap = await getDoc(chatRef)
   const chatData = chatSnap.exists() ? chatSnap.data() || {} : {}
-  const supportMessage = createSupportMessage('support', trimmed)
+  const supportMessage = createSupportMessage('support', trimmed, attachments)
   const analyticsEvent = createAnalyticsEvent(
     'support-message',
     chatId,

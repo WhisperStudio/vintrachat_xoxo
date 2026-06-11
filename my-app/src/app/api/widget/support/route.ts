@@ -40,6 +40,19 @@ function mapMessage(message: any) {
         ? message.role
         : 'user',
     text: String(message.text || ''),
+    attachments: Array.isArray(message.attachments)
+      ? message.attachments
+          .map((attachment: any) => ({
+            id: String(attachment?.id || crypto.randomUUID()),
+            kind: attachment?.kind === 'image' ? 'image' : 'file',
+            name: String(attachment?.name || 'Attachment'),
+            url: String(attachment?.url || ''),
+            storagePath: String(attachment?.storagePath || ''),
+            contentType: attachment?.contentType ? String(attachment.contentType) : undefined,
+            size: Number.isFinite(Number(attachment?.size)) ? Number(attachment.size) : undefined,
+          }))
+          .filter((attachment: { url: string }) => Boolean(attachment.url))
+      : [],
     createdAt:
       typeof message.createdAt?.toDate === 'function'
         ? message.createdAt.toDate().toISOString()

@@ -54,6 +54,10 @@ interface WidgetPreviewProps {
     inputStyle: 'flat' | 'rounded' | 'outlined'
     showPlaceholder: boolean
   }
+  settings?: {
+    tasksEnabled?: boolean
+    reviewsEnabled?: boolean
+  }
   position: 'bottom-right' | 'bottom-left'
   colorTheme:
     | 'modern'
@@ -161,6 +165,7 @@ export default function WidgetPreview({
   headerStyle,
   bodyStyle,
   footerStyle,
+  settings,
   position,
   colorTheme,
   appearance,
@@ -226,6 +231,7 @@ export default function WidgetPreview({
   const [faqSuggestionsDismissed, setFaqSuggestionsDismissed] = useState(false)
   const [isComposerFocused, setIsComposerFocused] = useState(false)
   const [activeConversationCardId, setActiveConversationCardId] = useState<string | null>(null)
+  const [activePortalPanel, setActivePortalPanel] = useState<'chats' | 'tasks' | 'review'>('chats')
 
   const effectiveAssistantIcons = {
     launcherIcon: assistantIcons?.launcherIcon ?? '',
@@ -246,8 +252,14 @@ export default function WidgetPreview({
   const showTypingIndicator = isReplying
   const showSupportTypingIndicator = supportTypingIndicator
   const feedbackKeywords = ['feedback', 'review', 'rating', 'star', 'stars', 'vurdering', 'anmeldelse', 'tilbakemelding']
+  const taskKeywords = ['task', 'ticket', 'issue', 'case', 'problem', 'lag oppgave', 'opprett ticket', 'opprett sak']
   const internalRequestedFeedback = (text: string) =>
     feedbackKeywords.some((keyword) => text.toLowerCase().includes(keyword))
+  const internalRequestedTask = (text: string) =>
+    taskKeywords.some((keyword) => text.toLowerCase().includes(keyword))
+  const showTasksTab = settings?.tasksEnabled === true
+  const showReviewTab = settings?.reviewsEnabled === true
+  const showPortalTabs = showTasksTab || showReviewTab
   const activeFaqSuggestions = useMemo(() => {
     if (!faqSuggestionsEnabled) return []
 
@@ -424,6 +436,20 @@ export default function WidgetPreview({
   }, [isChatOpen])
 
   useEffect(() => {
+    if (!showPortalTabs && activePortalPanel !== 'chats') {
+      setActivePortalPanel('chats')
+      return
+    }
+    if (activePortalPanel === 'tasks' && !showTasksTab) {
+      setActivePortalPanel('chats')
+      return
+    }
+    if (activePortalPanel === 'review' && !showReviewTab) {
+      setActivePortalPanel('chats')
+    }
+  }, [activePortalPanel, showPortalTabs, showReviewTab, showTasksTab])
+
+  useEffect(() => {
     if (!isChatOpen) return
     const node = chatBodyRef.current
     if (!node) return
@@ -458,6 +484,9 @@ export default function WidgetPreview({
     setFaqSuggestionsDismissed(true)
 
     if (!onSendMessage && internalRequestedFeedback(nextText)) {
+      if (showReviewTab) {
+        setActivePortalPanel('review')
+      }
       setInternalMessages((prev) => [
         ...prev,
         {
@@ -476,6 +505,28 @@ export default function WidgetPreview({
       setInputValue('')
       setInternalErrorMessage(null)
       setInternalFeedbackOpen(true)
+      return
+    }
+
+    if (!onSendMessage && internalRequestedTask(nextText) && showTasksTab) {
+      setInternalMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          text: nextText,
+          isBot: false,
+          role: 'user',
+        },
+        {
+          id: crypto.randomUUID(),
+          text: 'Absolutely. I opened a quick ticket form for you.',
+          isBot: true,
+          role: 'assistant',
+        },
+      ])
+      setActivePortalPanel('tasks')
+      setInputValue('')
+      setInternalErrorMessage(null)
       return
     }
 

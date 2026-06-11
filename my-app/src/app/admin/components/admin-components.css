@@ -714,8 +714,12 @@
 
 .adminChatsList {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  grid-auto-columns: minmax(320px, 380px);
+  align-items: stretch;
   gap: 12px;
+  justify-content: start;
 }
 
 .adminChatsListWrap {
@@ -795,8 +799,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-}
+  gap: 12px;}
 
 .adminChatsListTopRow strong {
   color: #475569;;
@@ -805,10 +808,14 @@
 }
 
 .adminChatsListStamp {
-  flex: 0 0 auto;
+  display: flex;
+  flex-direction: row;
   color: #64748b;
   font-size: 0.84rem;
   font-weight: 700;
+  align-items: center;
+  text-align: center;
+  gap: 3px;
 }
 
 .adminChatsListCopy p {
@@ -840,7 +847,7 @@
 
 .adminChatsUnreadDot {
   align-self: start;
-  margin-top: 8px;
+  margin-top: 35px;
   width: 10px;
   height: 10px;
   border-radius: 999px;
@@ -988,7 +995,7 @@
   display: flex;
   flex: 1;
   min-height: 0;
-  max-height: 430px;
+  max-height: 580px;
 }
 
 .adminChatTranscriptLocked .adminChatMessages {
@@ -1090,7 +1097,8 @@
   }
 
   .adminChatsList {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-flow: column;
+    grid-template-rows: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -1120,6 +1128,13 @@
     grid-template-columns: 1fr;
   }
 
+  .adminChatsList {
+    grid-auto-flow: row;
+    grid-template-rows: none;
+    grid-auto-columns: auto;
+    grid-template-columns: 1fr;
+  }
+
   .adminChatsSelectedHeader {
     flex-direction: column;
   }
@@ -1127,6 +1142,7 @@
   .adminChatsSelectedHeaderTop,
   .adminChatsSelectedHeaderMain {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .adminChatActionsHeader {
@@ -1154,6 +1170,10 @@
 
   .adminChatMetaDetails {
     flex-direction: column;
+  }
+
+  .adminChatReplyShell {
+    flex-wrap: wrap;
   }
 }
 
@@ -1457,6 +1477,390 @@
   padding: 10px 0 6px;
 }
 
+.adminChatsSelectedHeaderTop {
+  align-items: center;
+  padding: 4px 4px 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.adminChatsSelectedHeaderMain {
+  align-items: stretch;
+}
+
+.adminChatsSelectedHeaderCopy {
+  gap: 14px;
+  width: 100%;
+}
+
+.adminChatMetaIdentity {
+  min-width: 0;
+  flex: 1 1 auto;
+  max-width: 100%;
+}
+
+.adminChatMetaTop {
+  align-items: center;
+}
+
+.adminChatMetaTop strong {
+  font-size: 1.9rem;
+  line-height: 1.08;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.adminChatMetaDetails {
+  gap: 8px;
+}
+
+.adminChatMetaDetails span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: fit-content;
+  padding: 0;
+}
+
+.adminChatActionsHeader {
+  gap: 10px;
+}
+
+.adminChatActionBtn {
+  min-height: 42px;
+  padding: 0.7rem 1rem;
+  border-radius: 16px;
+}
+
+.adminChatActionBtnAi {
+  border-color: rgba(168, 85, 247, 0.2);
+  background: rgba(245, 243, 255, 0.96);
+  color: #7c3aed;
+}
+
+.adminChatActionBtnHuman {
+  border-color: rgba(16, 185, 129, 0.2);
+  background: rgba(236, 253, 245, 0.96);
+  color: #059669;
+}
+
+.adminChatContactCard {
+  display: grid;
+  gap: 10px;
+  padding: 14px 14px 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.adminChatContactRow {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.adminChatContactIcon {
+  color: #64748b;
+  display: inline-flex;
+}
+
+.adminChatContactValue {
+  min-width: 0;
+}
+
+.adminChatContactValue span,
+.adminChatContactValue input {
+  display: block;
+  width: 100%;
+  color: #0f172a;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.adminChatContactValue span {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.adminChatContactValue input {
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+}
+
+.adminChatContactEdit {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #64748b;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.adminChatContactCard:hover .adminChatContactEdit,
+.adminChatContactEdit.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.adminChatContactEdit:hover,
+.adminChatContactEdit:focus-visible {
+  color: #0f172a;
+  border-color: rgba(37, 99, 235, 0.22);
+}
+
+.adminTranscriptAttachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.adminTranscriptAttachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 220px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  color: inherit;
+  text-decoration: none;
+}
+
+.adminTranscriptAttachment span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminTranscriptAttachmentImage {
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+.adminTranscriptAttachmentImage img {
+  display: block;
+  width: 124px;
+  height: 124px;
+  object-fit: cover;
+  border-radius: 14px;
+}
+
+.adminChatReplyBox {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.adminReplyAttachmentTray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 4px 2px 0;
+}
+
+.adminReplyAttachmentChip {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  min-width: 120px;
+  max-width: 220px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+}
+
+.adminReplyAttachmentChipImage {
+  padding-top: 26px;
+}
+
+.adminReplyAttachmentChip img {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+
+.adminReplyAttachmentFileIcon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
+}
+
+.adminReplyAttachmentMeta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.adminReplyAttachmentMeta strong,
+.adminReplyAttachmentMeta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminReplyAttachmentMeta strong {
+  color: #0f172a;
+  font-size: 0.88rem;
+}
+
+.adminReplyAttachmentMeta span {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.adminReplyAttachmentRemove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.7);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.adminReplyAttachmentChip:hover .adminReplyAttachmentRemove,
+.adminReplyAttachmentRemove:focus-visible {
+  opacity: 1;
+}
+
+.adminChatReplyShell {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 22px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 12px 24px rgba(15, 23, 42, 0.04);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.adminChatReplyShell.is-focused {
+  border-color: rgba(99, 102, 241, 0.28);
+  box-shadow:
+    0 0 0 4px rgba(99, 102, 241, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.adminChatAttachmentButton {
+  flex: 0 0 auto;
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #64748b;
+  display: grid;
+  place-items: center;
+}
+
+.adminChatAttachmentButton:hover,
+.adminChatAttachmentButton:focus-visible {
+  color: #0f172a;
+  border-color: rgba(37, 99, 235, 0.22);
+}
+
+.adminChatReplyBox textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  max-height: none;
+  padding: 14px 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: #0f172a;
+  resize: none;
+  outline: none;
+  line-height: 1.45;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.adminChatReplyBox textarea:disabled {
+  background: transparent;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.adminChatReplyBox textarea:focus {
+  outline: none;
+  border: none;
+  box-shadow: none;
+}
+
+.adminSendButton {
+  --widget-glyph-size: 48%;
+  flex: 0 0 auto;
+  width: 52px;
+  min-width: 52px;
+  height: 52px;
+  min-height: 52px;
+  padding: 0;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 10px 24px rgba(99, 102, 241, 0.26);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+.adminSendButton svg {
+  width: 48%;
+  height: 48%;
+  display: block;
+}
+
+.adminSendButton:hover,
+.adminSendButton:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(99, 102, 241, 0.3);
+  filter: saturate(1.04);
+}
+
+.adminSendButton:active {
+  transform: translateY(0);
+}
+
+.adminSendButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 .adminChatToolsRow {
   display: flex;
   gap: 10px;
@@ -1718,33 +2122,45 @@
 }
 
 .adminSendButton {
-  justify-content: center;
-  background-color: white;
-  border: 1px solid #9fa8ba;
-  width: 80px;
-  height: 60px;
+  --widget-glyph-size: 48%;
+  flex: 0 0 auto;
+  width: 52px;
+  min-width: 52px;
+  height: 52px;
+  min-height: 52px;
+  padding: 0;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 10px 24px rgba(99, 102, 241, 0.26);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
 }
 
 .adminSendButton svg {
-  width: 40px;
-  height: 20px;
-  opacity: 0;
-  color: black;
-  transform: translateX(-6px) scale(2);
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
+  width: 48%;
+  height: 48%;
+  display: block;
 }
 
-.adminSendButton:hover svg,
-.adminSendButton:focus-visible svg {
-  opacity: 1;
-  transform: translateX(0) scale(1);
+.adminSendButton:hover,
+.adminSendButton:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(99, 102, 241, 0.3);
+  filter: saturate(1.04);
 }
 
-.adminSendButton:disabled svg {
-  opacity: 0.25;
-  transform: translateX(0) scale(1);
+.adminSendButton:active {
+  transform: translateY(0);
+}
+
+.adminSendButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .adminChatMessages::-webkit-scrollbar,

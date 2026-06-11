@@ -179,6 +179,8 @@ const createDefaultWidgetConfig = (businessName: string): ChatWidgetConfig => ({
   settings: {
     autoOpen: false,
     delayMs: 3000,
+    tasksEnabled: false,
+    reviewsEnabled: false,
   },
   allowedDomains: [],
 })
@@ -720,6 +722,8 @@ export default function WidgetAdminPanel({
   const [hideOnPathsText, setHideOnPathsText] = useState('')
   const [domainsSaving, setDomainsSaving] = useState(false)
   const [domainsStatus, setDomainsStatus] = useState<'idle' | 'saved' | 'error'>('idle')
+  const [portalSaving, setPortalSaving] = useState(false)
+  const [portalStatus, setPortalStatus] = useState<'idle' | 'saved' | 'error'>('idle')
   const [assistantSaving, setAssistantSaving] = useState(false)
   const [assistantStatus, setAssistantStatus] = useState<'idle' | 'saved' | 'error'>('idle')
   const [assistantError, setAssistantError] = useState('')
@@ -1910,6 +1914,55 @@ export default function WidgetAdminPanel({
     }
   }
 
+  const savePortalSettings = async () => {
+    if (!dbUser?.businessId || !config) return
+
+    const targetWidgetKey = selectedWidgetKey || business?.activeChatWidgetKey || business?.chatWidgetKey || ''
+    if (!targetWidgetKey) {
+      setPortalStatus('error')
+      return
+    }
+
+    setPortalSaving(true)
+    setPortalStatus('idle')
+
+    const mergedConfig = {
+      ...config,
+      settings: {
+        ...config.settings,
+        tasksEnabled: config.settings?.tasksEnabled === true,
+        reviewsEnabled: config.settings?.reviewsEnabled === true,
+      },
+    } as ChatWidgetConfig
+
+    const result = await updateChatWidgetConfig(dbUser.businessId, mergedConfig, targetWidgetKey)
+
+    setPortalSaving(false)
+    setPortalStatus(result.success ? 'saved' : 'error')
+
+    if (result.success) {
+      setSelectedWidgetKey(targetWidgetKey)
+      setConfig(mergedConfig)
+      if (typeof window !== 'undefined') {
+        const storageKey = `widget-config-${dbUser.businessId}`
+        const nextConfigPayload = JSON.stringify(mergedConfig)
+        localStorage.setItem(storageKey, nextConfigPayload)
+        window.dispatchEvent(
+          new CustomEvent('vintra-widget-config-updated', {
+            detail: {
+              businessId: dbUser.businessId,
+              serializedConfig: nextConfigPayload,
+            },
+          })
+        )
+      }
+      void refreshBusiness()
+      setTimeout(() => setPortalStatus('idle'), 2000)
+    } else {
+      console.error('Failed to save portal settings:', result.message)
+    }
+  }
+
   if (loading) {
     return (
       <div className="widget-admin-loading">
@@ -1989,6 +2042,8 @@ export default function WidgetAdminPanel({
     settings: {
       autoOpen: false,
       delayMs: 3000,
+      tasksEnabled: false,
+      reviewsEnabled: false,
     },
     allowedDomains: [],
   }
@@ -3251,6 +3306,65 @@ export default function WidgetAdminPanel({
                 One path rule per line. Supports exact paths like <code>/checkout</code> and prefixes like <code>/admin*</code>.
               </p>
             </label>
+          </div>
+        </section>
+
+        <section className="widget-admin-card widget-admin-security">
+          <div className="widget-card-header widget-card-header--compact">
+            <span className="widget-admin-section-label">Widget portal tabs</span>
+            <button type="button" className="widget-admin-save-button" onClick={savePortalSettings} disabled={portalSaving || !config}>
+              {portalSaving ? 'Saving...' : portalStatus === 'saved' ? 'Saved!' : 'Save portal'}
+            </button>
+          </div>
+
+          <p className="widget-card-desc">
+            Turn on extra pages inside the exported widget. Chats stays as the main page, while Tasks and Review appear as top tabs when enabled.
+          </p>
+
+          <div className="widget-style-grid">
+            <button
+              type="button"
+              className={`option-card ${config?.settings?.tasksEnabled ? 'checked' : ''}`}
+              aria-pressed={config?.settings?.tasksEnabled ? 'true' : 'false'}
+              onClick={() =>
+                setConfig((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          tasksEnabled: !prev.settings?.tasksEnabled,
+                        },
+                      }
+                    : prev
+                )
+              }
+            >
+              <strong>Tasks tab</strong>
+              <span>Let visitors create tickets and see their submitted tasks inside the widget.</span>
+            </button>
+
+            <button
+              type="button"
+              className={`option-card ${config?.settings?.reviewsEnabled ? 'checked' : ''}`}
+              aria-pressed={config?.settings?.reviewsEnabled ? 'true' : 'false'}
+              onClick={() =>
+                setConfig((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          reviewsEnabled: !prev.settings?.reviewsEnabled,
+                        },
+                      }
+                    : prev
+                )
+              }
+            >
+              <strong>Review tab</strong>
+              <span>Show a dedicated review page so visitors can leave feedback directly inside the widget.</span>
+            </button>
           </div>
         </section>
 
