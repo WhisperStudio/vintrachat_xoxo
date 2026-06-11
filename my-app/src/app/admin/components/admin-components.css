@@ -2958,6 +2958,13 @@
   align-items: flex-start;
 }
 
+.adminTaskDetailHeaderActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .adminTaskDetailHeader h2 {
   margin: 0 0 0.4rem;
   color: #0f172a;
@@ -3193,62 +3200,68 @@
 }
 
 .adminAnalyticsPanel {
-  gap: 18px;
+  gap: 12px;
+}
+
+.adminAnalyticsHeader {
+  align-items: start;
 }
 
 .adminAnalyticsBadge {
   display: inline-flex;
   align-items: center;
-  padding: 0.72rem 1rem;
+  padding: 0.62rem 0.9rem;
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(255, 255, 255, 0.88);
   color: #475569;
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   box-shadow: 0 10px 18px rgba(15, 23, 42, 0.04);
+  white-space: nowrap;
 }
 
 .adminAnalyticsCards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  gap: 12px;
 }
 
 .adminAnalyticsStatCard {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 18px;
-  border-radius: 20px;
+  gap: 0.3rem;
+  padding: 14px 16px;
+  border-radius: 18px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   background:
     radial-gradient(circle at top right, rgba(96, 165, 250, 0.08), transparent 28%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.05);
+  min-height: 108px;
 }
 
 .adminAnalyticsStatTop {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.55rem;
   color: #475569;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   font-weight: 700;
 }
 
 .adminAnalyticsIcon {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   display: inline-grid;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.95);
   box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
   color: #334155;
 }
 
 .adminAnalyticsIcon svg {
-  font-size: 1rem;
+  font-size: 0.92rem;
 }
 
 .adminAnalyticsTone-green .adminAnalyticsIcon {
@@ -3289,12 +3302,12 @@
 
 .adminAnalyticsStatCard span {
   color: #64748b;
-  font-size: 0.88rem;
+  font-size: 0.8rem;
   font-weight: 700;
 }
 
 .adminAnalyticsStatCard strong {
-  font-size: 1.8rem;
+  font-size: 1.55rem;
   color: #0f172a;
   line-height: 1;
 }
@@ -3302,7 +3315,8 @@
 .adminAnalyticsStatCard p {
   margin: 0;
   color: #475569;
-  line-height: 1.5;
+  line-height: 1.3;
+  font-size: 0.82rem;
 }
 
 .adminAnalyticsTone-blue {
@@ -3350,14 +3364,58 @@
 .adminAnalyticsControls {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
   align-items: center;
-  padding: 14px 16px;
-  border-radius: 20px;
+  padding: 10px 12px;
+  border-radius: 16px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   background: rgba(255, 255, 255, 0.86);
   box-shadow: 0 12px 26px rgba(15, 23, 42, 0.04);
+}
+
+.adminAnalyticsSummaryStrip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.adminAnalyticsMiniStat {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.04);
+}
+
+.adminAnalyticsMiniStatCopy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.adminAnalyticsMiniStatCopy span {
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.adminAnalyticsMiniStatCopy strong {
+  color: #0f172a;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.adminAnalyticsMiniStat small {
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .adminAnalyticsViewToggle {
@@ -3421,20 +3479,22 @@
 
 .adminAnalyticsRange {
   min-width: 220px;
+  margin-left: auto;
 }
 
 .adminAnalyticsCharts {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.78fr);
+  gap: 14px;
+  align-items: stretch;
 }
 
 .adminAnalyticsChartCard {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 18px;
-  border-radius: 24px;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 22px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   background:
     radial-gradient(circle at top right, rgba(124, 58, 237, 0.07), transparent 25%),
@@ -3442,15 +3502,16 @@
   box-shadow:
     0 18px 36px rgba(15, 23, 42, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.65);
-  min-height: 420px;
+  min-height: 360px;
 }
 
 .adminAnalyticsChartCardWide {
-  min-height: 420px;
+  min-height: 360px;
 }
 
 .adminAnalyticsChartHeader h2 {
   margin: 0;
+  font-size: 1.02rem;
 }
 
 .adminAnalyticsChartHeader p {
@@ -3460,7 +3521,7 @@
 
 .adminGoogleChart {
   width: 100%;
-  min-height: 330px;
+  min-height: 290px;
   flex: 1;
 }
 
@@ -3552,15 +3613,21 @@
 }
 
 .adminUsersPanel {
-  gap: 18px;
+  gap: 12px;
 }
 
 .adminUsersHero {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: 14px;
   align-items: flex-start;
   flex-wrap: wrap;
+}
+
+.adminUsersHeroCopy {
+  display: grid;
+  gap: 8px;
+  max-width: 720px;
 }
 
 .adminUsersEyebrow {
@@ -3575,18 +3642,18 @@
 }
 
 .adminUsersHero h1 {
-  margin: 0.35rem 0 0;
+  margin: 0.2rem 0 0;
 }
 
 .adminUsersHero p {
-  margin: 0.45rem 0 0;
+  margin: 0;
   color: #64748b;
 }
 
 .adminUsersMetaCard {
   min-width: 180px;
-  padding: 14px 16px;
-  border-radius: 18px;
+  padding: 10px 12px;
+  border-radius: 16px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   background: rgba(248, 250, 252, 0.92);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.62);
@@ -3598,50 +3665,50 @@
   color: #64748b;
 }
 
-.adminUsersQuotaRow {
+.adminUsersSummaryStrip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 10px;
 }
 
-.adminUsersQuotaCard {
+.adminUsersSummaryPill {
   display: grid;
-  gap: 4px;
-  padding: 14px 16px;
-  border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  background: rgba(248, 250, 252, 0.92);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.62);
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(248, 250, 252, 0.88);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.56);
 }
 
-.adminUsersQuotaCard span {
+.adminUsersSummaryPill span {
   color: #64748b;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 700;
 }
 
-.adminUsersQuotaCard strong {
-  font-size: 1.05rem;
+.adminUsersSummaryPill strong {
+  font-size: 1rem;
 }
 
-.adminUsersQuotaCard small {
+.adminUsersSummaryPill small {
   color: #64748b;
-  line-height: 1.45;
+  line-height: 1.3;
+  font-size: 0.8rem;
 }
 
-.adminUsersQuotaCard.is-alert {
+.adminUsersSummaryPill.is-alert {
   border-color: rgba(239, 68, 68, 0.24);
   background: rgba(254, 242, 242, 0.98);
 }
 
 .adminUsersInviteBar {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) 220px auto;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 220px auto;
+  gap: 10px;
   align-items: end;
-  padding: 16px;
-  border-radius: 20px;
+  padding: 12px;
+  border-radius: 18px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 12px 26px rgba(15, 23, 42, 0.04);
@@ -3683,15 +3750,16 @@
 
 .adminUsersGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  gap: 14px;
+  align-items: start;
 }
 
 .adminUsersSection {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 18px;
+  gap: 12px;
+  padding: 16px;
   border-radius: 22px;
   border: 1px solid rgba(148, 163, 184, 0.14);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
@@ -3725,12 +3793,16 @@
 
 .adminUsersCard {
   display: grid;
-  gap: 12px;
-  padding: 16px;
+  gap: 10px;
+  padding: 14px;
   border-radius: 18px;
   border: 1px solid rgba(148, 163, 184, 0.14);
   background: rgba(255, 255, 255, 0.98);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.68);
+}
+
+.adminUsersCardCompact {
+  gap: 8px;
 }
 
 .adminUsersCardTop {
@@ -3758,13 +3830,22 @@
   font-size: 0.9rem;
 }
 
+.adminUsersCardInlineMeta {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding-top: 2px;
+}
+
 .adminUsersCardRow strong {
   color: #0f172a;
 }
 
 .adminUsersInlineSelect {
   display: grid;
-  gap: 8px;
+  gap: 6px;
+  padding-top: 4px;
 }
 
 .adminUsersInlineSelect select {
@@ -3807,7 +3888,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 0.7rem 0.95rem;
+  padding: 0.62rem 0.9rem;
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   background: rgba(248, 250, 252, 0.96);
@@ -3837,7 +3918,7 @@
     grid-template-columns: 1fr;
   }
 
-  .adminUsersQuotaRow {
+  .adminUsersSummaryStrip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -3879,6 +3960,7 @@
   .adminTaskDetailMeta,
   .adminTaskDetailControls,
   .adminAnalyticsCards,
+  .adminAnalyticsSummaryStrip,
   .adminAnalyticsCharts {
     grid-template-columns: 1fr;
   }
@@ -3913,6 +3995,11 @@
     align-items: stretch;
   }
 
+  .adminAnalyticsBadge,
+  .adminAnalyticsRange {
+    margin-left: 0;
+  }
+
   .adminAnalyticsViewToggle {
     width: 100%;
     justify-content: space-between;
@@ -3921,5 +4008,11 @@
   .adminAnalyticsViewToggle button {
     flex: 1;
     justify-content: center;
+  }
+
+  .adminUsersInviteBar,
+  .adminUsersCardInlineMeta,
+  .adminUsersGrid {
+    grid-template-columns: 1fr;
   }
 }

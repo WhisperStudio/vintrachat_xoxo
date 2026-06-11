@@ -44,6 +44,7 @@ import {
 import { defaultConversationCards, normalizeConversationCards } from '@/lib/conversation-cards'
 import {
   getEffectiveBusinessPlan,
+  normalizeSubscriptionPlan,
   sanitizeBubbleStyleForPlan,
   sanitizeChatWidgetConfigForPlan,
   getPlanLimits,
@@ -1319,23 +1320,26 @@ export async function updateChatWidgetConfig(
     const widgetSnap = await getDoc(widgetRef)
     const widgetData = widgetSnap.exists() ? widgetSnap.data() || {} : {}
     const baseConfig = (widgetData.config || existingConfig || {}) as Partial<ChatWidgetConfig>
-    const plan = getEffectiveBusinessPlan(
-      {
-        chatWidgetConfig: existingConfig as ChatWidgetConfig | undefined,
-        chatWidgets: widgetSnap.exists()
-          ? [{
-              id: targetWidgetKey,
-              widgetKey: targetWidgetKey,
-              name: String(widgetData.name || 'Chat Widget'),
-              config: baseConfig as ChatWidgetConfig,
-              isDefault: Boolean(widgetData.isDefault),
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            }]
-          : undefined,
-        activeChatWidgetKey: String(existingData.activeChatWidgetKey || existingData.chatWidgetKey || ''),
-      },
-      baseConfig
+    const plan = normalizeSubscriptionPlan(
+      config?.plan ||
+        getEffectiveBusinessPlan(
+          {
+            chatWidgetConfig: existingConfig as ChatWidgetConfig | undefined,
+            chatWidgets: widgetSnap.exists()
+              ? [{
+                  id: targetWidgetKey,
+                  widgetKey: targetWidgetKey,
+                  name: String(widgetData.name || 'Chat Widget'),
+                  config: baseConfig as ChatWidgetConfig,
+                  isDefault: Boolean(widgetData.isDefault),
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                }]
+              : undefined,
+            activeChatWidgetKey: String(existingData.activeChatWidgetKey || existingData.chatWidgetKey || ''),
+          },
+          baseConfig
+        )
     )
     const allowedDomains =
       config?.allowedDomains !== undefined
@@ -1367,6 +1371,15 @@ export async function updateChatWidgetConfig(
         chatWidgetKey: targetWidgetKey,
         activeChatWidgetKey: targetWidgetKey,
         chatWidgetConfig: mergedConfig,
+        updatedAt: serverTimestamp(),
+      }))
+    } else if (config?.plan || config?.billingCycle) {
+      await updateDoc(businessRef, stripUndefinedForFirestore({
+        chatWidgetConfig: {
+          ...existingConfig,
+          ...(config?.plan ? { plan } : {}),
+          ...(config?.billingCycle ? { billingCycle: config.billingCycle } : {}),
+        },
         updatedAt: serverTimestamp(),
       }))
     } else {

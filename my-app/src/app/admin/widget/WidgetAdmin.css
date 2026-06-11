@@ -2450,11 +2450,12 @@ body.widget-admin-wizard-open {
 
 .widget-admin-widget-manager__summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 0.75rem;
 }
 
-.widget-admin-widget-manager__summary > div {
+.widget-admin-widget-manager__summary > div,
+.widget-admin-widget-manager__summary > label {
   padding: 0.85rem 0.95rem;
   border-radius: 16px;
   border: 1px solid rgba(148, 163, 184, 0.18);

@@ -29,8 +29,6 @@ import {
   FiTarget,
   FiUpload,
 } from 'react-icons/fi'
-import WidgetPreview from '@/app/landings/auth/chatWidget/components/WidgetPreview'
-import '@/app/landings/auth/chatWidget/ChatWidget.css'
 import './WidgetAdmin.css'
 import IconPickerBubble from '@/components/IconPickerBubble'
 import { useAuth } from '@/context/AuthContext'
@@ -184,6 +182,17 @@ const createDefaultWidgetConfig = (businessName: string): ChatWidgetConfig => ({
   },
   allowedDomains: [],
 })
+
+const widgetPlanOptions: Array<{ value: ChatWidgetConfig['plan']; label: string }> = [
+  { value: 'free', label: 'Free' },
+  { value: 'pro', label: 'Pro' },
+  { value: 'business', label: 'Enterprise' },
+]
+
+const widgetBillingCycleOptions: Array<{ value: ChatWidgetConfig['billingCycle']; label: string }> = [
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'yearly', label: 'Yearly' },
+]
 
 const mergeWidgetConfig = (
   config: Partial<ChatWidgetConfig> | undefined,
@@ -1963,6 +1972,35 @@ export default function WidgetAdminPanel({
     }
   }
 
+  const savePlanSettings = async (updates: Partial<Pick<ChatWidgetConfig, 'plan' | 'billingCycle'>>) => {
+    if (!dbUser?.businessId || !config) return
+
+    const targetWidgetKey = selectedWidgetKey || business?.activeChatWidgetKey || business?.chatWidgetKey || ''
+    if (!targetWidgetKey) {
+      setWidgetActionStatus('error')
+      return
+    }
+
+    setWidgetActionStatus('idle')
+
+    const mergedConfig = {
+      ...config,
+      ...updates,
+    } as ChatWidgetConfig
+
+    const result = await updateChatWidgetConfig(dbUser.businessId, mergedConfig, targetWidgetKey)
+
+    if (!result.success) {
+      setWidgetActionStatus('error')
+      return
+    }
+
+    setConfig(mergedConfig)
+    setWidgetActionStatus('saved')
+    void refreshBusiness()
+    setTimeout(() => setWidgetActionStatus('idle'), 2000)
+  }
+
   if (loading) {
     return (
       <div className="widget-admin-loading">
@@ -1981,73 +2019,7 @@ export default function WidgetAdminPanel({
     )
   }
 
-  const activeConfig: ChatWidgetConfig = config || {
-    plan: 'free',
-    billingCycle: 'monthly',
-    colorTheme: 'modern',
-    position: 'bottom-right',
-    bubbleStyle: {
-      showStatus: true,
-      iconChoice: 'chat',
-      borderType: 'rounded',
-      shadowType: 'medium',
-      animationType: 'fade',
-      sizeType: 'medium',
-    },
-    headerStyle: {
-      showStatus: true,
-      showCloseButton: true,
-      borderType: 'rounded',
-      shadowType: 'light',
-      showAvatar: true,
-      showTitle: true,
-    },
-      bodyStyle: {
-        borderType: 'none',
-        shadowType: 'none',
-        messageStyle: 'bubble',
-        showTimestamps: true,
-        showReadReceipts: false,
-        showConversationCards: true,
-        conversationCardsLayout: 'grid',
-        conversationCardsStyle: 'modern',
-      },
-    footerStyle: {
-      showSendButton: true,
-      borderType: 'none',
-      shadowType: 'none',
-      inputStyle: 'rounded',
-      showPlaceholder: true,
-    },
-    customBranding: {
-      title: business.name || 'Support Chat',
-      description: 'Usually replies in a few minutes',
-      logoStyle: {
-        zoom: 100,
-        focusX: 50,
-        focusY: 50,
-      },
-    },
-    widgetIcons: {
-      launcherIcon: 'FiMessageCircle',
-      avatarIcon: 'FiMessageCircle',
-      heroIcon: 'FiMessageCircle',
-      closeIcon: 'FiX',
-      backIcon: 'FiArrowLeft',
-      sendIcon: 'FiSend',
-      aiIcon: 'FiCpu',
-      supportIcon: 'FiLifeBuoy',
-      userIcon: 'FiUser',
-    },
-    settings: {
-      autoOpen: false,
-      delayMs: 3000,
-      tasksEnabled: false,
-      reviewsEnabled: false,
-    },
-    allowedDomains: [],
-  }
-  const starterCardStyle = activeConfig.bodyStyle.conversationCardsStyle
+  const starterCardStyle = config?.bodyStyle?.conversationCardsStyle || 'modern'
   const activeWidgetName =
     widgetList.find((widget) => widget.widgetKey === activeWidgetKey)?.name || 'Widget'
   const embedCode = `<!-- VintraSolutions Chat Widget -->
@@ -2168,18 +2140,6 @@ export default function WidgetAdminPanel({
 
   return (
     <div className="widget-admin-shell">
-    <div className="widget-admin-top">
-      <div>
-        <h1>Chat Widget Administration</h1>
-        <p>Se live preview, widgetdetaljer og embed-kode for nettsiden din.</p>
-      </div>
-
-        <div className="widget-admin-badge">
-          <span className="widget-admin-badge-dot" />
-          Live configuration
-        </div>
-      </div>
-
       {wizardOpen ? (
         <div className="widget-admin-modal-overlay" role="dialog" aria-modal="true">
           <div className="widget-admin-modal-frame">
@@ -3129,6 +3089,55 @@ export default function WidgetAdminPanel({
             </select>
           </label>
 
+          <div className="widget-admin-widget-manager__summary">
+            <div>
+              <strong>{activeWidgetName}</strong>
+              <span>Current widget</span>
+            </div>
+            <div>
+              <strong>{activeWidgetKey}</strong>
+              <span>Widget key</span>
+            </div>
+          </div>
+
+          <div className="widget-admin-widget-manager__summary">
+            <label className="widget-admin-field">
+              <span>Subscription plan</span>
+              <select
+                value={config?.plan || 'free'}
+                onChange={(event) =>
+                  void savePlanSettings({
+                    plan: event.target.value as ChatWidgetConfig['plan'],
+                  })
+                }
+              >
+                {widgetPlanOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="widget-admin-field">
+              <span>Billing cycle</span>
+              <select
+                value={config?.billingCycle || 'monthly'}
+                onChange={(event) =>
+                  void savePlanSettings({
+                    billingCycle: event.target.value as ChatWidgetConfig['billingCycle'],
+                  })
+                }
+              >
+                {widgetBillingCycleOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
           {widgetList.length > 0 && (
             <div className="widget-admin-widget-list">
               {widgetList.map((widget) => {
@@ -3148,21 +3157,6 @@ export default function WidgetAdminPanel({
               })}
             </div>
           )}
-
-          <div className="widget-admin-widget-manager__summary">
-            <div>
-              <strong>{activeWidgetName}</strong>
-              <span>Current widget</span>
-            </div>
-            <div>
-              <strong>{(config?.plan || 'free').toUpperCase()}</strong>
-              <span>Plan</span>
-            </div>
-            <div>
-              <strong>{activeWidgetKey}</strong>
-              <span>Widget key</span>
-            </div>
-          </div>
 
           <div className="widget-admin-delete-box">
             <label className="widget-admin-check">
@@ -3191,41 +3185,6 @@ export default function WidgetAdminPanel({
       </section>
 
       <div className="widget-admin-grid">
-        <section className="widget-admin-card widget-admin-preview">
-          <div className="widget-card-header">
-            <div className="widget-preview-heading">
-              <h3>Live Preview</h3>
-              <span className="widget-preview-tag">Interactive</span>
-            </div>
-            <div className="widget-preview-key">
-              <span>Widget key</span>
-              <code>{activeWidgetKey}</code>
-            </div>
-          </div>
-
-          <div className={`widget-preview-stage theme-${activeConfig.colorTheme}`}>
-            <WidgetPreview
-              bubbleStyle={activeConfig.bubbleStyle}
-              headerStyle={activeConfig.headerStyle}
-              bodyStyle={activeConfig.bodyStyle}
-              footerStyle={activeConfig.footerStyle}
-              position={activeConfig.position}
-              colorTheme={activeConfig.colorTheme}
-              customBranding={activeConfig.customBranding}
-              assistantIcons={activeConfig.widgetIcons || {}}
-              initialOpen={true}
-              variant="embedded"
-              enablePreviewChat={true}
-              previewReply="hi, this is only a test"
-              faqSuggestionsEnabled={assistantConfig.faqSuggestionsEnabled}
-              faqSuggestions={assistantConfig.faqSuggestions}
-              conversationCardsEnabled={assistantConfig.conversationCardsEnabled}
-              conversationCardsLimit={assistantConfig.conversationCardsLimit}
-              conversationCards={assistantConfig.conversationCards}
-            />
-            </div>
-          </section>
-
         <section className="widget-admin-card widget-admin-code">
           <div className="widget-card-header">
             <h3>Selected Widget Script</h3>

@@ -1405,6 +1405,25 @@ export async function GET(
     return false;
   }
 
+  function isTypingTarget(target) {
+    if (!target) return false;
+    var tagName = String(target.tagName || '').toLowerCase();
+    if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') return true;
+    return Boolean(target.isContentEditable || (typeof target.closest === 'function' && target.closest('[contenteditable="true"]')));
+  }
+
+  function focusComposerInput() {
+    window.requestAnimationFrame(function () {
+      var input = mount.querySelector('.chat-footer textarea');
+      if (!input) return;
+      input.focus();
+      var currentValue = String(input.value || '');
+      if (typeof input.setSelectionRange === 'function') {
+        input.setSelectionRange(currentValue.length, currentValue.length);
+      }
+    });
+  }
+
   function getMessageAttachmentsMarkup(msg) {
     if (!msg || !Array.isArray(msg.attachments) || !msg.attachments.length) return '';
 
@@ -2488,6 +2507,29 @@ export async function GET(
         });
         syncHandoffSubmitState();
       }
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (state.open || state.awaitingVisitorName || state.feedbackSubmitting || state.taskSubmitting) return;
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (isTypingTarget(event.target)) return;
+
+      var key = String(event.key || '');
+      if (key !== 'Enter' && key.length !== 1) return;
+
+      state.open = true;
+      state.hasOpenedOnce = true;
+      state.hasUnreadWhileClosed = false;
+      state.composerFocused = true;
+
+      if (key.length === 1) {
+        state.inputValue = truncateTextByCharacters(String(state.inputValue || '') + key, MAX_WIDGET_MESSAGE_CHARS);
+        writeStoredDraftValue(state.inputValue);
+      }
+
+      render();
+      focusComposerInput();
+      event.preventDefault();
     });
   }
 

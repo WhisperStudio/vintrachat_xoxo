@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext'
 import {
   addSupportTaskComment,
   createSupportTask,
+  deleteSupportTask,
   getSupportChats,
   getSupportTaskCategories,
   getSupportTasks,
@@ -117,6 +118,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
   const [categoryEditorOpen, setCategoryEditorOpen] = useState(false)
   const [creatorBusy, setCreatorBusy] = useState(false)
   const [commentSaving, setCommentSaving] = useState(false)
+  const [taskDeleteBusy, setTaskDeleteBusy] = useState(false)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [commentText, setCommentText] = useState('')
   const [filters, setFilters] = useState<{
@@ -389,6 +391,24 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
       await refresh()
     } finally {
       setCommentSaving(false)
+    }
+  }
+
+  const removeTask = async () => {
+    if (!dbUser?.businessId || !selectedTask) return
+
+    const confirmed = window.confirm(`Delete "${selectedTask.title}" permanently?`)
+    if (!confirmed) return
+
+    setTaskDeleteBusy(true)
+
+    try {
+      await deleteSupportTask(dbUser.businessId, selectedTask.id)
+      setTasks((prev) => prev.filter((task) => task.id !== selectedTask.id))
+      setSelectedTaskId(null)
+      setCommentText('')
+    } finally {
+      setTaskDeleteBusy(false)
     }
   }
 
@@ -850,6 +870,16 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
                   <div>
                     <h2>{selectedTask.title}</h2>
                     <p className="adminTaskDetailNote">{selectedTask.description}</p>
+                  </div>
+                  <div className="adminTaskDetailHeaderActions">
+                    <button
+                      type="button"
+                      className="dangerBtn"
+                      onClick={() => void removeTask()}
+                      disabled={taskDeleteBusy}
+                    >
+                      {taskDeleteBusy ? 'Deleting...' : 'Delete task'}
+                    </button>
                   </div>
                 </div>
 

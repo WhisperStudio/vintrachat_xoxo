@@ -1127,13 +1127,27 @@
 
 .widget-panel-tabs {
   display: flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  align-items: center;
   gap: 0.55rem;
-  padding: 0.65rem 1rem 0;
+  flex-wrap: nowrap;
+  min-height: 62px;
+  padding: 0.7rem 1rem 0.35rem;
   border-bottom: 1px solid rgba(148, 163, 184, 0.16);
   background: rgba(255, 255, 255, 0.75);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.widget-panel-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .widget-panel-tab {
+  flex: 0 0 auto;
   padding: 0.62rem 0.95rem;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 999px;

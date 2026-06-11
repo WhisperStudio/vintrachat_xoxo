@@ -170,12 +170,12 @@ export default function AdminUserManagementPanel() {
   return (
     <div className="infoCard adminUsersPanel">
       <div className="adminUsersHero">
-        <div>
+        <div className="adminUsersHeroCopy">
           <span className="adminUsersEyebrow">
             <FiUsers /> {text.eyebrow}
           </span>
           <h1>{text.title}</h1>
-          <p>{text.body}</p>
+          <p className="adminDataHint">{text.body}</p>
         </div>
         <div className="adminUsersMetaCard">
           <strong>{business?.name || text.workspace}</strong>
@@ -183,36 +183,32 @@ export default function AdminUserManagementPanel() {
         </div>
       </div>
 
-      <div className="adminUsersQuotaRow">
-        <div className={`adminUsersQuotaCard ${dailyConversationLimitReached ? 'is-alert' : ''}`}>
+      <div className="adminUsersSummaryStrip">
+        <div className={`adminUsersSummaryPill ${dailyConversationLimitReached ? 'is-alert' : ''}`}>
           <span>{text.plan}</span>
           <strong>{getPlanLabel(plan)}</strong>
           <small>{planLimits.maxDailyConversations ? `${planLimits.maxDailyConversations} ${text.conversationsDay}` : text.unlimitedConversations}</small>
         </div>
 
-        <div className={`adminUsersQuotaCard ${dailyConversationLimitReached ? 'is-alert' : ''}`}>
+        <div className={`adminUsersSummaryPill ${dailyConversationLimitReached ? 'is-alert' : ''}`}>
           <span>{text.today}</span>
           <strong>
             {todayConversationCount}
             {planLimits.maxDailyConversations ? ` / ${planLimits.maxDailyConversations}` : ''}
           </strong>
-          <small>
-            {dailyConversationLimitReached ? text.limitReachedToday : `${text.todaysUsage} - ${todayKey}`}
-          </small>
+          <small>{dailyConversationLimitReached ? text.limitReachedToday : todayKey}</small>
         </div>
 
-        <div className={`adminUsersQuotaCard ${memberLimitReached ? 'is-alert' : ''}`}>
+        <div className={`adminUsersSummaryPill ${memberLimitReached ? 'is-alert' : ''}`}>
           <span>{text.members}</span>
           <strong>
             {sortedUsers.length}
             {planLimits.maxTeamMembers ? ` / ${planLimits.maxTeamMembers}` : ''}
           </strong>
-          <small>
-            {planLimits.maxTeamMembers ? text.teamLimitActive : text.unlimitedTeamMembers}
-          </small>
+          <small>{planLimits.maxTeamMembers ? text.teamLimitActive : text.unlimitedTeamMembers}</small>
         </div>
 
-        <div className="adminUsersQuotaCard">
+        <div className="adminUsersSummaryPill">
           <span>{text.orbAccess}</span>
           <strong>{planLimits.orbAvailable ? text.enabled : text.locked}</strong>
           <small>{planLimits.extendedDesignOptions ? text.extendedUnlocked : text.extendedLocked}</small>
@@ -266,7 +262,7 @@ export default function AdminUserManagementPanel() {
           </div>
           <div className="adminUsersList">
             {sortedUsers.map((user) => (
-              <article key={user.id} className="adminUsersCard">
+              <article key={user.id} className="adminUsersCard adminUsersCardCompact">
                 <div className="adminUsersCardTop">
                   <div>
                     <strong>{user.displayName || user.email}</strong>
@@ -277,14 +273,16 @@ export default function AdminUserManagementPanel() {
                   </span>
                 </div>
 
-                <div className="adminUsersCardRow">
-                  <span>{text.status}</span>
-                  <strong>{user.status}</strong>
-                </div>
+                <div className="adminUsersCardInlineMeta">
+                  <div className="adminUsersCardRow">
+                    <span>{text.status}</span>
+                    <strong>{user.status}</strong>
+                  </div>
 
-                <div className="adminUsersCardRow">
-                  <span>{text.joined}</span>
-                  <strong>{formatDate(user.createdAt, text.unknown)}</strong>
+                  <div className="adminUsersCardRow">
+                    <span>{text.joined}</span>
+                    <strong>{formatDate(user.createdAt, text.unknown)}</strong>
+                  </div>
                 </div>
 
                 <label className="adminUsersInlineSelect">
@@ -319,7 +317,7 @@ export default function AdminUserManagementPanel() {
               </div>
             ) : (
               invitations.map((invite) => (
-                <article key={invite.id} className="adminUsersCard adminUsersCardInvite">
+                <article key={invite.id} className="adminUsersCard adminUsersCardInvite adminUsersCardCompact">
                   <div className="adminUsersCardTop">
                     <div>
                       <strong>{invite.email}</strong>
@@ -331,9 +329,11 @@ export default function AdminUserManagementPanel() {
                     </button>
                   </div>
 
-                  <div className="adminUsersCardRow">
-                    <span>{text.expires}</span>
-                    <strong>{formatDate(invite.expiresAt, text.unknown)}</strong>
+                  <div className="adminUsersCardInlineMeta">
+                    <div className="adminUsersCardRow">
+                      <span>{text.expires}</span>
+                      <strong>{formatDate(invite.expiresAt, text.unknown)}</strong>
+                    </div>
                   </div>
                 </article>
               ))

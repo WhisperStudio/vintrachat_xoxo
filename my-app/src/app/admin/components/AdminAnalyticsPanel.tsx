@@ -314,28 +314,28 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
       {
         label: text.totalSessions,
         value: rangeAnalytics.totalSessions,
-        detail: text.selectedRangeOnly,
+        detail: language === 'no' ? 'Valgt periode' : 'Selected range',
         icon: FiActivity,
         tone: 'green',
       },
       {
         label: text.supportRequests,
         value: rangeAnalytics.supportRequests,
-        detail: text.supportRate(supportRate),
+        detail: `${supportRate}%`,
         icon: FiShield,
         tone: 'blue',
       },
       {
         label: text.aiOnlySessions,
         value: rangeAnalytics.aiOnlySessions,
-        detail: text.aiRate(aiRate),
+        detail: `${aiRate}%`,
         icon: FiCpu,
         tone: 'violet',
       },
       {
         label: text.savedSupportChats,
         value: rangeAnalytics.savedSupportChats,
-        detail: text.savedRate(savedRate),
+        detail: `${savedRate}%`,
         icon: FiTrendingUp,
         tone: 'amber',
       },
@@ -358,21 +358,19 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
             <span>{latestCountry}</span>
           </span>
         ),
-        detail: text.basedOnRange,
+        detail: language === 'no' ? 'Topp i periode' : 'Top in range',
         icon: FiGlobe,
         tone: 'sky',
       },
       {
         label: text.lastActivity,
         value: analytics.lastChatAt ? new Date(analytics.lastChatAt).toLocaleTimeString() : text.none,
-        detail: analytics.lastChatAt
-          ? new Date(analytics.lastChatAt).toLocaleString()
-          : text.noChatsYet,
+        detail: analytics.lastChatAt ? new Date(analytics.lastChatAt).toLocaleDateString() : text.noChatsYet,
         icon: FiClock,
         tone: 'slate',
       },
     ] satisfies AnalyticsCard[]
-  }, [analytics.lastChatAt, rangeAnalytics, text])
+  }, [analytics.lastChatAt, language, rangeAnalytics, text])
 
   const timelineBuckets = useMemo(() => {
     const map = new Map<number, { bucket: Date; activity: number; handovers: number }>()
@@ -536,43 +534,23 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
 
   return (
     <div className="infoCard adminDataCard adminAnalyticsPanel">
-      <div className="adminSectionHeader">
+      <div className="adminSectionHeader adminAnalyticsHeader">
         <div>
           <h1>{text.title}</h1>
-          <p>{text.body}</p>
           {selectedWidgetKey ? (
             <p className="adminDataHint">
               {text.showingWidget} <strong>{selectedWidgetKey}</strong>.
             </p>
           ) : null}
         </div>
+      </div>
+
+      <div className="adminAnalyticsControls">
         <div className="adminAnalyticsBadge">
           {rangeAnalytics.lastActivityAt
             ? `${text.updated} ${new Date(rangeAnalytics.lastActivityAt).toLocaleString()}`
             : text.noRecentActivity}
         </div>
-      </div>
-
-      <div className="adminAnalyticsCards">
-        {analyticsCards.map((card) => {
-          const Icon = card.icon
-
-          return (
-            <article key={card.label} className={`adminAnalyticsStatCard adminAnalyticsTone-${card.tone}`}>
-              <div className="adminAnalyticsStatTop">
-                <span className="adminAnalyticsIcon">
-                  <Icon />
-                </span>
-                <span>{card.label}</span>
-              </div>
-              <strong>{card.value}</strong>
-              <p>{card.detail}</p>
-            </article>
-          )
-        })}
-      </div>
-
-      <div className="adminAnalyticsControls">
         <div className="adminAnalyticsViewToggle" ref={viewToggleRef}>
           {viewIndicator ? (
             <span
@@ -635,13 +613,31 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
         </label>
       </div>
 
+      <div className="adminAnalyticsSummaryStrip">
+        {analyticsCards.map((card) => {
+          const Icon = card.icon
+
+          return (
+            <article key={card.label} className={`adminAnalyticsMiniStat adminAnalyticsTone-${card.tone}`}>
+              <span className="adminAnalyticsIcon">
+                <Icon />
+              </span>
+              <div className="adminAnalyticsMiniStatCopy">
+                <span>{card.label}</span>
+                <strong>{card.value}</strong>
+              </div>
+              <small>{card.detail}</small>
+            </article>
+          )
+        })}
+      </div>
+
       {view === 'overview' ? (
         <div className="adminAnalyticsCharts">
           <section className="adminAnalyticsChartCard adminAnalyticsChartCardWide">
             <div className="adminAnalyticsChartHeader">
               <div>
                 <h2>{text.conversationMix}</h2>
-                <p>{text.conversationMixBody}</p>
               </div>
             </div>
             <div ref={overviewRef} className="adminGoogleChart" />
@@ -651,7 +647,6 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
             <div className="adminAnalyticsChartHeader">
               <div>
                 <h2>{text.topCountries}</h2>
-                <p>{text.topCountriesBody}</p>
               </div>
             </div>
             <div className="adminAnalyticsCountryList">
@@ -690,7 +685,6 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
             <div className="adminAnalyticsChartHeader">
               <div>
                 <h2>{text.activityTimeline}</h2>
-                <p>{text.activityTimelineBody}</p>
               </div>
             </div>
             <div ref={timelineRef} className="adminGoogleChart" />
@@ -700,7 +694,6 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
             <div className="adminAnalyticsChartHeader">
               <div>
                 <h2>{text.recentEvents}</h2>
-                <p>{text.recentEventsBody}</p>
               </div>
             </div>
             <div className="adminAnalyticsEventList">
@@ -725,7 +718,6 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
             <div className="adminAnalyticsChartHeader">
               <div>
                 <h2>{text.geographyMap}</h2>
-                <p>{text.geographyMapBody}</p>
               </div>
             </div>
             <div ref={geographyRef} className="adminGoogleChart adminGoogleChartTall" />
@@ -735,7 +727,6 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
             <div className="adminAnalyticsChartHeader">
               <div>
                 <h2>{text.countryBreakdown}</h2>
-                <p>{text.countryBreakdownBody}</p>
               </div>
             </div>
             <div className="adminAnalyticsCountryList">

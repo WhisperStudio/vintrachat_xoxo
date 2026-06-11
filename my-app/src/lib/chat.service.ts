@@ -442,6 +442,11 @@ export async function updateSupportTask(
   })
 }
 
+export async function deleteSupportTask(businessId: string, taskId: string) {
+  const taskRef = doc(db, `businesses/${businessId}/supportTasks/${taskId}`)
+  await deleteDoc(taskRef)
+}
+
 export async function addSupportTaskComment(
   businessId: string,
   taskId: string,
