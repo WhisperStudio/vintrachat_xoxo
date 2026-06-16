@@ -473,6 +473,31 @@ function FieldIcon({
   )
 }
 
+function SettingSwitch({
+  checked,
+  onChange,
+  ariaLabel,
+}: {
+  checked: boolean
+  onChange: (nextValue: boolean) => void
+  ariaLabel: string
+}) {
+  return (
+    <button
+      type="button"
+      className={`widget-admin-switch ${checked ? 'is-on' : ''}`}
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      onClick={() => onChange(!checked)}
+    >
+      <span className="widget-admin-switch__track">
+        <span className="widget-admin-switch__thumb" />
+      </span>
+    </button>
+  )
+}
+
 function AutoGrowTextarea({
   minRows = 3,
   className = '',
@@ -655,6 +680,46 @@ const TONE_OPTIONS = [
   { label: 'Playful', value: 'playful' },
 ] as const
 
+const ADMIN_TOP_SECTIONS = [
+  {
+    id: 'overview',
+    label: 'Oversikt',
+    category: 'Start',
+    description: 'Status, aktiv widget og raske handlinger.',
+    icon: FiBriefcase,
+  },
+  {
+    id: 'widgets',
+    label: 'Widgets',
+    category: 'Oppsett',
+    description: 'Velg, opprett og administrer widgeter.',
+    icon: FiLayers,
+  },
+  {
+    id: 'install',
+    label: 'Installasjon',
+    category: 'Oppsett',
+    description: 'Script og publisering.',
+    icon: FiGlobe,
+  },
+  {
+    id: 'security',
+    label: 'Sikkerhet',
+    category: 'Kontroll',
+    description: 'Domener, synlighet og portalfaner.',
+    icon: FiShield,
+  },
+  {
+    id: 'ai',
+    label: 'AI',
+    category: 'Assistent',
+    description: 'Kontekst, regler og cards.',
+    icon: FiCpu,
+  },
+] as const
+
+type AdminTopSectionId = (typeof ADMIN_TOP_SECTIONS)[number]['id']
+
 function splitCommaValues(value: string) {
   return value
     .split(',')
@@ -774,6 +839,7 @@ export default function WidgetAdminPanel({
     faqSuggestionsText: string
   } | null>(null)
   const [selectedStarterCardIndex, setSelectedStarterCardIndex] = useState(0)
+  const [activeAdminSection, setActiveAdminSection] = useState<AdminTopSectionId>('overview')
   const [autoContextDirtyFields, setAutoContextDirtyFields] = useState<{
     businessContext: boolean
     faqSuggestions: boolean
@@ -929,24 +995,52 @@ export default function WidgetAdminPanel({
     const cards = normalizedStarterCards
     const activeIndex = Math.min(selectedStarterCardIndex, Math.max(0, cards.length - 1))
     const activeCard = cards[activeIndex]
+    const activeCardLabel = activeCard?.title || `Card ${activeIndex + 1}`
 
     return (
       <>
-        <label className="widget-ai-field widget-ai-field-full widget-ai-toggle">
-          <span><FieldIcon icon={FiLayers} accent="violet" /> Starter cards enabled</span>
-          <input
-            id="assistant-starter-cards"
-            name="assistant-starter-cards"
-            type="checkbox"
-            checked={assistantConfig.conversationCardsEnabled}
-            onChange={(event) =>
-              setAssistantConfig((prev) => ({
-                ...prev,
-                conversationCardsEnabled: event.target.checked,
-              }))
-            }
-          />
-        </label>
+        <div className="widget-admin-card-controls">
+          <div className="widget-ai-field widget-ai-field-full widget-ai-toggle">
+            <span><FieldIcon icon={FiLayers} accent="violet" /> Starter cards enabled</span>
+            <SettingSwitch
+              checked={assistantConfig.conversationCardsEnabled}
+              onChange={(nextValue) =>
+                setAssistantConfig((prev) => ({
+                  ...prev,
+                  conversationCardsEnabled: nextValue,
+                }))
+              }
+              ariaLabel="Starter cards enabled"
+            />
+          </div>
+          <p className="widget-admin-card-controls__note">
+            Use only a few strong starter cards so the widget feels guided and easy to scan.
+          </p>
+
+          <div className="widget-admin-card-controls__meta">
+            <label className="widget-ai-field widget-admin-card-controls__count">
+              <span><FieldIcon icon={FiLayers} accent="violet" /> Cards shown</span>
+              <input
+                type="number"
+                min={1}
+                max={12}
+                disabled={!assistantConfig.conversationCardsEnabled}
+                value={assistantConfig.conversationCardsLimit ?? 4}
+                onChange={(event) =>
+                  setAssistantConfig((prev) => ({
+                    ...prev,
+                    conversationCardsLimit: Math.max(1, Math.min(12, Number(event.target.value) || 1)),
+                  }))
+                }
+              />
+            </label>
+
+            <div className="widget-admin-card-controls__state">
+              <strong>{cards.length ? activeCardLabel : 'No cards yet'}</strong>
+              <span>{cards.length ? `${activeIndex + 1} / ${cards.length} active` : 'Add a starter card to begin'}</span>
+            </div>
+          </div>
+        </div>
 
         <div className={`widget-admin-starter-cards ${assistantConfig.conversationCardsEnabled ? '' : 'is-disabled'}`}>
           <div className="widget-admin-card-list__toolbar">
@@ -963,7 +1057,7 @@ export default function WidgetAdminPanel({
                   setSelectedStarterCardIndex(cards.length)
                 }}
               >
-                +
+                Add card
               </button>
               <button
                 type="button"
@@ -975,7 +1069,7 @@ export default function WidgetAdminPanel({
                   setSelectedStarterCardIndex((prev) => Math.max(0, Math.min(prev, nextCards.length - 1)))
                 }}
               >
-                -
+                Remove last
               </button>
               <button
                 type="button"
@@ -986,58 +1080,48 @@ export default function WidgetAdminPanel({
                   setSelectedStarterCardIndex(0)
                 }}
               >
-                Reset
+                Reset set
               </button>
             </div>
 
-            <div className="widget-admin-card-list__state">
-              <strong>{cards.length ? `Card ${activeIndex + 1} of ${cards.length}` : 'No cards'}</strong>
-              <span>Choose one to edit</span>
-            </div>
+            <p className="widget-admin-card-list__hint">
+              Keep this list focused so the widget feels helpful instead of crowded.
+            </p>
           </div>
 
-          <label className="widget-ai-field widget-ai-field-full" style={{ marginTop: '0.15rem' }}>
-            <span><FieldIcon icon={FiLayers} accent="violet" /> Cards shown</span>
-            <input
-              type="number"
-              min={1}
-              max={12}
-              disabled={!assistantConfig.conversationCardsEnabled}
-              value={assistantConfig.conversationCardsLimit ?? 4}
-              onChange={(event) =>
-                setAssistantConfig((prev) => ({
-                  ...prev,
-                  conversationCardsLimit: Math.max(1, Math.min(12, Number(event.target.value) || 1)),
-                }))
-              }
-            />
-          </label>
-
           {cards.length ? (
-            <div className="widget-admin-card-list__panel">
-              <div className="widget-admin-card-list__tabs" role="tablist" aria-label="Starter cards">
-                {cards.map((card, cardIndex) => {
-                  const active = cardIndex === activeIndex
+            <div className="widget-admin-card-workbench">
+              <section className="widget-admin-card-group">
+                <div className="widget-admin-card-group__header">
+                  <strong>Card list</strong>
+                  <span>Select the card you want to edit.</span>
+                </div>
+                <div className="widget-admin-card-list__tabs" role="tablist" aria-label="Starter cards">
+                  {cards.map((card, cardIndex) => {
+                    const active = cardIndex === activeIndex
 
-                  return (
-                    <button
-                      key={card.id}
-                      type="button"
-                      className={`widget-admin-card-list__tab ${active ? 'active' : ''}`}
-                      onClick={() => setSelectedStarterCardIndex(cardIndex)}
-                      aria-pressed={active}
-                    >
-                      <strong>{card.title || `Card ${cardIndex + 1}`}</strong>
-                      <span>{starterCardStyle}</span>
-                    </button>
-                  )
-                })}
-              </div>
+                    return (
+                      <button
+                        key={card.id}
+                        type="button"
+                        className={`widget-admin-card-list__tab ${active ? 'active' : ''}`}
+                        onClick={() => setSelectedStarterCardIndex(cardIndex)}
+                        aria-pressed={active}
+                      >
+                        <strong>{card.title || `Card ${cardIndex + 1}`}</strong>
+                        <span>{card.options.length} choices</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </section>
 
               <article className="widget-admin-card-editor">
                 <div className="widget-admin-card-editor__header">
-                  <strong>{activeCard.title || `Card ${activeIndex + 1}`}</strong>
-                  <span className="widget-admin-card-editor__badge">{starterCardStyle}</span>
+                  <div className="widget-admin-card-editor__header-copy">
+                    <strong>{activeCardLabel}</strong>
+                    <span className="widget-admin-card-editor__badge">{starterCardStyle}</span>
+                  </div>
                   <button
                     type="button"
                     className="widget-admin-action-chip widget-admin-action-chip--danger"
@@ -1048,7 +1132,7 @@ export default function WidgetAdminPanel({
                       setSelectedStarterCardIndex((prev) => Math.max(0, Math.min(prev, nextCards.length - 1)))
                     }}
                   >
-                    Delete
+                    Delete card
                   </button>
                 </div>
 
@@ -1063,7 +1147,7 @@ export default function WidgetAdminPanel({
                       Prev
                     </button>
                     <span className="widget-admin-card-editor__nav-label">
-                      {activeIndex + 1} / {cards.length}
+                      Editing card {activeIndex + 1} of {cards.length}
                     </span>
                     <button
                       type="button"
@@ -1109,6 +1193,7 @@ export default function WidgetAdminPanel({
                     </label>
                   </div>
 
+                  <div className="widget-admin-card-editor__sectionLabel">Appearance</div>
                   {starterCardStyle === 'image' ? (
                     <div className="widget-ai-grid">
                       <label className="widget-ai-field widget-ai-field-full">
@@ -1162,6 +1247,7 @@ export default function WidgetAdminPanel({
                     </div>
                   )}
 
+                  <div className="widget-admin-card-editor__sectionLabel">Questions and choices</div>
                   <label className="widget-ai-field widget-ai-field-full">
                     <span>Questions / choices</span>
                     <AutoGrowTextarea
@@ -2039,6 +2125,12 @@ export default function WidgetAdminPanel({
   const knowledgeBase = assistantConfig.knowledgeBase || createEmptyKnowledgeBase()
   const integrations = assistantConfig.integrations || createEmptyIntegrations()
   const strictness = assistantConfig.strictness || 'balanced'
+  const assistantEnabledSummary = assistantConfig.enabled ? 'AI replies on' : 'AI replies off'
+  const allowedDomainCount = parseAllowedDomainsInput(allowedDomainsText).length
+  const enabledPortalTabs = [
+    config?.settings?.tasksEnabled ? 'Tasks' : '',
+    config?.settings?.reviewsEnabled ? 'Review' : '',
+  ].filter(Boolean)
 
   const getAutofillFieldClass = (generated: boolean, missing?: string) => {
     if (missing) return 'widget-ai-generated-context widget-ai-generated-context--missing'
@@ -3030,6 +3122,118 @@ export default function WidgetAdminPanel({
         </div>
       ) : null}
 
+      <nav className="widget-admin-topnav" aria-label="Chat widget sections">
+        {ADMIN_TOP_SECTIONS.map((section) => {
+          const SectionIcon = section.icon
+          const active = activeAdminSection === section.id
+
+          return (
+            <button
+              key={section.id}
+              type="button"
+              className={`widget-admin-topnav__item ${active ? 'active' : ''}`}
+              onClick={() => setActiveAdminSection(section.id)}
+              aria-pressed={active}
+            >
+              <span className="widget-admin-topnav__eyebrow">{section.category}</span>
+              <span className="widget-admin-topnav__row">
+                <span className="widget-admin-topnav__icon">
+                  <SectionIcon />
+                </span>
+                <span className="widget-admin-topnav__copy">
+                  <strong>{section.label}</strong>
+                  <small>{section.description}</small>
+                </span>
+              </span>
+            </button>
+          )
+        })}
+      </nav>
+
+      {activeAdminSection === 'overview' ? (
+      <section className="widget-admin-card widget-admin-overview-panel">
+        <div className="widget-card-header widget-card-header--compact">
+          <div className="widget-admin-overview-panel__header">
+            <span className="widget-admin-section-label">Oversikt</span>
+            <h3>Chat widget admin</h3>
+            <p className="widget-card-desc">
+              Her får du en rask oversikt først, og resten av siden er delt inn i tydelige kategorier.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="widget-admin-save-button"
+            onClick={() => {
+              setWizardStep(0)
+              setWizardPurpose('settings')
+              setWizardOpen(true)
+            }}
+          >
+            Åpne setup wizard
+          </button>
+        </div>
+
+        <div className="widget-admin-overview-panel__stats">
+          <article className="widget-admin-overview-stat">
+            <span>Aktiv widget</span>
+            <strong>{activeWidgetName}</strong>
+            <small>{activeWidgetKey || 'No widget selected yet'}</small>
+          </article>
+          <article className="widget-admin-overview-stat">
+            <span>Widgets</span>
+            <strong>{widgetList.length}</strong>
+            <small>{currentPlan === 'free' ? 'Free plan' : `${currentPlan} plan`}</small>
+          </article>
+          <article className="widget-admin-overview-stat">
+            <span>AI-status</span>
+            <strong>{assistantEnabledSummary}</strong>
+            <small>{assistantConfig.strictContextOnly ? 'Strict context on' : 'Flexible replies enabled'}</small>
+          </article>
+          <article className="widget-admin-overview-stat">
+            <span>Sikkerhet</span>
+            <strong>{allowedDomainCount} domener</strong>
+            <small>
+              {enabledPortalTabs.length
+                ? `${enabledPortalTabs.join(' + ')} enabled`
+                : 'Portal extras disabled'}
+            </small>
+          </article>
+        </div>
+
+        <div className="widget-admin-overview-panel__actions">
+          <button
+            type="button"
+            className="widget-admin-action-chip"
+            onClick={() => setActiveAdminSection('widgets')}
+          >
+            Gå til widgets
+          </button>
+          <button
+            type="button"
+            className="widget-admin-action-chip"
+            onClick={() => setActiveAdminSection('install')}
+          >
+            Gå til installasjon
+          </button>
+          <button
+            type="button"
+            className="widget-admin-action-chip"
+            onClick={() => setActiveAdminSection('security')}
+          >
+            Gå til sikkerhet
+          </button>
+          <button
+            type="button"
+            className="widget-admin-action-chip"
+            onClick={() => setActiveAdminSection('ai')}
+          >
+            Gå til AI
+          </button>
+        </div>
+      </section>
+      ) : null}
+
+      {activeAdminSection === 'widgets' ? (
       <section className="widget-admin-card widget-admin-widget-manager">
         <div className="widget-admin-widget-manager__header">
           <div>
@@ -3183,8 +3387,10 @@ export default function WidgetAdminPanel({
           </p>
         </div>
       </section>
+      ) : null}
 
-      <div className="widget-admin-grid">
+      {activeAdminSection === 'install' ? (
+      <div className="widget-admin-grid widget-admin-grid--single">
         <section className="widget-admin-card widget-admin-code">
           <div className="widget-card-header">
             <h3>Selected Widget Script</h3>
@@ -3204,6 +3410,11 @@ export default function WidgetAdminPanel({
           </div>
         </section>
 
+      </div>
+      ) : null}
+
+      {activeAdminSection === 'security' ? (
+      <div className="widget-admin-grid widget-admin-grid--single">
         <section className="widget-admin-card widget-admin-security">
           <div className="widget-card-header widget-card-header--compact">
             <span className="widget-admin-section-label">Domain and visibility rules</span>
@@ -3267,66 +3478,11 @@ export default function WidgetAdminPanel({
             </label>
           </div>
         </section>
+      </div>
+      ) : null}
 
-        <section className="widget-admin-card widget-admin-security">
-          <div className="widget-card-header widget-card-header--compact">
-            <span className="widget-admin-section-label">Widget portal tabs</span>
-            <button type="button" className="widget-admin-save-button" onClick={savePortalSettings} disabled={portalSaving || !config}>
-              {portalSaving ? 'Saving...' : portalStatus === 'saved' ? 'Saved!' : 'Save portal'}
-            </button>
-          </div>
-
-          <p className="widget-card-desc">
-            Turn on extra pages inside the exported widget. Chats stays as the main page, while Tasks and Review appear as top tabs when enabled.
-          </p>
-
-          <div className="widget-style-grid">
-            <button
-              type="button"
-              className={`option-card ${config?.settings?.tasksEnabled ? 'checked' : ''}`}
-              aria-pressed={config?.settings?.tasksEnabled ? 'true' : 'false'}
-              onClick={() =>
-                setConfig((prev) =>
-                  prev
-                    ? {
-                        ...prev,
-                        settings: {
-                          ...prev.settings,
-                          tasksEnabled: !prev.settings?.tasksEnabled,
-                        },
-                      }
-                    : prev
-                )
-              }
-            >
-              <strong>Tasks tab</strong>
-              <span>Let visitors create tickets and see their submitted tasks inside the widget.</span>
-            </button>
-
-            <button
-              type="button"
-              className={`option-card ${config?.settings?.reviewsEnabled ? 'checked' : ''}`}
-              aria-pressed={config?.settings?.reviewsEnabled ? 'true' : 'false'}
-              onClick={() =>
-                setConfig((prev) =>
-                  prev
-                    ? {
-                        ...prev,
-                        settings: {
-                          ...prev.settings,
-                          reviewsEnabled: !prev.settings?.reviewsEnabled,
-                        },
-                      }
-                    : prev
-                )
-              }
-            >
-              <strong>Review tab</strong>
-              <span>Show a dedicated review page so visitors can leave feedback directly inside the widget.</span>
-            </button>
-          </div>
-        </section>
-
+      {activeAdminSection === 'ai' ? (
+      <div className="widget-admin-grid widget-admin-grid--single">
         <section className="widget-admin-card widget-admin-ai">
           <div className="widget-card-header widget-card-header--compact">
             <div className="widget-admin-ai-header">
@@ -3424,14 +3580,14 @@ export default function WidgetAdminPanel({
 
               {autoContextHasExistingContent ? (
                 <div className="widget-auto-context-overwrite">
-                  <label className="widget-ai-field widget-ai-toggle">
+                  <div className="widget-ai-field widget-ai-toggle">
                     <span><FieldIcon icon={FiShield} accent="amber" /> Existing fields will be replaced</span>
-                    <input
-                      type="checkbox"
+                    <SettingSwitch
                       checked={autoContextOverwriteConfirmed}
-                      onChange={(event) => setAutoContextOverwriteConfirmed(event.target.checked)}
+                      onChange={setAutoContextOverwriteConfirmed}
+                      ariaLabel="Existing fields will be replaced"
                     />
-                  </label>
+                  </div>
                   <p className="field-note widget-auto-context-note">
                     Auto context will overwrite the compiled context summary and FAQ suggestions that are already in the AI settings. Check this box before scanning again.
                   </p>
@@ -3441,85 +3597,75 @@ export default function WidgetAdminPanel({
           ) : null}
 
           <div className="widget-ai-grid widget-ai-grid--top">
-            <label className="widget-ai-field widget-ai-toggle">
+            <div className="widget-ai-field widget-ai-toggle">
               <span><FieldIcon icon={FiCpu} accent="violet" /> Enable AI replies</span>
-              <input
-                id="assistant-enabled"
-                name="assistant-enabled"
-                type="checkbox"
+              <SettingSwitch
                 checked={assistantConfig.enabled}
-                onChange={(event) =>
+                onChange={(nextValue) =>
                   setAssistantConfig((prev) => ({
                     ...prev,
-                    enabled: event.target.checked,
+                    enabled: nextValue,
                   }))
                 }
+                ariaLabel="Enable AI replies"
               />
-            </label>
+            </div>
 
-            <label className="widget-ai-field widget-ai-toggle">
+            <div className="widget-ai-field widget-ai-toggle">
               <span><FieldIcon icon={FiShield} accent="amber" /> Strict context only</span>
-              <input
-                id="assistant-strict-context"
-                name="assistant-strict-context"
-                type="checkbox"
+              <SettingSwitch
                 checked={assistantConfig.strictContextOnly}
-                onChange={(event) =>
+                onChange={(nextValue) =>
                   setAssistantConfig((prev) => ({
                     ...prev,
-                    strictContextOnly: event.target.checked,
+                    strictContextOnly: nextValue,
                   }))
                 }
+                ariaLabel="Strict context only"
               />
-            </label>
+            </div>
 
-            <label className="widget-ai-field widget-ai-toggle">
+            <div className="widget-ai-field widget-ai-toggle">
               <span><FieldIcon icon={FiGlobe} accent="green" /> Reply in user language</span>
-              <input
-                id="assistant-reply-user-language"
-                name="assistant-reply-user-language"
-                type="checkbox"
+              <SettingSwitch
                 checked={assistantConfig.replyInUserLanguage}
-                onChange={(event) =>
+                onChange={(nextValue) =>
                   setAssistantConfig((prev) => ({
                     ...prev,
-                    replyInUserLanguage: event.target.checked,
+                    replyInUserLanguage: nextValue,
                   }))
                 }
+                ariaLabel="Reply in user language"
               />
-            </label>
+            </div>
 
-            <label className="widget-ai-field widget-ai-toggle">
+            <div className="widget-ai-field widget-ai-toggle">
               <span><FieldIcon icon={FiMessageSquare} accent="rose" /> Human support</span>
-              <input
-                id="assistant-human-support"
-                name="assistant-human-support"
-                type="checkbox"
+              <SettingSwitch
                 checked={humanSupportEnabled}
-                onChange={(event) =>
+                onChange={(nextValue) =>
                   setAssistantConfig((prev) => ({
                     ...prev,
-                    humanSupportEnabled: event.target.checked,
+                    humanSupportEnabled: nextValue,
                   }))
                 }
+                ariaLabel="Human support"
               />
-            </label>
+            </div>
 
-            <label className="widget-ai-field widget-ai-toggle">
+            <div className="widget-ai-field widget-ai-toggle">
               <span><FieldIcon icon={FiHelpCircle} accent="blue" /> FAQ suggestions</span>
-              <input
-                id="assistant-faq-suggestions"
-                name="assistant-faq-suggestions"
-                type="checkbox"
+              <SettingSwitch
                 checked={assistantConfig.faqSuggestionsEnabled}
-                onChange={(event) =>
+                onChange={(nextValue) =>
                   setAssistantConfig((prev) => ({
                     ...prev,
-                    faqSuggestionsEnabled: event.target.checked,
+                    faqSuggestionsEnabled: nextValue,
                   }))
                 }
+                ariaLabel="FAQ suggestions"
               />
-            </label>
+            </div>
 
             <label className="widget-ai-field">
               <span><FieldIcon icon={FiBriefcase} accent="violet" /> Provider</span>
@@ -3533,6 +3679,79 @@ export default function WidgetAdminPanel({
                 <span>Managed from Vintra Admin</span>
               </div>
             </label>
+          </div>
+
+          <div className="widget-admin-inline-panel">
+            <div className="widget-card-header widget-card-header--compact">
+              <div>
+                <span className="widget-admin-section-label">Widget pages</span>
+                <p className="widget-card-desc">
+                  Turn on separate pages inside the widget for tasks and reviews.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="widget-admin-save-button"
+                onClick={savePortalSettings}
+                disabled={portalSaving || !config}
+              >
+                {portalSaving ? 'Saving...' : portalStatus === 'saved' ? 'Saved!' : 'Save pages'}
+              </button>
+            </div>
+
+            <div className="widget-ai-grid">
+              <div className="widget-admin-toggle-card">
+                <div className="widget-ai-field widget-ai-toggle">
+                  <span><FieldIcon icon={FiLayers} accent="blue" /> Tasks page</span>
+                  <SettingSwitch
+                    checked={Boolean(config?.settings?.tasksEnabled)}
+                    onChange={(nextValue) =>
+                      setConfig((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              settings: {
+                                ...prev.settings,
+                                tasksEnabled: nextValue,
+                              },
+                            }
+                          : prev
+                      )
+                    }
+                    ariaLabel="Tasks page"
+                  />
+                </div>
+                <p className="field-note">
+                  Let visitors create tickets and view submitted tasks in a separate page inside the widget.
+                </p>
+              </div>
+
+              <div className="widget-admin-toggle-card">
+                <div className="widget-ai-field widget-ai-toggle">
+                  <span><FieldIcon icon={FiMessageSquare} accent="rose" /> Review page</span>
+                  <SettingSwitch
+                    checked={Boolean(config?.settings?.reviewsEnabled)}
+                    onChange={(nextValue) =>
+                      setConfig((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              settings: {
+                                ...prev.settings,
+                                reviewsEnabled: nextValue,
+                              },
+                            }
+                          : prev
+                      )
+                    }
+                    ariaLabel="Review page"
+                  />
+                </div>
+                <p className="field-note">
+                  Show a separate review page so visitors can leave feedback directly in the widget.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="widget-admin-field-accordion-stack">
@@ -3999,6 +4218,7 @@ export default function WidgetAdminPanel({
           </div>
         </section>
       </div>
+      ) : null}
     </div>
   )
 }
