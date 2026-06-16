@@ -3612,6 +3612,273 @@
   font-size: 0.84rem;
 }
 
+.adminAnalyticsPanel {
+  gap: 16px;
+}
+
+.adminAnalyticsBadge {
+  border-color: rgba(249, 115, 22, 0.14);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(255, 247, 237, 0.9));
+  color: #7c2d12;
+}
+
+.adminAnalyticsControls {
+  border-color: rgba(192, 132, 252, 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(249, 115, 22, 0.08), transparent 26%),
+    radial-gradient(circle at top right, rgba(168, 85, 247, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+}
+
+.adminAnalyticsMiniStat {
+  min-height: 88px;
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+}
+
+.adminAnalyticsTone-orange,
+.adminAnalyticsTone-purple,
+.adminAnalyticsTone-cyan,
+.adminAnalyticsTone-pink,
+.adminAnalyticsTone-sky,
+.adminAnalyticsTone-slate {
+  box-shadow:
+    0 14px 28px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.adminAnalyticsTone-orange {
+  border-color: rgba(249, 115, 22, 0.18);
+}
+
+.adminAnalyticsTone-purple {
+  border-color: rgba(139, 92, 246, 0.18);
+}
+
+.adminAnalyticsTone-cyan {
+  border-color: rgba(14, 165, 233, 0.18);
+}
+
+.adminAnalyticsTone-pink {
+  border-color: rgba(236, 72, 153, 0.18);
+}
+
+.adminAnalyticsTone-orange .adminAnalyticsIcon {
+  color: #ea580c;
+  background: rgba(249, 115, 22, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.18);
+}
+
+.adminAnalyticsTone-purple .adminAnalyticsIcon {
+  color: #7c3aed;
+  background: rgba(168, 85, 247, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(168, 85, 247, 0.18);
+}
+
+.adminAnalyticsTone-cyan .adminAnalyticsIcon {
+  color: #0284c7;
+  background: rgba(14, 165, 233, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(14, 165, 233, 0.18);
+}
+
+.adminAnalyticsTone-pink .adminAnalyticsIcon {
+  color: #db2777;
+  background: rgba(236, 72, 153, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(236, 72, 153, 0.18);
+}
+
+.adminAnalyticsViewToggle {
+  border-color: rgba(168, 85, 247, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.88));
+}
+
+.adminAnalyticsViewToggleIndicator {
+  background:
+    linear-gradient(135deg, rgba(255, 247, 237, 0.96), rgba(245, 243, 255, 0.94));
+  border-color: rgba(249, 115, 22, 0.12);
+}
+
+.adminAnalyticsCharts {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.82fr);
+  gap: 16px;
+}
+
+.adminAnalyticsChartCard {
+  border-radius: 26px;
+  border-color: rgba(168, 85, 247, 0.14);
+  background:
+    radial-gradient(circle at top right, rgba(249, 115, 22, 0.08), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(14, 165, 233, 0.08), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.985), rgba(248, 250, 252, 0.95));
+}
+
+.adminAnalyticsChartStack {
+  display: grid;
+  gap: 16px;
+}
+
+.adminAnalyticsChartStack .adminAnalyticsChartCard {
+  min-height: 0;
+}
+
+.adminAnalyticsChartCardSpanFull {
+  grid-column: 1 / -1;
+  min-height: 0;
+}
+
+.adminAnalyticsCountryRow {
+  width: 100%;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.adminAnalyticsCountryRow:hover {
+  transform: translateY(-1px);
+  border-color: rgba(139, 92, 246, 0.22);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+}
+
+.adminAnalyticsCountryRow.is-active {
+  border-color: rgba(249, 115, 22, 0.24);
+  background:
+    linear-gradient(135deg, rgba(255, 247, 237, 0.98), rgba(245, 243, 255, 0.92));
+  box-shadow:
+    0 16px 28px rgba(15, 23, 42, 0.06),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.82);
+}
+
+.adminAnalyticsMessageFeed {
+  display: grid;
+  gap: 10px;
+}
+
+.adminAnalyticsMessageFeedHeader {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.adminAnalyticsMessageFeedHeader strong {
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.adminAnalyticsMessageCard {
+  display: grid;
+  gap: 8px;
+  padding: 14px 15px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+}
+
+.adminAnalyticsMessageCard p {
+  margin: 0;
+  color: #0f172a;
+  line-height: 1.45;
+}
+
+.adminAnalyticsMessageCard small {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.adminAnalyticsBarList {
+  display: grid;
+  gap: 12px;
+}
+
+.adminAnalyticsBarItem {
+  display: grid;
+  gap: 8px;
+}
+
+.adminAnalyticsBarItemTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.adminAnalyticsBarItemTop strong {
+  color: #0f172a;
+}
+
+.adminAnalyticsBarItemTop span {
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.adminAnalyticsBarTrack {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.9);
+  overflow: hidden;
+}
+
+.adminAnalyticsBarFill {
+  display: block;
+  height: 100%;
+  min-width: 10px;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, rgba(249, 115, 22, 0.95), rgba(168, 85, 247, 0.95), rgba(14, 165, 233, 0.95));
+}
+
+.adminAnalyticsHeatmap {
+  display: grid;
+  gap: 12px;
+}
+
+.adminAnalyticsHeatmapGrid,
+.adminAnalyticsHeatmapDays {
+  display: grid;
+  gap: 8px;
+}
+
+.adminAnalyticsHeatmapTime {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.adminAnalyticsHeatmapCell {
+  min-height: 22px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(226, 232, 240, 0.5);
+}
+
+.adminAnalyticsHeatmapCell[data-active='false'] {
+  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.88);
+  color: transparent;
+}
+
+.adminAnalyticsHeatmapDays strong {
+  text-align: center;
+  color: #475569;
+  font-size: 0.82rem;
+}
+
 .adminUsersPanel {
   gap: 12px;
 }
@@ -4010,9 +4277,43 @@
     justify-content: center;
   }
 
+  .adminAnalyticsChartStack {
+    grid-template-columns: 1fr;
+  }
+
+  .adminAnalyticsHeatmapGrid,
+  .adminAnalyticsHeatmapDays {
+    gap: 6px;
+  }
+
   .adminUsersInviteBar,
   .adminUsersCardInlineMeta,
   .adminUsersGrid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .adminAnalyticsMiniStat {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .adminAnalyticsMiniStat small {
+    grid-column: 1 / -1;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .adminAnalyticsHeatmapGrid {
+    grid-template-columns: 48px repeat(7, minmax(0, 1fr)) !important;
+  }
+
+  .adminAnalyticsHeatmapDays {
+    grid-template-columns: 48px repeat(7, minmax(0, 1fr)) !important;
+  }
+
+  .adminAnalyticsHeatmapCell {
+    min-height: 18px;
+    font-size: 0.65rem;
   }
 }

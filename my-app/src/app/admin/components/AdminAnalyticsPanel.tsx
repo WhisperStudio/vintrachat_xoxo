@@ -1,19 +1,20 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react'
 import {
   FiActivity,
   FiClock,
-  FiGlobe,
   FiCpu,
+  FiGlobe,
+  FiMessageSquare,
   FiPieChart,
   FiShield,
   FiTrendingUp,
 } from 'react-icons/fi'
 import { useAuth } from '@/context/AuthContext'
-import { getBusinessChatAnalytics } from '@/lib/chat.service'
+import { getBusinessChatAnalytics, getRecentAiChatLogs } from '@/lib/chat.service'
 import { adminAnalyticsI18n, useVintraLanguage } from '@/lib/i18n'
-import type { ChatAnalytics, ChatAnalyticsEvent } from '@/types/database'
+import type { AiChatLog, ChatAnalytics, ChatAnalyticsEvent } from '@/types/database'
 import AdminDropdown from './AdminDropdown'
 import './admin-components.css'
 
@@ -25,6 +26,7 @@ declare global {
 
 type AnalyticsView = 'overview' | 'timeline' | 'geography'
 type AnalyticsRange = '24h' | '7d' | '30d' | 'all'
+type WeekdayName = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun'
 
 type RangeAnalytics = {
   totalSessions: number
@@ -35,12 +37,21 @@ type RangeAnalytics = {
   lastActivityAt: Date | null
 }
 
+type AnalyticsCardTone = 'orange' | 'purple' | 'cyan' | 'pink' | 'sky' | 'slate'
+
 type AnalyticsCard = {
   label: string
   value: ReactNode
   detail: string
   icon: ComponentType
-  tone: 'green' | 'blue' | 'violet' | 'amber' | 'sky' | 'slate'
+  tone: AnalyticsCardTone
+}
+
+type HeatmapCell = {
+  dayIndex: number
+  hour: number
+  count: number
+  intensity: number
 }
 
 const emptyAnalytics: ChatAnalytics = {
@@ -52,6 +63,8 @@ const emptyAnalytics: ChatAnalytics = {
   countryCounts: {},
   timeline: [],
 }
+
+const emptyAiChatLogs: AiChatLog[] = []
 
 function loadGoogleCharts() {
   return new Promise<void>((resolve, reject) => {
@@ -101,11 +114,7 @@ function getTimelineBucketStart(date: Date, range: AnalyticsRange) {
     return bucket
   }
 
-  if (range === '7d' || range === '30d' || range === 'all') {
-    bucket.setHours(0, 0, 0, 0)
-    return bucket
-  }
-
+  bucket.setHours(0, 0, 0, 0)
   return bucket
 }
 
@@ -173,17 +182,6 @@ function buildEmptyTimelineBuckets(range: AnalyticsRange) {
   ]
 }
 
-function countryCodeToFlagEmoji(countryCode?: string) {
-  const normalized = String(countryCode || '').trim().toUpperCase()
-
-  if (!/^[A-Z]{2}$/.test(normalized) || normalized === 'XX') {
-    return '🌐'
-  }
-
-  const codePoints = [...normalized].map((char) => 127397 + char.charCodeAt(0))
-  return String.fromCodePoint(...codePoints)
-}
-
 function countryCodeToFlagImage(countryCode?: string) {
   const normalized = String(countryCode || '').trim().toUpperCase()
 
@@ -215,15 +213,71 @@ function eventLabel(kind: ChatAnalyticsEvent['kind']) {
   }
 }
 
+function getWeekdayLabels(language: 'no' | 'en') {
+  return language === 'no'
+    ? ['Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør', 'Søn']
+    : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+}
+
+function getHourLabel(hour: number) {
+  return `${String(hour).padStart(2, '0')}:00`
+}
+
+function getWeekdayIndex(date: Date) {
+  return (date.getDay() + 6) % 7
+}
+
+function buildHeatmap(visitorEvents: ChatAnalyticsEvent[]) {
+  const counts = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => 0))
+
+  visitorEvents.forEach((event) => {
+    const createdAt = new Date(event.createdAt)
+    counts[getWeekdayIndex(createdAt)][createdAt.getHours()] += 1
+  })
+
+  const maxCount = counts.reduce(
+    (dayMax, day) => Math.max(dayMax, ...day),
+    0
+  )
+
+  const cells: HeatmapCell[] = []
+
+  for (let hour = 0; hour < 24; hour += 1) {
+    for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
+      const count = counts[dayIndex][hour]
+      cells.push({
+        dayIndex,
+        hour,
+        count,
+        intensity: maxCount > 0 ? count / maxCount : 0,
+      })
+    }
+  }
+
+  return { cells, maxCount }
+}
+
+function getHeatmapCellStyle(intensity: number): CSSProperties {
+  const alpha = intensity > 0 ? 0.16 + intensity * 0.84 : 0.06
+  const glow = intensity > 0 ? 0.12 + intensity * 0.22 : 0.04
+
+  return {
+    background: `linear-gradient(180deg, rgba(249, 115, 22, ${alpha * 0.88}) 0%, rgba(168, 85, 247, ${alpha}) 45%, rgba(14, 165, 233, ${alpha * 0.92}) 100%)`,
+    boxShadow: `inset 0 0 0 1px rgba(255, 255, 255, ${0.4 + intensity * 0.2}), 0 10px 20px rgba(124, 58, 237, ${glow})`,
+  }
+}
+
 export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { selectedWidgetKey?: string }) {
   const { dbUser } = useAuth()
   const { language } = useVintraLanguage()
   const text = adminAnalyticsI18n[language]
   const [analytics, setAnalytics] = useState<ChatAnalytics>(emptyAnalytics)
+  const [aiChatLogs, setAiChatLogs] = useState<AiChatLog[]>(emptyAiChatLogs)
   const [loading, setLoading] = useState(true)
   const [chartReady, setChartReady] = useState(false)
   const [view, setView] = useState<AnalyticsView>('overview')
   const [range, setRange] = useState<AnalyticsRange>('7d')
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
   const overviewRef = useRef<HTMLDivElement | null>(null)
   const timelineRef = useRef<HTMLDivElement | null>(null)
   const geographyRef = useRef<HTMLDivElement | null>(null)
@@ -237,20 +291,28 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
     async function loadAnalytics() {
       if (!dbUser?.businessId) return
 
-      const data = await getBusinessChatAnalytics(dbUser.businessId)
+      const [analyticsData, aiLogs] = await Promise.all([
+        getBusinessChatAnalytics(dbUser.businessId),
+        getRecentAiChatLogs(dbUser.businessId, {
+          widgetKey: selectedWidgetKey || undefined,
+          limitCount: 80,
+        }),
+      ])
 
       if (!mounted) return
 
-      setAnalytics(data || emptyAnalytics)
+      setAnalytics(analyticsData || emptyAnalytics)
+      setAiChatLogs(aiLogs)
       setLoading(false)
     }
 
+    setLoading(true)
     void loadAnalytics()
 
     return () => {
       mounted = false
     }
-  }, [dbUser?.businessId])
+  }, [dbUser?.businessId, selectedWidgetKey])
 
   useEffect(() => {
     let mounted = true
@@ -281,18 +343,62 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
     }
   }, [])
 
+  const rangeStart = useMemo(() => getRangeStart(range), [range])
+
   const timelineEvents = useMemo(() => {
-    const start = getRangeStart(range)
     return [...(analytics.timeline || [])]
       .filter((event) => {
         if (!selectedWidgetKey) return true
         return event.widgetKey ? event.widgetKey === selectedWidgetKey : false
       })
-      .filter((event) => new Date(event.createdAt) >= start)
+      .filter((event) => new Date(event.createdAt) >= rangeStart)
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-  }, [analytics.timeline, range, selectedWidgetKey])
+  }, [analytics.timeline, rangeStart, selectedWidgetKey])
 
   const rangeAnalytics = useMemo(() => buildRangeAnalytics(timelineEvents), [timelineEvents])
+
+  const countryEntries = useMemo(() => {
+    return Object.entries(rangeAnalytics.countryCounts || {}).sort((a, b) => b[1] - a[1])
+  }, [rangeAnalytics.countryCounts])
+
+  useEffect(() => {
+    if (!countryEntries.length) {
+      setSelectedCountry(null)
+      return
+    }
+
+    if (selectedCountry && countryEntries.some(([country]) => country === selectedCountry)) {
+      return
+    }
+
+    setSelectedCountry(countryEntries[0][0])
+  }, [countryEntries, selectedCountry])
+
+  const filteredAiChatLogs = useMemo(() => {
+    return aiChatLogs
+      .filter((log) => !selectedWidgetKey || log.widgetKey === selectedWidgetKey)
+      .filter((log) => log.updatedAt >= rangeStart)
+  }, [aiChatLogs, rangeStart, selectedWidgetKey])
+
+  const selectedCountryMessages = useMemo(() => {
+    if (!selectedCountry) return []
+
+    return filteredAiChatLogs
+      .filter((log) => log.countryCode === selectedCountry)
+      .flatMap((log) =>
+        log.messages
+          .filter((message) => message.role === 'user')
+          .map((message) => ({
+            ...message,
+            countryCode: log.countryCode,
+            pageTitle: log.pageTitle,
+            pageUrl: log.pageUrl,
+            sessionId: log.sessionId,
+          }))
+      )
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, 4)
+  }, [filteredAiChatLogs, selectedCountry])
 
   const analyticsCards = useMemo(() => {
     const supportRate =
@@ -309,6 +415,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
         : 0
     const latestCountry =
       Object.entries(rangeAnalytics.countryCounts || {}).sort((a, b) => b[1] - a[1])[0]?.[0] || 'XX'
+    const lastActivityAt = rangeAnalytics.lastActivityAt
 
     return [
       {
@@ -316,28 +423,28 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
         value: rangeAnalytics.totalSessions,
         detail: language === 'no' ? 'Valgt periode' : 'Selected range',
         icon: FiActivity,
-        tone: 'green',
+        tone: 'orange',
       },
       {
         label: text.supportRequests,
         value: rangeAnalytics.supportRequests,
         detail: `${supportRate}%`,
         icon: FiShield,
-        tone: 'blue',
+        tone: 'purple',
       },
       {
         label: text.aiOnlySessions,
         value: rangeAnalytics.aiOnlySessions,
         detail: `${aiRate}%`,
         icon: FiCpu,
-        tone: 'violet',
+        tone: 'cyan',
       },
       {
         label: text.savedSupportChats,
         value: rangeAnalytics.savedSupportChats,
         detail: `${savedRate}%`,
-        icon: FiTrendingUp,
-        tone: 'amber',
+        icon: FiMessageSquare,
+        tone: 'pink',
       },
       {
         label: text.topCountry,
@@ -358,19 +465,19 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
             <span>{latestCountry}</span>
           </span>
         ),
-        detail: language === 'no' ? 'Topp i periode' : 'Top in range',
+        detail: language === 'no' ? 'Mest aktivt land' : 'Most active country',
         icon: FiGlobe,
         tone: 'sky',
       },
       {
         label: text.lastActivity,
-        value: analytics.lastChatAt ? new Date(analytics.lastChatAt).toLocaleTimeString() : text.none,
-        detail: analytics.lastChatAt ? new Date(analytics.lastChatAt).toLocaleDateString() : text.noChatsYet,
+        value: lastActivityAt ? lastActivityAt.toLocaleTimeString() : text.none,
+        detail: lastActivityAt ? lastActivityAt.toLocaleDateString() : text.noChatsYet,
         icon: FiClock,
         tone: 'slate',
       },
     ] satisfies AnalyticsCard[]
-  }, [analytics.lastChatAt, language, rangeAnalytics, text])
+  }, [language, rangeAnalytics, text])
 
   const timelineBuckets = useMemo(() => {
     const map = new Map<number, { bucket: Date; activity: number; handovers: number }>()
@@ -393,14 +500,26 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
       map.set(bucketKey, current)
     })
 
-    return Array.from(map.values()).sort(
-      (a, b) => a.bucket.getTime() - b.bucket.getTime()
-    )
+    return Array.from(map.values()).sort((a, b) => a.bucket.getTime() - b.bucket.getTime())
   }, [range, timelineEvents])
 
-  const countryEntries = useMemo(() => {
-    return Object.entries(rangeAnalytics.countryCounts || {}).sort((a, b) => b[1] - a[1])
-  }, [rangeAnalytics.countryCounts])
+  const visitorEvents = useMemo(
+    () => timelineEvents.filter((event) => event.kind === 'visitor-message'),
+    [timelineEvents]
+  )
+
+  const heatmap = useMemo(() => buildHeatmap(visitorEvents), [visitorEvents])
+
+  const peakHours = useMemo(() => {
+    const counts = Array.from({ length: 24 }, (_, hour) => ({ hour, count: 0 }))
+
+    visitorEvents.forEach((event) => {
+      const createdAt = new Date(event.createdAt)
+      counts[createdAt.getHours()].count += 1
+    })
+
+    return counts.sort((a, b) => b.count - a.count).slice(0, 6)
+  }, [visitorEvents])
 
   useEffect(() => {
     if (!chartReady || !window.google?.charts) return
@@ -430,7 +549,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
         pieHole: 0.72,
         legend: { position: 'bottom', textStyle: { color: '#475569', fontName: 'Inter' } },
         chartArea: { left: 10, top: 10, width: '92%', height: '82%' },
-        colors: hasOverviewData ? ['#60a5fa', '#34d399', '#f59e0b'] : ['#cbd5e1'],
+        colors: hasOverviewData ? ['#f97316', '#8b5cf6', '#ec4899'] : ['#cbd5e1'],
         pieSliceText: 'none',
         tooltip: { textStyle: { fontName: 'Inter' } },
         fontName: 'Inter',
@@ -451,7 +570,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
         backgroundColor: 'transparent',
         legend: { position: 'bottom', textStyle: { color: '#475569', fontName: 'Inter' } },
         chartArea: { left: 56, top: 24, width: '84%', height: '68%' },
-        colors: ['#7c3aed', '#10b981'],
+        colors: ['#8b5cf6', '#f97316'],
         curveType: 'function',
         pointSize: 5,
         hAxis: {
@@ -469,7 +588,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
       })
     }
 
-    if (view === 'geography' && geographyRef.current) {
+    if (view === 'geography' && geographyRef.current && countryEntries.length > 0) {
       const geoData = google.visualization.arrayToDataTable([
         [text.chartLabels.country, text.chartLabels.sessions],
         ...countryEntries,
@@ -478,7 +597,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
       const geoChart = new google.visualization.GeoChart(geographyRef.current)
       geoChart.draw(geoData, {
         backgroundColor: 'transparent',
-        colorAxis: { colors: ['#dbeafe', '#60a5fa', '#1d4ed8'] },
+        colorAxis: { colors: ['#fde7d8', '#c084fc', '#0ea5e9'] },
         datalessRegionColor: '#eef2f7',
         defaultColor: '#94a3b8',
         legend: 'none',
@@ -497,7 +616,8 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
     view,
   ])
 
-  const topCountries = countryEntries.slice(0, 6)
+  const weekdayLabels = useMemo(() => getWeekdayLabels(language), [language])
+  const topCountries = countryEntries.slice(0, 8)
 
   useLayoutEffect(() => {
     const updateIndicator = () => {
@@ -537,6 +657,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
       <div className="adminSectionHeader adminAnalyticsHeader">
         <div>
           <h1>{text.title}</h1>
+          <p className="adminDataHint">{text.body}</p>
           {selectedWidgetKey ? (
             <p className="adminDataHint">
               {text.showingWidget} <strong>{selectedWidgetKey}</strong>.
@@ -551,6 +672,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
             ? `${text.updated} ${new Date(rangeAnalytics.lastActivityAt).toLocaleString()}`
             : text.noRecentActivity}
         </div>
+
         <div className="adminAnalyticsViewToggle" ref={viewToggleRef}>
           {viewIndicator ? (
             <span
@@ -561,39 +683,25 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
               }}
             />
           ) : null}
-          <button
-            ref={(node) => {
-              viewButtonRefs.current.overview = node
-            }}
-            type="button"
-            className={view === 'overview' ? 'active' : ''}
-            onClick={() => setView('overview')}
-          >
-            <FiPieChart />
-            {text.overview}
-          </button>
-          <button
-            ref={(node) => {
-              viewButtonRefs.current.timeline = node
-            }}
-            type="button"
-            className={view === 'timeline' ? 'active' : ''}
-            onClick={() => setView('timeline')}
-          >
-            <FiTrendingUp />
-            {text.timeline}
-          </button>
-          <button
-            ref={(node) => {
-              viewButtonRefs.current.geography = node
-            }}
-            type="button"
-            className={view === 'geography' ? 'active' : ''}
-            onClick={() => setView('geography')}
-          >
-            <FiGlobe />
-            {text.geography}
-          </button>
+          {(['overview', 'timeline', 'geography'] as AnalyticsView[]).map((nextView) => {
+            const icon =
+              nextView === 'overview' ? <FiPieChart /> : nextView === 'timeline' ? <FiTrendingUp /> : <FiGlobe />
+
+            return (
+              <button
+                key={nextView}
+                ref={(node) => {
+                  viewButtonRefs.current[nextView] = node
+                }}
+                type="button"
+                className={view === nextView ? 'active' : ''}
+                onClick={() => setView(nextView)}
+              >
+                {icon}
+                {text[nextView]}
+              </button>
+            )
+          })}
         </div>
 
         <label className="adminTaskFilter adminAnalyticsRange">
@@ -638,44 +746,86 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
             <div className="adminAnalyticsChartHeader">
               <div>
                 <h2>{text.conversationMix}</h2>
+                <p>{text.conversationMixBody}</p>
               </div>
             </div>
             <div ref={overviewRef} className="adminGoogleChart" />
           </section>
 
-          <section className="adminAnalyticsChartCard">
-            <div className="adminAnalyticsChartHeader">
-              <div>
-                <h2>{text.topCountries}</h2>
+          <div className="adminAnalyticsChartStack">
+            <section className="adminAnalyticsChartCard">
+              <div className="adminAnalyticsChartHeader">
+                <div>
+                  <h2>{text.topCountries}</h2>
+                  <p>{text.topCountriesHint}</p>
+                </div>
               </div>
-            </div>
-            <div className="adminAnalyticsCountryList">
-              {topCountries.length ? (
-                topCountries.map(([country, count]) => (
-                  <div key={country} className="adminAnalyticsCountryRow">
-                    <strong>
-                      {countryCodeToFlagImage(country) ? (
-                        <img
-                          className="adminAnalyticsCountryFlag"
-                          src={countryCodeToFlagImage(country) as string}
-                          alt=""
-                          aria-hidden="true"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        <FiGlobe className="adminAnalyticsCountryFlagFallback" aria-hidden="true" />
-                      )}
-                      {country}
-                    </strong>
-                    <span>{count}</span>
-                  </div>
-                ))
+              <div className="adminAnalyticsCountryList">
+                {topCountries.length ? (
+                  topCountries.map(([country, count]) => (
+                    <button
+                      key={country}
+                      type="button"
+                      className={`adminAnalyticsCountryRow ${selectedCountry === country ? 'is-active' : ''}`}
+                      onClick={() => setSelectedCountry(country)}
+                    >
+                      <strong>
+                        {countryCodeToFlagImage(country) ? (
+                          <img
+                            className="adminAnalyticsCountryFlag"
+                            src={countryCodeToFlagImage(country) as string}
+                            alt=""
+                            aria-hidden="true"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : (
+                          <FiGlobe className="adminAnalyticsCountryFlagFallback" aria-hidden="true" />
+                        )}
+                        {country}
+                      </strong>
+                      <span>{count}</span>
+                    </button>
+                  ))
+                ) : (
+                  <p className="adminTaskEmptyState">{text.noCountryData}</p>
+                )}
+              </div>
+            </section>
+
+            <section className="adminAnalyticsChartCard">
+              <div className="adminAnalyticsChartHeader">
+                <div>
+                  <h2>{text.recentCountryMessages}</h2>
+                  <p>{text.recentCountryMessagesBody}</p>
+                </div>
+              </div>
+
+              {!selectedCountry ? (
+                <p className="adminTaskEmptyState">{text.noCountrySelected}</p>
               ) : (
-                <p className="adminTaskEmptyState">{text.noCountryData}</p>
+                <div className="adminAnalyticsMessageFeed">
+                  <div className="adminAnalyticsMessageFeedHeader">
+                    <span>{text.messagesFrom}</span>
+                    <strong>{selectedCountry}</strong>
+                  </div>
+
+                  {selectedCountryMessages.length ? (
+                    selectedCountryMessages.map((message) => (
+                      <article key={message.id} className="adminAnalyticsMessageCard">
+                        <p>{message.text}</p>
+                        <small>
+                          {text.messageSentAt} {message.createdAt.toLocaleString()}
+                        </small>
+                      </article>
+                    ))
+                  ) : (
+                    <p className="adminTaskEmptyState">{text.recentCountryMessagesEmpty}</p>
+                  )}
+                </div>
               )}
-            </div>
-          </section>
+            </section>
+          </div>
         </div>
       ) : null}
 
@@ -685,29 +835,115 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
             <div className="adminAnalyticsChartHeader">
               <div>
                 <h2>{text.activityTimeline}</h2>
+                <p>{text.activityTimelineBody}</p>
               </div>
             </div>
             <div ref={timelineRef} className="adminGoogleChart" />
           </section>
 
-          <section className="adminAnalyticsChartCard">
+          <div className="adminAnalyticsChartStack">
+            <section className="adminAnalyticsChartCard">
+              <div className="adminAnalyticsChartHeader">
+                <div>
+                  <h2>{text.peakHours}</h2>
+                  <p>{text.peakHoursBody}</p>
+                </div>
+              </div>
+              <div className="adminAnalyticsBarList">
+                {peakHours.some((hour) => hour.count > 0) ? (
+                  peakHours.map((entry) => (
+                    <div key={entry.hour} className="adminAnalyticsBarItem">
+                      <div className="adminAnalyticsBarItemTop">
+                        <strong>{getHourLabel(entry.hour)}</strong>
+                        <span>{entry.count}</span>
+                      </div>
+                      <div className="adminAnalyticsBarTrack">
+                        <span
+                          className="adminAnalyticsBarFill"
+                          style={{
+                            width: `${peakHours[0]?.count ? (entry.count / peakHours[0].count) * 100 : 0}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="adminTaskEmptyState">{text.peakHoursEmpty}</p>
+                )}
+              </div>
+            </section>
+
+            <section className="adminAnalyticsChartCard">
+              <div className="adminAnalyticsChartHeader">
+                <div>
+                  <h2>{text.recentEvents}</h2>
+                  <p>{text.recentEventsBody}</p>
+                </div>
+              </div>
+              <div className="adminAnalyticsEventList">
+                {timelineEvents.slice(-8).reverse().map((event) => (
+                  <article key={event.id} className="adminAnalyticsEventItem">
+                    <div>
+                      <strong>{eventLabel(event.kind)}</strong>
+                      <span>{event.countryCode || 'XX'}</span>
+                    </div>
+                    <p>{new Date(event.createdAt).toLocaleString()}</p>
+                  </article>
+                ))}
+                {!timelineEvents.length ? <p className="adminTaskEmptyState">{text.noTimelineEvents}</p> : null}
+              </div>
+            </section>
+          </div>
+
+          <section className="adminAnalyticsChartCard adminAnalyticsChartCardSpanFull">
             <div className="adminAnalyticsChartHeader">
               <div>
-                <h2>{text.recentEvents}</h2>
+                <h2>{text.activityHeatmap}</h2>
+                <p>{text.activityHeatmapBody}</p>
               </div>
             </div>
-            <div className="adminAnalyticsEventList">
-              {timelineEvents.slice(-8).reverse().map((event) => (
-                <article key={event.id} className="adminAnalyticsEventItem">
-                  <div>
-                    <strong>{eventLabel(event.kind)}</strong>
-                    <span>{event.countryCode || 'XX'}</span>
-                  </div>
-                  <p>{new Date(event.createdAt).toLocaleString()}</p>
-                </article>
-              ))}
-              {!timelineEvents.length ? <p className="adminTaskEmptyState">{text.noTimelineEvents}</p> : null}
-            </div>
+
+            {heatmap.maxCount === 0 ? (
+              <p className="adminTaskEmptyState">{text.activityHeatmapEmpty}</p>
+            ) : (
+              <div className="adminAnalyticsHeatmap">
+                <div
+                  className="adminAnalyticsHeatmapGrid"
+                  style={{ gridTemplateColumns: `64px repeat(${weekdayLabels.length}, minmax(0, 1fr))` }}
+                >
+                  {Array.from({ length: 24 }, (_, hour) => (
+                    <div key={`label-${hour}`} className="adminAnalyticsHeatmapTime">
+                      {hour % 3 === 0 ? getHourLabel(hour) : ''}
+                    </div>
+                  )).flatMap((timeLabel, rowIndex) => {
+                    const rowCells = heatmap.cells.filter((cell) => cell.hour === rowIndex)
+                    return [
+                      timeLabel,
+                      ...rowCells.map((cell) => (
+                        <div
+                          key={`${cell.dayIndex}-${cell.hour}`}
+                          className="adminAnalyticsHeatmapCell"
+                          title={`${weekdayLabels[cell.dayIndex]} ${getHourLabel(cell.hour)} - ${cell.count}`}
+                          style={getHeatmapCellStyle(cell.intensity)}
+                          data-active={cell.count > 0 ? 'true' : 'false'}
+                        >
+                          <span>{cell.count > 0 ? cell.count : ''}</span>
+                        </div>
+                      )),
+                    ]
+                  })}
+                </div>
+                <div
+                  className="adminAnalyticsHeatmapDays"
+                  style={{ gridTemplateColumns: `64px repeat(${weekdayLabels.length}, minmax(0, 1fr))` }}
+                >
+                  <span />
+                  {weekdayLabels.map((day) => (
+                    <strong key={day}>{day}</strong>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         </div>
       ) : null}
@@ -718,44 +954,87 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
             <div className="adminAnalyticsChartHeader">
               <div>
                 <h2>{text.geographyMap}</h2>
+                <p>{text.geographyMapBody}</p>
               </div>
             </div>
-            <div ref={geographyRef} className="adminGoogleChart adminGoogleChartTall" />
+            {countryEntries.length ? (
+              <div ref={geographyRef} className="adminGoogleChart adminGoogleChartTall" />
+            ) : (
+              <p className="adminTaskEmptyState">{text.noCountryData}</p>
+            )}
           </section>
 
-          <section className="adminAnalyticsChartCard">
-            <div className="adminAnalyticsChartHeader">
-              <div>
-                <h2>{text.countryBreakdown}</h2>
+          <div className="adminAnalyticsChartStack">
+            <section className="adminAnalyticsChartCard">
+              <div className="adminAnalyticsChartHeader">
+                <div>
+                  <h2>{text.countryBreakdown}</h2>
+                  <p>{text.topCountriesHint}</p>
+                </div>
               </div>
-            </div>
-            <div className="adminAnalyticsCountryList">
-              {topCountries.length ? (
-                topCountries.map(([country, count]) => (
-                  <div key={country} className="adminAnalyticsCountryRow">
-                    <strong>
-                      {countryCodeToFlagImage(country) ? (
-                        <img
-                          className="adminAnalyticsCountryFlag"
-                          src={countryCodeToFlagImage(country) as string}
-                          alt=""
-                          aria-hidden="true"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        <FiGlobe className="adminAnalyticsCountryFlagFallback" aria-hidden="true" />
-                      )}
-                      {country}
-                    </strong>
-                    <span>{count}</span>
+              <div className="adminAnalyticsCountryList">
+                {topCountries.length ? (
+                  topCountries.map(([country, count]) => (
+                    <button
+                      key={country}
+                      type="button"
+                      className={`adminAnalyticsCountryRow ${selectedCountry === country ? 'is-active' : ''}`}
+                      onClick={() => setSelectedCountry(country)}
+                    >
+                      <strong>
+                        {countryCodeToFlagImage(country) ? (
+                          <img
+                            className="adminAnalyticsCountryFlag"
+                            src={countryCodeToFlagImage(country) as string}
+                            alt=""
+                            aria-hidden="true"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : (
+                          <FiGlobe className="adminAnalyticsCountryFlagFallback" aria-hidden="true" />
+                        )}
+                        {country}
+                      </strong>
+                      <span>{count}</span>
+                    </button>
+                  ))
+                ) : (
+                  <p className="adminTaskEmptyState">{text.noCountryData}</p>
+                )}
+              </div>
+            </section>
+
+            <section className="adminAnalyticsChartCard">
+              <div className="adminAnalyticsChartHeader">
+                <div>
+                  <h2>{text.recentCountryMessages}</h2>
+                  <p>{text.recentCountryMessagesBody}</p>
+                </div>
+              </div>
+
+              {!selectedCountry ? (
+                <p className="adminTaskEmptyState">{text.noCountrySelected}</p>
+              ) : selectedCountryMessages.length ? (
+                <div className="adminAnalyticsMessageFeed">
+                  <div className="adminAnalyticsMessageFeedHeader">
+                    <span>{text.messagesFrom}</span>
+                    <strong>{selectedCountry}</strong>
                   </div>
-                ))
+                  {selectedCountryMessages.map((message) => (
+                    <article key={message.id} className="adminAnalyticsMessageCard">
+                      <p>{message.text}</p>
+                      <small>
+                        {text.messageSentAt} {message.createdAt.toLocaleString()}
+                      </small>
+                    </article>
+                  ))}
+                </div>
               ) : (
-                <p className="adminTaskEmptyState">{text.noCountryData}</p>
+                <p className="adminTaskEmptyState">{text.recentCountryMessagesEmpty}</p>
               )}
-            </div>
-          </section>
+            </section>
+          </div>
         </div>
       ) : null}
     </div>

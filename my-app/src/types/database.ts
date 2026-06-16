@@ -175,6 +175,29 @@ export interface ChatAnalyticsEvent {
   createdAt: Date;
 }
 
+export interface AiChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  createdAt: Date;
+}
+
+export interface AiChatLog {
+  id: string;
+  businessId: string;
+  sessionId: string;
+  widgetKey?: string;
+  countryCode?: string;
+  pageTitle?: string;
+  pageUrl?: string;
+  visitorName?: string;
+  preview: string;
+  messageCount: number;
+  messages: AiChatMessage[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface SupportChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'support' | 'system';

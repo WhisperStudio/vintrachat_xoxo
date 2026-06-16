@@ -151,6 +151,61 @@ function createAnalyticsEvent(
   }
 }
 
+function sanitizeAiChatMessages(history: IncomingMessage[]) {
+  return history
+    .filter((entry) => entry.role === 'user' || entry.role === 'assistant')
+    .map((entry) => ({
+      id: entry.id || crypto.randomUUID(),
+      role: entry.role,
+      text: String(entry.text || '').trim(),
+      createdAt: entry.createdAt ? new Date(entry.createdAt) : new Date(),
+    }))
+    .filter((entry) => entry.text.length > 0)
+}
+
+async function persistAiOnlyChatLog(args: {
+  businessId: string
+  sessionId: string
+  widgetKey: string
+  countryCode: string
+  pageTitle?: string
+  pageUrl?: string
+  visitorName?: string
+  messageTimeline: IncomingMessage[]
+}) {
+  const aiChatLogRef = adminDb
+    .collection('businesses')
+    .doc(args.businessId)
+    .collection('aiChatLogs')
+    .doc(args.sessionId)
+  const aiChatLogSnap = await aiChatLogRef.get()
+  const sanitizedMessages = sanitizeAiChatMessages(args.messageTimeline)
+  const latestVisitorMessage = [...sanitizedMessages]
+    .reverse()
+    .find((entry) => entry.role === 'user')
+  const preview = latestVisitorMessage?.text || sanitizedMessages.at(-1)?.text || ''
+
+  await aiChatLogRef.set(
+    {
+      sessionId: args.sessionId,
+      businessId: args.businessId,
+      widgetKey: args.widgetKey,
+      countryCode: args.countryCode,
+      pageTitle: args.pageTitle || null,
+      pageUrl: args.pageUrl || null,
+      visitorName: args.visitorName || null,
+      preview,
+      messageCount: sanitizedMessages.length,
+      messages: sanitizedMessages,
+      createdAt: aiChatLogSnap.exists
+        ? aiChatLogSnap.data()?.createdAt || FieldValue.serverTimestamp()
+        : FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  )
+}
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -1129,6 +1184,17 @@ export async function POST(req: NextRequest) {
         },
         { merge: true }
       )
+    } else {
+      await persistAiOnlyChatLog({
+        businessId: business.id,
+        sessionId,
+        widgetKey,
+        countryCode,
+        pageTitle,
+        pageUrl,
+        visitorName,
+        messageTimeline,
+      })
     }
 
     await businessRef.update(analyticsUpdates)

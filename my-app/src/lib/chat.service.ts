@@ -5,8 +5,9 @@ import {
   doc,
   getDoc,
   getDocs,
-  orderBy,
   increment,
+  limit,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -14,6 +15,8 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type {
+  AiChatLog,
+  AiChatMessage,
   Business,
   BusinessFeedback,
   ChatAnalytics,
@@ -72,6 +75,33 @@ function mapSupportMessage(message: any): SupportChatMessage {
           .filter((attachment: SupportChatAttachment) => Boolean(attachment.url))
       : [],
     createdAt: toDate(message.createdAt),
+  }
+}
+
+function mapAiChatMessage(message: any): AiChatMessage {
+  return {
+    id: message.id || crypto.randomUUID(),
+    role: message.role === 'assistant' ? 'assistant' : 'user',
+    text: String(message.text || ''),
+    createdAt: toDate(message.createdAt),
+  }
+}
+
+function mapAiChatLog(entry: any, businessId: string): AiChatLog {
+  return {
+    id: String(entry.id || entry.sessionId || crypto.randomUUID()),
+    businessId,
+    sessionId: String(entry.sessionId || entry.id || ''),
+    widgetKey: entry.widgetKey || undefined,
+    countryCode: entry.countryCode || undefined,
+    pageTitle: entry.pageTitle || undefined,
+    pageUrl: entry.pageUrl || undefined,
+    visitorName: entry.visitorName || undefined,
+    preview: String(entry.preview || ''),
+    messageCount: Number(entry.messageCount || 0),
+    messages: Array.isArray(entry.messages) ? entry.messages.map(mapAiChatMessage) : [],
+    createdAt: toDate(entry.createdAt),
+    updatedAt: toDate(entry.updatedAt),
   }
 }
 
@@ -192,6 +222,28 @@ export async function getBusinessChatAnalytics(
     timeline: Array.isArray(analytics.timeline) ? analytics.timeline.map(mapAnalyticsEvent) : [],
     lastChatAt: analytics.lastChatAt ? toDate(analytics.lastChatAt) : undefined,
   }
+}
+
+export async function getRecentAiChatLogs(
+  businessId: string,
+  options?: { limitCount?: number; widgetKey?: string }
+): Promise<AiChatLog[]> {
+  const logsRef = collection(db, `businesses/${businessId}/aiChatLogs`)
+  const logsQuery = query(
+    logsRef,
+    orderBy('updatedAt', 'desc'),
+    limit(Math.max(4, options?.limitCount || 60))
+  )
+  const snap = await getDocs(logsQuery)
+  const logs = snap.docs.map((logDoc) =>
+    mapAiChatLog({ id: logDoc.id, ...logDoc.data() }, businessId)
+  )
+
+  if (!options?.widgetKey) {
+    return logs
+  }
+
+  return logs.filter((log) => log.widgetKey === options.widgetKey)
 }
 
 export async function acceptSupportChat(businessId: string, chatId: string) {
