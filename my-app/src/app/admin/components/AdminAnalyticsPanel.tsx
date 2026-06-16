@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import {
   FiActivity,
   FiClock,
@@ -26,7 +26,6 @@ declare global {
 
 type AnalyticsView = 'overview' | 'timeline' | 'geography'
 type AnalyticsRange = '24h' | '7d' | '30d' | 'all'
-type WeekdayName = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun'
 
 type RangeAnalytics = {
   totalSessions: number
@@ -45,13 +44,6 @@ type AnalyticsCard = {
   detail: string
   icon: ComponentType
   tone: AnalyticsCardTone
-}
-
-type HeatmapCell = {
-  dayIndex: number
-  hour: number
-  count: number
-  intensity: number
 }
 
 const emptyAnalytics: ChatAnalytics = {
@@ -223,50 +215,6 @@ function getHourLabel(hour: number) {
   return `${String(hour).padStart(2, '0')}:00`
 }
 
-function getWeekdayIndex(date: Date) {
-  return (date.getDay() + 6) % 7
-}
-
-function buildHeatmap(visitorEvents: ChatAnalyticsEvent[]) {
-  const counts = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => 0))
-
-  visitorEvents.forEach((event) => {
-    const createdAt = new Date(event.createdAt)
-    counts[getWeekdayIndex(createdAt)][createdAt.getHours()] += 1
-  })
-
-  const maxCount = counts.reduce(
-    (dayMax, day) => Math.max(dayMax, ...day),
-    0
-  )
-
-  const cells: HeatmapCell[] = []
-
-  for (let hour = 0; hour < 24; hour += 1) {
-    for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
-      const count = counts[dayIndex][hour]
-      cells.push({
-        dayIndex,
-        hour,
-        count,
-        intensity: maxCount > 0 ? count / maxCount : 0,
-      })
-    }
-  }
-
-  return { cells, maxCount }
-}
-
-function getHeatmapCellStyle(intensity: number): CSSProperties {
-  const alpha = intensity > 0 ? 0.16 + intensity * 0.84 : 0.06
-  const glow = intensity > 0 ? 0.12 + intensity * 0.22 : 0.04
-
-  return {
-    background: `linear-gradient(180deg, rgba(249, 115, 22, ${alpha * 0.88}) 0%, rgba(168, 85, 247, ${alpha}) 45%, rgba(14, 165, 233, ${alpha * 0.92}) 100%)`,
-    boxShadow: `inset 0 0 0 1px rgba(255, 255, 255, ${0.4 + intensity * 0.2}), 0 10px 20px rgba(124, 58, 237, ${glow})`,
-  }
-}
-
 export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { selectedWidgetKey?: string }) {
   const { dbUser } = useAuth()
   const { language } = useVintraLanguage()
@@ -281,6 +229,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
   const overviewRef = useRef<HTMLDivElement | null>(null)
   const timelineRef = useRef<HTMLDivElement | null>(null)
   const geographyRef = useRef<HTMLDivElement | null>(null)
+  const activityRef = useRef<HTMLDivElement | null>(null)
   const viewToggleRef = useRef<HTMLDivElement | null>(null)
   const viewButtonRefs = useRef<Partial<Record<AnalyticsView, HTMLButtonElement | null>>>({})
   const [viewIndicator, setViewIndicator] = useState<{ left: number; width: number } | null>(null)
@@ -292,7 +241,9 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
       if (!dbUser?.businessId) return
 
       const [analyticsData, aiLogs] = await Promise.all([
-        getBusinessChatAnalytics(dbUser.businessId),
+        getBusinessChatAnalytics(dbUser.businessId, {
+          widgetKey: selectedWidgetKey || undefined,
+        }),
         getRecentAiChatLogs(dbUser.businessId, {
           widgetKey: selectedWidgetKey || undefined,
           limitCount: 80,
@@ -508,8 +459,6 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
     [timelineEvents]
   )
 
-  const heatmap = useMemo(() => buildHeatmap(visitorEvents), [visitorEvents])
-
   const peakHours = useMemo(() => {
     const counts = Array.from({ length: 24 }, (_, hour) => ({ hour, count: 0 }))
 
@@ -520,6 +469,28 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
 
     return counts.sort((a, b) => b.count - a.count).slice(0, 6)
   }, [visitorEvents])
+
+  const weekdayLabels = useMemo(() => getWeekdayLabels(language), [language])
+
+  const weekdayActivity = useMemo(() => {
+    const counts = Array.from({ length: 7 }, (_, index) => ({
+      label: weekdayLabels[index],
+      count: 0,
+    }))
+
+    visitorEvents.forEach((event) => {
+      const createdAt = new Date(event.createdAt)
+      const dayIndex = (createdAt.getDay() + 6) % 7
+      counts[dayIndex].count += 1
+    })
+
+    return counts
+  }, [visitorEvents, weekdayLabels])
+
+  const weekdayActivityMax = useMemo(
+    () => weekdayActivity.reduce((maxValue, entry) => Math.max(maxValue, entry.count), 0),
+    [weekdayActivity]
+  )
 
   useEffect(() => {
     if (!chartReady || !window.google?.charts) return
@@ -588,6 +559,45 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
       })
     }
 
+    if (view === 'timeline' && activityRef.current) {
+      const activityChart = new google.visualization.CandlestickChart(activityRef.current)
+      const hasActivityData = weekdayActivityMax > 0
+      const activityData = google.visualization.arrayToDataTable(
+        [
+          weekdayActivity.map((entry) => [
+            entry.label,
+            0,
+            0,
+            hasActivityData ? entry.count : 1,
+            hasActivityData ? entry.count : 1,
+          ]),
+        ],
+        true
+      )
+
+      activityChart.draw(activityData, {
+        legend: 'none',
+        backgroundColor: 'transparent',
+        bar: { groupWidth: '100%' },
+        candlestick: {
+          fallingColor: { strokeWidth: 0, fill: '#e57373' },
+          risingColor: { strokeWidth: 0, fill: '#c62828' },
+        },
+        enableInteractivity: false,
+        tooltip: { trigger: 'none' },
+        chartArea: { left: 56, top: 18, width: '86%', height: '72%' },
+        hAxis: {
+          textStyle: { color: '#64748b', fontName: 'Inter' },
+        },
+        vAxis: {
+          minValue: 0,
+          viewWindow: { min: 0 },
+          textStyle: { color: '#64748b', fontName: 'Inter' },
+          gridlines: { color: 'rgba(239, 68, 68, 0.12)' },
+        },
+      })
+    }
+
     if (view === 'geography' && geographyRef.current && countryEntries.length > 0) {
       const geoData = google.visualization.arrayToDataTable([
         [text.chartLabels.country, text.chartLabels.sessions],
@@ -613,10 +623,10 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
     rangeAnalytics.supportRequests,
     text,
     timelineBuckets,
+    weekdayActivity,
+    weekdayActivityMax,
     view,
   ])
-
-  const weekdayLabels = useMemo(() => getWeekdayLabels(language), [language])
   const topCountries = countryEntries.slice(0, 8)
 
   useLayoutEffect(() => {
@@ -903,45 +913,11 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
               </div>
             </div>
 
-            {heatmap.maxCount === 0 ? (
+            {weekdayActivityMax === 0 ? (
               <p className="adminTaskEmptyState">{text.activityHeatmapEmpty}</p>
             ) : (
-              <div className="adminAnalyticsHeatmap">
-                <div
-                  className="adminAnalyticsHeatmapGrid"
-                  style={{ gridTemplateColumns: `64px repeat(${weekdayLabels.length}, minmax(0, 1fr))` }}
-                >
-                  {Array.from({ length: 24 }, (_, hour) => (
-                    <div key={`label-${hour}`} className="adminAnalyticsHeatmapTime">
-                      {hour % 3 === 0 ? getHourLabel(hour) : ''}
-                    </div>
-                  )).flatMap((timeLabel, rowIndex) => {
-                    const rowCells = heatmap.cells.filter((cell) => cell.hour === rowIndex)
-                    return [
-                      timeLabel,
-                      ...rowCells.map((cell) => (
-                        <div
-                          key={`${cell.dayIndex}-${cell.hour}`}
-                          className="adminAnalyticsHeatmapCell"
-                          title={`${weekdayLabels[cell.dayIndex]} ${getHourLabel(cell.hour)} - ${cell.count}`}
-                          style={getHeatmapCellStyle(cell.intensity)}
-                          data-active={cell.count > 0 ? 'true' : 'false'}
-                        >
-                          <span>{cell.count > 0 ? cell.count : ''}</span>
-                        </div>
-                      )),
-                    ]
-                  })}
-                </div>
-                <div
-                  className="adminAnalyticsHeatmapDays"
-                  style={{ gridTemplateColumns: `64px repeat(${weekdayLabels.length}, minmax(0, 1fr))` }}
-                >
-                  <span />
-                  {weekdayLabels.map((day) => (
-                    <strong key={day}>{day}</strong>
-                  ))}
-                </div>
+              <div className="adminAnalyticsCandlestick">
+                <div ref={activityRef} className="adminGoogleChart adminGoogleChartActivity" />
               </div>
             )}
           </section>

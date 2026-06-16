@@ -267,6 +267,60 @@ backdrop-filter: blur(7px);
   padding-top: 164px;
 }
 
+.adminContentTopbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+  padding: 18px 20px;
+  border-radius: 24px;
+  border: 1px solid rgba(99, 102, 241, 0.12);
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.08), transparent 24%),
+    radial-gradient(circle at top right, rgba(168, 85, 247, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(248, 250, 252, 0.94));
+  box-shadow:
+    0 18px 34px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.adminContentTopbarCopy {
+  display: grid;
+  gap: 8px;
+  max-width: 760px;
+}
+
+.adminContentTopbarCopy h1 {
+  margin: 0;
+  font-size: 1.7rem;
+  color: #0f172a;
+}
+
+.adminContentTopbarCopy p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.55;
+}
+
+.adminContentTopbarActions {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.adminContentWidgetPicker {
+  min-width: 300px;
+  display: grid;
+  gap: 8px;
+}
+
+.adminContentWidgetPicker > span {
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .adminPageTutorialMode .adminSidebar,
 .adminPageTutorialMode .adminContent {
   position: relative;
@@ -699,6 +753,20 @@ backdrop-filter: blur(7px);
     flex-direction: column;
   }
 
+  .adminContentTopbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .adminContentTopbarActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .adminContentWidgetPicker {
+    min-width: 0;
+  }
+
   .adminOverviewWidgetSwitch {
     flex-direction: column;
     align-items: stretch;
@@ -887,6 +955,16 @@ backdrop-filter: blur(7px);
     min-width: 0;
     margin-left: 0;
     background: #ffffff;
+  }
+
+  .adminContentTopbar {
+    margin-bottom: 14px;
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .adminContentTopbarCopy h1 {
+    font-size: 1.35rem;
   }
 }
 

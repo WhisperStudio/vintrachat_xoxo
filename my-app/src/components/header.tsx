@@ -6,6 +6,7 @@ import styled, { css, keyframes } from 'styled-components'
 import { useAuth } from '@/context/AuthContext'
 import { usePathname, useRouter } from 'next/navigation'
 import { getInvitationsForEmail } from '@/lib/invitation.service'
+import { useActiveWidgetSelection } from '@/lib/active-widget'
 import { headerI18n, languageLabels, languageOptions, useVintraLanguage } from '@/lib/i18n'
 import { isVintraAdminEmail } from '@/lib/vintra-admin'
 import type { BusinessInvitation } from '@/types/database'
@@ -144,15 +145,16 @@ const HeaderFrame = styled.div`
   position: relative;
   max-width: 1400px;
   margin: 0 auto;
+  padding: 0 8px;
 `
 
 const HeaderInner = styled.div`
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(340px, 1fr) auto auto;
   align-items: center;
-  gap: 20px;
+  gap: 40px;
   padding: 16px 18px;
 
   @media (max-width: 1100px) {
@@ -169,8 +171,9 @@ const HeaderInner = styled.div`
 const LeftSide = styled.div`
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 30px;
   min-width: 0;
+  justify-content: flex-start;
 `
 
 const BrandIcon = styled.img`
@@ -233,6 +236,7 @@ const CenterZone = styled.div`
   display: flex;
   justify-content: center;
   min-width: 0;
+  justify-self: center;
 
   @media (max-width: 1100px) {
     display: none;
@@ -370,6 +374,7 @@ const RightSide = styled.div`
   align-items: center;
   gap: 12px;
   justify-self: end;
+  margin-left: 12px;
 
   @media (max-width: 1100px) {
     display: none;
@@ -655,8 +660,75 @@ const LanguageButton = styled.button<{ $active?: boolean }>`
   }
 `
 
+const WidgetScopeShell = styled.div`
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--vintra-header-surface-soft);
+  border: 1px solid var(--vintra-header-border-soft);
+  box-shadow: var(--vintra-header-shadow-soft);
+  min-width: 210px;
+
+  @media (max-width: 1200px) {
+    min-width: 190px;
+    padding: 9px 10px;
+  }
+`
+
+const WidgetScopeIcon = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 11px;
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+  flex: 0 0 auto;
+`
+
+const WidgetScopeField = styled.label`
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 4px;
+`
+
+const WidgetScopeLabel = styled.span`
+  color: var(--vintra-header-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+`
+
+const WidgetScopeSelect = styled.select`
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--vintra-header-text);
+  font-size: 0.9rem;
+  font-weight: 800;
+  outline: none;
+  padding-right: 18px;
+  cursor: pointer;
+
+  option {
+    color: #0f172a;
+  }
+`
+
+const MobileWidgetScope = styled.div`
+  display: grid;
+  gap: 8px;
+`
+
 export default function Header() {
-  const { firebaseUser, dbUser, logout } = useAuth()
+  const { firebaseUser, dbUser, business, logout } = useAuth()
   const { language, setLanguage } = useVintraLanguage()
   const text = headerI18n[language]
   const router = useRouter()
@@ -671,6 +743,13 @@ export default function Header() {
   const desktopNavRef = useRef<HTMLElement | null>(null)
   const navButtonRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
   const [navIndicator, setNavIndicator] = useState<{ left: number; width: number; opacity: number } | null>(null)
+  const widgetList = business?.chatWidgets || []
+  const { selectedWidgetKey, setSelectedWidgetKey } = useActiveWidgetSelection(
+    dbUser?.businessId,
+    widgetList,
+    business?.activeChatWidgetKey || business?.chatWidgetKey || ''
+  )
+  const showWidgetScope = Boolean(firebaseUser && dbUser?.businessId && widgetList.length > 0)
 
   const showVintraAdmin = isVintraAdminEmail(firebaseUser?.email)
   const showInvitationCenter = !!firebaseUser && !dbUser && !showVintraAdmin
@@ -861,14 +940,41 @@ export default function Header() {
     <StyledHeader ref={headerRef} $scrolled={isScrolled} $mobileHidden={isMobileHidden} $tone={headerTone}>
       <HeaderFrame>
         <HeaderInner>
-          <LeftSide aria-hidden={isAdminRoute ? 'true' : undefined} style={isAdminRoute ? { visibility: 'hidden' } : undefined}>
-            <Brand href="/landings/main" aria-label={text.brandAria} tabIndex={isAdminRoute ? -1 : undefined}>
+          <LeftSide>
+            <Brand
+              href="/landings/main"
+              aria-label={text.brandAria}
+              tabIndex={isAdminRoute ? -1 : undefined}
+              style={isAdminRoute ? { visibility: 'hidden', pointerEvents: 'none' } : undefined}
+            >
               <BrandIcon src="/image/logo.png" alt="" aria-hidden="true" />
               <BrandText>
                 <BrandTitle>VINTRA</BrandTitle>
                 <BrandTag>{text.brandTag}</BrandTag>
               </BrandText>
             </Brand>
+
+            {showWidgetScope ? (
+              <WidgetScopeShell>
+                <WidgetScopeIcon>
+                  <FiMessageSquare />
+                </WidgetScopeIcon>
+                <WidgetScopeField>
+                  <WidgetScopeLabel>Widget</WidgetScopeLabel>
+                  <WidgetScopeSelect
+                    aria-label="Select active chat widget"
+                    value={selectedWidgetKey}
+                    onChange={(event) => setSelectedWidgetKey(event.target.value)}
+                  >
+                    {widgetList.map((widget) => (
+                      <option key={widget.widgetKey} value={widget.widgetKey}>
+                        {widget.name}
+                      </option>
+                    ))}
+                  </WidgetScopeSelect>
+                </WidgetScopeField>
+              </WidgetScopeShell>
+            ) : null}
           </LeftSide>
 
           <CenterZone>
@@ -883,18 +989,19 @@ export default function Header() {
                 />
               ) : null}
               {navItems.map((item) => (
-                <NavLink
-                  key={item.href}
-                  href={item.href}
-                  ref={(node) => {
-                    navButtonRefs.current[item.href] = node
-                  }}
-                  $active={isActivePath(item.href)}
-                >
-                  {item.icon}
-                  <span>{item.label}</span>
-                  {item.badge ? <NavBadge>{item.badge}</NavBadge> : null}
-                </NavLink>
+                <React.Fragment key={item.href}>
+                  <NavLink
+                    href={item.href}
+                    ref={(node) => {
+                      navButtonRefs.current[item.href] = node
+                    }}
+                    $active={isActivePath(item.href)}
+                  >
+                    {item.icon}
+                    <span>{item.label}</span>
+                    {item.badge ? <NavBadge>{item.badge}</NavBadge> : null}
+                  </NavLink>
+                </React.Fragment>
               ))}
             </DesktopNav>
           </CenterZone>
@@ -961,6 +1068,30 @@ export default function Header() {
           </MobileNav>
 
           <MobileActionStack>
+            {showWidgetScope ? (
+              <MobileWidgetScope>
+                <WidgetScopeShell>
+                  <WidgetScopeIcon>
+                    <FiMessageSquare />
+                  </WidgetScopeIcon>
+                  <WidgetScopeField>
+                    <WidgetScopeLabel>Widget</WidgetScopeLabel>
+                    <WidgetScopeSelect
+                      aria-label="Select active chat widget"
+                      value={selectedWidgetKey}
+                      onChange={(event) => setSelectedWidgetKey(event.target.value)}
+                    >
+                      {widgetList.map((widget) => (
+                        <option key={widget.widgetKey} value={widget.widgetKey}>
+                          {widget.name}
+                        </option>
+                      ))}
+                    </WidgetScopeSelect>
+                  </WidgetScopeField>
+                </WidgetScopeShell>
+              </MobileWidgetScope>
+            ) : null}
+
             <GlobeSwitcher />
 
             {!firebaseUser ? (

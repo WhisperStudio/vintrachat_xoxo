@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/context/AuthContext'
 import { db } from '@/lib/firebase'
+import { useActiveWidgetSelection } from '@/lib/active-widget'
 import { useRouter } from 'next/navigation'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore'
@@ -60,7 +61,6 @@ export default function AdminPage() {
   const [tutorialActive, setTutorialActive] = useState(false)
   const [tutorialStepIndex, setTutorialStepIndex] = useState(0)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [selectedWidgetKey, setSelectedWidgetKey] = useState('')
   const [tutorialSpotlight, setTutorialSpotlight] = useState<{
     top: number
     left: number
@@ -105,12 +105,23 @@ export default function AdminPage() {
   const visibleFeedbackItems = feedbackItems.filter((item) => visibleTabs.includes(item.tab))
   const visibleAdminItems = adminItems.filter((item) => visibleTabs.includes(item.tab))
   const widgetList = business?.chatWidgets || []
+  const { selectedWidgetKey, setSelectedWidgetKey } = useActiveWidgetSelection(
+    dbUser?.businessId,
+    widgetList,
+    business?.activeChatWidgetKey || ''
+  )
   const selectedWidget =
     widgetList.find((widget) => widget.widgetKey === selectedWidgetKey) ||
     widgetList.find((widget) => widget.widgetKey === business?.activeChatWidgetKey) ||
     widgetList[0] ||
     null
   const resolvedWidgetKey = selectedWidget?.widgetKey || ''
+  const activeTabTitle =
+    activeTab === 'overview'
+      ? text.overview.title
+      : [...visibleSupportItems, ...visibleFeedbackItems, ...visibleAdminItems].find(
+          (item) => item.tab === activeTab
+        )?.label || text.sidebar.overview
   const showTutorial = useMemo(() => {
     if (!dbUser?.businessId || tutorialDismissed) return false
 
@@ -235,22 +246,6 @@ export default function AdminPage() {
       setSidebarCollapsed(true)
     }
   }
-
-  useEffect(() => {
-    if (!widgetList.length) {
-      setSelectedWidgetKey('')
-      return
-    }
-
-    const isValid = widgetList.some((widget) => widget.widgetKey === selectedWidgetKey)
-    if (!selectedWidgetKey || !isValid) {
-      const fallbackKey =
-        widgetList.find((widget) => widget.widgetKey === business?.activeChatWidgetKey)?.widgetKey ||
-        widgetList[0]?.widgetKey ||
-        ''
-      setSelectedWidgetKey(fallbackKey)
-    }
-  }, [business?.activeChatWidgetKey, selectedWidgetKey, widgetList])
 
   useEffect(() => {
     if (!loading && !isAuthenticated) router.push('/auth/login')
@@ -467,31 +462,16 @@ export default function AdminPage() {
         </div>
 
         <section className="adminContent">
-          {activeTab === 'overview' && (
-            <div className="infoCard">
-              <div className="adminOverviewHero">
-                <div>
-                  <h1>{text.overview.title}</h1>
-                  <p>{text.overview.body}</p>
-                </div>
-                <button
-                  type="button"
-                  ref={tutorialOrbRef}
-                  className="adminTutorialOrb"
-                  onClick={openTutorial}
-                  aria-label={text.overview.tutorialAria}
-                  title={text.overview.tutorialAria}
-                >
-                  <FiPlay />
-                  <span>{text.overview.tutorial}</span>
-                </button>
-              </div>
-              <section className="adminOverviewWidgetSwitch">
-                <div className="adminOverviewWidgetSwitchCopy">
-                  <span className="adminSidebarEyebrow">{text.overview.widgetScope}</span>
-                  <h2>{text.overview.widgetTitle}</h2>
-                  <p>{text.overview.widgetBody}</p>
-                </div>
+          <section className="adminContentTopbar">
+            <div className="adminContentTopbarCopy">
+              <span className="adminSidebarEyebrow">{text.overview.widgetScope}</span>
+              <h1>{activeTabTitle}</h1>
+              <p>{text.overview.widgetBody}</p>
+            </div>
+
+            <div className="adminContentTopbarActions">
+              <div className="adminContentWidgetPicker">
+                <span>{text.overview.selectWidget}</span>
                 <AdminDropdown
                   value={resolvedWidgetKey}
                   placeholder={text.overview.selectWidget}
@@ -503,7 +483,32 @@ export default function AdminPage() {
                   onChange={(nextValue) => setSelectedWidgetKey(nextValue)}
                   disabled={!widgetList.length}
                 />
-              </section>
+              </div>
+
+              {activeTab === 'overview' ? (
+                <button
+                  type="button"
+                  ref={tutorialOrbRef}
+                  className="adminTutorialOrb"
+                  onClick={openTutorial}
+                  aria-label={text.overview.tutorialAria}
+                  title={text.overview.tutorialAria}
+                >
+                  <FiPlay />
+                  <span>{text.overview.tutorial}</span>
+                </button>
+              ) : null}
+            </div>
+          </section>
+
+          {activeTab === 'overview' && (
+            <div className="infoCard">
+              <div className="adminOverviewHero">
+                <div>
+                  <h1>{text.overview.title}</h1>
+                  <p>{text.overview.body}</p>
+                </div>
+              </div>
               {showTutorial ? (
                 <section className="adminTutorialCard">
                   <div className="adminTutorialHeader">

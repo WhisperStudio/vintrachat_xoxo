@@ -116,6 +116,73 @@ function mapAnalyticsEvent(event: any): ChatAnalyticsEvent {
   }
 }
 
+function buildScopedChatAnalytics(events: ChatAnalyticsEvent[]): ChatAnalytics {
+  const sessionStarts = new Set<string>()
+  const supportRequestedSessions = new Set<string>()
+  const supportChatSessions = new Set<string>()
+  const sessionCountries = new Map<string, string>()
+  const dailyConversationCounts: Record<string, number> = {}
+  let totalMessages = 0
+  let lastChatAt: Date | undefined
+
+  events.forEach((event) => {
+    const createdAt = toDate(event.createdAt)
+    const dayKey = createdAt.toISOString().slice(0, 10)
+
+    if (!lastChatAt || createdAt > lastChatAt) {
+      lastChatAt = createdAt
+    }
+
+    if (event.countryCode && !sessionCountries.has(event.sessionId)) {
+      sessionCountries.set(event.sessionId, event.countryCode)
+    }
+
+    switch (event.kind) {
+      case 'session-start':
+        sessionStarts.add(event.sessionId)
+        dailyConversationCounts[dayKey] = (dailyConversationCounts[dayKey] || 0) + 1
+        break
+      case 'visitor-message':
+      case 'assistant-reply':
+      case 'support-message':
+        totalMessages += 1
+        break
+      case 'support-request':
+        totalMessages += 1
+        supportRequestedSessions.add(event.sessionId)
+        supportChatSessions.add(event.sessionId)
+        break
+      case 'support-open':
+      case 'support-returned':
+        supportChatSessions.add(event.sessionId)
+        break
+      default:
+        break
+    }
+  })
+
+  const countryCounts = Array.from(sessionCountries.values()).reduce<Record<string, number>>(
+    (accumulator, countryCode) => {
+      accumulator[countryCode] = (accumulator[countryCode] || 0) + 1
+      return accumulator
+    },
+    {}
+  )
+
+  return {
+    totalSessions: sessionStarts.size,
+    totalMessages,
+    aiOnlySessions: Math.max(sessionStarts.size - supportRequestedSessions.size, 0),
+    supportRequests: supportRequestedSessions.size,
+    savedSupportChats: supportChatSessions.size,
+    dailyConversationCounts,
+    countryCounts,
+    modelUsage: {},
+    timeline: events,
+    lastChatAt,
+  }
+}
+
 function mapFeedbackEntry(entry: any): BusinessFeedback {
   const rawRating = Number(entry.rating || 0)
   return {
@@ -200,7 +267,8 @@ export async function getSupportChats(businessId: string): Promise<SupportChatSe
 }
 
 export async function getBusinessChatAnalytics(
-  businessId: string
+  businessId: string,
+  options?: { widgetKey?: string }
 ): Promise<ChatAnalytics | null> {
   const businessRef = doc(db, 'businesses', businessId)
   const snap = await getDoc(businessRef)
@@ -216,12 +284,22 @@ export async function getBusinessChatAnalytics(
     return null
   }
 
-  return {
+  const normalizedAnalytics = {
     ...analytics,
     countryCounts: analytics.countryCounts || {},
     timeline: Array.isArray(analytics.timeline) ? analytics.timeline.map(mapAnalyticsEvent) : [],
     lastChatAt: analytics.lastChatAt ? toDate(analytics.lastChatAt) : undefined,
   }
+
+  if (!options?.widgetKey) {
+    return normalizedAnalytics
+  }
+
+  const scopedTimeline = normalizedAnalytics.timeline.filter(
+    (event) => event.widgetKey === options.widgetKey
+  )
+
+  return buildScopedChatAnalytics(scopedTimeline)
 }
 
 export async function getRecentAiChatLogs(

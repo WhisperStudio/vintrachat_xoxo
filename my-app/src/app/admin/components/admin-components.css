@@ -3836,47 +3836,16 @@
     linear-gradient(90deg, rgba(249, 115, 22, 0.95), rgba(168, 85, 247, 0.95), rgba(14, 165, 233, 0.95));
 }
 
-.adminAnalyticsHeatmap {
-  display: grid;
-  gap: 12px;
+.adminAnalyticsCandlestick {
+  padding: 10px 8px 2px;
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(254, 226, 226, 0.34), rgba(255, 255, 255, 0.18)),
+    linear-gradient(180deg, rgba(255, 245, 245, 0.98), rgba(254, 242, 242, 0.84));
 }
 
-.adminAnalyticsHeatmapGrid,
-.adminAnalyticsHeatmapDays {
-  display: grid;
-  gap: 8px;
-}
-
-.adminAnalyticsHeatmapTime {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-right: 8px;
-  color: #64748b;
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-.adminAnalyticsHeatmapCell {
-  min-height: 22px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  color: rgba(255, 255, 255, 0.92);
-  font-size: 0.72rem;
-  font-weight: 700;
-  background: rgba(226, 232, 240, 0.5);
-}
-
-.adminAnalyticsHeatmapCell[data-active='false'] {
-  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.88);
-  color: transparent;
-}
-
-.adminAnalyticsHeatmapDays strong {
-  text-align: center;
-  color: #475569;
-  font-size: 0.82rem;
+.adminGoogleChartActivity {
+  min-height: 320px;
 }
 
 .adminUsersPanel {
@@ -4281,11 +4250,6 @@
     grid-template-columns: 1fr;
   }
 
-  .adminAnalyticsHeatmapGrid,
-  .adminAnalyticsHeatmapDays {
-    gap: 6px;
-  }
-
   .adminUsersInviteBar,
   .adminUsersCardInlineMeta,
   .adminUsersGrid {
@@ -4304,16 +4268,7 @@
     white-space: normal;
   }
 
-  .adminAnalyticsHeatmapGrid {
-    grid-template-columns: 48px repeat(7, minmax(0, 1fr)) !important;
-  }
-
-  .adminAnalyticsHeatmapDays {
-    grid-template-columns: 48px repeat(7, minmax(0, 1fr)) !important;
-  }
-
-  .adminAnalyticsHeatmapCell {
-    min-height: 18px;
-    font-size: 0.65rem;
+  .adminGoogleChartActivity {
+    min-height: 260px;
   }
 }
