@@ -15,6 +15,7 @@ import { useAuth } from '@/context/AuthContext'
 import { getBusinessChatAnalytics, getRecentAiChatLogs } from '@/lib/chat.service'
 import { adminAnalyticsI18n, useVintraLanguage } from '@/lib/i18n'
 import type { AiChatLog, ChatAnalytics, ChatAnalyticsEvent } from '@/types/database'
+import AdminCandlestickChart, { type CandlestickPoint } from './AdminCandlestickChart'
 import AdminDropdown from './AdminDropdown'
 import './admin-components.css'
 
@@ -24,7 +25,7 @@ declare global {
   }
 }
 
-type AnalyticsView = 'overview' | 'timeline' | 'geography'
+type AnalyticsView = 'overview' | 'timeline' | 'weekly' | 'geography'
 type AnalyticsRange = '24h' | '7d' | '30d' | 'all'
 
 type RangeAnalytics = {
@@ -229,7 +230,6 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
   const overviewRef = useRef<HTMLDivElement | null>(null)
   const timelineRef = useRef<HTMLDivElement | null>(null)
   const geographyRef = useRef<HTMLDivElement | null>(null)
-  const activityRef = useRef<HTMLDivElement | null>(null)
   const viewToggleRef = useRef<HTMLDivElement | null>(null)
   const viewButtonRefs = useRef<Partial<Record<AnalyticsView, HTMLButtonElement | null>>>({})
   const [viewIndicator, setViewIndicator] = useState<{ left: number; width: number } | null>(null)
@@ -459,8 +459,11 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
     [timelineEvents]
   )
 
-  const peakHours = useMemo(() => {
-    const counts = Array.from({ length: 24 }, (_, hour) => ({ hour, count: 0 }))
+  const timelinePeakHours = useMemo(() => {
+    const counts = Array.from({ length: 24 }, (_, hour) => ({
+      hour,
+      count: 0,
+    }))
 
     visitorEvents.forEach((event) => {
       const createdAt = new Date(event.createdAt)
@@ -470,27 +473,77 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
     return counts.sort((a, b) => b.count - a.count).slice(0, 6)
   }, [visitorEvents])
 
-  const weekdayLabels = useMemo(() => getWeekdayLabels(language), [language])
+  const twelveMonthsActivityEvents = useMemo(() => {
+    const start = new Date()
+    start.setMonth(start.getMonth() - 12)
 
-  const weekdayActivity = useMemo(() => {
-    const counts = Array.from({ length: 7 }, (_, index) => ({
-      label: weekdayLabels[index],
-      count: 0,
-    }))
+    return [...(analytics.timeline || [])]
+      .filter((event) => {
+        if (!selectedWidgetKey) return true
+        return event.widgetKey ? event.widgetKey === selectedWidgetKey : false
+      })
+      .filter((event) => new Date(event.createdAt) >= start)
+      .filter((event) =>
+        event.kind === 'visitor-message' ||
+        event.kind === 'assistant-reply' ||
+        event.kind === 'support-message' ||
+        event.kind === 'support-request'
+      )
+  }, [analytics.timeline, selectedWidgetKey])
 
-    visitorEvents.forEach((event) => {
+  const weekdayHourActivity = useMemo(() => {
+    const start = new Date()
+    start.setMonth(start.getMonth() - 12)
+    start.setHours(0, 0, 0, 0)
+
+    const end = new Date()
+    end.setHours(23, 59, 59, 999)
+
+    const weekdayLabels = getWeekdayLabels(language)
+    const weekdayOccurrences = Array.from({ length: 7 }, () => 0)
+
+    for (const day = new Date(start); day <= end; day.setDate(day.getDate() + 1)) {
+      const weekdayIndex = (day.getDay() + 6) % 7
+      weekdayOccurrences[weekdayIndex] += 1
+    }
+
+    const totals = Array.from({ length: 7 }, (_, dayIndex) =>
+      Array.from({ length: 24 }, (_, hour) => ({
+        dayIndex,
+        dayLabel: weekdayLabels[dayIndex],
+        hour,
+        hourLabel: getHourLabel(hour),
+        total: 0,
+        value: 0,
+      }))
+    )
+
+    twelveMonthsActivityEvents.forEach((event) => {
       const createdAt = new Date(event.createdAt)
       const dayIndex = (createdAt.getDay() + 6) % 7
-      counts[dayIndex].count += 1
+      const hour = createdAt.getHours()
+      totals[dayIndex][hour].total += 1
     })
 
-    return counts
-  }, [visitorEvents, weekdayLabels])
+    return totals.flatMap((weekdayEntries, dayIndex) =>
+      weekdayEntries.map((entry) => ({
+        dayIndex: entry.dayIndex,
+        dayLabel: entry.dayLabel,
+        hour: entry.hour,
+        hourLabel: entry.hourLabel,
+        value: Number((entry.total / Math.max(1, weekdayOccurrences[dayIndex])).toFixed(2)),
+      }))
+    )
+  }, [language, twelveMonthsActivityEvents])
 
-  const weekdayActivityMax = useMemo(
-    () => weekdayActivity.reduce((maxValue, entry) => Math.max(maxValue, entry.count), 0),
-    [weekdayActivity]
+  const weekdayHourActivityMax = useMemo(
+    () => weekdayHourActivity.reduce((maxValue, entry) => Math.max(maxValue, entry.value), 0),
+    [weekdayHourActivity]
   )
+
+  const weeklyCandlestickData = useMemo<CandlestickPoint[]>(() => {
+    return weekdayHourActivity
+  }, [weekdayHourActivity])
 
   useEffect(() => {
     if (!chartReady || !window.google?.charts) return
@@ -559,45 +612,6 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
       })
     }
 
-    if (view === 'timeline' && activityRef.current) {
-      const activityChart = new google.visualization.CandlestickChart(activityRef.current)
-      const hasActivityData = weekdayActivityMax > 0
-      const activityData = google.visualization.arrayToDataTable(
-        [
-          weekdayActivity.map((entry) => [
-            entry.label,
-            0,
-            0,
-            hasActivityData ? entry.count : 1,
-            hasActivityData ? entry.count : 1,
-          ]),
-        ],
-        true
-      )
-
-      activityChart.draw(activityData, {
-        legend: 'none',
-        backgroundColor: 'transparent',
-        bar: { groupWidth: '100%' },
-        candlestick: {
-          fallingColor: { strokeWidth: 0, fill: '#e57373' },
-          risingColor: { strokeWidth: 0, fill: '#c62828' },
-        },
-        enableInteractivity: false,
-        tooltip: { trigger: 'none' },
-        chartArea: { left: 56, top: 18, width: '86%', height: '72%' },
-        hAxis: {
-          textStyle: { color: '#64748b', fontName: 'Inter' },
-        },
-        vAxis: {
-          minValue: 0,
-          viewWindow: { min: 0 },
-          textStyle: { color: '#64748b', fontName: 'Inter' },
-          gridlines: { color: 'rgba(239, 68, 68, 0.12)' },
-        },
-      })
-    }
-
     if (view === 'geography' && geographyRef.current && countryEntries.length > 0) {
       const geoData = google.visualization.arrayToDataTable([
         [text.chartLabels.country, text.chartLabels.sessions],
@@ -623,8 +637,6 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
     rangeAnalytics.supportRequests,
     text,
     timelineBuckets,
-    weekdayActivity,
-    weekdayActivityMax,
     view,
   ])
   const topCountries = countryEntries.slice(0, 8)
@@ -693,9 +705,15 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
               }}
             />
           ) : null}
-          {(['overview', 'timeline', 'geography'] as AnalyticsView[]).map((nextView) => {
+          {(['overview', 'timeline', 'weekly', 'geography'] as AnalyticsView[]).map((nextView) => {
             const icon =
-              nextView === 'overview' ? <FiPieChart /> : nextView === 'timeline' ? <FiTrendingUp /> : <FiGlobe />
+              nextView === 'overview'
+                ? <FiPieChart />
+                : nextView === 'timeline'
+                  ? <FiTrendingUp />
+                  : nextView === 'weekly'
+                    ? <FiActivity />
+                    : <FiGlobe />
 
             return (
               <button
@@ -860,8 +878,8 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
                 </div>
               </div>
               <div className="adminAnalyticsBarList">
-                {peakHours.some((hour) => hour.count > 0) ? (
-                  peakHours.map((entry) => (
+                {timelinePeakHours.some((hour) => hour.count > 0) ? (
+                  timelinePeakHours.map((entry) => (
                     <div key={entry.hour} className="adminAnalyticsBarItem">
                       <div className="adminAnalyticsBarItemTop">
                         <strong>{getHourLabel(entry.hour)}</strong>
@@ -871,7 +889,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
                         <span
                           className="adminAnalyticsBarFill"
                           style={{
-                            width: `${peakHours[0]?.count ? (entry.count / peakHours[0].count) * 100 : 0}%`,
+                            width: `${timelinePeakHours[0]?.count ? (entry.count / timelinePeakHours[0].count) * 100 : 0}%`,
                           }}
                         />
                       </div>
@@ -905,19 +923,24 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
             </section>
           </div>
 
-          <section className="adminAnalyticsChartCard adminAnalyticsChartCardSpanFull">
+        </div>
+      ) : null}
+
+      {view === 'weekly' ? (
+        <div className="adminAnalyticsCharts">
+          <section className="adminAnalyticsChartCard adminAnalyticsChartCardWide">
             <div className="adminAnalyticsChartHeader">
               <div>
-                <h2>{text.activityHeatmap}</h2>
-                <p>{text.activityHeatmapBody}</p>
+                <h2>{text.weeklyActivity}</h2>
+                <p>{text.weeklyActivityBody}</p>
               </div>
             </div>
 
-            {weekdayActivityMax === 0 ? (
+            {weekdayHourActivityMax === 0 ? (
               <p className="adminTaskEmptyState">{text.activityHeatmapEmpty}</p>
             ) : (
               <div className="adminAnalyticsCandlestick">
-                <div ref={activityRef} className="adminGoogleChart adminGoogleChartActivity" />
+                <AdminCandlestickChart data={weeklyCandlestickData} />
               </div>
             )}
           </section>

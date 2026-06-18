@@ -4148,6 +4148,434 @@
   font-weight: 600;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Admin users org chart                                                      */
+/* -------------------------------------------------------------------------- */
+
+.adminUsersOrgPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.adminUsersMiniEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #2563eb;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.adminUsersInviteRoadmap {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(420px, 1.4fr);
+  gap: 18px;
+  align-items: center;
+  padding: 18px;
+  border-radius: 26px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background:
+    radial-gradient(circle at top right, rgba(37, 99, 235, 0.08), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.05);
+}
+
+.adminUsersInviteRoadmap h2 {
+  margin: 0.45rem 0 0;
+  color: #0f172a;
+  font-size: 1.25rem;
+}
+
+.adminUsersInviteRoadmap p {
+  margin: 0.45rem 0 0;
+  color: #64748b;
+  line-height: 1.55;
+}
+
+.adminUsersInviteBarOrg {
+  margin: 0;
+  border: none;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: none;
+}
+
+.adminUsersOrgLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(340px, 0.75fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.adminUsersOrgChart,
+.adminUsersInspector {
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.07), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+  box-shadow:
+    0 18px 40px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.adminUsersOrgChart {
+  padding: 20px;
+  overflow: hidden;
+}
+
+.adminUsersOrgHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 22px;
+}
+
+.adminUsersOrgHeader h2 {
+  margin: 0.35rem 0 0;
+  color: #0f172a;
+  font-size: 1.55rem;
+}
+
+.adminUsersOrgCount {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  font-size: 0.82rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.adminUsersOrgTree {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  position: relative;
+}
+
+.adminUsersOrgTree::before {
+  content: '';
+  position: absolute;
+  top: 38px;
+  bottom: 38px;
+  left: 21px;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #bfdbfe, #dbeafe);
+}
+
+.adminUsersOrgLevel {
+  position: relative;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.adminUsersOrgLevelLabel {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.adminUsersOrgLevelLabel > span {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #2563eb, #60a5fa);
+  color: #fff;
+  font-weight: 900;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.24);
+}
+
+.adminUsersOrgLevelLabel strong {
+  display: block;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.adminUsersOrgLevelLabel small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.adminUsersOrgPeople {
+  display: grid;
+  gap: 10px;
+}
+
+.adminUsersOrgPerson {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.04);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.adminUsersOrgPerson:hover {
+  transform: translateY(-1px);
+  border-color: rgba(37, 99, 235, 0.24);
+  box-shadow: 0 16px 28px rgba(37, 99, 235, 0.08);
+}
+
+.adminUsersOrgPerson.is-active {
+  border-color: rgba(37, 99, 235, 0.38);
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 25%),
+    linear-gradient(180deg, rgba(239, 246, 255, 0.98), rgba(248, 250, 252, 0.98));
+  box-shadow:
+    0 18px 34px rgba(37, 99, 235, 0.12),
+    inset 0 0 0 1px rgba(37, 99, 235, 0.08);
+}
+
+.adminUsersOrgAvatar {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #0f172a, #334155);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.adminUsersOrgPerson-admin .adminUsersOrgAvatar {
+  background: linear-gradient(135deg, #1d4ed8, #60a5fa);
+}
+
+.adminUsersOrgPerson-manager .adminUsersOrgAvatar {
+  background: linear-gradient(135deg, #7c3aed, #a78bfa);
+}
+
+.adminUsersOrgPerson-support .adminUsersOrgAvatar {
+  background: linear-gradient(135deg, #059669, #34d399);
+}
+
+.adminUsersOrgPerson-viewer .adminUsersOrgAvatar {
+  background: linear-gradient(135deg, #475569, #94a3b8);
+}
+
+.adminUsersOrgPersonCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.adminUsersOrgPersonCopy strong {
+  color: #0f172a;
+  font-size: 0.98rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminUsersOrgPersonCopy small {
+  color: #64748b;
+  font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminUsersOrgEmpty {
+  padding: 16px;
+  border: 1px dashed rgba(148, 163, 184, 0.3);
+  border-radius: 18px;
+  background: rgba(248, 250, 252, 0.72);
+  color: #94a3b8;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.adminUsersInspector {
+  position: sticky;
+  top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px;
+}
+
+.adminUsersInspectorTop {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.adminUsersInspectorAvatar {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #0f172a, #334155);
+  color: #fff;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.18);
+}
+
+.adminUsersInspectorTop h2 {
+  margin: 0.35rem 0 0;
+  color: #0f172a;
+  font-size: 1.3rem;
+  overflow-wrap: anywhere;
+}
+
+.adminUsersInspectorTop p {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+  overflow-wrap: anywhere;
+}
+
+.adminUsersInspectorRows {
+  display: grid;
+  gap: 10px;
+}
+
+.adminUsersInspectorRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.adminUsersInspectorRow span {
+  color: #64748b;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.adminUsersInspectorRow strong {
+  color: #0f172a;
+  font-size: 0.88rem;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.adminUsersInspectorSelect {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.adminUsersInspectorSelect > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #475569;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.adminUsersPendingBox {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.adminUsersPendingHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.adminUsersPendingHeader h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.adminUsersPendingHeader span {
+  min-width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.adminUsersPendingList {
+  display: grid;
+  gap: 10px;
+  max-height: 360px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.adminUsersPendingCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.adminUsersPendingCard strong,
+.adminUsersPendingCard span,
+.adminUsersPendingCard small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.adminUsersPendingCard strong {
+  color: #0f172a;
+  font-size: 0.92rem;
+}
+
+.adminUsersPendingCard span {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 0.84rem;
+}
+
+.adminUsersPendingCard small {
+  margin-top: 4px;
+  color: #94a3b8;
+  font-size: 0.78rem;
+}
+
 @media (max-width: 900px) {
   .adminStatsGrid,
   .adminChatsLayout {
@@ -4156,6 +4584,11 @@
 
   .adminUsersSummaryStrip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .adminUsersInviteRoadmap,
+  .adminUsersOrgLayout {
+    grid-template-columns: 1fr;
   }
 
   .adminChatTranscript {
@@ -4255,6 +4688,10 @@
   .adminUsersGrid {
     grid-template-columns: 1fr;
   }
+
+  .adminUsersInspector {
+    position: static;
+  }
 }
 
 @media (max-width: 720px) {
@@ -4271,4 +4708,141 @@
   .adminGoogleChartActivity {
     min-height: 260px;
   }
+
+  .adminUsersOrgLevel {
+    grid-template-columns: 1fr;
+  }
+
+  .adminUsersOrgTree::before {
+    display: none;
+  }
+
+  .adminUsersOrgPerson {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .adminUsersOrgPerson .adminUsersRole {
+    grid-column: 2;
+    width: fit-content;
+  }
+
+  .adminUsersInviteBarOrg {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .adminUsersOrgChart,
+  .adminUsersInspector,
+  .adminUsersInviteRoadmap {
+    padding: 14px;
+    border-radius: 22px;
+  }
+
+  .adminUsersOrgHeader,
+  .adminUsersInspectorTop {
+    flex-direction: column;
+  }
+
+  .adminUsersInspectorRow {
+    flex-direction: column;
+  }
+
+  .adminUsersInspectorRow strong {
+    text-align: left;
+  }
+}
+
+.adminPage[data-admin-theme='dark'] .adminDataCard,
+.adminPage[data-admin-theme='dark'] .adminFeedbackSummary,
+.adminPage[data-admin-theme='dark'] .adminFeedbackSummaryMeta > div,
+.adminPage[data-admin-theme='dark'] .adminFeedbackCard,
+.adminPage[data-admin-theme='dark'] .adminStatCard,
+.adminPage[data-admin-theme='dark'] .adminChatListItem,
+.adminPage[data-admin-theme='dark'] .adminChatsInbox,
+.adminPage[data-admin-theme='dark'] .adminChatsTranscript,
+.adminPage[data-admin-theme='dark'] .adminChatsListItem,
+.adminPage[data-admin-theme='dark'] .adminChatReplyBox textarea,
+.adminPage[data-admin-theme='dark'] .adminChatGateCard,
+.adminPage[data-admin-theme='dark'] .adminTasksWorkspace,
+.adminPage[data-admin-theme='dark'] .adminTaskListItem,
+.adminPage[data-admin-theme='dark'] .adminTaskDetailCard,
+.adminPage[data-admin-theme='dark'] .adminTaskComposer,
+.adminPage[data-admin-theme='dark'] .adminUserCard,
+.adminPage[data-admin-theme='dark'] .adminUsersInviteCard,
+.adminPage[data-admin-theme='dark'] .adminUsersInviteRoadmap,
+.adminPage[data-admin-theme='dark'] .adminUsersOrgChart,
+.adminPage[data-admin-theme='dark'] .adminUsersInspector,
+.adminPage[data-admin-theme='dark'] .adminUsersOrgPerson,
+.adminPage[data-admin-theme='dark'] .adminUsersInspectorRow,
+.adminPage[data-admin-theme='dark'] .adminUsersPendingCard,
+.adminPage[data-admin-theme='dark'] .adminDropdownButton,
+.adminPage[data-admin-theme='dark'] .adminDropdownMenu,
+.adminPage[data-admin-theme='dark'] .adminDropdownOption {
+  background: rgba(15, 23, 42, 0.86) !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+  box-shadow: 0 18px 40px rgba(2, 6, 23, 0.32) !important;
+}
+
+.adminPage[data-admin-theme='dark'] .adminFeedbackSummary,
+.adminPage[data-admin-theme='dark'] .adminChatListItem,
+.adminPage[data-admin-theme='dark'] .adminChatsListItem,
+.adminPage[data-admin-theme='dark'] .adminTaskListItem,
+.adminPage[data-admin-theme='dark'] .adminDropdownOption.active,
+.adminPage[data-admin-theme='dark'] .secondaryBtn,
+.adminPage[data-admin-theme='dark'] .dangerBtn {
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.94), rgba(15, 23, 42, 0.88)) !important;
+}
+
+.adminPage[data-admin-theme='dark'] .adminDataCard h1,
+.adminPage[data-admin-theme='dark'] .adminDataCard h2,
+.adminPage[data-admin-theme='dark'] .adminDataCard h3,
+.adminPage[data-admin-theme='dark'] .adminDataCard strong,
+.adminPage[data-admin-theme='dark'] .adminChatsPanel h1,
+.adminPage[data-admin-theme='dark'] .adminChatsPanel h2,
+.adminPage[data-admin-theme='dark'] .adminChatsPanel h3,
+.adminPage[data-admin-theme='dark'] .adminChatsPanel strong,
+.adminPage[data-admin-theme='dark'] .adminTasksPanel h1,
+.adminPage[data-admin-theme='dark'] .adminTasksPanel h2,
+.adminPage[data-admin-theme='dark'] .adminTasksPanel h3,
+.adminPage[data-admin-theme='dark'] .adminTasksPanel strong,
+.adminPage[data-admin-theme='dark'] .adminUsersPanel h1,
+.adminPage[data-admin-theme='dark'] .adminUsersPanel h2,
+.adminPage[data-admin-theme='dark'] .adminUsersPanel h3,
+.adminPage[data-admin-theme='dark'] .adminUsersOrgPersonCopy strong,
+.adminPage[data-admin-theme='dark'] .adminUsersInspectorRow strong,
+.adminPage[data-admin-theme='dark'] .adminUsersPendingCard strong,
+.adminPage[data-admin-theme='dark'] .adminUsersPanel strong,
+.adminPage[data-admin-theme='dark'] .adminDropdownButtonLabel {
+  color: #e5eefb !important;
+}
+
+.adminPage[data-admin-theme='dark'] .adminDataCard p,
+.adminPage[data-admin-theme='dark'] .adminDataCard span,
+.adminPage[data-admin-theme='dark'] .adminDataCard small,
+.adminPage[data-admin-theme='dark'] .adminChatsPanel p,
+.adminPage[data-admin-theme='dark'] .adminChatsPanel span,
+.adminPage[data-admin-theme='dark'] .adminChatsPanel small,
+.adminPage[data-admin-theme='dark'] .adminTasksPanel p,
+.adminPage[data-admin-theme='dark'] .adminTasksPanel span,
+.adminPage[data-admin-theme='dark'] .adminTasksPanel small,
+.adminPage[data-admin-theme='dark'] .adminUsersPanel p,
+.adminPage[data-admin-theme='dark'] .adminUsersPanel span,
+.adminPage[data-admin-theme='dark'] .adminUsersPanel small,
+.adminPage[data-admin-theme='dark'] .adminUsersOrgPersonCopy small,
+.adminPage[data-admin-theme='dark'] .adminDropdownOption small,
+.adminPage[data-admin-theme='dark'] .adminDropdownChevron {
+  color: #94a3b8 !important;
+}
+
+.adminPage[data-admin-theme='dark'] .adminChatReplyBox textarea,
+.adminPage[data-admin-theme='dark'] .adminChatsSearch input,
+.adminPage[data-admin-theme='dark'] .adminTaskField input,
+.adminPage[data-admin-theme='dark'] .adminTaskField textarea,
+.adminPage[data-admin-theme='dark'] .adminTaskField select,
+.adminPage[data-admin-theme='dark'] .adminUsersInviteCard input,
+.adminPage[data-admin-theme='dark'] .adminUsersInviteCard select {
+  background: rgba(2, 6, 23, 0.26) !important;
+  color: #e5eefb !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
 }

@@ -662,6 +662,40 @@
   flex: none;
 }
 
+.adminPage[data-admin-theme='dark'] .widget-admin-top,
+.adminPage[data-admin-theme='dark'] .widget-admin-topnav,
+.adminPage[data-admin-theme='dark'] .widget-admin-overview-panel,
+.adminPage[data-admin-theme='dark'] .widget-admin-overview-stat,
+.adminPage[data-admin-theme='dark'] .widget-admin-badge,
+.adminPage[data-admin-theme='dark'] .widget-admin-card {
+  background: rgba(15, 23, 42, 0.88) !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+  box-shadow: 0 18px 40px rgba(2, 6, 23, 0.32) !important;
+}
+
+.adminPage[data-admin-theme='dark'] .widget-admin-top h1,
+.adminPage[data-admin-theme='dark'] .widget-admin-top p,
+.adminPage[data-admin-theme='dark'] .widget-admin-topnav__item,
+.adminPage[data-admin-theme='dark'] .widget-admin-topnav__copy strong,
+.adminPage[data-admin-theme='dark'] .widget-admin-overview-stat strong,
+.adminPage[data-admin-theme='dark'] .widget-admin-badge,
+.adminPage[data-admin-theme='dark'] .widget-admin-card h1,
+.adminPage[data-admin-theme='dark'] .widget-admin-card h2,
+.adminPage[data-admin-theme='dark'] .widget-admin-card h3,
+.adminPage[data-admin-theme='dark'] .widget-admin-card strong,
+.adminPage[data-admin-theme='dark'] .widget-admin-card label {
+  color: #e5eefb !important;
+}
+
+.adminPage[data-admin-theme='dark'] .widget-admin-topnav__copy small,
+.adminPage[data-admin-theme='dark'] .widget-admin-overview-stat span,
+.adminPage[data-admin-theme='dark'] .widget-admin-overview-stat small,
+.adminPage[data-admin-theme='dark'] .widget-admin-card p,
+.adminPage[data-admin-theme='dark'] .widget-admin-card small,
+.adminPage[data-admin-theme='dark'] .widget-admin-card span {
+  color: #94a3b8 !important;
+}
+
 .widget-ai-field--button {
   width: 100%;
   text-align: left;

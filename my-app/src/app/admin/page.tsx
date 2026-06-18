@@ -6,8 +6,9 @@ import { useActiveWidgetSelection } from '@/lib/active-widget'
 import { useRouter } from 'next/navigation'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore'
-import { FiArrowLeft, FiArrowRight, FiArrowUpRight, FiChevronLeft, FiChevronRight, FiPlay, FiZap } from 'react-icons/fi'
+import { FiArrowLeft, FiArrowRight, FiArrowUpRight, FiCheck, FiChevronLeft, FiChevronRight, FiMoon, FiPlay, FiSun } from 'react-icons/fi'
 import { businessAdminI18n, useVintraLanguage } from '@/lib/i18n'
+import GlobeSwitcher from '@/components/langSwitch'
 import AdminDropdown from './components/AdminDropdown'
 import AdminAnalyticsPanel from './components/AdminAnalyticsPanel'
 import AdminChatsPanel from './components/AdminChatsPanel'
@@ -38,11 +39,16 @@ type TutorialStep = {
   ctaHref?: string
 }
 
+type AdminAppearanceTheme = 'light' | 'dark'
+
+const ADMIN_THEME_STORAGE_KEY = 'vintra-admin-theme'
+
 export default function AdminPage() {
   const { isAuthenticated, dbUser, business, loading, firebaseUser } = useAuth()
   const router = useRouter()
   const { language } = useVintraLanguage()
   const text = businessAdminI18n[language]
+  const [adminTheme, setAdminTheme] = useState<AdminAppearanceTheme>('light')
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
   const sidebarRef = useRef<HTMLElement | null>(null)
   const adminHeaderRef = useRef<HTMLDivElement | null>(null)
@@ -252,6 +258,24 @@ export default function AdminPage() {
   }, [firebaseUser?.email, isAuthenticated, loading, router])
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const storedTheme = window.localStorage.getItem(ADMIN_THEME_STORAGE_KEY)
+    if (storedTheme === 'light' || storedTheme === 'dark') {
+      setAdminTheme(storedTheme)
+      return
+    }
+
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    setAdminTheme(prefersDark ? 'dark' : 'light')
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(ADMIN_THEME_STORAGE_KEY, adminTheme)
+  }, [adminTheme])
+
+  useEffect(() => {
     if (typeof document === 'undefined') return
     const isMobile = window.matchMedia('(max-width: 720px)').matches
     document.body.classList.toggle('admin-mobile-sidebar-open', isMobile && !sidebarCollapsed)
@@ -344,6 +368,7 @@ export default function AdminPage() {
   return (
     <>
       <main
+        data-admin-theme={adminTheme}
         className={`adminPage ${tutorialActive ? 'adminPageTutorialMode' : ''} ${
           sidebarCollapsed ? 'adminPageSidebarCollapsed' : ''
         }`}
@@ -604,8 +629,60 @@ export default function AdminPage() {
             <div className="infoCard">
               <h1>{text.settings.title}</h1>
               <p>{text.settings.body}</p>
-              <div className="settingsToggleRow">
-                <p>{text.settings.comingSoon}</p>
+              <div className="adminSettingsGrid">
+                <section className="adminSettingsSection">
+                  <div className="adminSettingsSectionHeader">
+                    <div>
+                      <h2>{text.settings.languageTitle}</h2>
+                      <p>{text.settings.languageBody}</p>
+                    </div>
+                  </div>
+                  <div className="adminSettingsLanguageCard">
+                    <GlobeSwitcher size={68} glass={adminTheme === 'light'} />
+                  </div>
+                </section>
+
+                <section className="adminSettingsSection">
+                  <div className="adminSettingsSectionHeader">
+                    <div>
+                      <h2>{text.settings.themeTitle}</h2>
+                      <p>{text.settings.themeBody}</p>
+                    </div>
+                  </div>
+                  <div className="adminThemeOptions" role="radiogroup" aria-label={text.settings.themeTitle}>
+                    <button
+                      type="button"
+                      className={`adminThemeOption ${adminTheme === 'light' ? 'active' : ''}`}
+                      onClick={() => setAdminTheme('light')}
+                      aria-pressed={adminTheme === 'light'}
+                    >
+                      <span className="adminThemeOptionIcon">
+                        <FiSun />
+                      </span>
+                      <span className="adminThemeOptionCopy">
+                        <strong>{text.settings.lightMode}</strong>
+                        <small>{text.settings.lightModeDesc}</small>
+                      </span>
+                      {adminTheme === 'light' ? <FiCheck className="adminThemeOptionCheck" /> : null}
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`adminThemeOption ${adminTheme === 'dark' ? 'active' : ''}`}
+                      onClick={() => setAdminTheme('dark')}
+                      aria-pressed={adminTheme === 'dark'}
+                    >
+                      <span className="adminThemeOptionIcon">
+                        <FiMoon />
+                      </span>
+                      <span className="adminThemeOptionCopy">
+                        <strong>{text.settings.darkMode}</strong>
+                        <small>{text.settings.darkModeDesc}</small>
+                      </span>
+                      {adminTheme === 'dark' ? <FiCheck className="adminThemeOptionCheck" /> : null}
+                    </button>
+                  </div>
+                </section>
               </div>
             </div>
           )}

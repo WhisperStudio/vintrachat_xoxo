@@ -1396,7 +1396,7 @@ export async function GET(
 
   function getAvailablePanels() {
     var panels = [{ id: 'chats', label: 'Chats' }];
-    if (isTasksTabEnabled()) panels.push({ id: 'tasks', label: 'Tasks' });
+    if (isTasksTabEnabled()) panels.push({ id: 'tasks', label: 'Ticket' });
     if (isReviewsTabEnabled()) panels.push({ id: 'review', label: 'Review' });
     return panels;
   }
@@ -1455,10 +1455,10 @@ export async function GET(
     var panels = getAvailablePanels();
 
     return (
-      '<div class="widget-panel-tabs" role="tablist" aria-label="Widget pages">' +
+      '<div class="widget-panel-tabs" role="tablist" aria-label="Widget pages" style="position:sticky;top:0.8rem;z-index:4;display:inline-flex;justify-content:center;align-items:center;gap:0.55rem;min-height:54px;max-width:calc(100% - 1.6rem);margin:0 auto;padding:0.4rem;border:1px solid rgba(148,163,184,0.16);border-radius:999px;background:rgba(255,255,255,0.82);box-shadow:0 12px 26px rgba(15,23,42,0.08);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none;">' +
         panels.map(function (panel) {
           return (
-            '<button type="button" class="widget-panel-tab' + (state.activePanel === panel.id ? ' is-active' : '') + '" data-widget-panel="' + panel.id + '" role="tab" aria-selected="' + (state.activePanel === panel.id ? 'true' : 'false') + '">' +
+            '<button type="button" class="widget-panel-tab' + (state.activePanel === panel.id ? ' is-active' : '') + '" data-widget-panel="' + panel.id + '" role="tab" aria-selected="' + (state.activePanel === panel.id ? 'true' : 'false') + '" style="flex:0 0 auto;padding:0.62rem 0.95rem;border:1px solid rgba(148,163,184,0.18);border-radius:999px;background:' + (state.activePanel === panel.id ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.88)') + ';color:' + (state.activePanel === panel.id ? '#312e81' : '#475569') + ';font-weight:700;">' +
               escapeHtml(panel.label) +
             '</button>'
           );
@@ -2628,8 +2628,8 @@ export async function GET(
               (headerStyle.showCloseButton && state.open ? '<button type="button" class="close-btn" aria-label="Close chat">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('closeIcon', 'FiX')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">×</span>') + '</button>' : '') +
             '</div>' +
           '</div>' +
-          getPanelTabsMarkup() +
-          '<div class="' + classes(['chat-body', 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '">' +
+          '<div class="' + classes(['chat-body', 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '" style="position:relative;' + (showPortalTabs ? 'padding-top:1.2rem;' : '') + '">' +
+            (showPortalTabs ? getPanelTabsMarkup() : '') +
             panelMarkup +
           '</div>' +
           getHandoffOverlayMarkup() +
@@ -2693,8 +2693,13 @@ export async function GET(
     var input = mount.querySelector('textarea');
     var body = mount.querySelector('.chat-body');
 
-    if (body) {
-      body.scrollTop = showStarterCards ? 0 : body.scrollHeight;
+    if (body && state.activePanel === 'chats') {
+      window.requestAnimationFrame(function () {
+        body.scrollTop = showStarterCards ? 0 : body.scrollHeight;
+        window.requestAnimationFrame(function () {
+          body.scrollTop = showStarterCards ? 0 : body.scrollHeight;
+        });
+      });
     }
 
     if (bubbleButton && iconChoice === 'orb' && orbStyle.hoverEnabled) {

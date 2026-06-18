@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext'
 import { usePathname, useRouter } from 'next/navigation'
 import { getInvitationsForEmail } from '@/lib/invitation.service'
 import { useActiveWidgetSelection } from '@/lib/active-widget'
-import { headerI18n, languageLabels, languageOptions, useVintraLanguage } from '@/lib/i18n'
+import { headerI18n, useVintraLanguage } from '@/lib/i18n'
 import { isVintraAdminEmail } from '@/lib/vintra-admin'
 import type { BusinessInvitation } from '@/types/database'
 import GlobeSwitcher from "./langSwitch";
@@ -729,7 +729,7 @@ const MobileWidgetScope = styled.div`
 
 export default function Header() {
   const { firebaseUser, dbUser, business, logout } = useAuth()
-  const { language, setLanguage } = useVintraLanguage()
+  const { language } = useVintraLanguage()
   const text = headerI18n[language]
   const router = useRouter()
   const pathname = usePathname()
@@ -941,18 +941,15 @@ export default function Header() {
       <HeaderFrame>
         <HeaderInner>
           <LeftSide>
-            <Brand
-              href="/landings/main"
-              aria-label={text.brandAria}
-              tabIndex={isAdminRoute ? -1 : undefined}
-              style={isAdminRoute ? { visibility: 'hidden', pointerEvents: 'none' } : undefined}
-            >
-              <BrandIcon src="/image/logo.png" alt="" aria-hidden="true" />
-              <BrandText>
-                <BrandTitle>VINTRA</BrandTitle>
-                <BrandTag>{text.brandTag}</BrandTag>
-              </BrandText>
-            </Brand>
+            {!isAdminRoute ? (
+              <Brand href="/landings/main" aria-label={text.brandAria}>
+                <BrandIcon src="/image/logo.png" alt="" aria-hidden="true" />
+                <BrandText>
+                  <BrandTitle>VINTRA</BrandTitle>
+                  <BrandTag>{text.brandTag}</BrandTag>
+                </BrandText>
+              </Brand>
+            ) : null}
 
             {showWidgetScope ? (
               <WidgetScopeShell>
@@ -1008,7 +1005,7 @@ export default function Header() {
 
           <RightSide>
             <ActionRow>
-              <GlobeSwitcher size={62} />
+              {!isAdminRoute ? <GlobeSwitcher size={62} /> : null}
 
               {!firebaseUser ? (
                 <>
@@ -1092,7 +1089,7 @@ export default function Header() {
               </MobileWidgetScope>
             ) : null}
 
-            <GlobeSwitcher />
+            {!isAdminRoute ? <GlobeSwitcher /> : null}
 
             {!firebaseUser ? (
               <>

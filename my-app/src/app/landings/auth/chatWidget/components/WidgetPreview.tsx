@@ -232,6 +232,7 @@ export default function WidgetPreview({
   const [isComposerFocused, setIsComposerFocused] = useState(false)
   const [activeConversationCardId, setActiveConversationCardId] = useState<string | null>(null)
   const [activePortalPanel, setActivePortalPanel] = useState<'chats' | 'tasks' | 'review'>('chats')
+  const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
   const effectiveAssistantIcons = {
     launcherIcon: assistantIcons?.launcherIcon ?? '',
@@ -457,6 +458,13 @@ export default function WidgetPreview({
       node.scrollTop = node.scrollHeight
     })
   }, [messages, isChatOpen, showComposerSuggestions, keyboardOffset])
+
+  useEffect(() => {
+    if (!isChatOpen || activePortalPanel !== 'chats') return
+    window.requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ block: 'end' })
+    })
+  }, [activePortalPanel, isChatOpen, messages, showComposerSuggestions, showSupportTypingIndicator, showTypingIndicator])
 
   useEffect(() => {
     const node = inputRef.current
@@ -821,7 +829,91 @@ export default function WidgetPreview({
             </div>
 
               <div className={bodyClasses} ref={chatBodyRef}>
-              {showStarterCards && !showStarterCardList ? (
+              {showPortalTabs ? (
+                <div className="widget-panel-tabs" role="tablist" aria-label="Widget pages">
+                  <button
+                    type="button"
+                    className={`widget-panel-tab ${activePortalPanel === 'chats' ? 'is-active' : ''}`}
+                    onClick={() => setActivePortalPanel('chats')}
+                    role="tab"
+                    aria-selected={activePortalPanel === 'chats'}
+                  >
+                    Chats
+                  </button>
+                  {showTasksTab ? (
+                    <button
+                      type="button"
+                      className={`widget-panel-tab ${activePortalPanel === 'tasks' ? 'is-active' : ''}`}
+                      onClick={() => setActivePortalPanel('tasks')}
+                      role="tab"
+                      aria-selected={activePortalPanel === 'tasks'}
+                    >
+                      Ticket
+                    </button>
+                  ) : null}
+                  {showReviewTab ? (
+                    <button
+                      type="button"
+                      className={`widget-panel-tab ${activePortalPanel === 'review' ? 'is-active' : ''}`}
+                      onClick={() => setActivePortalPanel('review')}
+                      role="tab"
+                      aria-selected={activePortalPanel === 'review'}
+                    >
+                      Review
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+              <div className={`widget-body-content ${showPortalTabs ? 'widget-body-content--with-panel-tabs' : ''}`}>
+              {activePortalPanel === 'tasks' && showTasksTab ? (
+                <div className="widget-panel-page widget-panel-page--tasks">
+                  <div className="widget-panel-page__hero">
+                    <strong>Create a ticket</strong>
+                    <p>Send a ticket directly to the support team and track it here.</p>
+                  </div>
+                  <label className="widget-feedback-field">
+                    <span>Title</span>
+                    <input type="text" className="widget-task-input" placeholder="What do you need help with?" />
+                  </label>
+                  <label className="widget-feedback-field">
+                    <span>Description</span>
+                    <textarea rows={5} className="widget-task-textarea" placeholder="Describe the issue and what you want us to do next." />
+                  </label>
+                  <div className="widget-feedback-actions">
+                    <button type="button" className="widget-feedback-primary" disabled>
+                      Create ticket
+                    </button>
+                  </div>
+                  <div className="widget-task-list">
+                    <article className="widget-task-card">
+                      <div className="widget-task-card__top">
+                        <strong>Refund follow-up</strong>
+                        <span className="widget-task-badge widget-task-badge--in-progress">in-progress</span>
+                      </div>
+                      <p>Follow up with the customer and confirm the refund window.</p>
+                      <div className="widget-task-card__meta">
+                        <span>Support</span>
+                        <span>10:26 AM</span>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+              ) : activePortalPanel === 'review' && showReviewTab ? (
+                <div className="widget-panel-page widget-panel-page--review">
+                  <div className="widget-panel-page__hero">
+                    <strong>Leave a review</strong>
+                    <p>Tell us how the chat went and give us a star rating.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="widget-feedback-primary"
+                    onClick={() => activeFeedbackOverlay.onSubmit()}
+                    disabled={Boolean(activeFeedbackOverlay.submitting)}
+                  >
+                    {activeFeedbackOverlay.submitting ? 'Sending...' : 'Open review form'}
+                  </button>
+                </div>
+              ) : showStarterCards && !showStarterCardList ? (
                 <div className={`widget-starter-cards widget-starter-cards--${bodyStyle.conversationCardsLayout} widget-starter-cards--${bodyStyle.conversationCardsStyle} ${useDenseStarterGrid ? 'widget-starter-cards--dense' : ''}`.trim()}>
                   <div className={`widget-starter-cards__hero widget-starter-cards__hero--${bodyStyle.conversationCardsStyle}`}>
                     {effectiveAssistantIcons.heroIcon ? (
@@ -999,8 +1091,10 @@ export default function WidgetPreview({
                       </div>
                     </div>
                   ) : null}
+                  <div ref={messagesEndRef} aria-hidden="true" />
                 </>
               )}
+              </div>
               </div>
 
             {activeHumanHandoffOverlay.open ? (

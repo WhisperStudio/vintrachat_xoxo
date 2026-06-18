@@ -1126,16 +1126,25 @@
 }
 
 .widget-panel-tabs {
-  display: flex;
-  flex: 0 0 auto;
+  position: sticky;
+  top: 0.8rem;
+  z-index: 4;
+  display: inline-flex;
   justify-content: center;
   align-items: center;
   gap: 0.55rem;
   flex-wrap: nowrap;
-  min-height: 62px;
-  padding: 0.7rem 1rem 0.35rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
-  background: rgba(255, 255, 255, 0.75);
+  min-height: 54px;
+  width: fit-content;
+  max-width: calc(100% - 1.6rem);
+  margin: 0 auto;
+  padding: 0.4rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -1168,6 +1177,14 @@
   gap: 0.95rem;
   min-height: 100%;
   padding: 0.25rem 0 0.2rem;
+}
+
+.widget-body-content {
+  min-height: 100%;
+}
+
+.widget-body-content--with-panel-tabs {
+  padding-top: 0.4rem;
 }
 
 .widget-panel-page__hero strong {
@@ -1228,6 +1245,10 @@
 .widget-task-card__meta {
   color: #64748b;
   font-size: 0.82rem;
+}
+
+.chat-body {
+  position: relative;
 }
 
 .widget-task-badge {
