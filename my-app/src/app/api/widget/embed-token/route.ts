@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getBusinessByWidgetKey } from '@/lib/widget.server'
-import { isWidgetOriginPermitted, getWidgetRequestOrigin } from '@/lib/widget-security'
+import { isWidgetOriginPermitted, getClientIp, getWidgetRequestOrigin } from '@/lib/widget-security'
 import { createWidgetEmbedToken, getOrCreateWidgetEmbedSecret } from '@/lib/widget-embed-token.server'
+import { consumeServerRateLimit } from '@/lib/server-rate-limit'
 
 function corsHeaders(origin?: string | null) {
   return {
@@ -26,6 +27,7 @@ export async function GET(req: NextRequest) {
   try {
     const widgetKey = req.nextUrl.searchParams.get('key') || ''
     const requestOrigin = getWidgetRequestOrigin(req)
+    const fingerprint = String(req.headers.get('x-vintra-fingerprint') || '').trim()
     console.log('[widget/embed-token] request start', {
       widgetKey,
       requestOrigin,
@@ -35,6 +37,10 @@ export async function GET(req: NextRequest) {
     if (!widgetKey) {
       console.log('[widget/embed-token] missing widget key')
       return NextResponse.json({ error: 'Missing widget key' }, { status: 400, headers })
+    }
+
+    if (!fingerprint) {
+      return NextResponse.json({ error: 'Missing widget fingerprint' }, { status: 400, headers })
     }
 
     const business = await getBusinessByWidgetKey(widgetKey)
@@ -73,6 +79,20 @@ export async function GET(req: NextRequest) {
       )
     }
 
+    const rateLimit = await consumeServerRateLimit({
+      scope: 'widget-embed-token',
+      key: `${widgetKey}:${getClientIp(req)}:${fingerprint}`,
+      limit: 30,
+      windowMs: 10 * 60 * 1000,
+    })
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many widget token requests. Please wait and try again.' },
+        { status: 429, headers }
+      )
+    }
+
     console.log('[widget/embed-token] origin allowed', {
       widgetKey,
       requestOrigin,
@@ -90,22 +110,24 @@ export async function GET(req: NextRequest) {
       businessId: business.id,
       widgetKey,
       origin: requestOrigin,
+      fingerprint,
       secret,
-      expiresInSeconds: 12 * 60 * 60,
+      expiresInSeconds: 10 * 60,
     })
 
     console.log('[widget/embed-token] token created', {
       businessId: business.id,
       widgetKey,
       origin: requestOrigin,
-      expiresInSeconds: 12 * 60 * 60,
+      fingerprint,
+      expiresInSeconds: 10 * 60,
       tokenPrefix: token.slice(0, 12),
     })
 
     return NextResponse.json(
       {
         token,
-        expiresInSeconds: 12 * 60 * 60,
+        expiresInSeconds: 10 * 60,
       },
       { headers }
     )

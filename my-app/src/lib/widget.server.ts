@@ -193,6 +193,37 @@ export interface WidgetBusinessRecord {
   chatWidgetEmbedSecret?: string
 }
 
+export function toPublicWidgetConfig(config: ChatWidgetConfig | undefined | null): ChatWidgetConfig | null {
+  if (!config) return null
+
+  return {
+    ...config,
+    plan: 'free',
+    billingCycle: 'monthly',
+    allowedDomains: [],
+  }
+}
+
+export function toPublicAssistantConfig(
+  config: ChatAssistantConfig | undefined | null
+): Partial<ChatAssistantConfig> | null {
+  if (!config) return null
+
+  return {
+    enabled: config.enabled,
+    humanSupportEnabled: config.humanSupportEnabled,
+    handoffMessage: config.handoffMessage,
+    faqSuggestionsEnabled: config.faqSuggestionsEnabled,
+    faqSuggestions: Array.isArray(config.faqSuggestions) ? config.faqSuggestions : [],
+    conversationCardsEnabled: config.conversationCardsEnabled,
+    conversationCardsLimit: config.conversationCardsLimit,
+    conversationCards: Array.isArray(config.conversationCards) ? config.conversationCards : [],
+    widgetIcons: config.widgetIcons || {},
+    startLanguage: config.startLanguage,
+    replyInUserLanguage: config.replyInUserLanguage,
+  }
+}
+
 export async function getBusinessByWidgetKey(
   widgetKey: string
 ): Promise<WidgetBusinessRecord | null> {

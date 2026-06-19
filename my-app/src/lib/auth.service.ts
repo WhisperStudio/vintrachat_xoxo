@@ -599,34 +599,30 @@ export async function signUpWithEmail(
       password
     );
 
-    const token = generateToken();
+    const idToken = await cred.user.getIdToken();
 
     // ❗ IKKE lagre user i Firestore enda
 
-    await fetch("/api/auth/send-verification-email", {
+    const verificationResponse = await fetch("/api/auth/send-verification-email", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${idToken}`,
       },
       body: JSON.stringify({
-        email: normalizedEmail,
-        token,
         displayName,
         accountType: normalizedAccountType,
         businessName: normalizedBusinessName,
       }),
     });
 
-    // Lagre midlertidig verification token i pending_auth
-    await setDoc(doc(db, "pending_auth", cred.user.uid), {
-      email: normalizedEmail,
-      normalizedEmail,
-      displayName,
-      token,
-      accountType: normalizedAccountType,
-      ...(normalizedBusinessName ? { businessName: normalizedBusinessName } : {}),
-      createdAt: serverTimestamp(),
-    });
+    const verificationPayload = await verificationResponse.json().catch(() => ({}));
+    if (!verificationResponse.ok || verificationPayload?.success === false) {
+      return {
+        success: false,
+        message: verificationPayload?.message || "Could not send verification email.",
+      };
+    }
 
     return {
       success: true,
@@ -641,9 +637,25 @@ export async function signUpWithEmail(
 // VERIFY EMAIL
 // ----------------------
 export async function verifyEmail(token: string) {
+  const response = await fetch('/api/auth/verify', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ token }),
+  })
+
+  const payload = await response.json().catch(() => ({}))
+
+  return {
+    success: response.ok && Boolean(payload?.success),
+    message: payload?.message || 'Feil ved verifisering',
+    businessId: typeof payload?.businessId === 'string' ? payload.businessId : undefined,
+  }
+
   const q = query(
     collection(db, "pending_auth"),
-    where("token", "==", token)
+    where("tokenHash", "==", token)
   );
 
   const snap = await getDocs(q);

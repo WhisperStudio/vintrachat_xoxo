@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 
@@ -15,6 +16,10 @@ function toDate(value: unknown) {
 
   const parsed = new Date(String(value));
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function hashToken(token: string) {
+  return crypto.createHash('sha256').update(token).digest('hex')
 }
 
 export async function POST(req: NextRequest) {
@@ -37,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     const resetQuery = await adminDb
       .collection("pending_password_resets")
-      .where("token", "==", String(token))
+      .where("tokenHash", "==", hashToken(String(token)))
       .limit(1)
       .get();
 

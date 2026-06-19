@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import { WIDGET_THEME_CLASS, WIDGET_THEME_VARS } from '@/components/chat/widgetDesign'
 import { isValidElement, type ReactElement, type ReactNode } from 'react'
 import { WIDGET_ICON_ALIAS_MAP, WIDGET_ICON_OPTIONS, renderWidgetIcon } from '@/lib/widget-icons'
+import { getBusinessByWidgetKey } from '@/lib/widget.server'
+import { isWidgetOriginPermitted } from '@/lib/widget-security'
 
 function serializeForJs(value: unknown) {
   return JSON.stringify(value)
@@ -463,6 +465,22 @@ export async function GET(
     return new Response('Missing widget key', { status: 400 })
   }
 
+  const business = await getBusinessByWidgetKey(widgetKey)
+  if (!business?.id || !business.chatWidgetConfig) {
+    return new Response('Widget not found', { status: 404 })
+  }
+
+  const originCheck = isWidgetOriginPermitted(req, business.chatWidgetConfig.allowedDomains)
+  if (!originCheck.allowed) {
+    return new Response('Widget origin not allowed', {
+      status: 403,
+      headers: {
+        'Content-Type': 'application/javascript; charset=utf-8',
+        'Cache-Control': 'no-store',
+      },
+    })
+  }
+
   const origin = req.nextUrl.origin
   const debugMode = req.nextUrl.searchParams.get('debug') === '1'
   const forceOpen = req.nextUrl.searchParams.get('open') === '1'
@@ -509,8 +527,6 @@ export async function GET(
 
     var appIdMatch = raw.match(/^app:([a-z0-9][a-z0-9._-]*[a-z0-9])$/i);
     if (appIdMatch) return 'app://' + appIdMatch[1];
-
-    if (/^[a-z0-9][a-z0-9._-]*[a-z0-9]$/i.test(raw)) return 'app://' + raw;
     return '';
   }
 
@@ -2184,6 +2200,7 @@ export async function GET(
       mode: 'cors',
       cache: 'no-store',
       headers: {
+        'X-Vintra-Fingerprint': FINGERPRINT_LIGHT,
         ...(DEBUG_MODE ? { 'X-Vintra-Debug': '1' } : {}),
         ...(APP_ORIGIN ? { 'X-Vintra-App-Origin': APP_ORIGIN } : {})
       }

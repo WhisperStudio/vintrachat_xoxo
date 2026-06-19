@@ -151,6 +151,8 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
   const [rateLimitUntil, setRateLimitUntil] = useState(0)
   const [captchaToken, setCaptchaToken] = useState('')
+  const [embedToken, setEmbedToken] = useState('')
+  const [embedTokenExpiresAt, setEmbedTokenExpiresAt] = useState(0)
   const [keyboardOffset, setKeyboardOffset] = useState(0)
   const sendLockRef = useRef(false)
   const visitorTypingTimerRef = useRef<number | null>(null)
@@ -184,6 +186,30 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     ].join('|')
   }, [])
 
+  const ensureEmbedToken = async (forceRefresh = false) => {
+    const now = Date.now()
+    if (!forceRefresh && embedToken && embedTokenExpiresAt > now + 30_000) {
+      return embedToken
+    }
+
+    const response = await fetch(`/api/widget/embed-token?key=${encodeURIComponent(widgetKey)}`, {
+      headers: {
+        'X-Vintra-Fingerprint': fingerprintLight,
+      },
+    })
+    const data = await response.json()
+
+    if (!response.ok || !data?.token) {
+      throw new Error(data?.details || data?.error || 'Failed to load widget token')
+    }
+
+    const nextToken = String(data.token)
+    const expiresInSeconds = Math.max(60, Number(data.expiresInSeconds || 600))
+    setEmbedToken(nextToken)
+    setEmbedTokenExpiresAt(Date.now() + expiresInSeconds * 1000)
+    return nextToken
+  }
+
   useEffect(() => {
     if (!rateLimitUntil) return
 
@@ -202,7 +228,14 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
 
     async function loadConfig() {
       try {
-        const response = await fetch(`/api/widget/config?key=${encodeURIComponent(widgetKey)}`)
+        const nextEmbedToken = await ensureEmbedToken()
+        const response = await fetch(`/api/widget/config?key=${encodeURIComponent(widgetKey)}`, {
+          headers: {
+            'X-Vintra-Embed-Token': nextEmbedToken,
+            'X-Vintra-Fingerprint': fingerprintLight,
+            ...(captchaToken ? { 'X-Vintra-Captcha-Token': captchaToken } : {}),
+          },
+        })
         const data = await response.json()
 
         if (!response.ok) {
@@ -249,7 +282,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     return () => {
       active = false
     }
-  }, [widgetKey])
+  }, [captchaToken, fingerprintLight, widgetKey])
 
   useEffect(() => {
     const existingSessionId = window.localStorage.getItem(sessionStorageKey(widgetKey))
@@ -324,9 +357,16 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     async function syncSupportChat() {
       try {
         if (sendLockRef.current) return
+        const nextEmbedToken = await ensureEmbedToken()
 
         const response = await fetch(
-          `/api/widget/support?key=${encodeURIComponent(widgetKey)}&sessionId=${encodeURIComponent(sessionId || '')}`
+          `/api/widget/support?key=${encodeURIComponent(widgetKey)}&sessionId=${encodeURIComponent(sessionId || '')}`,
+          {
+            headers: {
+              'X-Vintra-Embed-Token': nextEmbedToken,
+              'X-Vintra-Fingerprint': fingerprintLight,
+            },
+          }
         )
         const data = await response.json()
 
@@ -366,7 +406,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       active = false
       if (pollTimer) window.clearInterval(pollTimer)
     }
-  }, [sessionId, widgetKey])
+  }, [embedToken, embedTokenExpiresAt, fingerprintLight, sessionId, widgetKey])
 
   useEffect(() => {
     if (!configResponse) return
@@ -420,10 +460,12 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     if (!sessionId || (!isHumanSupportPending && !isHumanSupportOpen)) return
 
     try {
+      const nextEmbedToken = await ensureEmbedToken()
       await fetch('/api/widget/support', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Vintra-Embed-Token': nextEmbedToken,
           'X-Vintra-Fingerprint': fingerprintLight,
           ...(captchaToken ? { 'X-Vintra-Captcha-Token': captchaToken } : {}),
         },
@@ -493,10 +535,12 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         setInputValue('')
         window.localStorage.removeItem(draftStorageKey(widgetKey))
 
+        const nextEmbedToken = await ensureEmbedToken()
         const response = await fetch('/api/widget/support', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'X-Vintra-Embed-Token': nextEmbedToken,
             'X-Vintra-Fingerprint': fingerprintLight,
             ...(captchaToken ? { 'X-Vintra-Captcha-Token': captchaToken } : {}),
           },
@@ -586,10 +630,12 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
             userMessage,
           ])
         )
+        const nextEmbedToken = await ensureEmbedToken()
         const response = await fetch('/api/widget/chat', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'X-Vintra-Embed-Token': nextEmbedToken,
             'X-Vintra-Fingerprint': fingerprintLight,
             ...(captchaToken ? { 'X-Vintra-Captcha-Token': captchaToken } : {}),
           },
@@ -674,8 +720,15 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
 
         if (data.supportRequested) {
           try {
+            const supportEmbedToken = await ensureEmbedToken()
             const supportResponse = await fetch(
-              `/api/widget/support?key=${encodeURIComponent(widgetKey)}&sessionId=${encodeURIComponent(nextSessionId)}`
+              `/api/widget/support?key=${encodeURIComponent(widgetKey)}&sessionId=${encodeURIComponent(nextSessionId)}`,
+              {
+                headers: {
+                  'X-Vintra-Embed-Token': supportEmbedToken,
+                  'X-Vintra-Fingerprint': fingerprintLight,
+                },
+              }
             )
             const supportData = await supportResponse.json()
             if (supportResponse.ok && Array.isArray(supportData.messages)) {
@@ -730,10 +783,12 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     setError(null)
 
     try {
+      const nextEmbedToken = await ensureEmbedToken()
       const response = await fetch('/api/widget/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Vintra-Embed-Token': nextEmbedToken,
           'X-Vintra-Fingerprint': fingerprintLight,
           ...(captchaToken ? { 'X-Vintra-Captcha-Token': captchaToken } : {}),
         },
@@ -849,10 +904,12 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     setError(null)
 
     try {
+      const nextEmbedToken = await ensureEmbedToken()
       const response = await fetch('/api/widget/feedback', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Vintra-Embed-Token': nextEmbedToken,
           'X-Vintra-Fingerprint': fingerprintLight,
           ...(captchaToken ? { 'X-Vintra-Captcha-Token': captchaToken } : {}),
         },

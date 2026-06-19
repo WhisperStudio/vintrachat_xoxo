@@ -36,9 +36,11 @@ import { createChatWidget, deleteChatWidget, setActiveChatWidget, updateChatAssi
 import { defaultConversationCards, normalizeConversationCards } from '@/lib/conversation-cards'
 import type { WebsiteAutofillResult } from '@/lib/website-context-scanner'
 import { getPlanLimits } from '@/lib/subscription'
+import { getWidgetIconOption, renderWidgetIcon } from '@/lib/widget-icons'
 import { parseAllowedDomainsInput } from '@/lib/widget-security'
 import type {
   AssistantBusinessProfile,
+  AssistantConversationOption,
   AssistantIntegrationSettings,
   AssistantKnowledgeBase,
   AssistantStrictness,
@@ -498,6 +500,18 @@ function SettingSwitch({
   )
 }
 
+function renderStarterCardIcon(iconValue?: string) {
+  const renderedIcon = renderWidgetIcon(iconValue, { 'aria-hidden': true })
+  if (renderedIcon) return renderedIcon
+
+  const fallback = String(iconValue || '').trim()
+  if (fallback) {
+    return <span className="widget-admin-card-icon-fallback">{fallback}</span>
+  }
+
+  return <FiLayers aria-hidden="true" />
+}
+
 function AutoGrowTextarea({
   minRows = 3,
   className = '',
@@ -783,7 +797,7 @@ export default function WidgetAdminPanel({
   selectedWidgetKey?: string
   onWidgetSelected?: (widgetKey: string) => void
 } = {}) {
-  const { business, dbUser, loading, refreshBusiness } = useAuth()
+  const { business, dbUser, firebaseUser, loading, refreshBusiness } = useAuth()
   const [config, setConfig] = useState<ChatWidgetConfig | null>(null)
   const [assistantConfig, setAssistantConfig] = useState<ChatAssistantConfig>(defaultAssistantConfig)
   const [openAiField, setOpenAiField] = useState<AiFieldId | null>('extraSettings')
@@ -838,7 +852,9 @@ export default function WidgetAdminPanel({
     businessContext: string
     faqSuggestionsText: string
   } | null>(null)
-  const [selectedStarterCardIndex, setSelectedStarterCardIndex] = useState(0)
+  const [selectedStarterCardIndex, setSelectedStarterCardIndex] = useState<number | null>(null)
+  const [selectedStarterOptionIndex, setSelectedStarterOptionIndex] = useState<number | null>(null)
+  const [starterCardsError, setStarterCardsError] = useState('')
   const [activeAdminSection, setActiveAdminSection] = useState<AdminTopSectionId>('overview')
   const [autoContextDirtyFields, setAutoContextDirtyFields] = useState<{
     businessContext: boolean
@@ -854,8 +870,25 @@ export default function WidgetAdminPanel({
   const normalizedStarterCards = normalizeConversationCards(assistantConfig.conversationCards)
 
   useEffect(() => {
-    setSelectedStarterCardIndex((prev) => Math.min(prev, Math.max(0, normalizedStarterCards.length - 1)))
+    setSelectedStarterCardIndex((prev) => {
+      if (!normalizedStarterCards.length) return null
+      if (prev === null) return null
+      return Math.min(prev, Math.max(0, normalizedStarterCards.length - 1))
+    })
   }, [normalizedStarterCards.length])
+
+  const selectedStarterCard =
+    selectedStarterCardIndex !== null ? normalizedStarterCards[selectedStarterCardIndex] || null : null
+
+  useEffect(() => {
+    const optionCount = selectedStarterCard?.options.length || 0
+
+    setSelectedStarterOptionIndex((prev) => {
+      if (!optionCount) return null
+      if (prev === null) return null
+      return Math.min(prev, Math.max(0, optionCount - 1))
+    })
+  }, [selectedStarterCard?.id, selectedStarterCard?.options.length])
 
   const applyWidgetConfig = (widgetConfig: ChatWidgetConfig | undefined) => {
     if (!widgetConfig) return
@@ -977,6 +1010,12 @@ export default function WidgetAdminPanel({
     ],
   })
 
+  const buildStarterOptionDraft = (): AssistantConversationOption => ({
+    label: 'New choice',
+    prompt: 'How can you help me?',
+    description: 'Edit this choice before publishing it.',
+  })
+
   const updateConversationCard = (
     index: number,
     updater: (card: AssistantConversationCard) => AssistantConversationCard
@@ -991,11 +1030,115 @@ export default function WidgetAdminPanel({
     })
   }
 
+  const updateConversationOption = (
+    cardIndex: number,
+    optionIndex: number,
+    updater: (option: AssistantConversationOption) => AssistantConversationOption
+  ) => {
+    updateConversationCard(cardIndex, (card) => ({
+      ...card,
+      options: card.options.map((option, currentIndex) =>
+        currentIndex === optionIndex ? updater(option) : option
+      ),
+    }))
+  }
+
   const renderStarterCardsEditor = () => {
     const cards = normalizedStarterCards
-    const activeIndex = Math.min(selectedStarterCardIndex, Math.max(0, cards.length - 1))
-    const activeCard = cards[activeIndex]
-    const activeCardLabel = activeCard?.title || `Card ${activeIndex + 1}`
+    const activeIndex =
+      selectedStarterCardIndex !== null && cards[selectedStarterCardIndex]
+        ? selectedStarterCardIndex
+        : null
+    const activeCard = activeIndex !== null ? cards[activeIndex] : null
+    const activeCardLabel =
+      activeCard && activeIndex !== null ? activeCard.title || `Card ${activeIndex + 1}` : 'No card selected'
+    const activeOption =
+      activeCard && selectedStarterOptionIndex !== null
+        ? activeCard.options[selectedStarterOptionIndex] || null
+        : null
+    const activeOptionIndex =
+      activeCard && selectedStarterOptionIndex !== null && activeCard.options[selectedStarterOptionIndex]
+        ? selectedStarterOptionIndex
+        : null
+
+    const selectCard = (cardIndex: number) => {
+      setSelectedStarterCardIndex(cardIndex)
+      setSelectedStarterOptionIndex(cards[cardIndex]?.options.length ? 0 : null)
+      setStarterCardsError('')
+    }
+
+    const handleAddCard = () => {
+      const nextCards = [...cards, buildStarterCardDraft(starterCardStyle)]
+      setConversationCards(nextCards)
+      setSelectedStarterCardIndex(nextCards.length - 1)
+      setSelectedStarterOptionIndex(0)
+      setStarterCardsError('')
+    }
+
+    const handleDeleteCard = () => {
+      if (activeIndex === null) {
+        setStarterCardsError('Du må velge et card før du kan slette det.')
+        return
+      }
+
+      const nextCards = cards.filter((_, index) => index !== activeIndex)
+      setConversationCards(nextCards)
+
+      if (!nextCards.length) {
+        setSelectedStarterCardIndex(null)
+        setSelectedStarterOptionIndex(null)
+      } else {
+        const nextIndex = Math.min(activeIndex, nextCards.length - 1)
+        setSelectedStarterCardIndex(nextIndex)
+        setSelectedStarterOptionIndex(nextCards[nextIndex]?.options.length ? 0 : null)
+      }
+
+      setStarterCardsError('')
+    }
+
+    const handleSelectOption = (optionIndex: number) => {
+      setSelectedStarterOptionIndex(optionIndex)
+      setStarterCardsError('')
+    }
+
+    const handleAddOption = () => {
+      if (activeIndex === null || !activeCard) {
+        setStarterCardsError('Du må velge et card før du kan legge til et underpunkt.')
+        return
+      }
+
+      const nextOptions = [...activeCard.options, buildStarterOptionDraft()]
+      updateConversationCard(activeIndex, (card) => ({
+        ...card,
+        options: nextOptions,
+      }))
+      setSelectedStarterOptionIndex(nextOptions.length - 1)
+      setStarterCardsError('')
+    }
+
+    const handleDeleteOption = () => {
+      if (activeIndex === null || !activeCard) {
+        setStarterCardsError('Du må velge et card før du kan slette et underpunkt.')
+        return
+      }
+
+      if (activeOptionIndex === null) {
+        setStarterCardsError('Du må velge et underpunkt før du kan slette det.')
+        return
+      }
+
+      const nextOptions = activeCard.options.filter((_, index) => index !== activeOptionIndex)
+      updateConversationCard(activeIndex, (card) => ({
+        ...card,
+        options: nextOptions.length ? nextOptions : [buildStarterOptionDraft()],
+      }))
+
+      const nextSelectedIndex = nextOptions.length
+        ? Math.min(activeOptionIndex, nextOptions.length - 1)
+        : 0
+      setSelectedStarterOptionIndex(nextSelectedIndex)
+      setStarterCardsError('')
+    }
 
     return (
       <>
@@ -1016,296 +1159,328 @@ export default function WidgetAdminPanel({
           <p className="widget-admin-card-controls__note">
             Use only a few strong starter cards so the widget feels guided and easy to scan.
           </p>
-
-          <div className="widget-admin-card-controls__meta">
-            <label className="widget-ai-field widget-admin-card-controls__count">
-              <span><FieldIcon icon={FiLayers} accent="violet" /> Cards shown</span>
-              <input
-                type="number"
-                min={1}
-                max={12}
-                disabled={!assistantConfig.conversationCardsEnabled}
-                value={assistantConfig.conversationCardsLimit ?? 4}
-                onChange={(event) =>
-                  setAssistantConfig((prev) => ({
-                    ...prev,
-                    conversationCardsLimit: Math.max(1, Math.min(12, Number(event.target.value) || 1)),
-                  }))
-                }
-              />
-            </label>
-
-            <div className="widget-admin-card-controls__state">
-              <strong>{cards.length ? activeCardLabel : 'No cards yet'}</strong>
-              <span>{cards.length ? `${activeIndex + 1} / ${cards.length} active` : 'Add a starter card to begin'}</span>
-            </div>
-          </div>
         </div>
 
-        <div className={`widget-admin-starter-cards ${assistantConfig.conversationCardsEnabled ? '' : 'is-disabled'}`}>
-          <div className="widget-admin-card-list__toolbar">
-            <div className="widget-admin-card-list__actions">
-              <button
-                type="button"
-                className="widget-admin-action-chip"
-                disabled={!assistantConfig.conversationCardsEnabled}
-                onClick={() => {
-                  setConversationCards([
-                    ...cards,
-                    buildStarterCardDraft(starterCardStyle),
-                  ])
-                  setSelectedStarterCardIndex(cards.length)
-                }}
-              >
-                Add card
-              </button>
-              <button
-                type="button"
-                className="widget-admin-action-chip"
-                disabled={!assistantConfig.conversationCardsEnabled || cards.length <= 1}
-                onClick={() => {
-                  const nextCards = cards.slice(0, -1)
-                  setConversationCards(nextCards)
-                  setSelectedStarterCardIndex((prev) => Math.max(0, Math.min(prev, nextCards.length - 1)))
-                }}
-              >
-                Remove last
-              </button>
-              <button
-                type="button"
-                className="widget-admin-action-chip"
-                disabled={!assistantConfig.conversationCardsEnabled}
-                onClick={() => {
-                  setConversationCards([buildStarterCardDraft(starterCardStyle)])
-                  setSelectedStarterCardIndex(0)
-                }}
-              >
-                Reset set
-              </button>
+        {assistantConfig.conversationCardsEnabled ? (
+          <div className="widget-admin-starter-cards">
+            <div className="widget-admin-card-list__toolbar">
+              <div className="widget-admin-card-list__actions">
+                <button
+                  type="button"
+                  className="widget-admin-action-chip"
+                  onClick={handleAddCard}
+                >
+                  Add card
+                </button>
+                <button
+                  type="button"
+                  className="widget-admin-action-chip widget-admin-action-chip--danger"
+                  onClick={handleDeleteCard}
+                >
+                  Delete selected
+                </button>
+              </div>
             </div>
 
-            <p className="widget-admin-card-list__hint">
-              Keep this list focused so the widget feels helpful instead of crowded.
+            <p className="widget-admin-card-list__hint widget-admin-card-list__hint--left">
+              Velg et card i listen til venstre for å redigere innhold, underpunkter og preview.
             </p>
-          </div>
 
-          {cards.length ? (
-            <div className="widget-admin-card-workbench">
-              <section className="widget-admin-card-group">
-                <div className="widget-admin-card-group__header">
-                  <strong>Card list</strong>
-                  <span>Select the card you want to edit.</span>
-                </div>
-                <div className="widget-admin-card-list__tabs" role="tablist" aria-label="Starter cards">
-                  {cards.map((card, cardIndex) => {
-                    const active = cardIndex === activeIndex
+            {starterCardsError ? <p className="widget-admin-status error">{starterCardsError}</p> : null}
 
-                    return (
-                      <button
-                        key={card.id}
-                        type="button"
-                        className={`widget-admin-card-list__tab ${active ? 'active' : ''}`}
-                        onClick={() => setSelectedStarterCardIndex(cardIndex)}
-                        aria-pressed={active}
-                      >
-                        <strong>{card.title || `Card ${cardIndex + 1}`}</strong>
-                        <span>{card.options.length} choices</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </section>
-
-              <article className="widget-admin-card-editor">
-                <div className="widget-admin-card-editor__header">
-                  <div className="widget-admin-card-editor__header-copy">
-                    <strong>{activeCardLabel}</strong>
-                    <span className="widget-admin-card-editor__badge">{starterCardStyle}</span>
+            {cards.length ? (
+              <div className="widget-admin-card-designer">
+                <section className="widget-admin-card-column widget-admin-card-column--list">
+                  <div className="widget-admin-card-group__header">
+                    <strong>Cards</strong>
+                    <span>Disse vises som starter cards i widgeten.</span>
                   </div>
-                  <button
-                    type="button"
-                    className="widget-admin-action-chip widget-admin-action-chip--danger"
-                    disabled={!assistantConfig.conversationCardsEnabled || cards.length <= 1}
-                    onClick={() => {
-                      const nextCards = cards.filter((_, index) => index !== activeIndex)
-                      setConversationCards(nextCards)
-                      setSelectedStarterCardIndex((prev) => Math.max(0, Math.min(prev, nextCards.length - 1)))
-                    }}
-                  >
-                    Delete card
-                  </button>
-                </div>
+                  <div className="widget-admin-card-list__stack" role="list" aria-label="Starter cards">
+                    {cards.map((card, cardIndex) => {
+                      const isActive = cardIndex === activeIndex
 
-                <div className="widget-admin-card-editor__body">
-                  <div className="widget-admin-card-editor__nav">
-                    <button
-                      type="button"
-                      className="widget-admin-action-chip"
-                      disabled={!assistantConfig.conversationCardsEnabled || activeIndex <= 0}
-                      onClick={() => setSelectedStarterCardIndex((prev) => Math.max(0, prev - 1))}
-                    >
-                      Prev
-                    </button>
-                    <span className="widget-admin-card-editor__nav-label">
-                      Editing card {activeIndex + 1} of {cards.length}
-                    </span>
-                    <button
-                      type="button"
-                      className="widget-admin-action-chip"
-                      disabled={!assistantConfig.conversationCardsEnabled || activeIndex >= cards.length - 1}
-                      onClick={() => setSelectedStarterCardIndex((prev) => Math.min(cards.length - 1, prev + 1))}
-                    >
-                      Next
-                    </button>
+                      return (
+                        <button
+                          key={card.id}
+                          type="button"
+                          className={`widget-admin-card-list__item ${isActive ? 'active' : ''}`}
+                          onClick={() => selectCard(cardIndex)}
+                          aria-pressed={isActive}
+                        >
+                          <span className="widget-admin-card-list__itemIcon" aria-hidden="true">
+                            {renderStarterCardIcon(card.icon)}
+                          </span>
+                          <span className="widget-admin-card-list__itemCopy">
+                            <strong>{card.title || `Card ${cardIndex + 1}`}</strong>
+                            <span>{card.options.length} choices</span>
+                          </span>
+                        </button>
+                      )
+                    })}
                   </div>
+                </section>
 
-                  <div className="widget-ai-grid">
-                    <label className="widget-ai-field">
-                      <span>Card name</span>
-                      <input
-                        type="text"
-                        value={activeCard.title}
-                        disabled={!assistantConfig.conversationCardsEnabled}
-                        onChange={(event) =>
-                          updateConversationCard(activeIndex, (nextCard) => ({
-                            ...nextCard,
-                            title: event.target.value,
-                          }))
-                        }
-                        placeholder="Opening hours"
-                      />
-                    </label>
+                <section className="widget-admin-card-column widget-admin-card-column--editor">
+                  {activeCard && activeIndex !== null ? (
+                    <div className="widget-admin-card-editor widget-admin-card-editor--split">
+                      <div className="widget-admin-card-editor__header">
+                        <div className="widget-admin-card-editor__header-copy">
+                          <strong>{activeCardLabel}</strong>
+                          <span className="widget-admin-card-editor__badge">{starterCardStyle}</span>
+                        </div>
+                      </div>
 
-                    <label className="widget-ai-field">
-                      <span>Description</span>
-                      <input
-                        type="text"
-                        value={activeCard.description}
-                        disabled={!assistantConfig.conversationCardsEnabled}
-                        onChange={(event) =>
-                          updateConversationCard(activeIndex, (nextCard) => ({
-                            ...nextCard,
-                            description: event.target.value,
-                          }))
-                        }
-                        placeholder="Help visitors find the right answer quickly."
-                      />
-                    </label>
-                  </div>
+                      <div className="widget-admin-card-editor__body">
+                        <div className="widget-ai-grid">
+                          <label className="widget-ai-field">
+                            <span>Card name</span>
+                            <input
+                              type="text"
+                              value={activeCard.title}
+                              onChange={(event) =>
+                                updateConversationCard(activeIndex, (nextCard) => ({
+                                  ...nextCard,
+                                  title: event.target.value,
+                                }))
+                              }
+                              placeholder="Opening hours"
+                            />
+                          </label>
 
-                  <div className="widget-admin-card-editor__sectionLabel">Appearance</div>
-                  {starterCardStyle === 'image' ? (
-                    <div className="widget-ai-grid">
-                      <label className="widget-ai-field widget-ai-field-full">
-                        <span>Image URL</span>
-                        <input
-                          type="url"
-                          value={activeCard.image || ''}
-                          disabled={!assistantConfig.conversationCardsEnabled}
-                          onChange={(event) =>
-                            updateConversationCard(activeIndex, (nextCard) => ({
-                              ...nextCard,
-                              image: event.target.value,
-                            }))
-                          }
-                          placeholder="https://..."
-                        />
-                      </label>
+                          <label className="widget-ai-field">
+                            <span>Description</span>
+                            <input
+                              type="text"
+                              value={activeCard.description}
+                              onChange={(event) =>
+                                updateConversationCard(activeIndex, (nextCard) => ({
+                                  ...nextCard,
+                                  description: event.target.value,
+                                }))
+                              }
+                              placeholder="Help visitors find the right answer quickly."
+                            />
+                          </label>
+                        </div>
+
+                        <div className="widget-admin-card-editor__sectionLabel">Appearance</div>
+                        {starterCardStyle === 'image' ? (
+                          <div className="widget-ai-grid">
+                            <label className="widget-ai-field widget-ai-field-full">
+                              <span>Image URL</span>
+                              <input
+                                type="url"
+                                value={activeCard.image || ''}
+                                onChange={(event) =>
+                                  updateConversationCard(activeIndex, (nextCard) => ({
+                                    ...nextCard,
+                                    image: event.target.value,
+                                  }))
+                                }
+                                placeholder="https://..."
+                              />
+                            </label>
+                          </div>
+                        ) : (
+                          <div className="widget-ai-grid">
+                            <IconPickerBubble
+                              label="Icon"
+                              value={activeCard.icon || ''}
+                              onChange={(nextValue) =>
+                                updateConversationCard(activeIndex, (nextCard) => ({
+                                  ...nextCard,
+                                  icon: nextValue,
+                                }))
+                              }
+                              placeholder="Card icon"
+                              helperText="Choose the icon shown on this starter card."
+                            />
+
+                            <label className="widget-ai-field">
+                              <span>Optional image URL</span>
+                              <input
+                                type="url"
+                                value={activeCard.image || ''}
+                                onChange={(event) =>
+                                  updateConversationCard(activeIndex, (nextCard) => ({
+                                    ...nextCard,
+                                    image: event.target.value,
+                                  }))
+                                }
+                                placeholder="https://..."
+                              />
+                            </label>
+                          </div>
+                        )}
+
+                        <div className="widget-admin-card-editor__sectionLabel">Choices</div>
+                        <div className="widget-admin-card-options">
+                          <div className="widget-admin-card-options__toolbar">
+                            <div className="widget-admin-card-group__header">
+                              <strong>Under elements</strong>
+                              <span>Velg et underpunkt for å redigere teksten som sendes inn i chatten.</span>
+                            </div>
+                            <div className="widget-admin-card-list__actions">
+                              <button
+                                type="button"
+                                className="widget-admin-action-chip"
+                                onClick={handleAddOption}
+                              >
+                                Add choice
+                              </button>
+                              <button
+                                type="button"
+                                className="widget-admin-action-chip widget-admin-action-chip--danger"
+                                onClick={handleDeleteOption}
+                              >
+                                Delete choice
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="widget-admin-card-options__layout">
+                            <div className="widget-admin-card-options__list" role="list" aria-label="Card choices">
+                              {activeCard.options.map((option, optionIndex) => {
+                                const isActive = optionIndex === activeOptionIndex
+                                return (
+                                  <button
+                                    key={`${activeCard.id}-${optionIndex}`}
+                                    type="button"
+                                    className={`widget-admin-card-options__item ${isActive ? 'active' : ''}`}
+                                    onClick={() => handleSelectOption(optionIndex)}
+                                    aria-pressed={isActive}
+                                  >
+                                    <strong>{option.label || `Choice ${optionIndex + 1}`}</strong>
+                                    <span>{option.prompt || 'No prompt yet'}</span>
+                                  </button>
+                                )
+                              })}
+                            </div>
+
+                            <div className="widget-admin-card-options__editor">
+                              {activeOption && activeOptionIndex !== null ? (
+                                <div className="widget-ai-grid">
+                                  <label className="widget-ai-field">
+                                    <span>Name</span>
+                                    <input
+                                      type="text"
+                                      value={activeOption.label}
+                                      onChange={(event) =>
+                                        updateConversationOption(activeIndex, activeOptionIndex, (option) => ({
+                                          ...option,
+                                          label: event.target.value,
+                                        }))
+                                      }
+                                      placeholder="Opening hours"
+                                    />
+                                  </label>
+
+                                  <label className="widget-ai-field">
+                                    <span>Prompt</span>
+                                    <input
+                                      type="text"
+                                      value={activeOption.prompt}
+                                      onChange={(event) =>
+                                        updateConversationOption(activeIndex, activeOptionIndex, (option) => ({
+                                          ...option,
+                                          prompt: event.target.value,
+                                        }))
+                                      }
+                                      placeholder="What are your opening hours?"
+                                    />
+                                  </label>
+
+                                  <label className="widget-ai-field widget-ai-field-full">
+                                    <span>Description</span>
+                                    <input
+                                      type="text"
+                                      value={activeOption.description || ''}
+                                      onChange={(event) =>
+                                        updateConversationOption(activeIndex, activeOptionIndex, (option) => ({
+                                          ...option,
+                                          description: event.target.value || undefined,
+                                        }))
+                                      }
+                                      placeholder="Short helper text for this choice."
+                                    />
+                                  </label>
+                                </div>
+                              ) : (
+                                <div className="widget-admin-card-editor widget-admin-card-editor--empty">
+                                  <p>Velg et underpunkt i listen for å redigere det.</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ) : (
-                    <div className="widget-ai-grid">
-                      <IconPickerBubble
-                        label="Icon"
-                        value={activeCard.icon || ''}
-                        onChange={(nextValue) =>
-                          updateConversationCard(activeIndex, (nextCard) => ({
-                            ...nextCard,
-                            icon: nextValue,
-                          }))
-                        }
-                        placeholder="Card icon"
-                        helperText="Choose the icon shown on this starter card."
-                        className={!assistantConfig.conversationCardsEnabled ? 'is-disabled' : ''}
-                        disabled={!assistantConfig.conversationCardsEnabled}
-                      />
-
-                      <label className="widget-ai-field">
-                        <span>Optional image URL</span>
-                        <input
-                          type="url"
-                          value={activeCard.image || ''}
-                          disabled={!assistantConfig.conversationCardsEnabled}
-                          onChange={(event) =>
-                            updateConversationCard(activeIndex, (nextCard) => ({
-                              ...nextCard,
-                              image: event.target.value,
-                            }))
-                          }
-                          placeholder="https://..."
-                        />
-                      </label>
+                    <div className="widget-admin-card-editor widget-admin-card-editor--empty">
+                      <p>Velg et card i listen til venstre for å åpne innstillingene.</p>
                     </div>
                   )}
+                </section>
 
-                  <div className="widget-admin-card-editor__sectionLabel">Questions and choices</div>
-                  <label className="widget-ai-field widget-ai-field-full">
-                    <span>Questions / choices</span>
-                    <AutoGrowTextarea
-                      minRows={4}
-                      disabled={!assistantConfig.conversationCardsEnabled}
-                      value={activeCard.options
-                        .map((option) => [option.label, option.prompt, option.description].filter(Boolean).join(' | '))
-                        .join('\n')}
-                      onChange={(event) => {
-                        const nextOptions = event.target.value
-                          .split(/\n/)
-                          .map((line) => line.trim())
-                          .filter(Boolean)
-                          .map((line) => {
-                            const [label = '', prompt = '', description = ''] = line
-                              .split('|')
-                              .map((part) => part.trim())
-                            return {
-                              label: label || prompt,
-                              prompt: prompt || label,
-                              description: description || undefined,
-                            }
-                          })
-                          .filter((option) => option.label || option.prompt)
+                <aside className="widget-admin-card-column widget-admin-card-column--preview">
+                  <div className="widget-admin-card-group__header">
+                    <strong>Preview</strong>
+                    <span>En enkel forhåndsvisning av valgt starter card.</span>
+                  </div>
 
-                        updateConversationCard(activeIndex, (nextCard) => ({
-                          ...nextCard,
-                          options: nextOptions.length
-                            ? nextOptions
-                            : [
-                                {
-                                  label: 'Example question',
-                                  prompt: 'How can you help me?',
-                                  description: 'Add one option per line, using label | prompt | description.',
-                                },
-                              ],
-                        }))
-                      }}
-                      placeholder={'Opening hours | What are your opening hours? | Show when you are open.\nPrices | What are your prices?'}
-                    />
-                  </label>
-                </div>
-              </article>
-            </div>
-          ) : (
-            <div className="widget-admin-card-editor widget-admin-card-editor--empty">
-              <p>No starter cards yet. Add one to begin building the dropdown list.</p>
-              <button
-                type="button"
-                className="widget-admin-action-chip"
-                disabled={!assistantConfig.conversationCardsEnabled}
-                onClick={() => setConversationCards([buildStarterCardDraft(starterCardStyle)])}
-              >
-                Add first card
-              </button>
-            </div>
-          )}
-        </div>
+                  {activeCard ? (
+                    <div className="widget-admin-card-preview">
+                      <div className="widget-admin-card-preview__hero">
+                        <div className="widget-admin-card-preview__icon">
+                          {renderStarterCardIcon(activeCard.icon)}
+                        </div>
+                        <div className="widget-admin-card-preview__copy">
+                          <strong>{activeCard.title || 'Card name'}</strong>
+                          <p>{activeCard.description || 'Card description appears here.'}</p>
+                          <small>{getWidgetIconOption(activeCard.icon)?.label || 'Starter card'}</small>
+                        </div>
+                      </div>
+
+                      {activeCard.image ? (
+                        <div className="widget-admin-card-preview__image">
+                          <span>{activeCard.image}</span>
+                        </div>
+                      ) : null}
+
+                      <div className="widget-admin-card-preview__options">
+                        {activeCard.options.map((option, optionIndex) => (
+                          <div
+                            key={`${activeCard.id}-preview-${optionIndex}`}
+                            className={`widget-admin-card-preview__option ${optionIndex === activeOptionIndex ? 'active' : ''}`}
+                          >
+                            <strong>{option.label || `Choice ${optionIndex + 1}`}</strong>
+                            <span>{option.prompt || 'Prompt missing'}</span>
+                            {option.description ? <small>{option.description}</small> : null}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="widget-admin-card-editor widget-admin-card-editor--empty">
+                      <p>Previewen vises her når du har valgt et card.</p>
+                    </div>
+                  )}
+                </aside>
+              </div>
+            ) : (
+              <div className="widget-admin-card-editor widget-admin-card-editor--empty">
+                <p>No starter cards yet. Add one to begin building the list.</p>
+                <button
+                  type="button"
+                  className="widget-admin-action-chip"
+                  onClick={handleAddCard}
+                >
+                  Add first card
+                </button>
+              </div>
+            )}
+          </div>
+        ) : null}
       </>
     )
   }
@@ -1770,10 +1945,12 @@ export default function WidgetAdminPanel({
     setAutoContextStatus('running')
 
     try {
+      const idToken = firebaseUser ? await firebaseUser.getIdToken() : ''
       const response = await fetch('/api/scan-website', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
         },
         body: JSON.stringify({ url: trimmedUrl }),
       })
@@ -1836,10 +2013,12 @@ export default function WidgetAdminPanel({
     setWizardAutofillStatus('running')
 
     try {
+      const idToken = firebaseUser ? await firebaseUser.getIdToken() : ''
       const response = await fetch('/api/scan-website', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
         },
         body: JSON.stringify({ url: trimmedUrl }),
       })

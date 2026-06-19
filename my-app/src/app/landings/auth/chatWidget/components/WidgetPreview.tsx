@@ -1266,7 +1266,7 @@ export default function WidgetPreview({
   }
 
   return (
-    <div className={`widget-preview-shell glass preview-shell-${previewMode}`}>
+    <div className={`widget-preview-shell preview-shell-${previewMode}`}>
       {previewMode === 'mobile' ? (
         <div className="widget-preview-device-frame">
           <div className="widget-preview-device-shell">{previewContent}</div>

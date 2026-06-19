@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { adminAuth } from '@/lib/firebase-admin'
+import { consumeServerRateLimit } from '@/lib/server-rate-limit'
 import { scanWebsiteForAssistantContext } from '@/lib/website-context-scanner'
 
 const DEFAULTS = {
@@ -14,8 +16,33 @@ function clampNumber(value: unknown, min: number, max: number, fallback: number)
   return Math.max(min, Math.min(max, Math.round(parsed)))
 }
 
+function isBlockedHostname(hostname: string) {
+  const host = String(hostname || '').trim().toLowerCase()
+  if (!host) return true
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return true
+  if (host === '127.0.0.1' || host === '0.0.0.0' || host === '::1') return true
+  if (host === '169.254.169.254') return true
+  if (/^10\./.test(host)) return true
+  if (/^192\.168\./.test(host)) return true
+  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) return true
+  return false
+}
+
 export async function POST(request: NextRequest) {
   try {
+    const authorization = request.headers.get('authorization') || ''
+    const token = authorization.toLowerCase().startsWith('bearer ')
+      ? authorization.slice(7).trim()
+      : ''
+
+    if (!token) {
+      return NextResponse.json(
+        { success: false, error: 'Missing authorization token.' },
+        { status: 401 }
+      )
+    }
+
+    const decoded = await adminAuth.verifyIdToken(token)
     const body = await request.json().catch(() => null)
     const url = typeof body?.url === 'string' ? body.url.trim() : ''
     const config = body?.config && typeof body.config === 'object' ? body.config : {}
@@ -41,11 +68,32 @@ export async function POST(request: NextRequest) {
         )
       }
 
+      if (isBlockedHostname(parsed.hostname)) {
+        return NextResponse.json(
+          { success: false, error: 'This URL host is not allowed for scanning.' },
+          { status: 400 }
+        )
+      }
+
       normalizedUrl = parsed.toString()
     } catch {
       return NextResponse.json(
         { success: false, error: 'Invalid website URL.' },
         { status: 400 }
+      )
+    }
+
+    const rateLimit = await consumeServerRateLimit({
+      scope: 'scan-website',
+      key: `${decoded.uid}:${normalizedUrl}`,
+      limit: 10,
+      windowMs: 60 * 60 * 1000,
+    })
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Too many scan requests. Please try again later.' },
+        { status: 429 }
       )
     }
 

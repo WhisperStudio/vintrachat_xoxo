@@ -178,9 +178,13 @@ export default function InviteClient() {
     setResendMessage('')
 
     try {
+      const idToken = await firebaseUser.getIdToken()
       const response = await fetch('/api/auth/resend-verification-email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
         body: JSON.stringify({ email: firebaseUser.email }),
       })
 

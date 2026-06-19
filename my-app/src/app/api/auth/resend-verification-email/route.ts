@@ -1,76 +1,81 @@
-import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
-import { adminDb } from "@/lib/firebase-admin";
-import { buildVerificationEmail } from "@/lib/auth-email";
-import { normalizeEmail } from "@/lib/vintra-admin";
-
-function generateToken(length: number = 30): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  return Array.from({ length }, () =>
-    chars[Math.floor(Math.random() * chars.length)]
-  ).join("");
-}
-
-async function findPendingAuthByEmail(email: string) {
-  const normalizedEmail = normalizeEmail(email);
-
-  const normalizedQuery = await adminDb
-    .collection("pending_auth")
-    .where("normalizedEmail", "==", normalizedEmail)
-    .limit(1)
-    .get();
-
-  if (!normalizedQuery.empty) {
-    return normalizedQuery.docs[0];
-  }
-
-  const exactQuery = await adminDb
-    .collection("pending_auth")
-    .where("email", "==", String(email).trim())
-    .limit(1)
-    .get();
-
-  if (!exactQuery.empty) {
-    return exactQuery.docs[0];
-  }
-
-  const fallbackScan = await adminDb.collection("pending_auth").limit(100).get();
-  return (
-    fallbackScan.docs.find((docSnap) => {
-      const data = docSnap.data();
-      return normalizeEmail(String(data.normalizedEmail || data.email || "")) === normalizedEmail;
-    }) || null
-  );
-}
+import crypto from 'node:crypto'
+import { NextRequest, NextResponse } from 'next/server'
+import { Resend } from 'resend'
+import { adminAuth, adminDb } from '@/lib/firebase-admin'
+import { buildVerificationEmail } from '@/lib/auth-email'
+import { hashOpaqueToken } from '@/lib/pending-auth.server'
+import { consumeServerRateLimit } from '@/lib/server-rate-limit'
+import { normalizeEmail } from '@/lib/vintra-admin'
 
 export async function POST(req: NextRequest) {
   try {
-    const { email } = await req.json();
-    const normalizedEmail = normalizeEmail(email);
+    const authorization = req.headers.get('authorization') || ''
+    const idToken = authorization.toLowerCase().startsWith('bearer ')
+      ? authorization.slice(7).trim()
+      : ''
 
-    if (!normalizedEmail) {
-      return NextResponse.json({ success: true });
+    if (!idToken) {
+      return NextResponse.json(
+        { success: false, message: 'Missing authorization token.' },
+        { status: 401 }
+      )
     }
 
-    const pendingDoc = await findPendingAuthByEmail(normalizedEmail);
+    const decoded = await adminAuth.verifyIdToken(idToken)
+    const normalizedEmail = normalizeEmail(decoded.email || '')
 
-    if (!pendingDoc) {
+    if (!decoded.uid || !normalizedEmail) {
+      return NextResponse.json(
+        { success: false, message: 'No pending verification was found for this account.' },
+        { status: 404 }
+      )
+    }
+
+    const rateLimit = await consumeServerRateLimit({
+      scope: 'verification-email:resend',
+      key: `${decoded.uid}:${normalizedEmail}`,
+      limit: 3,
+      windowMs: 60 * 60 * 1000,
+    })
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { success: false, message: 'Please wait before requesting another verification email.' },
+        { status: 429 }
+      )
+    }
+
+    const pendingDoc = await adminDb.collection('pending_auth').doc(decoded.uid).get()
+
+    if (!pendingDoc.exists) {
       return NextResponse.json(
         {
           success: false,
-          message: "No pending verification was found for this email.",
+          message: 'No pending verification was found for this account.',
         },
         { status: 404 }
-      );
+      )
     }
 
-    const pendingUser = pendingDoc.data();
-    const token = generateToken();
+    const pendingUser = pendingDoc.data() || {}
+    if (normalizeEmail(String(pendingUser.email || '')) !== normalizedEmail) {
+      return NextResponse.json(
+        { success: false, message: 'Verification account mismatch.' },
+        { status: 403 }
+      )
+    }
 
-    await pendingDoc.ref.update({
-      token,
-      email: normalizeEmail(String(pendingUser.email || normalizedEmail)),
+    const token = crypto.randomBytes(32).toString('hex')
+    const tokenHash = hashOpaqueToken(token)
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
+
+    await pendingDoc.ref.set({
+      tokenHash,
+      token: null,
+      email: normalizedEmail,
       normalizedEmail,
+      expiresAt,
+      updatedAt: new Date(),
     });
 
     const resend = new Resend(process.env.RESEND_API_KEY!);

@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import { db } from '@/lib/firebase'
 import { useActiveWidgetSelection } from '@/lib/active-widget'
@@ -681,6 +682,28 @@ export default function AdminPage() {
                       </span>
                       {adminTheme === 'dark' ? <FiCheck className="adminThemeOptionCheck" /> : null}
                     </button>
+                  </div>
+                </section>
+
+                <section className="adminSettingsSection">
+                  <div className="adminSettingsSectionHeader">
+                    <div>
+                      <h2>Policy</h2>
+                      <p>
+                        Se de offentlige retningslinjene for personvern, sikkerhet, AI-bruk og support.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="adminSettingsLinkCard">
+                    <span className="adminSettingsLinkEyebrow">Public page</span>
+                    <strong>Åpne policy-siden</strong>
+                    <p>
+                      Denne lenken åpner den eksterne policy-siden som besøkende og kunder kan lese.
+                    </p>
+                    <Link href="/policy" className="adminSettingsLinkButton">
+                      <span>Gå til policy</span>
+                      <FiArrowUpRight />
+                    </Link>
                   </div>
                 </section>
               </div>

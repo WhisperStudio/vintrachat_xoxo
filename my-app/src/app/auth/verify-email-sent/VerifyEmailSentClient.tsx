@@ -11,6 +11,7 @@ import {
   FiMail,
   FiShield,
 } from 'react-icons/fi'
+import { auth } from '@/lib/firebase'
 
 export default function VerifyEmailSentClient() {
   const searchParams = useSearchParams()
@@ -37,9 +38,13 @@ export default function VerifyEmailSentClient() {
     setResendStatus('idle')
 
     try {
+      const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : ''
       const response = await fetch('/api/auth/resend-verification-email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+        },
         body: JSON.stringify({ email }),
       })
 

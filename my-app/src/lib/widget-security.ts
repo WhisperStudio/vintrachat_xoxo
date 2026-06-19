@@ -43,7 +43,7 @@ function normalizeSingleDomain(raw: string) {
   return value
 }
 
-export function normalizeMobileAppOrigin(raw: string, options: { allowBareAppId?: boolean } = {}) {
+export function normalizeMobileAppOrigin(raw: string) {
   let value = String(raw || '').trim().toLowerCase()
   if (!value) return ''
 
@@ -57,10 +57,6 @@ export function normalizeMobileAppOrigin(raw: string, options: { allowBareAppId?
   const appIdMatch = value.match(/^app:([a-z0-9][a-z0-9._-]*[a-z0-9])$/i)
   if (appIdMatch) {
     return `app://${appIdMatch[1]}`
-  }
-
-  if (options.allowBareAppId && /^[a-z0-9][a-z0-9._-]*[a-z0-9]$/i.test(value)) {
-    return `app://${value}`
   }
 
   return ''
@@ -110,8 +106,7 @@ export function getRequestMobileAppOrigin(req: NextRequest) {
     req.headers.get('x-vintra-app-origin') ||
       req.headers.get('x-vintra-mobile-app') ||
       req.headers.get('x-vintra-app-id') ||
-      '',
-    { allowBareAppId: true }
+      ''
   )
 }
 
@@ -200,6 +195,10 @@ export function isRequestOriginAllowed(
     }
   }
 
+  const allowedMobileApps = normalizedAllowedDomains.filter((domain) =>
+    domain.startsWith('app://')
+  )
+
   const webOrigin = getRequestOrigin(req)
   if (webOrigin) {
     const hostname = getRequestHostWithPort(req) || getRequestHostname(req)
@@ -223,11 +222,18 @@ export function isRequestOriginAllowed(
   if (!mobileAppOrigin) {
     return {
       allowed: false as const,
-      reason: 'This widget is restricted to approved domains or approved mobile apps.',
+      reason: 'This widget requires a valid approved website URL or approved mobile app origin.',
     }
   }
 
-  const allowed = normalizedAllowedDomains.some((domain) => normalizeMobileAppOrigin(domain) === mobileAppOrigin)
+  if (!allowedMobileApps.length) {
+    return {
+      allowed: false as const,
+      reason: 'This widget is not enabled for mobile apps.',
+    }
+  }
+
+  const allowed = allowedMobileApps.some((domain) => normalizeMobileAppOrigin(domain) === mobileAppOrigin)
   return allowed
     ? { allowed: true as const }
     : {

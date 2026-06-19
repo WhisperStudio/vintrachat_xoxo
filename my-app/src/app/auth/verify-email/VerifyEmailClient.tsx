@@ -3,20 +3,23 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { FiArrowRight, FiCheckCircle, FiMail, FiShield, FiXCircle } from 'react-icons/fi'
-import { verifyEmail } from '@/lib/auth.service'
 
 export default function VerifyEmailClient() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const token = searchParams.get('token')
+  const hasStartedRef = useRef(false)
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
   const [isRedirecting, setIsRedirecting] = useState(false)
 
   useEffect(() => {
+    if (hasStartedRef.current) return
+    hasStartedRef.current = true
+
     if (!token) {
       setStatus('error')
       setMessage('This verification link is missing the token it needs.')
@@ -24,7 +27,17 @@ export default function VerifyEmailClient() {
     }
 
     const runVerification = async () => {
-      const result = await verifyEmail(token)
+      const response = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token }),
+      })
+      const result = await response.json().catch(() => ({
+        success: false,
+        message: 'Verification failed.',
+      }))
 
       if (result.success) {
         setStatus('success')

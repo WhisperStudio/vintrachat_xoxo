@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getBusinessByWidgetKey } from '@/lib/widget.server'
+import { getBusinessByWidgetKey, toPublicAssistantConfig, toPublicWidgetConfig } from '@/lib/widget.server'
 import { authorizeWidgetRequest } from '@/lib/widget-embed-token.server'
 
 export const dynamic = 'force-dynamic'
@@ -46,9 +46,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       businessName: business.name,
       widgetKey: business.chatWidgetKey,
-      widgetConfig: business.chatWidgetConfig,
+      widgetConfig: toPublicWidgetConfig(business.chatWidgetConfig),
       assistantEnabled: business.chatAssistantConfig?.enabled ?? true,
-      assistantConfig: business.chatAssistantConfig || null,
+      assistantConfig: toPublicAssistantConfig(business.chatAssistantConfig),
     }, { headers })
   } catch (error) {
     console.error('Widget config error:', error)

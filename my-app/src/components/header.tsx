@@ -749,7 +749,7 @@ export default function Header() {
     widgetList,
     business?.activeChatWidgetKey || business?.chatWidgetKey || ''
   )
-  const showWidgetScope = Boolean(firebaseUser && dbUser?.businessId && widgetList.length > 0)
+  const showWidgetScope = Boolean(isAdminRoute && firebaseUser && dbUser?.businessId && widgetList.length > 0)
 
   const showVintraAdmin = isVintraAdminEmail(firebaseUser?.email)
   const showInvitationCenter = !!firebaseUser && !dbUser && !showVintraAdmin

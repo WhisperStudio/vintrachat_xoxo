@@ -9,6 +9,7 @@ export type WidgetEmbedTokenPayload = {
   businessId: string
   widgetKey: string
   origin: string
+  fingerprint: string
   exp: number
 }
 
@@ -55,6 +56,7 @@ export function createWidgetEmbedToken(args: {
   businessId: string
   widgetKey: string
   origin: string
+  fingerprint: string
   secret: string
   expiresInSeconds?: number
 }) {
@@ -68,6 +70,7 @@ export function createWidgetEmbedToken(args: {
     businessId: args.businessId,
     widgetKey: args.widgetKey,
     origin: args.origin,
+    fingerprint: args.fingerprint,
     exp: Math.floor(Date.now() / 1000) + expiresInSeconds,
   }
 
@@ -81,6 +84,7 @@ export function verifyWidgetEmbedToken(args: {
   businessId: string
   widgetKey: string
   origin: string
+  fingerprint: string
   secret: string
 }) {
   const [encodedPayload, signature] = String(args.token || '').split('.')
@@ -110,6 +114,10 @@ export function verifyWidgetEmbedToken(args: {
 
     if (payload.origin !== args.origin) {
       return { valid: false as const, reason: 'Embed token origin mismatch.' }
+    }
+
+    if (payload.fingerprint !== args.fingerprint) {
+      return { valid: false as const, reason: 'Embed token fingerprint mismatch.' }
     }
 
     if (!Number.isFinite(payload.exp) || payload.exp < now) {
@@ -147,10 +155,18 @@ export async function authorizeWidgetRequest(args: {
 
   const secret = await getOrCreateWidgetEmbedSecret(args.business.id)
   const requestOrigin = getWidgetRequestOrigin(args.req)
+  const fingerprint = String(args.req.headers.get('x-vintra-fingerprint') || '').trim()
   if (!requestOrigin) {
     return {
       allowed: false as const,
       reason: 'This widget is restricted to approved domains or approved mobile apps.',
+    }
+  }
+
+  if (!fingerprint) {
+    return {
+      allowed: false as const,
+      reason: 'Missing widget fingerprint.',
     }
   }
 
@@ -159,6 +175,7 @@ export async function authorizeWidgetRequest(args: {
     businessId: args.business.id,
     widgetKey: args.business.chatWidgetKey,
     origin: requestOrigin,
+    fingerprint,
     secret,
   })
 
