@@ -6,15 +6,24 @@ import {
   FiClock,
   FiCpu,
   FiGlobe,
+  FiHeadphones,
   FiMessageSquare,
   FiPieChart,
   FiShield,
+  FiTarget,
   FiTrendingUp,
 } from 'react-icons/fi'
 import { useAuth } from '@/context/AuthContext'
-import { getBusinessChatAnalytics, getRecentAiChatLogs } from '@/lib/chat.service'
+import { getBusinessChatAnalytics, getRecentAiChatLogs, getSupportChats, getSupportTasks } from '@/lib/chat.service'
+import {
+  getAnalyticsDayKey,
+  getAnalyticsHourKey,
+  getAnalyticsMonthKey,
+  getAnalyticsWeekdayIndex,
+  normalizeChatAnalytics,
+} from '@/lib/chat-analytics'
 import { adminAnalyticsI18n, useVintraLanguage } from '@/lib/i18n'
-import type { AiChatLog, ChatAnalytics, ChatAnalyticsEvent } from '@/types/database'
+import type { AiChatLog, ChatAnalytics, ChatAnalyticsEvent, SupportChatSession, SupportTask } from '@/types/database'
 import AdminCandlestickChart, { type CandlestickPoint } from './AdminCandlestickChart'
 import AdminDropdown from './AdminDropdown'
 import './admin-components.css'
@@ -30,6 +39,7 @@ type AnalyticsRange = '24h' | '7d' | '30d' | 'all'
 
 type RangeAnalytics = {
   totalSessions: number
+  totalMessages: number
   supportRequests: number
   aiOnlySessions: number
   savedSupportChats: number
@@ -53,11 +63,14 @@ const emptyAnalytics: ChatAnalytics = {
   aiOnlySessions: 0,
   supportRequests: 0,
   savedSupportChats: 0,
+  dailyStats: {},
   countryCounts: {},
   timeline: [],
 }
 
 const emptyAiChatLogs: AiChatLog[] = []
+const emptySupportChats: SupportChatSession[] = []
+const emptySupportTasks: SupportTask[] = []
 
 function loadGoogleCharts() {
   return new Promise<void>((resolve, reject) => {
@@ -116,6 +129,7 @@ function buildRangeAnalytics(events: ChatAnalyticsEvent[]): RangeAnalytics {
   const supportRequestedSessions = new Set<string>()
   const supportChatSessions = new Set<string>()
   const sessionCountries = new Map<string, string>()
+  let totalMessages = 0
   let lastActivityAt: Date | null = null
 
   events.forEach((event) => {
@@ -132,7 +146,13 @@ function buildRangeAnalytics(events: ChatAnalyticsEvent[]): RangeAnalytics {
       case 'session-start':
         sessionStarts.add(event.sessionId)
         break
+      case 'visitor-message':
+      case 'assistant-reply':
+      case 'support-message':
+        totalMessages += 1
+        break
       case 'support-request':
+        totalMessages += 1
         supportRequestedSessions.add(event.sessionId)
         supportChatSessions.add(event.sessionId)
         break
@@ -156,6 +176,7 @@ function buildRangeAnalytics(events: ChatAnalyticsEvent[]): RangeAnalytics {
 
   return {
     totalSessions: sessionStarts.size,
+    totalMessages,
     supportRequests: supportRequestedSessions.size,
     aiOnlySessions: Math.max(sessionStarts.size - supportRequestedSessions.size, 0),
     savedSupportChats: supportChatSessions.size,
@@ -216,16 +237,30 @@ function getHourLabel(hour: number) {
   return `${String(hour).padStart(2, '0')}:00`
 }
 
+function addDays(date: Date, days: number) {
+  const next = new Date(date)
+  next.setDate(next.getDate() + days)
+  return next
+}
+
+function addMonths(date: Date, months: number) {
+  const next = new Date(date)
+  next.setMonth(next.getMonth() + months)
+  return next
+}
+
 export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { selectedWidgetKey?: string }) {
   const { dbUser } = useAuth()
   const { language } = useVintraLanguage()
   const text = adminAnalyticsI18n[language]
   const [analytics, setAnalytics] = useState<ChatAnalytics>(emptyAnalytics)
   const [aiChatLogs, setAiChatLogs] = useState<AiChatLog[]>(emptyAiChatLogs)
+  const [supportChats, setSupportChats] = useState<SupportChatSession[]>(emptySupportChats)
+  const [supportTasks, setSupportTasks] = useState<SupportTask[]>(emptySupportTasks)
   const [loading, setLoading] = useState(true)
   const [chartReady, setChartReady] = useState(false)
   const [view, setView] = useState<AnalyticsView>('overview')
-  const [range, setRange] = useState<AnalyticsRange>('7d')
+  const [range, setRange] = useState<AnalyticsRange>('all')
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
   const overviewRef = useRef<HTMLDivElement | null>(null)
   const timelineRef = useRef<HTMLDivElement | null>(null)
@@ -240,7 +275,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
     async function loadAnalytics() {
       if (!dbUser?.businessId) return
 
-      const [analyticsData, aiLogs] = await Promise.all([
+      const [analyticsData, aiLogs, chats, tasks] = await Promise.all([
         getBusinessChatAnalytics(dbUser.businessId, {
           widgetKey: selectedWidgetKey || undefined,
         }),
@@ -248,12 +283,16 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
           widgetKey: selectedWidgetKey || undefined,
           limitCount: 80,
         }),
+        getSupportChats(dbUser.businessId),
+        getSupportTasks(dbUser.businessId),
       ])
 
       if (!mounted) return
 
-      setAnalytics(analyticsData || emptyAnalytics)
+      setAnalytics(normalizeChatAnalytics(analyticsData || emptyAnalytics))
       setAiChatLogs(aiLogs)
+      setSupportChats(chats)
+      setSupportTasks(tasks)
       setLoading(false)
     }
 
@@ -295,6 +334,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
   }, [])
 
   const rangeStart = useMemo(() => getRangeStart(range), [range])
+  const dailyStats = useMemo(() => analytics.dailyStats || {}, [analytics.dailyStats])
 
   const timelineEvents = useMemo(() => {
     return [...(analytics.timeline || [])]
@@ -306,7 +346,67 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
   }, [analytics.timeline, rangeStart, selectedWidgetKey])
 
-  const rangeAnalytics = useMemo(() => buildRangeAnalytics(timelineEvents), [timelineEvents])
+  const rangeAnalytics = useMemo(() => {
+    if (!selectedWidgetKey && range === 'all') {
+      return {
+        totalSessions: Number(analytics.totalSessions || 0),
+        totalMessages: Number(analytics.totalMessages || 0),
+        supportRequests: Number(analytics.supportRequests || 0),
+        aiOnlySessions: Number(analytics.aiOnlySessions || 0),
+        savedSupportChats: Number(analytics.savedSupportChats || 0),
+        countryCounts: analytics.countryCounts || {},
+        lastActivityAt: analytics.lastChatAt || null,
+      } satisfies RangeAnalytics
+    }
+
+    if (selectedWidgetKey || range === '24h') {
+      return buildRangeAnalytics(timelineEvents)
+    }
+
+    const dayEntries = Object.entries(dailyStats).filter(([dayKey]) => dayKey >= getAnalyticsDayKey(rangeStart))
+    const totals = dayEntries.reduce(
+      (accumulator, [, day]) => {
+        accumulator.totalSessions += Number(day.totalSessions || 0)
+        accumulator.totalMessages += Number(day.totalMessages || 0)
+        accumulator.supportRequests += Number(day.supportRequests || 0)
+        accumulator.savedSupportChats += Number(day.savedSupportChats || 0)
+        Object.entries(day.countryCounts || {}).forEach(([country, count]) => {
+          accumulator.countryCounts[country] = (accumulator.countryCounts[country] || 0) + Number(count || 0)
+        })
+        return accumulator
+      },
+      {
+        totalSessions: 0,
+        totalMessages: 0,
+        supportRequests: 0,
+        savedSupportChats: 0,
+        countryCounts: {} as Record<string, number>,
+      }
+    )
+
+    return {
+      totalSessions: totals.totalSessions,
+      totalMessages: totals.totalMessages,
+      supportRequests: totals.supportRequests,
+      aiOnlySessions: Math.max(totals.totalSessions - totals.supportRequests, 0),
+      savedSupportChats: totals.savedSupportChats,
+      countryCounts: totals.countryCounts,
+      lastActivityAt: analytics.lastChatAt || null,
+    } satisfies RangeAnalytics
+  }, [
+    analytics.aiOnlySessions,
+    analytics.countryCounts,
+    analytics.lastChatAt,
+    analytics.savedSupportChats,
+    analytics.supportRequests,
+    analytics.totalMessages,
+    analytics.totalSessions,
+    dailyStats,
+    range,
+    rangeStart,
+    selectedWidgetKey,
+    timelineEvents,
+  ])
 
   const countryEntries = useMemo(() => {
     return Object.entries(rangeAnalytics.countryCounts || {}).sort((a, b) => b[1] - a[1])
@@ -331,6 +431,36 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
       .filter((log) => log.updatedAt >= rangeStart)
   }, [aiChatLogs, rangeStart, selectedWidgetKey])
 
+  const filteredSupportChats = useMemo(() => {
+    return supportChats.filter((chat) => !selectedWidgetKey || chat.widgetKey === selectedWidgetKey)
+  }, [selectedWidgetKey, supportChats])
+
+  const filteredSupportTasks = useMemo(() => {
+    return supportTasks.filter((task) => !selectedWidgetKey || task.widgetKey === selectedWidgetKey)
+  }, [selectedWidgetKey, supportTasks])
+
+  const artifactSessionCount = useMemo(() => {
+    const uniqueSessionIds = new Set<string>()
+
+    filteredAiChatLogs
+      .filter((log) => log.createdAt >= rangeStart)
+      .forEach((log) => uniqueSessionIds.add(log.sessionId))
+
+    filteredSupportChats
+      .filter((chat) => chat.createdAt >= rangeStart)
+      .forEach((chat) => uniqueSessionIds.add(chat.sessionId))
+
+    return uniqueSessionIds.size
+  }, [filteredAiChatLogs, filteredSupportChats, rangeStart])
+
+  const artifactSupportRequestCount = useMemo(() => {
+    return new Set(
+      filteredSupportChats
+        .filter((chat) => chat.createdAt >= rangeStart)
+        .map((chat) => chat.sessionId)
+    ).size
+  }, [filteredSupportChats, rangeStart])
+
   const selectedCountryMessages = useMemo(() => {
     if (!selectedCountry) return []
 
@@ -351,86 +481,149 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
       .slice(0, 4)
   }, [filteredAiChatLogs, selectedCountry])
 
+  const effectiveRangeAnalytics = useMemo(() => {
+    const totalSessions = Math.max(rangeAnalytics.totalSessions, artifactSessionCount)
+    const supportRequests = Math.max(rangeAnalytics.supportRequests, artifactSupportRequestCount)
+
+    return {
+      ...rangeAnalytics,
+      totalSessions,
+      supportRequests,
+      aiOnlySessions: Math.max(totalSessions - supportRequests, 0),
+    }
+  }, [artifactSessionCount, artifactSupportRequestCount, rangeAnalytics])
+
   const analyticsCards = useMemo(() => {
     const supportRate =
-      rangeAnalytics.totalSessions > 0
-        ? Math.round((rangeAnalytics.supportRequests / rangeAnalytics.totalSessions) * 100)
+      effectiveRangeAnalytics.totalSessions > 0
+        ? Math.round((effectiveRangeAnalytics.supportRequests / effectiveRangeAnalytics.totalSessions) * 100)
         : 0
     const aiRate =
-      rangeAnalytics.totalSessions > 0
-        ? Math.round((rangeAnalytics.aiOnlySessions / rangeAnalytics.totalSessions) * 100)
+      effectiveRangeAnalytics.totalSessions > 0
+        ? Math.round((effectiveRangeAnalytics.aiOnlySessions / effectiveRangeAnalytics.totalSessions) * 100)
         : 0
-    const savedRate =
-      rangeAnalytics.supportRequests > 0
-        ? Math.round((rangeAnalytics.savedSupportChats / rangeAnalytics.supportRequests) * 100)
-        : 0
-    const latestCountry =
-      Object.entries(rangeAnalytics.countryCounts || {}).sort((a, b) => b[1] - a[1])[0]?.[0] || 'XX'
-    const lastActivityAt = rangeAnalytics.lastActivityAt
+    const openChatsCount = filteredSupportChats.filter((chat) => chat.status !== 'closed').length
+    const activeTicketsCount = filteredSupportTasks.filter((task) => task.status !== 'done').length
 
     return [
       {
         label: text.totalSessions,
-        value: rangeAnalytics.totalSessions,
+        value: effectiveRangeAnalytics.totalSessions,
         detail: language === 'no' ? 'Valgt periode' : 'Selected range',
         icon: FiActivity,
         tone: 'orange',
       },
       {
+        label: text.totalMessages,
+        value: effectiveRangeAnalytics.totalMessages,
+        detail: language === 'no' ? 'Alle meldinger i perioden' : 'All messages in range',
+        icon: FiMessageSquare,
+        tone: 'pink',
+      },
+      {
         label: text.supportRequests,
-        value: rangeAnalytics.supportRequests,
-        detail: `${supportRate}%`,
+        value: effectiveRangeAnalytics.supportRequests,
+        detail: text.supportRate(supportRate),
         icon: FiShield,
         tone: 'purple',
       },
       {
         label: text.aiOnlySessions,
-        value: rangeAnalytics.aiOnlySessions,
-        detail: `${aiRate}%`,
+        value: effectiveRangeAnalytics.aiOnlySessions,
+        detail: text.aiRate(aiRate),
         icon: FiCpu,
         tone: 'cyan',
       },
       {
-        label: text.savedSupportChats,
-        value: rangeAnalytics.savedSupportChats,
-        detail: `${savedRate}%`,
-        icon: FiMessageSquare,
-        tone: 'pink',
-      },
-      {
-        label: text.topCountry,
-        value: (
-          <span className="adminAnalyticsCountryValue">
-            {countryCodeToFlagImage(latestCountry) ? (
-              <img
-                className="adminAnalyticsCountryFlag"
-                src={countryCodeToFlagImage(latestCountry) as string}
-                alt=""
-                aria-hidden="true"
-                loading="lazy"
-                decoding="async"
-              />
-            ) : (
-              <FiGlobe className="adminAnalyticsCountryFlagFallback" aria-hidden="true" />
-            )}
-            <span>{latestCountry}</span>
-          </span>
-        ),
-        detail: language === 'no' ? 'Mest aktivt land' : 'Most active country',
-        icon: FiGlobe,
+        label: text.openChats,
+        value: openChatsCount,
+        detail: language === 'no' ? 'Akkurat n\u00E5' : 'Right now',
+        icon: FiHeadphones,
         tone: 'sky',
       },
       {
-        label: text.lastActivity,
-        value: lastActivityAt ? lastActivityAt.toLocaleTimeString() : text.none,
-        detail: lastActivityAt ? lastActivityAt.toLocaleDateString() : text.noChatsYet,
-        icon: FiClock,
+        label: text.activeTickets,
+        value: activeTicketsCount,
+        detail: language === 'no' ? 'Oppgaver som p\u00E5g\u00E5r' : 'Tasks in progress',
+        icon: FiTarget,
         tone: 'slate',
       },
     ] satisfies AnalyticsCard[]
-  }, [language, rangeAnalytics, text])
+  }, [effectiveRangeAnalytics, filteredSupportChats, filteredSupportTasks, language, text])
 
   const timelineBuckets = useMemo(() => {
+    if (!selectedWidgetKey && Object.keys(dailyStats).length > 0) {
+      const buckets: Array<{ bucket: Date; activity: number; handovers: number }> = []
+
+      if (range === '24h') {
+        const now = new Date()
+        const start = new Date(now.getTime() - 23 * 60 * 60 * 1000)
+        start.setMinutes(0, 0, 0)
+
+        for (let index = 0; index < 24; index += 1) {
+          const bucket = new Date(start.getTime() + index * 60 * 60 * 1000)
+          const dayKey = getAnalyticsDayKey(bucket)
+          const hourKey = getAnalyticsHourKey(bucket)
+          const day = dailyStats[dayKey]
+          const handovers = timelineEvents.filter((event) => {
+            const createdAt = new Date(event.createdAt)
+            return (
+              getAnalyticsDayKey(createdAt) === dayKey &&
+              getAnalyticsHourKey(createdAt) === hourKey &&
+              (event.kind === 'support-request' || event.kind === 'support-open')
+            )
+          }).length
+
+          buckets.push({
+            bucket,
+            activity: Number(day?.hours?.[hourKey] || 0),
+            handovers,
+          })
+        }
+
+        return buckets
+      }
+
+      if (range === 'all') {
+        const monthMap = new Map<string, { bucket: Date; activity: number; handovers: number }>()
+
+        Object.entries(dailyStats).forEach(([dayKey, day]) => {
+          const bucketKey = getAnalyticsMonthKey(`${dayKey}T12:00:00`)
+          const monthEntry =
+            monthMap.get(bucketKey) ||
+            {
+              bucket: new Date(`${bucketKey}-01T12:00:00`),
+              activity: 0,
+              handovers: 0,
+            }
+
+          monthEntry.activity += Number(day.totalSessions || 0)
+          monthEntry.handovers += Number(day.supportRequests || 0)
+          monthMap.set(bucketKey, monthEntry)
+        })
+
+        return Array.from(monthMap.values()).sort((a, b) => a.bucket.getTime() - b.bucket.getTime())
+      }
+
+      const totalDays = range === '30d' ? 30 : 7
+      const start = new Date()
+      start.setHours(12, 0, 0, 0)
+      start.setDate(start.getDate() - (totalDays - 1))
+
+      for (let index = 0; index < totalDays; index += 1) {
+        const bucket = addDays(start, index)
+        const dayKey = getAnalyticsDayKey(bucket)
+        const day = dailyStats[dayKey]
+        buckets.push({
+          bucket,
+          activity: Number(day?.totalSessions || 0),
+          handovers: Number(day?.supportRequests || 0),
+        })
+      }
+
+      return buckets
+    }
+
     const map = new Map<number, { bucket: Date; activity: number; handovers: number }>()
 
     timelineEvents.forEach((event) => {
@@ -452,7 +645,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
     })
 
     return Array.from(map.values()).sort((a, b) => a.bucket.getTime() - b.bucket.getTime())
-  }, [range, timelineEvents])
+  }, [dailyStats, range, selectedWidgetKey, timelineEvents])
 
   const visitorEvents = useMemo(
     () => timelineEvents.filter((event) => event.kind === 'visitor-message'),
@@ -465,31 +658,24 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
       count: 0,
     }))
 
-    visitorEvents.forEach((event) => {
-      const createdAt = new Date(event.createdAt)
-      counts[createdAt.getHours()].count += 1
-    })
+    if (!selectedWidgetKey && Object.keys(dailyStats).length > 0) {
+      Object.entries(dailyStats)
+        .filter(([dayKey]) => dayKey >= getAnalyticsDayKey(rangeStart))
+        .forEach(([, day]) => {
+        Array.from({ length: 24 }, (_, hour) => {
+          counts[hour].count += Number(day.hours?.[String(hour).padStart(2, '0')] || 0)
+          return hour
+        })
+        })
+    } else {
+      visitorEvents.forEach((event) => {
+        const createdAt = new Date(event.createdAt)
+        counts[createdAt.getHours()].count += 1
+      })
+    }
 
     return counts.sort((a, b) => b.count - a.count).slice(0, 6)
-  }, [visitorEvents])
-
-  const twelveMonthsActivityEvents = useMemo(() => {
-    const start = new Date()
-    start.setMonth(start.getMonth() - 12)
-
-    return [...(analytics.timeline || [])]
-      .filter((event) => {
-        if (!selectedWidgetKey) return true
-        return event.widgetKey ? event.widgetKey === selectedWidgetKey : false
-      })
-      .filter((event) => new Date(event.createdAt) >= start)
-      .filter((event) =>
-        event.kind === 'visitor-message' ||
-        event.kind === 'assistant-reply' ||
-        event.kind === 'support-message' ||
-        event.kind === 'support-request'
-      )
-  }, [analytics.timeline, selectedWidgetKey])
+  }, [dailyStats, rangeStart, selectedWidgetKey, visitorEvents])
 
   const weekdayHourActivity = useMemo(() => {
     const start = new Date()
@@ -518,12 +704,26 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
       }))
     )
 
-    twelveMonthsActivityEvents.forEach((event) => {
-      const createdAt = new Date(event.createdAt)
-      const dayIndex = (createdAt.getDay() + 6) % 7
-      const hour = createdAt.getHours()
-      totals[dayIndex][hour].total += 1
-    })
+    if (!selectedWidgetKey && Object.keys(dailyStats).length > 0) {
+      Object.entries(dailyStats).forEach(([dayKey, day]) => {
+        const date = new Date(`${dayKey}T12:00:00`)
+        if (date < start || date > end) return
+
+        const dayIndex = getAnalyticsWeekdayIndex(date)
+        Array.from({ length: 24 }, (_, hour) => {
+          totals[dayIndex][hour].total += Number(day.hours?.[String(hour).padStart(2, '0')] || 0)
+          return hour
+        })
+      })
+    } else {
+      visitorEvents.forEach((event) => {
+        const createdAt = new Date(event.createdAt)
+        if (createdAt < start || createdAt > end) return
+        const dayIndex = (createdAt.getDay() + 6) % 7
+        const hour = createdAt.getHours()
+        totals[dayIndex][hour].total += 1
+      })
+    }
 
     return totals.flatMap((weekdayEntries, dayIndex) =>
       weekdayEntries.map((entry) => ({
@@ -531,10 +731,10 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
         dayLabel: entry.dayLabel,
         hour: entry.hour,
         hourLabel: entry.hourLabel,
-        value: Number((entry.total / Math.max(1, weekdayOccurrences[dayIndex])).toFixed(2)),
+        value: Math.round(entry.total / Math.max(1, weekdayOccurrences[dayIndex])),
       }))
     )
-  }, [language, twelveMonthsActivityEvents])
+  }, [dailyStats, language, selectedWidgetKey, visitorEvents])
 
   const weekdayHourActivityMax = useMemo(
     () => weekdayHourActivity.reduce((maxValue, entry) => Math.max(maxValue, entry.value), 0),
@@ -595,17 +795,18 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
         legend: { position: 'bottom', textStyle: { color: '#475569', fontName: 'Inter' } },
         chartArea: { left: 56, top: 24, width: '84%', height: '68%' },
         colors: ['#8b5cf6', '#f97316'],
-        curveType: 'function',
         pointSize: 5,
         hAxis: {
           textStyle: { color: '#64748b', fontName: 'Inter' },
           gridlines: { color: 'rgba(148, 163, 184, 0.12)' },
-          format: range === '24h' ? 'HH:mm' : 'MMM d',
+          format: range === '24h' ? 'HH:mm' : range === 'all' ? 'MMM yyyy' : 'MMM d',
         },
         vAxis: {
           textStyle: { color: '#64748b', fontName: 'Inter' },
           gridlines: { color: 'rgba(148, 163, 184, 0.12)' },
           minValue: 0,
+          format: '0',
+          viewWindow: { min: 0 },
         },
         tooltip: { textStyle: { fontName: 'Inter' } },
         fontName: 'Inter',

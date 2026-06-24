@@ -42,6 +42,7 @@ import {
   ChatWidgetRecord,
 } from "@/types/database";
 import { defaultConversationCards, normalizeConversationCards } from '@/lib/conversation-cards'
+import { normalizeDailyStatsMap } from '@/lib/chat-analytics'
 import {
   getEffectiveBusinessPlan,
   normalizeSubscriptionPlan,
@@ -542,6 +543,7 @@ function buildDefaultChatAnalytics(): ChatAnalytics {
     supportRequests: 0,
     savedSupportChats: 0,
     dailyConversationCounts: {},
+    dailyStats: {},
     countryCounts: {},
     modelUsage: {},
     timeline: [],
@@ -871,6 +873,7 @@ const defaultChatAnalytics: ChatAnalytics = {
   supportRequests: 0,
   savedSupportChats: 0,
   dailyConversationCounts: {},
+  dailyStats: {},
   countryCounts: {},
   modelUsage: {},
   timeline: [],
@@ -1277,6 +1280,7 @@ export async function getBusinessInfo(
         ? {
             ...data.chatAnalytics,
             dailyConversationCounts: data.chatAnalytics.dailyConversationCounts || {},
+            dailyStats: normalizeDailyStatsMap(data.chatAnalytics.dailyStats || {}),
             countryCounts: data.chatAnalytics.countryCounts || {},
             modelUsage: data.chatAnalytics.modelUsage || {},
             timeline: Array.isArray(data.chatAnalytics.timeline)

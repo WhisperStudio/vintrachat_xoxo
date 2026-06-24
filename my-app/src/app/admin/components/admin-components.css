@@ -1289,10 +1289,10 @@
 
 .adminTranscriptBubbleUser {
   align-self: flex-end;
-  background: grey;
+  background: linear-gradient(135deg, #f472b6, #ec4899);
   color: #fff;
-  border-color: rgba(148, 163, 184, 0.12);
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.16);
+  border-color: rgba(236, 72, 153, 0.28);
+  box-shadow: 0 14px 28px rgba(236, 72, 153, 0.22);
 }
 
 .adminTranscriptBubbleUser p {
@@ -1391,7 +1391,7 @@
 
 .adminTranscriptBubbleVisitorTyping {
   align-self: flex-end;
-  background: grey;
+  background: linear-gradient(135deg, #f472b6, #ec4899);
   color: #fff;
 }
 

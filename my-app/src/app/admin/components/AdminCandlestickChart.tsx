@@ -26,7 +26,6 @@ export default function AdminCandlestickChart({ data }: AdminCandlestickChartPro
     data.reduce((map, entry) => map.set(entry.hour, entry.hourLabel), new Map<number, string>()).entries()
   )
     .sort((a, b) => a[0] - b[0])
-    .map(([, label]) => label)
 
   const cellMap = new Map(data.map((entry) => [`${entry.dayIndex}-${entry.hour}`, entry]))
   const maxValue = data.reduce((max, entry) => Math.max(max, entry.value), 0)
@@ -55,12 +54,12 @@ export default function AdminCandlestickChart({ data }: AdminCandlestickChartPro
           </div>
         ))}
 
-        {hourLabels.map((hourLabel, hourIndex) => (
+        {hourLabels.map(([hourValue, hourLabel]) => (
           <React.Fragment key={hourLabel}>
             <div className="candlestick-hour-label">{hourLabel}</div>
 
             {dayLabels.map((dayLabel, dayIndex) => {
-              const cell = cellMap.get(`${dayIndex}-${hourIndex}`)
+              const cell = cellMap.get(`${dayIndex}-${hourValue}`)
               const value = cell?.value || 0
 
               return (
@@ -68,9 +67,9 @@ export default function AdminCandlestickChart({ data }: AdminCandlestickChartPro
                   key={`${dayLabel}-${hourLabel}`}
                   className="candlestick-cell"
                   style={{ background: getCellColor(value) }}
-                  title={`${dayLabel} ${hourLabel} - ${value.toFixed(2)}`}
+                  title={`${dayLabel} ${hourLabel} - ${value}`}
                 >
-                  <span>{value > 0 ? value.toFixed(2) : ''}</span>
+                  <span>{value > 0 ? value : ''}</span>
                 </div>
               )
             })}

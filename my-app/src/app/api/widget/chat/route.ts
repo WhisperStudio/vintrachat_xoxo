@@ -8,6 +8,7 @@ import { enforceWidgetRateLimit } from '@/lib/widget-rate-limit.server'
 import { authorizeWidgetRequest, getOrCreateWidgetEmbedSecret } from '@/lib/widget-embed-token.server'
 import { createWidgetCaptchaChallenge, verifyWidgetCaptchaToken } from '@/lib/widget-captcha.server'
 import { getGeminiModelCandidates } from '@/lib/gemini-models.server'
+import { getAnalyticsDayKey, getAnalyticsHourKey } from '@/lib/chat-analytics'
 
 function corsHeaders(origin?: string | null) {
   return {
@@ -148,6 +149,22 @@ function createAnalyticsEvent(
     widgetKey,
     countryCode,
     createdAt: new Date(),
+  }
+}
+
+function buildDailyStatUpdatePaths(date: Date, countryCode: string) {
+  const dayKey = getAnalyticsDayKey(date)
+  const hourKey = getAnalyticsHourKey(date)
+
+  return {
+    dayKey,
+    hourKey,
+    messageCountPath: `chatAnalytics.dailyStats.${dayKey}.totalMessages`,
+    sessionCountPath: `chatAnalytics.dailyStats.${dayKey}.totalSessions`,
+    supportRequestsPath: `chatAnalytics.dailyStats.${dayKey}.supportRequests`,
+    savedSupportChatsPath: `chatAnalytics.dailyStats.${dayKey}.savedSupportChats`,
+    hourPath: `chatAnalytics.dailyStats.${dayKey}.hours.${hourKey}`,
+    countryPath: `chatAnalytics.dailyStats.${dayKey}.countryCounts.${countryCode}`,
   }
 }
 
@@ -737,6 +754,8 @@ export async function POST(req: NextRequest) {
     if (requestFeedbackForm && reviewTabEnabled) {
       const businessRef = adminDb.collection('businesses').doc(business.id)
       const todayKey = getTodayUsageKey()
+      const now = new Date()
+      const statPaths = buildDailyStatUpdatePaths(now, countryCode)
       const analyticsTimelineEvents = [
         createAnalyticsEvent('visitor-message', sessionId, countryCode, widgetKey),
       ]
@@ -753,12 +772,16 @@ export async function POST(req: NextRequest) {
         updatedAt: FieldValue.serverTimestamp(),
         'chatAnalytics.totalMessages': FieldValue.increment(1),
         'chatAnalytics.lastChatAt': FieldValue.serverTimestamp(),
-        [`chatAnalytics.countryCounts.${countryCode}`]: FieldValue.increment(1),
         'chatAnalytics.timeline': FieldValue.arrayUnion(...analyticsTimelineEvents),
+        [statPaths.messageCountPath]: FieldValue.increment(1),
+        [statPaths.hourPath]: FieldValue.increment(1),
         ...(body.sessionId ? {} : {
           'chatAnalytics.totalSessions': FieldValue.increment(1),
           'chatAnalytics.aiOnlySessions': FieldValue.increment(1),
           [`chatAnalytics.dailyConversationCounts.${todayKey}`]: FieldValue.increment(1),
+          [`chatAnalytics.countryCounts.${countryCode}`]: FieldValue.increment(1),
+          [statPaths.sessionCountPath]: FieldValue.increment(1),
+          [statPaths.countryPath]: FieldValue.increment(1),
         }),
       })
 
@@ -776,6 +799,8 @@ export async function POST(req: NextRequest) {
     if (requestTaskForm && taskTabEnabled) {
       const businessRef = adminDb.collection('businesses').doc(business.id)
       const todayKey = getTodayUsageKey()
+      const now = new Date()
+      const statPaths = buildDailyStatUpdatePaths(now, countryCode)
       const analyticsTimelineEvents = [
         createAnalyticsEvent('visitor-message', sessionId, countryCode, widgetKey),
       ]
@@ -790,12 +815,16 @@ export async function POST(req: NextRequest) {
         updatedAt: FieldValue.serverTimestamp(),
         'chatAnalytics.totalMessages': FieldValue.increment(1),
         'chatAnalytics.lastChatAt': FieldValue.serverTimestamp(),
-        [`chatAnalytics.countryCounts.${countryCode}`]: FieldValue.increment(1),
         'chatAnalytics.timeline': FieldValue.arrayUnion(...analyticsTimelineEvents),
+        [statPaths.messageCountPath]: FieldValue.increment(1),
+        [statPaths.hourPath]: FieldValue.increment(1),
         ...(body.sessionId ? {} : {
           'chatAnalytics.totalSessions': FieldValue.increment(1),
           'chatAnalytics.aiOnlySessions': FieldValue.increment(1),
           [`chatAnalytics.dailyConversationCounts.${todayKey}`]: FieldValue.increment(1),
+          [`chatAnalytics.countryCounts.${countryCode}`]: FieldValue.increment(1),
+          [statPaths.sessionCountPath]: FieldValue.increment(1),
+          [statPaths.countryPath]: FieldValue.increment(1),
         }),
       })
 
@@ -869,6 +898,7 @@ export async function POST(req: NextRequest) {
       const supportChatRef = businessRef.collection('supportChats').doc(sessionId)
       const supportChatSnap = await supportChatRef.get()
       const isNewSupportChat = !supportChatSnap.exists
+      const statPaths = buildDailyStatUpdatePaths(now, countryCode)
 
       await supportChatRef.set(
         {
@@ -905,10 +935,22 @@ export async function POST(req: NextRequest) {
         'chatAnalytics.lastChatAt': FieldValue.serverTimestamp(),
         'chatAnalytics.supportRequests': FieldValue.increment(isNewSupportChat ? 1 : 0),
         'chatAnalytics.savedSupportChats': FieldValue.increment(isNewSupportChat ? 1 : 0),
-        [`chatAnalytics.countryCounts.${countryCode}`]: FieldValue.increment(1),
         'chatAnalytics.timeline': FieldValue.arrayUnion(
+          ...(!body.sessionId ? [createAnalyticsEvent('session-start', sessionId, countryCode, widgetKey)] : []),
           createAnalyticsEvent('support-request', sessionId, countryCode, widgetKey)
         ),
+        [statPaths.messageCountPath]: FieldValue.increment(1),
+        [statPaths.hourPath]: FieldValue.increment(1),
+        [statPaths.supportRequestsPath]: FieldValue.increment(isNewSupportChat ? 1 : 0),
+        [statPaths.savedSupportChatsPath]: FieldValue.increment(isNewSupportChat ? 1 : 0),
+      }
+
+      if (!body.sessionId) {
+        analyticsUpdates['chatAnalytics.totalSessions'] = FieldValue.increment(1)
+        analyticsUpdates[`chatAnalytics.dailyConversationCounts.${getTodayUsageKey(now)}`] = FieldValue.increment(1)
+        analyticsUpdates[`chatAnalytics.countryCounts.${countryCode}`] = FieldValue.increment(1)
+        analyticsUpdates[statPaths.sessionCountPath] = FieldValue.increment(1)
+        analyticsUpdates[statPaths.countryPath] = FieldValue.increment(1)
       }
 
       await businessRef.update(analyticsUpdates)
@@ -1021,6 +1063,7 @@ export async function POST(req: NextRequest) {
     const existingSupportChat = supportChatSnap.exists ? supportChatSnap.data() || {} : null
 
     if (existingSupportChat && existingSupportChat.status === 'open') {
+      const statPaths = buildDailyStatUpdatePaths(new Date(), countryCode)
       const nextSupportMessage = {
         id: crypto.randomUUID(),
         role: 'user',
@@ -1061,10 +1104,11 @@ export async function POST(req: NextRequest) {
         updatedAt: FieldValue.serverTimestamp(),
         'chatAnalytics.totalMessages': FieldValue.increment(1),
         'chatAnalytics.lastChatAt': FieldValue.serverTimestamp(),
-        [`chatAnalytics.countryCounts.${countryCode}`]: FieldValue.increment(1),
         'chatAnalytics.timeline': FieldValue.arrayUnion(
           createAnalyticsEvent('visitor-message', sessionId, countryCode, widgetKey)
         ),
+        [statPaths.messageCountPath]: FieldValue.increment(1),
+        [statPaths.hourPath]: FieldValue.increment(1),
       })
 
       return NextResponse.json(
@@ -1080,6 +1124,7 @@ export async function POST(req: NextRequest) {
     }
 
     const isNewSupportChat = needsHumanSupport && !requiresName && !supportChatSnap.exists
+    const statPaths = buildDailyStatUpdatePaths(now, countryCode)
 
     const analyticsTimelineEvents = [
       createAnalyticsEvent('visitor-message', sessionId, countryCode, widgetKey),
@@ -1101,14 +1146,18 @@ export async function POST(req: NextRequest) {
       updatedAt: FieldValue.serverTimestamp(),
       'chatAnalytics.totalMessages': FieldValue.increment(1),
       'chatAnalytics.lastChatAt': FieldValue.serverTimestamp(),
-      [`chatAnalytics.countryCounts.${countryCode}`]: FieldValue.increment(1),
       'chatAnalytics.timeline': FieldValue.arrayUnion(...analyticsTimelineEvents),
+      [statPaths.messageCountPath]: FieldValue.increment(1),
+      [statPaths.hourPath]: FieldValue.increment(1),
     }
 
     if (isNewConversation) {
       analyticsUpdates['chatAnalytics.totalSessions'] = FieldValue.increment(1)
       analyticsUpdates['chatAnalytics.aiOnlySessions'] = FieldValue.increment(1)
       analyticsUpdates[`chatAnalytics.dailyConversationCounts.${todayKey}`] = FieldValue.increment(1)
+      analyticsUpdates[`chatAnalytics.countryCounts.${countryCode}`] = FieldValue.increment(1)
+      analyticsUpdates[statPaths.sessionCountPath] = FieldValue.increment(1)
+      analyticsUpdates[statPaths.countryPath] = FieldValue.increment(1)
     }
 
     if (assistantConfig.enabled) {
@@ -1121,6 +1170,12 @@ export async function POST(req: NextRequest) {
         isNewSupportChat ? 1 : 0
       )
       analyticsUpdates['chatAnalytics.savedSupportChats'] = FieldValue.increment(
+        isNewSupportChat ? 1 : 0
+      )
+      analyticsUpdates[statPaths.supportRequestsPath] = FieldValue.increment(
+        isNewSupportChat ? 1 : 0
+      )
+      analyticsUpdates[statPaths.savedSupportChatsPath] = FieldValue.increment(
         isNewSupportChat ? 1 : 0
       )
       if (!body.sessionId) {

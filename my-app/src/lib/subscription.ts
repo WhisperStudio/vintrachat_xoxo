@@ -1,4 +1,5 @@
 import type { BubbleIconChoice, Business, ChatAnalytics, ChatWidgetConfig } from '@/types/database'
+import { getAnalyticsDayKey } from '@/lib/chat-analytics'
 
 export type SubscriptionPlan = ChatWidgetConfig['plan']
 export type PlanFeatureKey =
@@ -124,7 +125,7 @@ export function getPlanLabel(plan: SubscriptionPlan) {
 }
 
 export function getTodayUsageKey(date = new Date()) {
-  return date.toISOString().slice(0, 10)
+  return getAnalyticsDayKey(date)
 }
 
 export function getDailyConversationCount(

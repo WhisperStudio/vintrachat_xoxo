@@ -14,6 +14,13 @@ import {
   updateDoc,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import {
+  buildDailyStatsFromEvents,
+  getAnalyticsDayKey,
+  normalizeChatAnalytics,
+  normalizeDailyStatsMap,
+  toDate,
+} from '@/lib/chat-analytics'
 import type {
   AiChatLog,
   AiChatMessage,
@@ -44,12 +51,6 @@ const DEFAULT_SUPPORT_TASK_CATEGORIES: SupportTaskCategory[] = [
   createdAt: new Date(),
   updatedAt: new Date(),
 }))
-
-function toDate(value: any): Date {
-  if (!value) return new Date()
-  if (typeof value?.toDate === 'function') return value.toDate()
-  return new Date(value)
-}
 
 function mapSupportMessage(message: any): SupportChatMessage {
   return {
@@ -127,7 +128,7 @@ function buildScopedChatAnalytics(events: ChatAnalyticsEvent[]): ChatAnalytics {
 
   events.forEach((event) => {
     const createdAt = toDate(event.createdAt)
-    const dayKey = createdAt.toISOString().slice(0, 10)
+    const dayKey = getAnalyticsDayKey(createdAt)
 
     if (!lastChatAt || createdAt > lastChatAt) {
       lastChatAt = createdAt
@@ -176,6 +177,7 @@ function buildScopedChatAnalytics(events: ChatAnalyticsEvent[]): ChatAnalytics {
     supportRequests: supportRequestedSessions.size,
     savedSupportChats: supportChatSessions.size,
     dailyConversationCounts,
+    dailyStats: buildDailyStatsFromEvents(events),
     countryCounts,
     modelUsage: {},
     timeline: events,
@@ -284,18 +286,18 @@ export async function getBusinessChatAnalytics(
     return null
   }
 
-  const normalizedAnalytics = {
+  const normalizedAnalytics = normalizeChatAnalytics({
     ...analytics,
-    countryCounts: analytics.countryCounts || {},
     timeline: Array.isArray(analytics.timeline) ? analytics.timeline.map(mapAnalyticsEvent) : [],
     lastChatAt: analytics.lastChatAt ? toDate(analytics.lastChatAt) : undefined,
-  }
+    dailyStats: normalizeDailyStatsMap(analytics.dailyStats || {}),
+  })
 
   if (!options?.widgetKey) {
     return normalizedAnalytics
   }
 
-  const scopedTimeline = normalizedAnalytics.timeline.filter(
+  const scopedTimeline = (normalizedAnalytics.timeline || []).filter(
     (event) => event.widgetKey === options.widgetKey
   )
 

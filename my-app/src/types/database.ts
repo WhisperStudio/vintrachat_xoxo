@@ -141,6 +141,17 @@ export interface ChatAnalytics {
   supportRequests: number;
   savedSupportChats: number;
   dailyConversationCounts?: Record<string, number>;
+  dailyStats?: Record<
+    string,
+    {
+      totalMessages: number;
+      totalSessions: number;
+      supportRequests: number;
+      savedSupportChats: number;
+      countryCounts?: Record<string, number>;
+      hours?: Record<string, number>;
+    }
+  >;
   countryCounts?: Record<string, number>;
   modelUsage?: Record<string, number>;
   timeline?: ChatAnalyticsEvent[];

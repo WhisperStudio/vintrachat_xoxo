@@ -6,6 +6,7 @@ import { countCharacters, getClientIp } from '@/lib/widget-security'
 import { enforceWidgetRateLimit } from '@/lib/widget-rate-limit.server'
 import { authorizeWidgetRequest, getOrCreateWidgetEmbedSecret } from '@/lib/widget-embed-token.server'
 import { createWidgetCaptchaChallenge, verifyWidgetCaptchaToken } from '@/lib/widget-captcha.server'
+import { getAnalyticsHourKey, getAnalyticsDayKey } from '@/lib/chat-analytics'
 
 const MAX_WIDGET_MESSAGE_CHARS = 300
 
@@ -68,6 +69,32 @@ function getRequestCountryCode(req: NextRequest) {
 
   const country = String(headerCountry || 'XX').trim().toUpperCase()
   return /^[A-Z]{2}$/.test(country) ? country : 'XX'
+}
+
+function createAnalyticsEvent(
+  kind: string,
+  sessionId: string,
+  countryCode: string,
+  widgetKey: string
+) {
+  return {
+    id: crypto.randomUUID(),
+    kind,
+    sessionId,
+    widgetKey,
+    countryCode,
+    createdAt: new Date(),
+  }
+}
+
+function buildDailyStatUpdatePaths(date: Date, countryCode: string) {
+  const dayKey = getAnalyticsDayKey(date)
+  const hourKey = getAnalyticsHourKey(date)
+
+  return {
+    messageCountPath: `chatAnalytics.dailyStats.${dayKey}.totalMessages`,
+    hourPath: `chatAnalytics.dailyStats.${dayKey}.hours.${hourKey}`,
+  }
 }
 
 export async function OPTIONS(req: NextRequest) {
@@ -342,12 +369,14 @@ export async function POST(req: NextRequest) {
     const data = snap.data() || {}
     const businessRef = adminDb.collection('businesses').doc(business.id)
     const nextMessageId = clientMessageId || crypto.randomUUID()
+    const now = new Date()
+    const statPaths = buildDailyStatUpdatePaths(now, countryCode)
 
     const nextMessage = {
       id: nextMessageId,
       role: 'user',
       text: message,
-      createdAt: new Date().toISOString(),
+      createdAt: now.toISOString(),
     }
 
     const existingMessages = Array.isArray(data.messages) ? data.messages : []
@@ -382,14 +411,11 @@ export async function POST(req: NextRequest) {
       updatedAt: FieldValue.serverTimestamp(),
       'chatAnalytics.totalMessages': FieldValue.increment(1),
       'chatAnalytics.lastChatAt': FieldValue.serverTimestamp(),
-      [`chatAnalytics.countryCounts.${countryCode}`]: FieldValue.increment(1),
-      'chatAnalytics.timeline': FieldValue.arrayUnion({
-        id: crypto.randomUUID(),
-        kind: 'visitor-message',
-        sessionId,
-        countryCode,
-        createdAt: new Date(),
-      }),
+      'chatAnalytics.timeline': FieldValue.arrayUnion(
+        createAnalyticsEvent('visitor-message', sessionId, countryCode, widgetKey)
+      ),
+      [statPaths.messageCountPath]: FieldValue.increment(1),
+      [statPaths.hourPath]: FieldValue.increment(1),
     })
 
     const nextSnap = await chatRef.get()
