@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -532,8 +532,8 @@ function WebsiteCarousel({ language }: { language: Language }) {
   return (
     <div style={{ overflow: 'hidden', position: 'relative', padding: '30px 0 40px', height: 620 }}>
       <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at center, rgba(255,255,255,0.08), transparent 42%)', pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 160, background: 'linear-gradient(to right, #111, transparent)', zIndex: 2, pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 160, background: 'linear-gradient(to left, #111, transparent)', zIndex: 2, pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 160, background: 'linear-gradient(to right, #061628, transparent)', zIndex: 2, pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 160, background: 'linear-gradient(to left, #061628, transparent)', zIndex: 2, pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
         {visibleOffsets.map((offset) => {
           const virtualIndex = railBaseIndex + offset
@@ -682,6 +682,125 @@ function ChatbotShowcasePreview({ language }: { language: Language }) {
   )
 }
 
+// ─── Aurora Borealis Canvas ──────────────────────────────────────────────────
+
+function AuroraCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    let animId: number
+    let t = 0
+
+    const resize = () => {
+      canvas.width = canvas.offsetWidth
+      canvas.height = canvas.offsetHeight
+    }
+    resize()
+    window.addEventListener('resize', resize)
+
+    const draw = () => {
+      const { width, height } = canvas
+      ctx.clearRect(0, 0, width, height)
+
+      // Dark sky base
+      const sky = ctx.createLinearGradient(0, 0, 0, height)
+      sky.addColorStop(0, '#020b18')
+      sky.addColorStop(0.5, '#061628')
+      sky.addColorStop(1, '#040e1e')
+      ctx.fillStyle = sky
+      ctx.fillRect(0, 0, width, height)
+
+      // Stars
+      ctx.save()
+      for (let i = 0; i < 120; i++) {
+        const x = ((i * 137.5) % width)
+        const y = ((i * 71.3) % (height * 0.7))
+        const alpha = 0.3 + 0.5 * Math.abs(Math.sin(t * 0.3 + i))
+        const r = 0.5 + (i % 3) * 0.4
+        ctx.beginPath()
+        ctx.arc(x, y, r, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(200, 220, 255, ${alpha})`
+        ctx.fill()
+      }
+      ctx.restore()
+
+      // Aurora bands
+      const bands = [
+        { color1: 'rgba(0, 200, 160, ', color2: 'rgba(0, 160, 220, ', yBase: 0.28, amp: 0.08, speed: 0.4, phase: 0 },
+        { color1: 'rgba(0, 180, 200, ', color2: 'rgba(80, 60, 200, ', yBase: 0.36, amp: 0.06, speed: 0.3, phase: 1.5 },
+        { color1: 'rgba(40, 220, 180, ', color2: 'rgba(0, 120, 200, ', yBase: 0.22, amp: 0.05, speed: 0.5, phase: 3 },
+      ]
+
+      for (const band of bands) {
+        ctx.save()
+        ctx.globalCompositeOperation = 'screen'
+        const pts: [number, number][] = []
+        const steps = 60
+        for (let i = 0; i <= steps; i++) {
+          const x = (i / steps) * width
+          const wave =
+            Math.sin(i * 0.12 + t * band.speed + band.phase) * 0.5 +
+            Math.sin(i * 0.07 + t * band.speed * 0.6 + band.phase * 1.3) * 0.3 +
+            Math.sin(i * 0.22 + t * band.speed * 1.2) * 0.2
+          const y = (band.yBase + wave * band.amp) * height
+          pts.push([x, y])
+        }
+
+        const bandHeight = height * 0.18
+        for (let i = 0; i < pts.length - 1; i++) {
+          const [x1, y1] = pts[i]
+          const [x2, y2] = pts[i + 1]
+          const grad = ctx.createLinearGradient(x1, y1, x2, y2)
+          const alpha = 0.12 + 0.06 * Math.sin(t * 0.2 + i * 0.08)
+          grad.addColorStop(0, band.color1 + alpha + ')')
+          grad.addColorStop(1, band.color2 + alpha + ')')
+          ctx.beginPath()
+          ctx.moveTo(x1, y1)
+          ctx.lineTo(x2, y2)
+          ctx.lineTo(x2, y2 + bandHeight)
+          ctx.lineTo(x1, y1 + bandHeight)
+          ctx.closePath()
+          const fillGrad = ctx.createLinearGradient(x1, y1, x1, y1 + bandHeight)
+          fillGrad.addColorStop(0, band.color1 + alpha + ')')
+          fillGrad.addColorStop(0.5, band.color2 + (alpha * 0.7) + ')')
+          fillGrad.addColorStop(1, 'rgba(0,0,0,0)')
+          ctx.fillStyle = fillGrad
+          ctx.fill()
+        }
+        ctx.restore()
+      }
+
+      t += 0.008
+      animId = requestAnimationFrame(draw)
+    }
+
+    draw()
+    return () => {
+      cancelAnimationFrame(animId)
+      window.removeEventListener('resize', resize)
+    }
+  }, [])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'absolute',
+        inset: 0,
+        width: '100%',
+        height: '100%',
+        display: 'block',
+      }}
+      aria-hidden="true"
+    />
+  )
+}
+
 export default function MainLanding() {
   const [heroMounted, setHeroMounted] = useState(false)
   const { language } = useVintraLanguage()
@@ -700,15 +819,15 @@ export default function MainLanding() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(contactStructuredData) }}
       />
       <style>{`
-        :root { --bg: #FAFAFA; }
+        :root { --bg: #020b18; }
         * { box-sizing: border-box; margin: 0; padding: 0 }
-        body { background: var(--bg); font-family: -apple-system, 'Helvetica Neue', sans-serif; color: #111 }
+        body { background: var(--bg); font-family: -apple-system, 'Helvetica Neue', sans-serif; color: #fff }
         .page { max-width: 1100px; margin: 0 auto; padding: 0 24px }
         .solutionsSection {
           position: relative;
           overflow: hidden;
           padding: 0 0 110px;
-          background: #0d1220;
+          background: #061628;
           color: #fff;
           font-family: "Inter", system-ui, sans-serif;
         }
@@ -720,10 +839,10 @@ export default function MainLanding() {
           transform: translateX(-50%);
           border-radius: 0 0 clamp(40px, 5vw, 72px) clamp(40px, 5vw, 72px);
           background:
-            radial-gradient(circle at top left, rgba(99, 102, 241, 0.18), transparent 34%),
-            radial-gradient(circle at top right, rgba(168, 85, 247, 0.14), transparent 30%),
-            linear-gradient(180deg, #111827 0%, #0d1220 56%, #0c111d 100%);
-          box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+            radial-gradient(circle at top left, rgba(0, 200, 160, 0.12), transparent 34%),
+            radial-gradient(circle at top right, rgba(0, 160, 220, 0.10), transparent 30%),
+            linear-gradient(180deg, #0a1f3a 0%, #061628 56%, #040e1e 100%);
+          box-shadow: 0 24px 60px rgba(2, 11, 24, 0.4);
           overflow: hidden;
         }
         .solutionsShell {
@@ -738,7 +857,7 @@ export default function MainLanding() {
           right: -8%;
           width: 540px;
           height: 540px;
-          background: radial-gradient(circle, rgba(99, 102, 241, 0.22) 0%, rgba(15, 17, 21, 0) 70%);
+          background: radial-gradient(circle, rgba(0, 200, 160, 0.14) 0%, rgba(0, 120, 200, 0.08) 40%, rgba(4, 14, 30, 0) 70%);
           z-index: 0;
           pointer-events: none;
         }
@@ -778,20 +897,20 @@ export default function MainLanding() {
         .float-b { animation: float-mid 5s ease-in-out infinite 1s }
         .cta-primary {
           display: inline-flex; align-items: center; gap: 8px;
-          background: #111; color: #fff; border: none; border-radius: 999px;
+          background: #00D4AA; color: #020b18; border: none; border-radius: 999px;
           padding: 14px 28px; font-size: 15px; font-weight: 700; cursor: pointer;
           transition: transform 0.15s, box-shadow 0.15s;
           text-decoration: none;
         }
-        .cta-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2) }
+        .cta-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,212,170,0.3) }
         .cta-secondary {
           display: inline-flex; align-items: center; gap: 8px;
-          background: #fff; color: #111; border: 1.5px solid #E0E0E0; border-radius: 999px;
+          background: rgba(255,255,255,0.07); color: #fff; border: 1.5px solid rgba(255,255,255,0.18); border-radius: 999px;
           padding: 13px 26px; font-size: 15px; font-weight: 600; cursor: pointer;
           transition: transform 0.15s, border-color 0.15s;
           text-decoration: none;
         }
-        .cta-secondary:hover { transform: translateY(-2px); border-color: #999 }
+        .cta-secondary:hover { transform: translateY(-2px); border-color: rgba(0,212,170,0.5) }
         .product-card {
           border-radius: 22px; padding: 32px 30px;
           border: 1px solid rgba(15,23,42,0.08);
@@ -1012,7 +1131,7 @@ export default function MainLanding() {
         }
         .chatbotShowcaseSection {
           padding: 110px 24px;
-          background: linear-gradient(180deg, #fcfbff 0%, #f4f7fb 100%);
+          background: linear-gradient(180deg, #061628 0%, #071a30 100%);
         }
         .chatbotShowcaseLayout {
           display: grid;
@@ -1021,11 +1140,33 @@ export default function MainLanding() {
           align-items: center;
         }
         .chatbotContentPanel {
-          background: #fff;
+          background: rgba(255,255,255,0.04);
           border-radius: 30px;
-          border: 1px solid rgba(15,23,42,0.06);
-          box-shadow: 0 26px 70px rgba(15,23,42,0.08);
+          border: 1px solid rgba(255,255,255,0.08);
+          box-shadow: 0 26px 70px rgba(0,0,0,0.28);
           padding: 32px 30px;
+        }
+        .chatbotUseCaseCard {
+          border-radius: 18px;
+          padding: 18px 12px;
+          text-align: center;
+          border: 1px solid rgba(255,255,255,0.08);
+        }
+        .chatbotFeatureList {
+          display: grid;
+          gap: 12px;
+        }
+        .chatbotFeatureItem {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 14px 16px;
+          border-radius: 16px;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.08);
+          color: rgba(200,225,245,0.9);
+          font-size: 15px;
+          font-weight: 600;
         }
         .chatbotUseCaseGrid {
           display: grid;
@@ -1264,7 +1405,8 @@ export default function MainLanding() {
           stroke-linejoin: round;
         }
         @media (max-width: 700px) {
-          .hero-grid { flex-direction: column !important }
+          .hero-grid { flex-direction: column !important; gap: 32px !important }
+          .hero-grid > div:last-child { width: 100% !important; height: clamp(260px, 70vw, 340px) !important }
           .solutionsSection {
             padding: 0 0 84px;
           }
@@ -1432,66 +1574,89 @@ export default function MainLanding() {
 
       <main lang={language}>
         {/* ── HERO ───────────────────────────────────────── */}
-        <section className="page" style={{ paddingTop: 80, paddingBottom: 80 }}>
-          <div className="hero-grid" style={{ display: 'flex', gap: 48, alignItems: 'center' }}>
-            {/* left text */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              
+        <section style={{ position: 'relative', overflow: 'hidden', minHeight: 'clamp(560px, 90vh, 820px)', display: 'flex', alignItems: 'center' }}>
+          {/* Aurora background */}
+          <AuroraCanvas />
 
-              <h1 style={{
-                fontSize: 'clamp(36px, 5vw, 60px)',
-                fontWeight: 900, lineHeight: 1.05,
-                letterSpacing: -1.5, marginBottom: 20,
-                opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateY(20px)',
-                transition: 'all 0.6s ease 0.1s',
-              }}>
-                <span style={{ display: 'block' }}>{text.heroTitleStart}</span>
-                {text.heroTitleMiddle}<br />
-                <span style={{ color: '#1A6BFF' }}>{text.heroTitleEnd}</span>
-              </h1>
+          {/* Bottom fade */}
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '180px', background: 'linear-gradient(to bottom, transparent, #061628)', zIndex: 1, pointerEvents: 'none' }} />
 
-              <p style={{
-                fontSize: 18, lineHeight: 1.7, color: '#555', marginBottom: 36, maxWidth: 440,
-                opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateY(20px)',
-                transition: 'all 0.6s ease 0.2s',
-              }}>
-                {text.heroBody}
-              </p>
+          <div className="page" style={{ position: 'relative', zIndex: 2, width: '100%', paddingTop: 80, paddingBottom: 80 }}>
+            <div className="hero-grid" style={{ display: 'flex', gap: 48, alignItems: 'center' }}>
+              {/* left text */}
+              <div style={{ flex: 1, minWidth: 0 }}>
 
-              <div style={{
-                display: 'flex', gap: 12, flexWrap: 'wrap',
-                opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateY(20px)',
-                transition: 'all 0.6s ease 0.3s',
-              }}>
-                <Link href="/landings/guest/websites" className="cta-primary">
-                  {text.heroWebsiteCta} <ArrowRight />
-                </Link>
-                <Link href="/landings/auth/chatWidget" className="cta-secondary">
-                  {text.heroChatbotCta}
-                </Link>
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '6px 14px', borderRadius: 999,
+                  background: 'rgba(0, 200, 160, 0.12)',
+                  border: '1px solid rgba(0, 200, 160, 0.28)',
+                  color: '#00D4AA',
+                  fontSize: 12, fontWeight: 800, letterSpacing: 0.6,
+                  marginBottom: 22,
+                  opacity: heroMounted ? 1 : 0,
+                  transition: 'all 0.5s ease 0s',
+                }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00D4AA', boxShadow: '0 0 8px #00D4AA' }} />
+                  Norge
+                </div>
+
+                <h1 style={{
+                  fontSize: 'clamp(38px, 5.5vw, 64px)',
+                  fontWeight: 900, lineHeight: 1.02,
+                  letterSpacing: -2, marginBottom: 22,
+                  color: '#fff',
+                  opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateY(20px)',
+                  transition: 'all 0.6s ease 0.1s',
+                }}>
+                  <span style={{ display: 'block' }}>{text.heroTitleStart}</span>
+                  {text.heroTitleMiddle}<br />
+                  <span style={{ color: '#00D4AA' }}>{text.heroTitleEnd}</span>
+                </h1>
+
+                <p style={{
+                  fontSize: 18, lineHeight: 1.75, color: 'rgba(180,210,240,0.82)', marginBottom: 38, maxWidth: 440,
+                  opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateY(20px)',
+                  transition: 'all 0.6s ease 0.2s',
+                }}>
+                  {text.heroBody}
+                </p>
+
+                <div style={{
+                  display: 'flex', gap: 12, flexWrap: 'wrap',
+                  opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateY(20px)',
+                  transition: 'all 0.6s ease 0.3s',
+                }}>
+                  <Link href="/landings/guest/websites" className="cta-primary" style={{ background: '#00D4AA', color: '#020b18', border: 'none' }}>
+                    {text.heroWebsiteCta} <ArrowRight />
+                  </Link>
+                  <Link href="/landings/auth/chatWidget" className="cta-secondary" style={{ background: 'rgba(255,255,255,0.07)', color: '#fff', border: '1px solid rgba(255,255,255,0.18)' }}>
+                    {text.heroChatbotCta}
+                  </Link>
+                </div>
+
+                <div style={{
+                  display: 'flex', gap: 20, marginTop: 32, flexWrap: 'wrap',
+                  opacity: heroMounted ? 1 : 0, transition: 'all 0.7s ease 0.4s',
+                }}>
+                  {text.heroBenefits.map(t => (
+                    <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'rgba(150,190,220,0.8)' }}>
+                      <CheckIcon color="#00D4AA" /> {t}
+                    </div>
+                  ))}
+                </div>
               </div>
 
+              {/* right visuals */}
               <div style={{
-                display: 'flex', gap: 20, marginTop: 32, flexWrap: 'wrap',
-                opacity: heroMounted ? 1 : 0, transition: 'all 0.7s ease 0.4s',
+                flex: '0 0 auto', position: 'relative', height: 'clamp(300px, 55vw, 400px)', width: 'min(100%, 360px)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateX(30px)',
+                transition: 'all 0.8s ease 0.2s',
               }}>
-                {text.heroBenefits.map(t => (
-                  <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#777' }}>
-                    <CheckIcon /> {t}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* right visuals */}
-            <div style={{
-              flex: '0 0 auto', position: 'relative', height: 'clamp(300px, 55vw, 380px)', width: 'min(100%, 360px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateX(30px)',
-              transition: 'all 0.8s ease 0.2s',
-            }}>
-              <div className="float-b" style={{ position: 'absolute', bottom: 20, left: 0, transform: 'scale(0.85)' }}>
-                <ChatWidgetPreview language={language} />
+                <div className="float-b" style={{ position: 'absolute', bottom: 20, left: 0, transform: 'scale(0.85)' }}>
+                  <ChatWidgetPreview language={language} />
+                </div>
               </div>
             </div>
           </div>
@@ -1562,8 +1727,8 @@ export default function MainLanding() {
           display: 'flex',
           flexDirection: 'column'
         }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.4)';
+          onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = 'rgba(0, 212, 170, 0.35)';
           e.currentTarget.style.transform = 'translateY(-12px) scale(1.02)';
           e.currentTarget.style.boxShadow = '0 30px 60px -12px rgba(0,0,0,0.5)';
         }}
@@ -1592,9 +1757,9 @@ export default function MainLanding() {
           </p>
 
           <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 38px 0', flexGrow: 1 }}>
-            {text.websiteCardFeatures.map((item) => (
+              {text.websiteCardFeatures.map((item) => (
               <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#d8e2ef', marginBottom: '14px', fontSize: '15px', lineHeight: 1.5 }}>
-                <div style={{ color: '#6366f1' }}><CheckIcon size={18} /></div> {item}
+                <div style={{ color: '#00D4AA' }}><CheckIcon size={18} /></div> {item}
               </li>
             ))}
           </ul>
@@ -1720,13 +1885,13 @@ export default function MainLanding() {
 </section>
 
         {/* ── WEBSITE SHOWCASE CAROUSEL ──────────────────── */}
-        <section style={{ background: '#111', padding: '80px 0', overflow: 'hidden' }}>
+        <section style={{ background: '#061628', padding: '80px 0', overflow: 'hidden' }}>
           <Reveal>
             <div className="page">
               <h2 style={{ fontSize: 'clamp(26px,3.5vw,40px)', color: '#fff', fontWeight: 900, textAlign: 'center', letterSpacing: -0.8, marginBottom: 8 }}>
                 {text.carouselTitle}
               </h2>
-              <p style={{ textAlign: 'center', color: '#e0e0e0', fontSize: 16, marginBottom: 48 }}>
+              <p style={{ textAlign: 'center', color: 'rgba(160,200,230,0.75)', fontSize: 16, marginBottom: 48 }}>
                 {text.carouselBody}
               </p>
             </div>
@@ -1748,21 +1913,22 @@ export default function MainLanding() {
                   gap: 8,
                   padding: '8px 14px',
                   borderRadius: 999,
-                  background: '#EFE7FF',
-                  color: '#6D28D9',
+                  background: 'rgba(0, 200, 160, 0.1)',
+                  border: '1px solid rgba(0, 200, 160, 0.25)',
+                  color: '#00D4AA',
                   fontSize: 12,
                   fontWeight: 800,
                   letterSpacing: 0.6,
                   marginBottom: 16,
                 }}>
                   <span>{text.chatbotCardTitle}</span>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E' }} />
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00D4AA', boxShadow: '0 0 6px #00D4AA' }} />
                   <span>{text.alwaysOn}</span>
                 </div>
-                <h2 style={{ fontSize: 'clamp(30px,4vw,46px)', fontWeight: 900, letterSpacing: -1, marginBottom: 16 }}>
+                <h2 style={{ fontSize: 'clamp(30px,4vw,46px)', fontWeight: 900, letterSpacing: -1, marginBottom: 16, color: '#fff' }}>
                   {text.chatbotShowcaseTitle}
                 </h2>
-                <p style={{ color: '#5B6472', fontSize: 17, lineHeight: 1.8 }}>
+                <p style={{ color: 'rgba(160,200,230,0.78)', fontSize: 17, lineHeight: 1.8 }}>
                   {text.chatbotShowcaseBody}
                 </p>
               </div>
@@ -1773,12 +1939,12 @@ export default function MainLanding() {
                 <div className="chatbotContentPanel">
                   <div className="chatbotUseCaseGrid">
                     {[
-                      { icon: '🛒', label: text.useCases[0], color: '#EEF4FF' },
-                      { icon: '🏨', label: text.useCases[1], color: '#FFF4EE' },
-                      { icon: '🏥', label: text.useCases[2], color: '#EEFAF4' },
-                      { icon: '✂️', label: text.useCases[3], color: '#FDF0F8' },
-                      { icon: '🎓', label: text.useCases[4], color: '#F5F0FF' },
-                      { icon: '🏢', label: text.useCases[5], color: '#F5F5F5' },
+                      { icon: '🛒', label: text.useCases[0], color: 'rgba(0,180,220,0.1)' },
+                      { icon: '🏨', label: text.useCases[1], color: 'rgba(0,200,160,0.1)' },
+                      { icon: '🏥', label: text.useCases[2], color: 'rgba(56,189,248,0.1)' },
+                      { icon: '✂️', label: text.useCases[3], color: 'rgba(100,160,240,0.1)' },
+                      { icon: '🎓', label: text.useCases[4], color: 'rgba(0,160,200,0.1)' },
+                      { icon: '🏢', label: text.useCases[5], color: 'rgba(255,255,255,0.05)' },
                     ].map(({ icon, label, color }) => (
                       <div
                         key={label}
@@ -1788,17 +1954,17 @@ export default function MainLanding() {
                         }}
                       >
                         <div style={{ fontSize: 26, marginBottom: 8 }}>{icon}</div>
-                        <div style={{ fontSize: 13, fontWeight: 800, color: '#1F2937' }}>{label}</div>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: 'rgba(200,230,255,0.9)' }}>{label}</div>
                       </div>
                     ))}
                   </div>
 
                   <div style={{ display: 'grid', gap: 22 }}>
                     <div>
-                      <h3 style={{ fontSize: 'clamp(26px,3vw,34px)', fontWeight: 900, letterSpacing: -0.7, marginBottom: 12 }}>
+                      <h3 style={{ fontSize: 'clamp(26px,3vw,34px)', fontWeight: 900, letterSpacing: -0.7, marginBottom: 12, color: '#fff' }}>
                         {text.chatbotFeatureTitle}
                       </h3>
-                      <p style={{ color: '#5B6472', fontSize: 16, lineHeight: 1.8 }}>
+                      <p style={{ color: 'rgba(160,200,230,0.78)', fontSize: 16, lineHeight: 1.8 }}>
                         {text.chatbotFeatureBody}
                       </p>
                     </div>
@@ -1811,7 +1977,7 @@ export default function MainLanding() {
                           key={item}
                           className="chatbotFeatureItem"
                         >
-                          <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#7C3AED', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                          <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#00D4AA', color: '#020b18', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
                             <CheckIcon />
                           </div>
                           <span>{item}</span>
@@ -1832,13 +1998,13 @@ export default function MainLanding() {
         </section>
 
         {/* ── PRICING TEASER ─────────────────────────────── */}
-        <section id="priser" style={{ background: '#111', padding: '80px 24px' }}>
+        <section id="priser" style={{ background: '#040e1e', padding: '80px 24px', borderTop: '1px solid rgba(0,200,160,0.08)' }}>
           <div className="page">
             <Reveal>
               <h2 style={{ fontSize: 'clamp(26px,3.5vw,40px)', fontWeight: 900, textAlign: 'center', color: '#fff', letterSpacing: -0.8, marginBottom: 16 }}>
                 {text.pricingTitle}
               </h2>
-              <p style={{ textAlign: 'center', color: '#999', fontSize: 16, marginBottom: 56, maxWidth: 480, margin: '0 auto 56px' }}>
+              <p style={{ textAlign: 'center', color: 'rgba(160,200,230,0.7)', fontSize: 16, marginBottom: 56, maxWidth: 480, margin: '0 auto 56px' }}>
                 {text.pricingBody}
               </p>
             </Reveal>
@@ -1849,23 +2015,24 @@ export default function MainLanding() {
               ].map(({ label, from, desc, color }) => (
                 <Reveal key={label} delay={100}>
                   <div style={{
-                    background: '#1A1A1A', borderRadius: 20, padding: '28px 24px',
+                    background: 'rgba(255,255,255,0.04)', borderRadius: 20, padding: '28px 24px',
                     border: '1px solid rgba(255,255,255,0.08)',
+                    backdropFilter: 'blur(10px)',
                   }}>
-                    <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>{label}</div>
+                    <div style={{ fontSize: 13, color: 'rgba(160,200,230,0.6)', marginBottom: 8 }}>{label}</div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 8 }}>
-                      <span style={{ fontSize: 12, color: '#666' }}>{text.from}</span>
+                      <span style={{ fontSize: 12, color: 'rgba(160,200,230,0.5)' }}>{text.from}</span>
                       <span style={{ fontSize: 36, fontWeight: 900, color: '#fff', letterSpacing: -1 }}>{from === '0' ? text.free : `${from} kr`}</span>
                     </div>
-                    <div style={{ fontSize: 14, color: '#666', marginBottom: 20 }}>{desc}</div>
-                    <div style={{ height: 3, borderRadius: 2, background: color }} />
+                    <div style={{ fontSize: 14, color: 'rgba(160,200,230,0.55)', marginBottom: 20 }}>{desc}</div>
+                    <div style={{ height: 3, borderRadius: 2, background: color, opacity: 0.85 }} />
                   </div>
                 </Reveal>
               ))}
             </div>
 
             <div style={{ textAlign: 'center' }}>
-              <Link href="/landings/guest/websites" className="cta-primary" style={{ background: '#fff', color: '#111' }}>
+              <Link href="/landings/guest/websites" className="cta-primary" style={{ background: '#00D4AA', color: '#020b18', border: 'none' }}>
                 {text.pricingCta} <ArrowRight />
               </Link>
             </div>
@@ -1873,65 +2040,67 @@ export default function MainLanding() {
         </section>
 
         {/* ── BOTTOM CTA ─────────────────────────────────── */}
-        <section className="page" style={{ padding: '100px 24px', textAlign: 'center' }}>
-          <Reveal>
-            <div style={{ fontSize: 64, marginBottom: 24 }}>👋</div>
-            <h2 style={{ fontSize: 'clamp(28px,4vw,48px)', fontWeight: 900, letterSpacing: -1, marginBottom: 16 }}>
-              {text.bottomTitle}
-            </h2>
-            <p style={{ color: '#666', fontSize: 17, marginBottom: 40, maxWidth: 420, margin: '0 auto 40px' }}>
-              {text.bottomBody}
-            </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link href="/landings/guest/websites" className="cta-primary">
-                {text.bottomWebsiteCta} <ArrowRight />
-              </Link>
-              <Link href="/landings/auth/chatWidget" className="cta-secondary">
-                {text.bottomChatbotCta}
-              </Link>
-            </div>
-          </Reveal>
+        <section style={{ background: '#061628', padding: '100px 24px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 600, height: 300, background: 'radial-gradient(ellipse, rgba(0,200,160,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
+          <div className="page" style={{ position: 'relative', zIndex: 1 }}>
+            <Reveal>
+              <h2 style={{ fontSize: 'clamp(28px,4vw,48px)', fontWeight: 900, letterSpacing: -1, marginBottom: 16, color: '#fff' }}>
+                {text.bottomTitle}
+              </h2>
+              <p style={{ color: 'rgba(160,200,230,0.75)', fontSize: 17, marginBottom: 40, maxWidth: 420, margin: '0 auto 40px' }}>
+                {text.bottomBody}
+              </p>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <Link href="/landings/guest/websites" className="cta-primary" style={{ background: '#00D4AA', color: '#020b18', border: 'none' }}>
+                  {text.bottomWebsiteCta} <ArrowRight />
+                </Link>
+                <Link href="/landings/auth/chatWidget" className="cta-secondary" style={{ background: 'rgba(255,255,255,0.07)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }}>
+                  {text.bottomChatbotCta}
+                </Link>
+              </div>
+            </Reveal>
+          </div>
         </section>
 
-        <section id="contact" style={{ background: '#F7F8FA', borderTop: '1px solid #ECEEF2', borderBottom: '1px solid #ECEEF2' }}>
+        <section id="contact" style={{ background: '#040e1e', borderTop: '1px solid rgba(0,200,160,0.1)' }}>
           <div className="page" style={{ padding: '72px 24px' }}>
             <Reveal>
               <div style={{ maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
-                <div style={{ display: 'inline-block', padding: '8px 14px', borderRadius: 999, background: '#E8F0FF', color: '#1A6BFF', fontSize: 12, fontWeight: 800, letterSpacing: 0.5, marginBottom: 18 }}>
+                <div style={{ display: 'inline-block', padding: '8px 14px', borderRadius: 999, background: 'rgba(0,200,160,0.1)', border: '1px solid rgba(0,200,160,0.25)', color: '#00D4AA', fontSize: 12, fontWeight: 800, letterSpacing: 0.5, marginBottom: 18 }}>
                   {text.contactEyebrow}
                 </div>
-                <h2 style={{ fontSize: 'clamp(28px,4vw,42px)', fontWeight: 900, letterSpacing: -0.9, marginBottom: 14 }}>
+                <h2 style={{ fontSize: 'clamp(28px,4vw,42px)', fontWeight: 900, letterSpacing: -0.9, marginBottom: 14, color: '#fff' }}>
                   {text.contactTitle}
                 </h2>
-                <p style={{ color: '#5B6472', fontSize: 17, lineHeight: 1.8, marginBottom: 34 }}>
+                <p style={{ color: 'rgba(160,200,230,0.75)', fontSize: 17, lineHeight: 1.8, marginBottom: 34 }}>
                   {text.contactBody}
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, textAlign: 'left' }}>
                   <a
                     href={emailHref}
-                    style={{ background: '#fff', borderRadius: 18, padding: '22px 20px', textDecoration: 'none', color: '#111', border: '1px solid #E6EAF0', boxShadow: '0 12px 28px rgba(15,23,42,0.06)' }}
+                    style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 18, padding: '22px 20px', textDecoration: 'none', color: '#fff', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 12px 28px rgba(0,0,0,0.2)' }}
                   >
-                    <div style={{ fontSize: 12, fontWeight: 800, color: '#1A6BFF', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{text.email}</div>
-                    <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>{siteConfig.contact.email}</div>
-                    <div style={{ color: '#5B6472', fontSize: 14, lineHeight: 1.6 }}>{text.emailDescription}</div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: '#00D4AA', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{text.email}</div>
+                    <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 8 }}>{siteConfig.contact.email}</div>
+                    <div style={{ color: 'rgba(160,200,230,0.65)', fontSize: 14, lineHeight: 1.6 }}>{text.emailDescription}</div>
                   </a>
                   {phoneHref ? (
                     <a
                       href={phoneHref}
-                      style={{ background: '#fff', borderRadius: 18, padding: '22px 20px', textDecoration: 'none', color: '#111', border: '1px solid #E6EAF0', boxShadow: '0 12px 28px rgba(15,23,42,0.06)' }}
+                      style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 18, padding: '22px 20px', textDecoration: 'none', color: '#fff', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 12px 28px rgba(0,0,0,0.2)' }}
                     >
-                      <div style={{ fontSize: 12, fontWeight: 800, color: '#0C9E6A', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{text.phone}</div>
-                      <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>{siteConfig.contact.phoneDisplay}</div>
-                      <div style={{ color: '#5B6472', fontSize: 14, lineHeight: 1.6 }}>{text.phoneDescription}</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: '#38BDF8', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{text.phone}</div>
+                      <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 8 }}>{siteConfig.contact.phoneDisplay}</div>
+                      <div style={{ color: 'rgba(160,200,230,0.65)', fontSize: 14, lineHeight: 1.6 }}>{text.phoneDescription}</div>
                     </a>
                   ) : null}
                   <a
                     href={siteConfig.url}
-                    style={{ background: '#fff', borderRadius: 18, padding: '22px 20px', textDecoration: 'none', color: '#111', border: '1px solid #E6EAF0', boxShadow: '0 12px 28px rgba(15,23,42,0.06)' }}
+                    style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 18, padding: '22px 20px', textDecoration: 'none', color: '#fff', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 12px 28px rgba(0,0,0,0.2)' }}
                   >
-                    <div style={{ fontSize: 12, fontWeight: 800, color: '#7C3AED', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{text.websiteCardTitle}</div>
-                    <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>chat.vintrastudio.com</div>
-                    <div style={{ color: '#5B6472', fontSize: 14, lineHeight: 1.6 }}>{text.websiteDescription}</div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: '#38BDF8', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{text.websiteCardTitle}</div>
+                    <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 8 }}>chat.vintrastudio.com</div>
+                    <div style={{ color: 'rgba(160,200,230,0.65)', fontSize: 14, lineHeight: 1.6 }}>{text.websiteDescription}</div>
                   </a>
                 </div>
               </div>
@@ -1940,16 +2109,16 @@ export default function MainLanding() {
         </section>
 
         {/* ── FOOTER ─────────────────────────────────────── */}
-        <footer style={{ borderTop: '1px solid #F0F0F0', padding: '32px 24px' }}>
+        <footer style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: '32px 24px', background: '#020b18' }}>
           <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <span style={{ fontWeight: 900, fontSize: 18 }}>vintra</span>
-            <span style={{ color: '#999', fontSize: 13 }}>© {currentYear} Vintra. {text.footerRights}</span>
+            <span style={{ fontWeight: 900, fontSize: 18, color: '#00D4AA' }}>vintra</span>
+            <span style={{ color: 'rgba(160,200,230,0.5)', fontSize: 13 }}>© {currentYear} Vintra. {text.footerRights}</span>
             <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-              <a href={emailHref} style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>{siteConfig.contact.email}</a>
+              <a href={emailHref} style={{ fontSize: 13, color: 'rgba(160,200,230,0.55)', textDecoration: 'none' }}>{siteConfig.contact.email}</a>
               {phoneHref ? (
-                <a href={phoneHref} style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>{siteConfig.contact.phoneDisplay}</a>
+                <a href={phoneHref} style={{ fontSize: 13, color: 'rgba(160,200,230,0.55)', textDecoration: 'none' }}>{siteConfig.contact.phoneDisplay}</a>
               ) : null}
-              <a href="#contact" style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>{text.contact}</a>
+              <a href="#contact" style={{ fontSize: 13, color: 'rgba(160,200,230,0.55)', textDecoration: 'none' }}>{text.contact}</a>
             </div>
           </div>
         </footer>

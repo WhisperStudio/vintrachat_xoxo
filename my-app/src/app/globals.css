@@ -9,6 +9,7 @@ body {
   font-family: Inter, Arial, sans-serif;
   background: #f8fafc;
   color: #111827;
+  /* Note: main landing overrides background to Nordic dark navy */
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: rgba(100, 116, 139, 0.7) transparent;
