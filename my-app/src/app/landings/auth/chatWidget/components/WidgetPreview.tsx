@@ -33,6 +33,8 @@ interface WidgetPreviewProps {
     showStatus: boolean
     showCloseButton: boolean
     borderType: 'none' | 'solid' | 'rounded' | 'shadow'
+    cornerStyle?: 'rounded' | 'square'
+    showBorder?: boolean
     shadowType: 'none' | 'light' | 'medium' | 'heavy'
     showAvatar: boolean
     showTitle: boolean
@@ -50,6 +52,8 @@ interface WidgetPreviewProps {
   footerStyle: {
     showSendButton: boolean
     borderType: 'none' | 'solid' | 'rounded' | 'shadow'
+    cornerStyle?: 'rounded' | 'square'
+    showBorder?: boolean
     shadowType: 'none' | 'light' | 'medium' | 'heavy'
     inputStyle: 'flat' | 'rounded' | 'outlined'
     showPlaceholder: boolean
@@ -128,6 +132,8 @@ interface WidgetPreviewProps {
     onSubmit: () => void
     onClose: () => void
   }
+  highlightedSection?: 'bubble' | 'header' | 'body' | 'footer' | null
+  flashSection?: 'bubble' | 'header' | 'body' | 'footer' | null
 }
 
 interface Message {
@@ -155,6 +161,16 @@ function normalizeLogoStyle(raw?: { zoom: number; focusX: number; focusY: number
     focusX: clamp(Number(raw?.focusX || 50), 0, 100),
     focusY: clamp(Number(raw?.focusY || 50), 0, 100),
   }
+}
+
+function resolveCornerStyle(style: { borderType: 'none' | 'solid' | 'rounded' | 'shadow'; cornerStyle?: 'rounded' | 'square' }) {
+  if (style.cornerStyle) return style.cornerStyle
+  return style.borderType === 'rounded' ? 'rounded' : 'square'
+}
+
+function resolveShowBorder(style: { borderType: 'none' | 'solid' | 'rounded' | 'shadow'; showBorder?: boolean }) {
+  if (typeof style.showBorder === 'boolean') return style.showBorder
+  return style.borderType === 'solid' || style.borderType === 'rounded'
 }
 
 export default function WidgetPreview({
@@ -195,6 +211,8 @@ export default function WidgetPreview({
   conversationCardsEnabled = false,
   conversationCards = [],
   conversationCardsLimit = 4,
+  highlightedSection = null,
+  flashSection = null,
 }: WidgetPreviewProps) {
   const { language } = useVintraLanguage()
   const pricingText = chatWidgetPricingI18n[language]
@@ -323,7 +341,9 @@ export default function WidgetPreview({
   const starterCards = useMemo<AssistantConversationCard[]>(() => {
     if (!bodyStyle.showConversationCards) return []
 
-    const normalized = conversationCardsEnabled ? normalizeConversationCards(conversationCards) : []
+    if (!conversationCardsEnabled) return []
+
+    const normalized = normalizeConversationCards(conversationCards)
     const limited = normalized.slice(0, Math.max(1, Number(conversationCardsLimit || 4)))
     if (limited.length > 0) return limited
 
@@ -331,10 +351,10 @@ export default function WidgetPreview({
       {
         id: 'preview-only',
         title: 'This is only a preview',
-        description: 'Set cards in AI settings to show real starter cards.',
+        description: 'Set starter cards in Chat Messages to show real cards here.',
         options: [
-          { label: 'Open AI settings', prompt: 'Open AI settings' },
-          { label: 'Add cards', prompt: 'Add starter cards to the AI settings' },
+          { label: 'Edit cards', prompt: 'Edit starter cards' },
+          { label: 'Add options', prompt: 'Add more starter card options' },
         ],
       },
     ]
@@ -581,6 +601,10 @@ export default function WidgetPreview({
   )
   const useLiquidGlassControls = Boolean(appearance?.glassLookEnabled)
   const themeVars = getWidgetThemeStyle(colorTheme)
+  const headerCornerStyle = resolveCornerStyle(headerStyle)
+  const headerShowBorder = resolveShowBorder(headerStyle)
+  const footerCornerStyle = resolveCornerStyle(footerStyle)
+  const footerShowBorder = resolveShowBorder(footerStyle)
   const bubbleClasses = joinWidgetClasses(
     `border-${bubbleStyle.borderType}`,
     `shadow-${bubbleStyle.shadowType}`,
@@ -595,11 +619,23 @@ export default function WidgetPreview({
     `messages-${bodyStyle.messageStyle}`
   )
 
+  const headerClasses = joinWidgetClasses(
+    'chat-header',
+    `header-corners-${headerCornerStyle}`,
+    headerShowBorder ? 'header-border-on' : 'header-border-off',
+    `header-shadow-${headerStyle.shadowType}`,
+    showStarterCardList ? 'chat-header--starter-list' : '',
+    highlightedSection === 'header' ? 'preview-section-highlight' : '',
+    flashSection === 'header' ? 'preview-section-flash' : ''
+  )
+
   const footerClasses = joinWidgetClasses(
     'chat-footer',
-    `border-${footerStyle.borderType}`,
-    `shadow-${footerStyle.shadowType}`,
-    `input-${footerStyle.inputStyle}`
+    `footer-corners-${footerCornerStyle}`,
+    footerShowBorder ? 'footer-border-on' : 'footer-border-off',
+    `footer-shadow-${footerStyle.shadowType}`,
+    `input-${footerStyle.inputStyle}`,
+    highlightedSection === 'footer' ? 'preview-section-highlight' : ''
   )
   const title = customBranding.title || 'Support Chat'
   const description = customBranding.description || 'Usually replies in a few minutes'
@@ -734,7 +770,7 @@ export default function WidgetPreview({
                 setIsComposerFocused(false)
               }}
             >
-            <div className="chat-header">
+            <div className={headerClasses}>
               <div className="chat-header-left">
                 {showStarterCardList ? (
                   <button type="button" className="chat-header-back" onClick={() => setActiveConversationCardId(null)} aria-label="Go back">
@@ -828,7 +864,7 @@ export default function WidgetPreview({
               </div>
             </div>
 
-              <div className={bodyClasses} ref={chatBodyRef}>
+              <div className={`${bodyClasses} ${highlightedSection === 'body' ? 'preview-section-highlight' : ''} ${flashSection === 'body' ? 'preview-section-flash' : ''}`.trim()} ref={chatBodyRef}>
               {showPortalTabs ? (
                 <div className="widget-panel-tabs" role="tablist" aria-label="Widget pages">
                   <button
@@ -1154,7 +1190,7 @@ export default function WidgetPreview({
                 </div>
               </div>
             ) : (
-              <div className={footerClasses}>
+              <div className={`${footerClasses} ${flashSection === 'footer' ? 'preview-section-flash' : ''}`.trim()}>
               <div className="chat-footer-row">
                 <textarea
                   id="widget-message-input"
@@ -1221,7 +1257,7 @@ export default function WidgetPreview({
           </div>
 
           <div
-            className={`widget-icon ${bubbleClasses} ${bubbleStyle.iconChoice === 'orb' ? 'widget-icon--orb' : ''} ${bubbleStyle.iconChoice === 'orb' && orbPhase === 'reply' ? 'widget-icon--orb-replying' : ''} ${bubbleStyle.iconChoice === 'orb' && orbPhase === 'inactive' ? 'widget-icon--orb-idle' : ''}`}
+            className={`widget-icon ${bubbleClasses} ${bubbleStyle.iconChoice === 'orb' ? 'widget-icon--orb' : ''} ${bubbleStyle.iconChoice === 'orb' && orbPhase === 'reply' ? 'widget-icon--orb-replying' : ''} ${bubbleStyle.iconChoice === 'orb' && orbPhase === 'inactive' ? 'widget-icon--orb-idle' : ''} ${highlightedSection === 'bubble' ? 'preview-section-highlight' : ''} ${flashSection === 'bubble' ? 'preview-section-flash' : ''}`}
             onPointerEnter={() => {
               if (bubbleStyle.iconChoice === 'orb' && orbSettings.hoverEnabled) {
                 setInternalIsOrbHovered(true)

@@ -45,6 +45,8 @@ function buildDefaultWidgetConfig(businessName = 'Chat Widget'): ChatWidgetConfi
       showStatus: true,
       showCloseButton: true,
       borderType: 'rounded',
+      cornerStyle: 'rounded',
+      showBorder: true,
       shadowType: 'light',
       showAvatar: true,
       showTitle: true,
@@ -62,6 +64,8 @@ function buildDefaultWidgetConfig(businessName = 'Chat Widget'): ChatWidgetConfi
     footerStyle: {
       showSendButton: true,
       borderType: 'none',
+      cornerStyle: 'rounded',
+      showBorder: false,
       shadowType: 'none',
       inputStyle: 'rounded',
       showPlaceholder: true,

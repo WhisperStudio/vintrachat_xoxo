@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   FiCheck,
+  FiCpu,
   FiCreditCard,
   FiDroplet,
-  FiImage,
   FiLayout,
+  FiLifeBuoy,
   FiMessageCircle,
   FiMessageSquare,
+  FiPhone,
   FiPlus,
   FiRefreshCw,
   FiSave,
@@ -19,8 +21,8 @@ import {
 } from 'react-icons/fi'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
-import { createChatWidget, setActiveChatWidget, updateChatWidgetConfig } from '@/lib/auth.service'
-import { defaultConversationCards } from '@/lib/conversation-cards'
+import { createChatWidget, setActiveChatWidget, updateChatAssistantConfig, updateChatWidgetConfig } from '@/lib/auth.service'
+import { defaultConversationCards, normalizeConversationCards } from '@/lib/conversation-cards'
 import { chatWidgetBuilderExtraI18n, chatWidgetBuilderI18n, useVintraLanguage } from '@/lib/i18n'
 import {
   getEffectiveBusinessPlan,
@@ -29,7 +31,14 @@ import {
   sanitizeBubbleStyleForPlan,
   sanitizeChatWidgetConfigForPlan,
 } from '@/lib/subscription'
-import type { BubbleIconChoice, ChatWidgetConfig, ChatWidgetInterfaceIcons, OrbStyleConfig } from '@/types/database'
+import type {
+  AssistantConversationCard,
+  BubbleIconChoice,
+  ChatAssistantConfig,
+  ChatWidgetConfig,
+  ChatWidgetInterfaceIcons,
+  OrbStyleConfig,
+} from '@/types/database'
 import './ChatWidget.css'
 
 import PlanSelector from './components/PlanSelector'
@@ -49,6 +58,20 @@ type ColorTheme =
   | 'banana-bonanza'
 type Position = 'bottom-right' | 'bottom-left'
 type PreviewMode = 'desktop' | 'mobile'
+type PreviewHighlightTarget = 'bubble' | 'header' | 'body' | 'footer'
+type BuilderSectionKey = keyof typeof defaultOpenSections
+
+const defaultOpenSections = {
+  plan: true,
+  bubble: false,
+  header: false,
+  body: false,
+  footer: false,
+  colorTheme: false,
+  icons: false,
+  branding: false,
+  advanced: false,
+}
 
 const defaultOrbStyle: OrbStyleConfig = {
   hoverEnabled: true,
@@ -59,6 +82,125 @@ const defaultOrbStyle: OrbStyleConfig = {
   inactiveGlyphs: '',
   inactivityMinMinutes: 2,
   inactivityMaxMinutes: 4,
+}
+
+const createDefaultAssistantConfig = (): ChatAssistantConfig => ({
+  enabled: true,
+  provider: 'gemini',
+  model: 'gemini-2.5-flash-lite',
+  strictContextOnly: true,
+  strictness: 'balanced',
+  systemPrompt:
+    'You are a helpful customer service assistant for the business. Use approved business information, keep answers concise, and be honest about uncertainty.',
+  businessContext: '',
+  businessProfile: {
+    businessName: '',
+    industry: '',
+    shortDescription: '',
+    toneOfVoice: 'professional, warm, helpful',
+    language: 'English',
+    multilingual: false,
+    mainGoal: 'convert visitors into leads',
+    fallbackContact: '',
+  },
+  knowledgeBase: {
+    websiteUrls: [],
+    uploadedDocuments: [],
+    manualNotes: '',
+    openingHours: '',
+    contactInfo: '',
+    addresses: '',
+    keyFAQs: [],
+  },
+  integrations: {
+    replyToQuestions: true,
+    collectLeads: true,
+    bookMeetings: false,
+    routeToPages: true,
+    createSupportTickets: false,
+    fetchOrderStatus: false,
+    handoffToHuman: true,
+  },
+  restrictions:
+    'Do not invent policies, prices, opening hours, or legal guarantees. Only answer from the provided business context when possible.',
+  supportTriggerKeywords: ['support', 'human', 'person', 'agent', 'contact', 'call me', 'ring me', 'email me'],
+  humanSupportEnabled: true,
+  handoffMessage:
+    'I can help with that. I will flag this conversation for human follow-up so the team can contact you.',
+  faqSuggestionsEnabled: true,
+  faqSuggestions: [
+    'What are your opening hours?',
+    'How do I contact support?',
+    'What services do you offer?',
+  ],
+  conversationCardsEnabled: true,
+  conversationCardsLimit: 4,
+  conversationCards: defaultConversationCards,
+  widgetIcons: {
+    avatarIcon: 'FiMessageCircle',
+    heroIcon: 'FiMessageCircle',
+    aiIcon: 'FiCpu',
+    supportIcon: 'FiLifeBuoy',
+    userIcon: 'FiUser',
+  },
+  startLanguage: 'English',
+  replyInUserLanguage: true,
+  responseStyle: 'Friendly, clear, and concise',
+  extraInstructions: 'Always keep answers short unless the user asks for more detail.',
+  forceSelectedModelOnly: false,
+})
+
+function mergeAssistantConfigDraft(config?: ChatAssistantConfig | null): ChatAssistantConfig {
+  const defaults = createDefaultAssistantConfig()
+  const defaultsBusinessProfile = defaults.businessProfile!
+  const defaultsKnowledgeBase = defaults.knowledgeBase!
+  const defaultsIntegrations = defaults.integrations!
+
+  return {
+    ...defaults,
+    ...(config || {}),
+    businessProfile: {
+      businessName: config?.businessProfile?.businessName ?? defaultsBusinessProfile.businessName,
+      industry: config?.businessProfile?.industry ?? defaultsBusinessProfile.industry,
+      shortDescription: config?.businessProfile?.shortDescription ?? defaultsBusinessProfile.shortDescription,
+      toneOfVoice: config?.businessProfile?.toneOfVoice ?? defaultsBusinessProfile.toneOfVoice,
+      language: config?.businessProfile?.language ?? defaultsBusinessProfile.language,
+      multilingual: config?.businessProfile?.multilingual ?? defaultsBusinessProfile.multilingual,
+      mainGoal: config?.businessProfile?.mainGoal ?? defaultsBusinessProfile.mainGoal,
+      fallbackContact: config?.businessProfile?.fallbackContact ?? defaultsBusinessProfile.fallbackContact,
+    },
+    knowledgeBase: {
+      websiteUrls: config?.knowledgeBase?.websiteUrls ?? defaultsKnowledgeBase.websiteUrls,
+      uploadedDocuments: config?.knowledgeBase?.uploadedDocuments ?? defaultsKnowledgeBase.uploadedDocuments,
+      manualNotes: config?.knowledgeBase?.manualNotes ?? defaultsKnowledgeBase.manualNotes,
+      openingHours: config?.knowledgeBase?.openingHours ?? defaultsKnowledgeBase.openingHours,
+      contactInfo: config?.knowledgeBase?.contactInfo ?? defaultsKnowledgeBase.contactInfo,
+      addresses: config?.knowledgeBase?.addresses ?? defaultsKnowledgeBase.addresses,
+      keyFAQs: config?.knowledgeBase?.keyFAQs ?? defaultsKnowledgeBase.keyFAQs,
+    },
+    integrations: {
+      replyToQuestions: config?.integrations?.replyToQuestions ?? defaultsIntegrations.replyToQuestions,
+      collectLeads: config?.integrations?.collectLeads ?? defaultsIntegrations.collectLeads,
+      bookMeetings: config?.integrations?.bookMeetings ?? defaultsIntegrations.bookMeetings,
+      routeToPages: config?.integrations?.routeToPages ?? defaultsIntegrations.routeToPages,
+      createSupportTickets: config?.integrations?.createSupportTickets ?? defaultsIntegrations.createSupportTickets,
+      fetchOrderStatus: config?.integrations?.fetchOrderStatus ?? defaultsIntegrations.fetchOrderStatus,
+      handoffToHuman: config?.integrations?.handoffToHuman ?? defaultsIntegrations.handoffToHuman,
+    },
+    widgetIcons: {
+      ...defaults.widgetIcons,
+      ...(config?.widgetIcons || {}),
+    },
+    supportTriggerKeywords: Array.isArray(config?.supportTriggerKeywords)
+      ? config.supportTriggerKeywords
+      : defaults.supportTriggerKeywords,
+    faqSuggestions: Array.isArray(config?.faqSuggestions) ? config.faqSuggestions : defaults.faqSuggestions,
+    conversationCards: normalizeConversationCards(config?.conversationCards || defaults.conversationCards),
+    conversationCardsLimit: Number.isFinite(config?.conversationCardsLimit)
+      ? Number(config?.conversationCardsLimit)
+      : defaults.conversationCardsLimit,
+    conversationCardsEnabled: config?.conversationCardsEnabled ?? defaults.conversationCardsEnabled,
+  }
 }
 
 const launcherIconChoiceMap: Partial<Record<BubbleIconChoice, string>> = {
@@ -91,6 +233,8 @@ type InputsState = {
     showStatus: boolean
     showCloseButton: boolean
     borderType: 'none' | 'solid' | 'rounded' | 'shadow'
+    cornerStyle?: 'rounded' | 'square'
+    showBorder?: boolean
     shadowType: 'none' | 'light' | 'medium' | 'heavy'
     showAvatar: boolean
     showTitle: boolean
@@ -108,6 +252,8 @@ type InputsState = {
   footerStyle: {
     showSendButton: boolean
     borderType: 'none' | 'solid' | 'rounded' | 'shadow'
+    cornerStyle?: 'rounded' | 'square'
+    showBorder?: boolean
     shadowType: 'none' | 'light' | 'medium' | 'heavy'
     inputStyle: 'flat' | 'rounded' | 'outlined'
     showPlaceholder: boolean
@@ -126,6 +272,9 @@ type InputsState = {
     autoOpen: boolean
     delayMs: number
   }
+  conversationCardsEnabled: boolean
+  conversationCardsLimit: number
+  conversationCards: AssistantConversationCard[]
 }
 
 const defaultInputs: InputsState = {
@@ -159,7 +308,9 @@ const defaultInputs: InputsState = {
   headerStyle: {
     showStatus: true,
     showCloseButton: true,
-    borderType: 'solid',
+    borderType: 'none',
+    cornerStyle: 'rounded',
+    showBorder: false,
     shadowType: 'light',
     showAvatar: true,
     showTitle: true,
@@ -176,7 +327,9 @@ const defaultInputs: InputsState = {
   },
   footerStyle: {
     showSendButton: true,
-    borderType: 'solid',
+    borderType: 'none',
+    cornerStyle: 'rounded',
+    showBorder: false,
     shadowType: 'light',
     inputStyle: 'rounded',
     showPlaceholder: true,
@@ -194,6 +347,9 @@ const defaultInputs: InputsState = {
     autoOpen: false,
     delayMs: 3000,
   },
+  conversationCardsEnabled: true,
+  conversationCardsLimit: defaultConversationCards.length,
+  conversationCards: defaultConversationCards,
 }
 
 export default function ChatWidgetBuilderPage() {
@@ -204,22 +360,16 @@ export default function ChatWidgetBuilderPage() {
   const builderExtraText = chatWidgetBuilderExtraI18n[language]
 
   const [inputs, setInputs] = useState<InputsState>(defaultInputs)
+  const [assistantConfigDraft, setAssistantConfigDraft] = useState<ChatAssistantConfig>(createDefaultAssistantConfig())
   const [hasLoadedDbConfig, setHasLoadedDbConfig] = useState(false)
   const [previewMode, setPreviewMode] = useState<PreviewMode>('desktop')
   const [selectedWidgetKey, setSelectedWidgetKey] = useState('')
+  const [previewHighlightTarget, setPreviewHighlightTarget] = useState<PreviewHighlightTarget | null>(null)
+  const [previewFlashTarget, setPreviewFlashTarget] = useState<PreviewHighlightTarget | null>(null)
   const builderPanelRef = useRef<HTMLDivElement | null>(null)
+  const previewFlashTimeoutRef = useRef<number | null>(null)
 
-  const [openSections, setOpenSections] = useState({
-    plan: true,
-    bubble: false,
-    header: false,
-    body: false,
-    footer: false,
-    colorTheme: false,
-    icons: false,
-    branding: false,
-    advanced: false,
-  })
+  const [openSections, setOpenSections] = useState(defaultOpenSections)
 
   const [isSaving, setIsSaving] = useState(false)
   const [isCreatingWidget, setIsCreatingWidget] = useState(false)
@@ -247,8 +397,9 @@ export default function ChatWidgetBuilderPage() {
   const widgetLimit = getPlanLimits(databasePlan).maxWidgets
   const canCreateWidget = widgetLimit === null || widgetList.length < widgetLimit
 
-  const applyWidgetConfig = (config: ChatWidgetConfig | undefined) => {
+  const applyWidgetConfig = (config: ChatWidgetConfig | undefined, assistantConfig?: ChatAssistantConfig | null) => {
     if (!config) return
+    const mergedAssistantConfig = mergeAssistantConfigDraft(assistantConfig || business?.chatAssistantConfig || null)
 
     const effectivePlan = getEffectiveBusinessPlan(business, config)
     const bubbleStyle = sanitizeBubbleStyleForPlan(config.bubbleStyle || defaultInputs.bubbleStyle, effectivePlan)
@@ -295,12 +446,18 @@ export default function ChatWidgetBuilderPage() {
           ...(bubbleStyle.orbStyle || {}),
         },
       },
-      headerStyle: config.headerStyle || defaultInputs.headerStyle,
+      headerStyle: {
+        ...defaultInputs.headerStyle,
+        ...(config.headerStyle || {}),
+      },
       bodyStyle: {
         ...defaultInputs.bodyStyle,
         ...(config.bodyStyle || {}),
       },
-      footerStyle: config.footerStyle || defaultInputs.footerStyle,
+      footerStyle: {
+        ...defaultInputs.footerStyle,
+        ...(config.footerStyle || {}),
+      },
       customBranding: {
         ...defaultInputs.customBranding,
         ...(config.customBranding || {}),
@@ -311,7 +468,11 @@ export default function ChatWidgetBuilderPage() {
         },
       },
       settings: config.settings || defaultInputs.settings,
+      conversationCardsEnabled: mergedAssistantConfig.conversationCardsEnabled,
+      conversationCardsLimit: mergedAssistantConfig.conversationCardsLimit,
+      conversationCards: normalizeConversationCards(mergedAssistantConfig.conversationCards),
     })
+    setAssistantConfigDraft(mergedAssistantConfig)
   }
 
   useEffect(() => {
@@ -320,7 +481,7 @@ export default function ChatWidgetBuilderPage() {
     const widget = selectedWidget
     const config = widget?.config || business?.chatWidgetConfig
     if (!config) return
-    applyWidgetConfig(config)
+    applyWidgetConfig(config, widget?.assistantConfig || business?.chatAssistantConfig || null)
 
     setSelectedWidgetKey(widget?.widgetKey || business?.activeChatWidgetKey || business?.chatWidgetKey || '')
 
@@ -371,7 +532,28 @@ export default function ChatWidgetBuilderPage() {
     setInputs((prev) => ({ ...prev, [key]: value }))
   }
 
-  const toggleSection = (section: keyof typeof openSections) => {
+  useEffect(() => {
+    return () => {
+      if (previewFlashTimeoutRef.current) {
+        window.clearTimeout(previewFlashTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const flashPreviewSection = (section: BuilderSectionKey) => {
+    if (section !== 'bubble' && section !== 'header' && section !== 'body' && section !== 'footer') return
+
+    setPreviewFlashTarget(section)
+    if (previewFlashTimeoutRef.current) {
+      window.clearTimeout(previewFlashTimeoutRef.current)
+    }
+    previewFlashTimeoutRef.current = window.setTimeout(() => {
+      setPreviewFlashTarget(null)
+      previewFlashTimeoutRef.current = null
+    }, 2000)
+  }
+
+  const toggleSection = (section: BuilderSectionKey) => {
     setOpenSections((prev) => {
       const closed = Object.keys(prev).reduce((acc, key) => {
         acc[key as keyof typeof prev] = false
@@ -383,6 +565,8 @@ export default function ChatWidgetBuilderPage() {
         [section]: true,
       }
     })
+
+    flashPreviewSection(section)
   }
 
   const builderSections = [
@@ -392,13 +576,17 @@ export default function ChatWidgetBuilderPage() {
     { key: 'body', label: builderExtraText.sidebar.chatMessages, eyebrow: builderExtraText.sidebar.messages, icon: FiMessageSquare },
     { key: 'footer', label: builderExtraText.sidebar.messageBox, eyebrow: builderExtraText.sidebar.input, icon: FiSend },
     { key: 'colorTheme', label: builderExtraText.sidebar.colors, eyebrow: builderExtraText.sidebar.theme, icon: FiDroplet },
-    { key: 'icons', label: builderExtraText.sidebar.icons, eyebrow: builderExtraText.sidebar.design, icon: FiMessageCircle },
-    { key: 'branding', label: builderExtraText.sidebar.branding, eyebrow: builderExtraText.sidebar.brand, icon: FiImage },
     { key: 'advanced', label: builderExtraText.sidebar.behavior, eyebrow: builderExtraText.sidebar.rules, icon: FiSliders },
   ] as const
 
   const resetBuilder = () => {
-    setInputs(defaultInputs)
+    const config = selectedWidget?.config || business?.chatWidgetConfig
+    if (config) {
+      applyWidgetConfig(config, selectedWidget?.assistantConfig || business?.chatAssistantConfig || null)
+    } else {
+      setInputs(defaultInputs)
+      setAssistantConfigDraft(createDefaultAssistantConfig())
+    }
     setSaveStatus('idle')
   }
 
@@ -417,7 +605,7 @@ export default function ChatWidgetBuilderPage() {
     if (!widget) return
 
     setSelectedWidgetKey(nextWidgetKey)
-    applyWidgetConfig(widget.config)
+    applyWidgetConfig(widget.config, widget.assistantConfig || business?.chatAssistantConfig || null)
 
     await setActiveChatWidget(dbUser.businessId, nextWidgetKey)
     await refreshBusiness()
@@ -482,10 +670,28 @@ export default function ChatWidgetBuilderPage() {
         settings: inputs.settings,
       }
       const planSafeConfig = sanitizeChatWidgetConfigForPlan(newConfig, databasePlan)
+      const nextAssistantConfig: ChatAssistantConfig = {
+        ...assistantConfigDraft,
+        conversationCardsEnabled: inputs.conversationCardsEnabled,
+        conversationCardsLimit: inputs.conversationCardsLimit,
+        conversationCards: normalizeConversationCards(inputs.conversationCards),
+        widgetIcons: {
+          ...(assistantConfigDraft.widgetIcons || {}),
+          avatarIcon: inputs.widgetIcons.avatarIcon || '',
+          heroIcon: inputs.widgetIcons.heroIcon || '',
+          aiIcon: inputs.widgetIcons.aiIcon || '',
+          supportIcon: inputs.widgetIcons.supportIcon || '',
+          userIcon: inputs.widgetIcons.userIcon || '',
+        },
+      }
 
-      const result = await updateChatWidgetConfig(dbUser.businessId, planSafeConfig, selectedWidgetKey || undefined)
+      const [result, assistantResult] = await Promise.all([
+        updateChatWidgetConfig(dbUser.businessId, planSafeConfig, selectedWidgetKey || undefined),
+        updateChatAssistantConfig(dbUser.businessId, nextAssistantConfig, selectedWidgetKey || undefined),
+      ])
 
-      if (result.success) {
+      if (result.success && assistantResult.success) {
+        setAssistantConfigDraft(nextAssistantConfig)
         await refreshBusiness()
 
         // Send localStorage event for real-time updates in admin panel
@@ -651,6 +857,12 @@ export default function ChatWidgetBuilderPage() {
                       type="button"
                       className={`builder-sidebar-button ${active ? 'active' : ''}`.trim()}
                       onClick={() => toggleSection(section.key)}
+                      onMouseEnter={() => {
+                        if (section.key === 'bubble' || section.key === 'header' || section.key === 'body' || section.key === 'footer') {
+                          setPreviewHighlightTarget(section.key)
+                        }
+                      }}
+                      onMouseLeave={() => setPreviewHighlightTarget(null)}
                       aria-current={active ? 'page' : undefined}
                     >
                       <span className="builder-sidebar-button__icon" aria-hidden="true">
@@ -692,12 +904,19 @@ export default function ChatWidgetBuilderPage() {
                   widgetIcons={inputs.widgetIcons}
                   customBranding={inputs.customBranding}
                   settings={inputs.settings}
+                  conversationCardsEnabled={inputs.conversationCardsEnabled}
+                  conversationCardsLimit={inputs.conversationCardsLimit}
+                  conversationCards={inputs.conversationCards}
                   onColorThemeChange={(theme) => updateInput('colorTheme', theme)}
                   onAppearanceChange={(appearance) => updateInput('appearance', appearance)}
                   onPositionChange={(position) => updateInput('position', position)}
                   onWidgetIconsChange={(widgetIcons) => updateInput('widgetIcons', widgetIcons)}
                   onCustomBrandingChange={(branding) => updateInput('customBranding', branding)}
                   onSettingsChange={(settings) => updateInput('settings', settings)}
+                  onConversationCardsEnabledChange={(enabled) => updateInput('conversationCardsEnabled', enabled)}
+                  onConversationCardsLimitChange={(limit) => updateInput('conversationCardsLimit', limit)}
+                  onConversationCardsChange={(cards) => updateInput('conversationCards', cards)}
+                  onPreviewHoverChange={setPreviewHighlightTarget}
                   openSections={openSections}
                   onToggleSection={toggleSection}
                 />
@@ -719,12 +938,15 @@ export default function ChatWidgetBuilderPage() {
               appearance={inputs.appearance}
               customBranding={inputs.customBranding}
               assistantIcons={inputs.widgetIcons}
+              initialOpen={true}
               enablePreviewChat={true}
               previewReply={t.previewReply}
               previewMode={previewMode}
-              conversationCardsEnabled={true}
-              conversationCardsLimit={defaultConversationCards.length}
-              conversationCards={defaultConversationCards}
+              conversationCardsEnabled={inputs.conversationCardsEnabled}
+              conversationCardsLimit={inputs.conversationCardsLimit}
+              conversationCards={inputs.conversationCards}
+              highlightedSection={previewHighlightTarget}
+              flashSection={previewFlashTarget}
             />
           </div>
         </div>

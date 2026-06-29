@@ -142,6 +142,8 @@ const createDefaultWidgetConfig = (businessName: string): ChatWidgetConfig => ({
     showStatus: true,
     showCloseButton: true,
     borderType: 'rounded',
+    cornerStyle: 'rounded',
+    showBorder: true,
     shadowType: 'light',
     showAvatar: true,
     showTitle: true,
@@ -159,6 +161,8 @@ const createDefaultWidgetConfig = (businessName: string): ChatWidgetConfig => ({
   footerStyle: {
     showSendButton: true,
     borderType: 'none',
+    cornerStyle: 'rounded',
+    showBorder: false,
     shadowType: 'none',
     inputStyle: 'rounded',
     showPlaceholder: true,

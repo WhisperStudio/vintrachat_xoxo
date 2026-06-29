@@ -1249,6 +1249,116 @@ select:focus,
   color: rgba(71, 85, 105, 0.82);
 }
 
+.sectionIconGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.85rem;
+  grid-column: 1 / -1;
+}
+
+.starterCardsPanel {
+  display: grid;
+  gap: 1rem;
+  grid-column: 1 / -1;
+  padding: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 252, 0.86)),
+    radial-gradient(circle at 0% 0%, rgba(14, 165, 233, 0.07), transparent 42%);
+}
+
+.starterCardsPanel__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.starterCardsPanel__header p {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+  font-size: 0.84rem;
+}
+
+.starterCardsPanel__toggle {
+  display: inline-flex;
+  gap: 0.55rem;
+  align-items: center;
+  font-weight: 700;
+  color: #334155;
+}
+
+.starterCardsPanel__controls {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: minmax(0, 220px) 1fr;
+}
+
+.starterCardsPanel__actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.starterCardsPanel__action,
+.starterCardEditor__remove {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  font-weight: 700;
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+}
+
+.starterCardsPanel__action.secondary {
+  color: #475569;
+}
+
+.starterCardsPanel__list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.starterCardEditor {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.starterCardEditor.is-disabled {
+  opacity: 0.62;
+}
+
+.starterCardEditor__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.starterCardEditor__grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.starterCardEditor__textarea {
+  width: 100%;
+  min-height: 108px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 0.9rem 1rem;
+  resize: vertical;
+  font: inherit;
+  color: #0f172a;
+}
+
 /* Responsive for StyleSelector */
 @media (max-width: 768px) {
   .option-grid {

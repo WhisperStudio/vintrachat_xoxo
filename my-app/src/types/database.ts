@@ -354,6 +354,8 @@ export interface ChatWidgetConfig {
     showStatus: boolean;
     showCloseButton: boolean;
     borderType: 'none' | 'solid' | 'rounded' | 'shadow';
+    cornerStyle?: 'rounded' | 'square';
+    showBorder?: boolean;
     shadowType: 'none' | 'light' | 'medium' | 'heavy';
     showAvatar: boolean;
     showTitle: boolean;
@@ -373,6 +375,8 @@ export interface ChatWidgetConfig {
   footerStyle: {
     showSendButton: boolean;
     borderType: 'none' | 'solid' | 'rounded' | 'shadow';
+    cornerStyle?: 'rounded' | 'square';
+    showBorder?: boolean;
     shadowType: 'none' | 'light' | 'medium' | 'heavy';
     inputStyle: 'flat' | 'rounded' | 'outlined';
     showPlaceholder: boolean;

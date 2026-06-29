@@ -1251,7 +1251,7 @@ export async function GET(
     var assistantConfig = getAssistantConfig();
     var bodyStyle = (config && config.bodyStyle) || {};
 
-    if (!bodyStyle.showConversationCards) {
+    if (!bodyStyle.showConversationCards || assistantConfig.conversationCardsEnabled === false) {
       return [];
     }
 
@@ -2568,6 +2568,10 @@ export async function GET(
     var headerStyle = config.headerStyle || {};
     var bodyStyle = config.bodyStyle || {};
     var footerStyle = config.footerStyle || {};
+    var headerCornerStyle = headerStyle.cornerStyle || (headerStyle.borderType === 'rounded' ? 'rounded' : 'square');
+    var headerShowBorder = typeof headerStyle.showBorder === 'boolean' ? headerStyle.showBorder : (headerStyle.borderType === 'solid' || headerStyle.borderType === 'rounded');
+    var footerCornerStyle = footerStyle.cornerStyle || (footerStyle.borderType === 'rounded' ? 'rounded' : 'square');
+    var footerShowBorder = typeof footerStyle.showBorder === 'boolean' ? footerStyle.showBorder : (footerStyle.borderType === 'solid' || footerStyle.borderType === 'rounded');
     var assistantConfig = getAssistantConfig();
     var theme = getThemeName(config);
     var appearance = getAppearance(config);
@@ -2626,12 +2630,16 @@ export async function GET(
           'chat-widget',
           shouldShowWidget ? 'open' : '',
           shouldShowSupportGate() ? 'chat-widget-locked' : '',
-          'border-' + (headerStyle.borderType || 'none'),
-          'shadow-' + (headerStyle.shadowType || 'none'),
           'messages-' + (bodyStyle.messageStyle || 'bubble')
         ]) + '"' + (shouldShowWidget ? '' : ' hidden aria-hidden="true"') + '>' +
           '<div class="chat-content">' +
-          '<div class="chat-header' + (showStarterCardList ? ' chat-header--starter-list' : '') + '">' +
+          '<div class="' + classes([
+            'chat-header',
+            'header-corners-' + headerCornerStyle,
+            headerShowBorder ? 'header-border-on' : 'header-border-off',
+            'header-shadow-' + (headerStyle.shadowType || 'none'),
+            showStarterCardList ? 'chat-header--starter-list' : ''
+          ]) + '">' +
             '<div class="chat-header-left">' +
               (showStarterCardList ? '<button type="button" class="chat-header-back" aria-label="Back to cards">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('backIcon', 'FiArrowLeft')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">←</span>') + '</button>' : '') +
               (headerStyle.showAvatar !== false ? headerAvatar : '') +
@@ -2653,8 +2661,9 @@ export async function GET(
           (state.awaitingVisitorName || state.activePanel !== 'chats' ? '' : (
             '<div class="' + classes([
               'chat-footer',
-              'border-' + (footerStyle.borderType || 'none'),
-              'shadow-' + (footerStyle.shadowType || 'none'),
+              'footer-corners-' + footerCornerStyle,
+              footerShowBorder ? 'footer-border-on' : 'footer-border-off',
+              'footer-shadow-' + (footerStyle.shadowType || 'none'),
               'input-' + (footerStyle.inputStyle || 'flat')
             ]) + '">' +
               '<div class="chat-footer-row">' +
