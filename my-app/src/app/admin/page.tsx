@@ -9,6 +9,11 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { FiArrowLeft, FiArrowRight, FiArrowUpRight, FiCheck, FiChevronLeft, FiChevronRight, FiMoon, FiPlay, FiSun } from 'react-icons/fi'
 import { businessAdminI18n, useVintraLanguage } from '@/lib/i18n'
+import {
+  APP_THEME_EVENT,
+  resolveAppThemePreference,
+  writeAppThemePreference,
+} from '@/lib/theme-preference'
 import GlobeSwitcher from '@/components/langSwitch'
 import AdminDropdown from './components/AdminDropdown'
 import AdminAnalyticsPanel from './components/AdminAnalyticsPanel'
@@ -41,8 +46,6 @@ type TutorialStep = {
 }
 
 type AdminAppearanceTheme = 'light' | 'dark'
-
-const ADMIN_THEME_STORAGE_KEY = 'vintra-admin-theme'
 
 export default function AdminPage() {
   const { isAuthenticated, dbUser, business, loading, firebaseUser } = useAuth()
@@ -261,20 +264,22 @@ export default function AdminPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    const storedTheme = window.localStorage.getItem(ADMIN_THEME_STORAGE_KEY)
-    if (storedTheme === 'light' || storedTheme === 'dark') {
-      setAdminTheme(storedTheme)
-      return
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const syncTheme = () => setAdminTheme(resolveAppThemePreference())
+    const syncThemeFromEvent = () => syncTheme()
+    const syncThemeFromStorage = () => syncTheme()
+
+    syncTheme()
+    media.addEventListener?.('change', syncTheme)
+    window.addEventListener(APP_THEME_EVENT, syncThemeFromEvent)
+    window.addEventListener('storage', syncThemeFromStorage)
+
+    return () => {
+      media.removeEventListener?.('change', syncTheme)
+      window.removeEventListener(APP_THEME_EVENT, syncThemeFromEvent)
+      window.removeEventListener('storage', syncThemeFromStorage)
     }
-
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    setAdminTheme(prefersDark ? 'dark' : 'light')
   }, [])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(ADMIN_THEME_STORAGE_KEY, adminTheme)
-  }, [adminTheme])
 
   useEffect(() => {
     if (typeof document === 'undefined') return
@@ -654,7 +659,7 @@ export default function AdminPage() {
                     <button
                       type="button"
                       className={`adminThemeOption ${adminTheme === 'light' ? 'active' : ''}`}
-                      onClick={() => setAdminTheme('light')}
+                      onClick={() => writeAppThemePreference('light')}
                       aria-pressed={adminTheme === 'light'}
                     >
                       <span className="adminThemeOptionIcon">
@@ -670,7 +675,7 @@ export default function AdminPage() {
                     <button
                       type="button"
                       className={`adminThemeOption ${adminTheme === 'dark' ? 'active' : ''}`}
-                      onClick={() => setAdminTheme('dark')}
+                      onClick={() => writeAppThemePreference('dark')}
                       aria-pressed={adminTheme === 'dark'}
                     >
                       <span className="adminThemeOptionIcon">

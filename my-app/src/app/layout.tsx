@@ -3,6 +3,7 @@ import './globals.css'
 import { AuthProvider } from '@/context/AuthContext'
 import { LanguageProvider } from '@/context/LanguageContext'
 import AppShell from '@/components/AppShell'
+import ThemePreferenceSync from '@/components/ThemePreferenceSync'
 import { absoluteUrl, siteConfig } from '@/lib/site-config'
 import StyledComponentsRegistry from '@/lib/styled-components-registry'
 
@@ -76,6 +77,7 @@ export default function RootLayout({
   return (
     <html lang="no">
       <body>
+        <ThemePreferenceSync />
         <StyledComponentsRegistry>
           <AuthProvider>
             <LanguageProvider>

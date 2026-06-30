@@ -8,6 +8,13 @@ import { usePathname, useRouter } from 'next/navigation'
 import { getInvitationsForEmail } from '@/lib/invitation.service'
 import { useActiveWidgetSelection } from '@/lib/active-widget'
 import { headerI18n, useVintraLanguage } from '@/lib/i18n'
+import {
+  MAIN_LANDING_THEME_EVENT,
+  readMainLandingThemePreference,
+  resolveMainLandingThemePreference,
+  writeMainLandingThemePreference,
+  type MainLandingThemeMode,
+} from '@/lib/main-landing-theme'
 import { isVintraAdminEmail } from '@/lib/vintra-admin'
 import type { BusinessInvitation } from '@/types/database'
 import GlobeSwitcher from "./langSwitch";
@@ -20,7 +27,9 @@ import {
   FiLogOut,
   FiMenu,
   FiMessageSquare,
+  FiMoon,
   FiPlusCircle,
+  FiSun,
   FiUserPlus,
   FiX,
 } from 'react-icons/fi'
@@ -102,7 +111,7 @@ function inferHeaderTone(element: Element | null): HeaderTone {
   return luminance !== null && luminance < 0.48 ? 'light' : 'dark'
 }
 
-const StyledHeader = styled.header<{ $scrolled: boolean; $mobileHidden: boolean; $tone: HeaderTone }>`
+const StyledHeader = styled.header<{ $scrolled: boolean; $mobileHidden: boolean; $tone: HeaderTone; $mainLanding: boolean }>`
   --vintra-header-text: ${({ $tone }) => ($tone === 'light' ? '#f8fafc' : '#0f172a')};
   --vintra-header-muted: ${({ $tone }) => ($tone === 'light' ? 'rgba(226, 232, 240, 0.82)' : '#64748b')};
   --vintra-header-panel-bg: ${({ $tone }) => ($tone === 'light' ? 'rgba(15, 23, 42, 0.58)' : 'rgba(255, 255, 255, 0.86)')};
@@ -123,21 +132,16 @@ const StyledHeader = styled.header<{ $scrolled: boolean; $mobileHidden: boolean;
       ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(226, 232, 240, 0.1))'
       : 'linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(241, 245, 249, 0.78))'};
   position: sticky;
-  top: 0;
+  top: ${({ $scrolled }) => ($scrolled ? '14px' : '20px')};
   z-index: 80;
   width: 100%;
-  padding: ${({ $scrolled }) => ($scrolled ? '14px 20px 0' : '20px 20px 0')};
-  background: transparent;
-  transition: padding 0.25s ease, transform 0.28s ease, opacity 0.22s ease;
+  transition: top 0.25s ease, transform 0.28s ease, opacity 0.22s ease;
 
   @media (max-width: 720px) {
+    top: 12px;
     transform: ${({ $mobileHidden }) => ($mobileHidden ? 'translateY(-110%)' : 'translateY(0)')};
     opacity: ${({ $mobileHidden }) => ($mobileHidden ? 0 : 1)};
     pointer-events: ${({ $mobileHidden }) => ($mobileHidden ? 'none' : 'auto')};
-  }
-
-  @media (max-width: 720px) {
-    padding: 12px 12px 0;
   }
 `
 
@@ -145,7 +149,11 @@ const HeaderFrame = styled.div`
   position: relative;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 8px;
+  padding: 0 20px;
+
+  @media (max-width: 720px) {
+    padding: 0 12px;
+  }
 `
 
 const HeaderInner = styled.div`
@@ -660,6 +668,19 @@ const LanguageButton = styled.button<{ $active?: boolean }>`
   }
 `
 
+const ThemeModeButton = styled.button`
+  ${BaseButtonStyles}
+  --button-bg: var(--vintra-header-surface-soft);
+  --button-border: var(--vintra-header-border-soft);
+  --button-shadow: var(--vintra-header-shadow-soft);
+  color: var(--vintra-header-text);
+  cursor: pointer;
+
+  &:hover {
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+  }
+`
+
 const WidgetScopeShell = styled.div`
   position: relative;
   z-index: 1;
@@ -739,6 +760,7 @@ export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileHidden, setIsMobileHidden] = useState(false)
   const [headerTone, setHeaderTone] = useState<HeaderTone>('dark')
+  const [mainLandingThemeMode, setMainLandingThemeMode] = useState<MainLandingThemeMode>('day')
   const headerRef = useRef<HTMLElement | null>(null)
   const desktopNavRef = useRef<HTMLElement | null>(null)
   const navButtonRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
@@ -754,6 +776,20 @@ export default function Header() {
   const showVintraAdmin = isVintraAdminEmail(firebaseUser?.email)
   const showInvitationCenter = !!firebaseUser && !dbUser && !showVintraAdmin
   const showGuestLinks = (!firebaseUser || showInvitationCenter) && !showVintraAdmin
+  const isMainLandingRoute = pathname === '/' || pathname === '/landings/main'
+  const themeToggleLabel =
+    language === 'no'
+      ? mainLandingThemeMode === 'night'
+        ? 'Mork modus'
+        : 'Lys modus'
+      : mainLandingThemeMode === 'night'
+        ? 'Dark mode'
+        : 'Light mode'
+  const toggleMainLandingThemeMode = () => {
+    const nextMode: MainLandingThemeMode = (readMainLandingThemePreference() || mainLandingThemeMode) === 'night' ? 'day' : 'night'
+    setMainLandingThemeMode(nextMode)
+    writeMainLandingThemePreference(nextMode)
+  }
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 18)
@@ -761,6 +797,26 @@ export default function Header() {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
+
+  useEffect(() => {
+    if (!isMainLandingRoute || typeof window === 'undefined') return
+
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const syncThemeMode = () => setMainLandingThemeMode(resolveMainLandingThemePreference())
+    const onStorage = () => syncThemeMode()
+    const onThemeEvent = () => syncThemeMode()
+
+    syncThemeMode()
+    media.addEventListener?.('change', syncThemeMode)
+    window.addEventListener('storage', onStorage)
+    window.addEventListener(MAIN_LANDING_THEME_EVENT, onThemeEvent)
+
+    return () => {
+      media.removeEventListener?.('change', syncThemeMode)
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener(MAIN_LANDING_THEME_EVENT, onThemeEvent)
+    }
+  }, [isMainLandingRoute])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -937,7 +993,7 @@ export default function Header() {
   }, [navItems, pathname])
 
   return (
-    <StyledHeader ref={headerRef} $scrolled={isScrolled} $mobileHidden={isMobileHidden} $tone={headerTone}>
+    <StyledHeader ref={headerRef} $scrolled={isScrolled} $mobileHidden={isMobileHidden} $tone={headerTone} $mainLanding={isMainLandingRoute}>
       <HeaderFrame>
         <HeaderInner>
           <LeftSide>
@@ -1006,6 +1062,12 @@ export default function Header() {
           <RightSide>
             <ActionRow>
               {!isAdminRoute ? <GlobeSwitcher size={62} /> : null}
+              {isMainLandingRoute ? (
+                <ThemeModeButton type="button" onClick={toggleMainLandingThemeMode} aria-label={themeToggleLabel}>
+                  {mainLandingThemeMode === 'night' ? <FiMoon /> : <FiSun />}
+                  <span>{themeToggleLabel}</span>
+                </ThemeModeButton>
+              ) : null}
 
               {!firebaseUser ? (
                 <>
@@ -1090,6 +1152,12 @@ export default function Header() {
             ) : null}
 
             {!isAdminRoute ? <GlobeSwitcher /> : null}
+            {isMainLandingRoute ? (
+              <ThemeModeButton type="button" onClick={toggleMainLandingThemeMode} aria-label={themeToggleLabel}>
+                {mainLandingThemeMode === 'night' ? <FiMoon /> : <FiSun />}
+                <span>{themeToggleLabel}</span>
+              </ThemeModeButton>
+            ) : null}
 
             {!firebaseUser ? (
               <>
