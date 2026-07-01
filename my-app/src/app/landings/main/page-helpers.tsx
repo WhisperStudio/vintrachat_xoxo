@@ -478,8 +478,6 @@ export function WebsiteCarousel({ language }: { language: Language }) {
   return (
     <div style={{ overflow: 'hidden', position: 'relative', padding: '30px 0 40px', height: 620 }}>
       <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at center, rgba(255,255,255,0.08), transparent 42%)', pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 160, background: 'linear-gradient(to right, #111, transparent)', zIndex: 2, pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 160, background: 'linear-gradient(to left, #111, transparent)', zIndex: 2, pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
         {visibleOffsets.map((offset) => {
           const virtualIndex = railBaseIndex + offset

@@ -524,7 +524,12 @@ export default function MainLanding() {
         {/* -- FOOTER --------------------------------------- */}
         <footer style={{ borderTop: '1px solid #F0F0F0', padding: '32px 24px' }}>
           <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <span style={{ fontWeight: 900, fontSize: 18 }}>vintra</span>
+            <div>
+              <span style={{ fontWeight: 900, fontSize: 18 }}>vintra</span>
+              <div style={{ color: '#777', fontSize: 13, marginTop: 6 }}>
+                Enkeltmannsforetak under <strong>Polyscope Secker</strong>. <Link href="/policy" style={{ color: '#3b82f6', textDecoration: 'underline' }}>Personvern og policy</Link>
+              </div>
+            </div>
             <span style={{ color: '#999', fontSize: 13 }}>(c) {currentYear} Vintra. {text.footerRights}</span>
             <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
               <a href={emailHref} style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>{siteConfig.contact.email}</a>

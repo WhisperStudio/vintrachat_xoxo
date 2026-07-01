@@ -1,117 +1,144 @@
 .page {
   min-height: 100vh;
-  padding: 140px 24px 56px;
-  background:
-    radial-gradient(circle at top left, rgba(251, 191, 36, 0.14), transparent 30%),
-    radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 28%),
-    linear-gradient(180deg, #fffaf5 0%, #f8fafc 42%, #ffffff 100%);
+  padding: 120px 24px 48px;
+  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.16), transparent 28%),
+    radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 24%),
+    linear-gradient(180deg, #f8fbff 0%, #fdfefe 38%, #f9fbff 100%);
   color: #0f172a;
 }
 
 .shell {
-  max-width: 1080px;
+  max-width: 1120px;
   margin: 0 auto;
 }
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
-  gap: 24px;
-  align-items: stretch;
-  margin-bottom: 28px;
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.95fr);
+  gap: 28px;
+  align-items: start;
+  margin-bottom: 34px;
 }
 
 .heroCard,
 .asideCard,
 .section {
   border: 1px solid rgba(226, 232, 240, 0.95);
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.08);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 28px 68px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .heroCard {
-  border-radius: 32px;
-  padding: 32px;
+  border-radius: 34px;
+  padding: 40px;
 }
 
 .eyebrow {
   display: inline-flex;
   align-items: center;
-  padding: 8px 14px;
+  padding: 10px 16px;
   border-radius: 999px;
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(59, 130, 246, 0.1));
-  color: #9f1239;
-  font-size: 0.76rem;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.14), rgba(34, 197, 94, 0.12));
+  color: #1d4ed8;
+  font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
 .heroCard h1 {
-  margin: 18px 0 12px;
-  font-size: clamp(2.4rem, 4vw, 4.2rem);
-  line-height: 0.95;
-  letter-spacing: -0.05em;
+  margin: 22px 0 18px;
+  font-size: clamp(2.8rem, 4vw, 4.6rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
 }
 
 .lead {
-  max-width: 62ch;
+  max-width: 64ch;
   margin: 0;
   color: #475569;
-  font-size: 1.04rem;
+  font-size: 1.05rem;
   line-height: 1.8;
 }
 
 .meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 22px;
+  gap: 14px;
+  margin-top: 26px;
 }
 
 .metaItem {
-  padding: 12px 14px;
-  border-radius: 16px;
-  background: #fff7ed;
-  border: 1px solid rgba(251, 191, 36, 0.28);
-  color: #7c2d12;
-  font-size: 0.94rem;
-  font-weight: 600;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: #eff6ff;
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  color: #1e40af;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.heroHighlights {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 26px;
+}
+
+.highlightCard {
+  padding: 18px 20px;
+  border-radius: 24px;
+  border: 1px solid rgba(219, 234, 254, 0.95);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(239, 246, 255, 0.85));
+}
+
+.highlightCard strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #1d4ed8;
+  font-size: 0.98rem;
+}
+
+.highlightCard p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.95rem;
+  line-height: 1.7;
 }
 
 .asideCard {
-  border-radius: 28px;
-  padding: 24px;
+  border-radius: 32px;
+  padding: 34px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 22px;
 }
 
 .asideCard h2 {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1.24rem;
 }
 
 .asideCard p {
   margin: 0;
   color: #475569;
-  line-height: 1.7;
+  line-height: 1.75;
 }
 
 .contactList {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .contactRow {
   display: grid;
-  gap: 4px;
-  padding: 14px 16px;
-  border-radius: 18px;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 20px;
   background: #f8fafc;
-  border: 1px solid rgba(203, 213, 225, 0.9);
+  border: 1px solid rgba(203, 213, 225, 0.95);
 }
 
 .contactLabel {
@@ -131,44 +158,59 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  gap: 20px;
+  counter-reset: policy-section;
 }
 
 .section {
-  border-radius: 28px;
-  padding: 26px 24px;
+  counter-increment: policy-section;
+  position: relative;
+  border-radius: 32px;
+  padding: 36px 30px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 249, 255, 0.96));
+  border: 1px solid rgba(219, 234, 254, 0.85);
+}
+
+.section::before {
+  content: counter(policy-section, decimal-leading-zero);
+  position: absolute;
+  top: 24px;
+  left: 28px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #2563eb;
 }
 
 .section h2 {
-  margin: 0 0 10px;
-  font-size: 1.24rem;
+  margin: 0 0 14px;
+  font-size: 1.32rem;
+  padding-left: 2.4rem;
 }
 
 .section p {
   margin: 0;
   color: #475569;
-  line-height: 1.75;
+  line-height: 1.8;
 }
 
 .section ul {
-  margin: 14px 0 0;
-  padding-left: 18px;
+  margin: 16px 0 0;
+  padding-left: 24px;
   color: #334155;
-  line-height: 1.7;
-}
-
-.footerNote {
-  margin-top: 20px;
-  padding: 18px 20px;
-  border-radius: 22px;
-  background: linear-gradient(135deg, #0f172a, #1e293b);
-  color: #e2e8f0;
-  box-shadow: 0 20px 44px rgba(15, 23, 42, 0.16);
-}
-
-.footerNote p {
-  margin: 0;
   line-height: 1.75;
+}
+
+.section li {
+  margin-bottom: 10px;
+  padding-left: 0.35rem;
+}
+
+.section li::marker {
+  color: #2563eb;
+}
+
+.section strong {
+  color: #0f172a;
 }
 
 @media (max-width: 920px) {
@@ -176,25 +218,28 @@
   .grid {
     grid-template-columns: 1fr;
   }
+
+  .heroHighlights {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 720px) {
   .page {
-    padding: 108px 14px 34px;
+    padding: 98px 14px 30px;
   }
 
   .heroCard,
   .asideCard,
   .section {
     border-radius: 24px;
-    padding: 22px 18px;
+    padding: 24px 18px;
   }
 
   .lead,
   .section p,
   .asideCard p,
-  .section ul,
-  .footerNote p {
-    font-size: 0.97rem;
+  .section ul {
+    font-size: 0.98rem;
   }
 }
