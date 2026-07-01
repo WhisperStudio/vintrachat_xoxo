@@ -84,7 +84,16 @@ const cookieContent: Record<'no' | 'en', CookieContent> = {
         ],
       },
       {
-        title: '3. Hvordan du kan administrere det',
+        title: '3. Kategorier av lagring',
+        body: 'Vi bruker hovedsakelig funksjonell lagring som er nødvendig for å få en stabil opplevelse. Vi bruker ikke reklame- eller analysecookies som standard.',
+        bullets: [
+          'Nødvendig eller funksjonell lagring: språk, tema, widget-tilstand og delvis chatkontekst.',
+          'Analyse- og markedsføringscookies: ikke brukt som standard på dette nettstedet.',
+          'Hvis du fjerner lagring, kan enkelte funksjoner bli mindre stabile eller glatte.',
+        ],
+      },
+      {
+        title: '4. Hvordan du kan administrere det',
         body: 'Du kan slette lagret innhold i nettleseren dine, og mange nettlesere lar deg blokkere eller begrense lagring for enkelte nettsteder.',
         bullets: [
           'Slett lagret data for dette nettstedet via nettleserinnstillinger.',
@@ -93,7 +102,7 @@ const cookieContent: Record<'no' | 'en', CookieContent> = {
         ],
       },
       {
-        title: '4. Kontakt',
+        title: '5. Kontakt',
         body: 'For spørsmål om cookies, nettleserlagring, personvern eller databehandling kan du kontakte oss direkte med e-post eller telefon.',
       },
     ],
@@ -147,7 +156,16 @@ const cookieContent: Record<'no' | 'en', CookieContent> = {
         ],
       },
       {
-        title: '3. How you can manage it',
+        title: '3. Storage categories',
+        body: 'We primarily use functional storage that is necessary for a stable experience. We do not use advertising or analytics cookies by default.',
+        bullets: [
+          'Necessary or functional storage: language, theme, widget state, and partial chat context.',
+          'Analytics and marketing cookies: not used by default on this site.',
+          'If you remove storage, some functions may become less stable or seamless.',
+        ],
+      },
+      {
+        title: '4. How you can manage it',
         body: 'You can clear stored data in your browser, and many browsers let you block or limit storage for individual sites.',
         bullets: [
           'Delete stored data for this site in your browser settings.',
@@ -156,7 +174,7 @@ const cookieContent: Record<'no' | 'en', CookieContent> = {
         ],
       },
       {
-        title: '4. Contact',
+        title: '5. Contact',
         body: 'For questions about cookies, browser storage, privacy, or data processing, please contact us directly by email or phone.',
       },
     ],

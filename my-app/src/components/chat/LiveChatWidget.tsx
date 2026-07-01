@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import WidgetPreview from '@/app/landings/auth/chatWidget/components/WidgetPreview'
 import '@/app/landings/auth/chatWidget/ChatWidget.css'
 import './LiveChatWidget.css'
+import { siteConfig } from '@/lib/site-config'
 import type { ChatAssistantConfig, ChatWidgetConfig } from '@/types/database'
 
 type WidgetMessage = {
@@ -991,9 +992,10 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     )
   }
 
+  const privacyUrl = `${siteConfig.url}/policy`
   const title = config.customBranding?.title || configResponse?.businessName || 'Support Chat'
   const description =
-    config.customBranding?.description || 'Ask a question and we will help you. Please avoid sharing sensitive information in chat.'
+    config.customBranding?.description || `Ask a question and we will help you. Please avoid sharing sensitive information in chat. Read our privacy policy: ${privacyUrl}`
 
   const widgetMessages = messages.length
     ? messages.map((message) => ({
@@ -1005,7 +1007,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     : [
         {
           id: 'initial-runtime-message',
-          text: `Ask a question to start chatting with ${configResponse?.businessName || 'us'}. Please avoid sharing sensitive information in chat.`,
+          text: `Ask a question to start chatting with ${configResponse?.businessName || 'us'}. Please avoid sharing sensitive information in chat. Read our privacy policy: ${privacyUrl}`,
           isBot: true,
         },
       ]

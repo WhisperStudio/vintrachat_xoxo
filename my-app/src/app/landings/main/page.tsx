@@ -76,6 +76,7 @@ export default function MainLanding() {
   const text = mainLandingCopy[language]
   const footerPolicyLabel = language === 'no' ? 'Personvern' : 'Privacy'
   const footerCookiesLabel = language === 'no' ? 'Cookies' : 'Cookies'
+  const footerTermsLabel = language === 'no' ? 'Vilkår' : 'Terms'
   const footerLegalLine = language === 'no'
     ? 'Enkeltmannsforetak under Polyscope Secker.'
     : 'Sole proprietorship under Polyscope Secker.'
@@ -535,6 +536,8 @@ export default function MainLanding() {
                 {footerLegalLine} <Link href="/policy" style={{ color: '#3b82f6', textDecoration: 'underline' }}>{footerPolicyLabel}</Link>
                 {' · '}
                 <Link href="/cookies" style={{ color: '#3b82f6', textDecoration: 'underline' }}>{footerCookiesLabel}</Link>
+                {' · '}
+                <Link href="/terms" style={{ color: '#3b82f6', textDecoration: 'underline' }}>{footerTermsLabel}</Link>
               </div>
             </div>
             <span style={{ color: '#999', fontSize: 13 }}>(c) {currentYear} Vintra. {text.footerRights}</span>
@@ -545,6 +548,7 @@ export default function MainLanding() {
               ) : null}
               <Link href="/policy" style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>{footerPolicyLabel}</Link>
               <Link href="/cookies" style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>{footerCookiesLabel}</Link>
+              <Link href="/terms" style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>{footerTermsLabel}</Link>
               <a href="#contact" style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>{text.contact}</a>
             </div>
           </div>
