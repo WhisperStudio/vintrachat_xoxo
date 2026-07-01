@@ -26,15 +26,36 @@
 
 .heroShell--day {
   --hero-title: #13233d;
-  --hero-copy: rgba(31, 51, 79, 0.78);
-  --hero-muted: rgba(60, 86, 120, 0.72);
+  --hero-copy: rgba(31, 51, 79, 0.88);
+  --hero-muted: rgba(79, 95, 128, 0.72);
   --hero-accent: #1570ef;
-  --hero-panel-border: rgba(148, 163, 184, 0.16);
+  --hero-panel-border: rgba(148, 163, 184, 0.18);
   --hero-outline: rgba(255, 255, 255, 0.92);
   background:
-    radial-gradient(circle at 20% 10%, rgba(123, 185, 173, 0.16), transparent 30%),
-    radial-gradient(circle at 82% 14%, rgba(162, 157, 214, 0.14), transparent 28%),
-    linear-gradient(180deg, #a8d3ea 0%, #c4e0ef 28%, #d8e9f1 54%, #dde7ea 78%, #d5ddd8 100%);
+    radial-gradient(circle at 20% 10%, rgba(123, 185, 173, 0.18), transparent 34%),
+    radial-gradient(circle at 82% 14%, rgba(162, 157, 214, 0.18), transparent 30%),
+    linear-gradient(180deg, #f1f6fb 0%, #e5eef4 26%, #dfe9ef 52%, #e6eef2 76%, #edf3f8 100%);
+}
+
+.heroShell--day .cta-primary {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #ffffff;
+}
+
+.heroShell--day .cta-secondary {
+  background: rgba(255, 255, 255, 0.92);
+  color: #10243f;
+  border-color: rgba(148, 163, 184, 0.28);
+}
+
+.heroShell--night .cta-secondary {
+  background: rgba(255, 255, 255, 0.16);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.heroShell--night .cta-secondary:hover {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .heroBackdrop {
@@ -1183,7 +1204,7 @@
 .basecampCopy h3 {
   max-width: 18ch;
   margin: 0;
-  color: var(--solution-card-title);
+  color: #10243f;
   font-size: clamp(28px, 3vw, 40px);
   line-height: 1.04;
   font-weight: 900;
@@ -1193,7 +1214,7 @@
 .basecampCopy p {
   max-width: 360px;
   margin: 18px 0 0;
-  color: var(--solution-card-copy);
+  color: rgba(31, 41, 55, 0.72);
   font-size: 15px;
   line-height: 1.75;
 }
@@ -1251,6 +1272,159 @@
     linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
   background-size: 80px 80px;
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.8), transparent 72%);
+}
+
+.mainFlow.mainFlow--day {
+  background:
+    radial-gradient(circle at 12% 12%, rgba(37, 99, 235, 0.1), transparent 24%),
+    radial-gradient(circle at 88% 22%, rgba(16, 185, 129, 0.08), transparent 22%),
+    linear-gradient(180deg, #f7fbff 0%, #eef4fb 38%, #edf4f9 72%, #ffffff 100%);
+  color: #10243f;
+}
+
+.mainFlow.mainFlow--day::before {
+  background:
+    linear-gradient(rgba(15, 23, 42, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.02) 1px, transparent 1px);
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.12), transparent 82%);
+}
+
+.mainFlow.mainFlow--day .sectionHeader h2,
+.mainFlow.mainFlow--day .bottomCtaPanel h2 {
+  color: #10243f;
+}
+
+.mainFlow.mainFlow--day .sectionHeader p,
+.mainFlow.mainFlow--day .chatbotFeatureBlock p,
+.mainFlow.mainFlow--day .recommendedCopy,
+.mainFlow.mainFlow--day .pricingCard p,
+.mainFlow.mainFlow--day .solutionsCard p,
+.mainFlow.mainFlow--day .solutionsFeatureList li,
+.mainFlow.mainFlow--day .solutionsCardMeta,
+.mainFlow.mainFlow--day .solutionsBadge,
+.mainFlow.mainFlow--day .chatbotUseCaseLabel,
+.mainFlow.mainFlow--day .chatbotUseCaseNumber,
+.mainFlow.mainFlow--day .chatbotFeatureItem {
+  color: rgba(31, 41, 55, 0.8);
+}
+
+.mainFlow.mainFlow--day .sectionKicker {
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.12);
+}
+
+.mainFlow.mainFlow--day .solutionsSection--day {
+  background: transparent;
+}
+
+.mainFlow.mainFlow--day .solutionsSection--day .solutionsCard {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(243, 248, 255, 0.9));
+  border-color: rgba(148, 163, 184, 0.18);
+  box-shadow: 0 18px 52px rgba(15, 23, 42, 0.08);
+}
+
+.mainFlow.mainFlow--day .solutionsSection--day .solutionsCard::before {
+  display: none;
+}
+
+.mainFlow.mainFlow--day .solutionsSection--day .solutionsCard h3 {
+  color: #10243f;
+}
+
+.mainFlow.mainFlow--day .solutionsSection--day .solutionsCardMeta,
+.mainFlow.mainFlow--day .solutionsSection--day .solutionsBadge {
+  color: rgba(51, 65, 85, 0.62);
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(148, 163, 184, 0.16);
+}
+
+.mainFlow.mainFlow--day .solutionsSection--day .solutionsIcon {
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(148, 163, 184, 0.16);
+}
+
+.mainFlow.mainFlow--day .solutionsSection--day .solutionsCard--chatbot {
+  background: linear-gradient(180deg, rgba(235, 245, 255, 0.94), rgba(242, 249, 255, 0.9));
+}
+
+.mainFlow.mainFlow--day .chatbotShowcaseSection {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 251, 255, 0.9));
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+.mainFlow.mainFlow--day .chatbotContentPanel {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(148, 163, 184, 0.18);
+  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.1);
+}
+
+.mainFlow.mainFlow--day .chatbotUseCaseCard {
+  background: #ffffff;
+  border-color: rgba(148, 163, 184, 0.16);
+  color: #1f2937;
+}
+
+.mainFlow.mainFlow--day .chatbotUseCaseNumber {
+  color: #2563eb;
+}
+
+.mainFlow.mainFlow--day .chatbotUseCaseLabel {
+  color: #10243f;
+}
+
+.mainFlow.mainFlow--day .chatbotFeatureItem {
+  background: #ffffff;
+  border-color: rgba(148, 163, 184, 0.16);
+  color: #334155;
+}
+
+.mainFlow.mainFlow--day .pricingCard {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(148, 163, 184, 0.18);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+}
+
+.mainFlow.mainFlow--day .pricingCardTop {
+  color: rgba(51, 65, 85, 0.72);
+}
+
+.mainFlow.mainFlow--day .pricingPrice span {
+  color: rgba(51, 65, 85, 0.54);
+}
+
+.mainFlow.mainFlow--day .pricingPrice strong {
+  color: #111827;
+}
+
+.mainFlow.mainFlow--day .pricingCard p {
+  color: rgba(51, 65, 85, 0.72);
+}
+
+.mainFlow.mainFlow--day .bottomCtaPanel {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(235, 245, 255, 0.94));
+  border-color: rgba(148, 163, 184, 0.18);
+  box-shadow: 0 26px 62px rgba(15, 23, 42, 0.1);
+}
+
+.mainFlow.mainFlow--day .bottomCtaPanel h2 {
+  color: #10243f;
+}
+
+.mainFlow.mainFlow--day .contactBand {
+  background: linear-gradient(180deg, rgba(245, 249, 255, 0.96), rgba(238, 245, 252, 0.96));
+  color: #10243f;
+}
+
+.mainFlow.mainFlow--day .contactPanel {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(148, 163, 184, 0.18);
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+}
+
+.mainFlow.mainFlow--day .contactIntro {
+  color: #10243f;
 }
 
 .showcaseBand {

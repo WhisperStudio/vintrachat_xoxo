@@ -378,7 +378,7 @@ export default function MainLanding() {
           </div>
         </section>
 
-        <div className="mainFlow">
+        <div className={`mainFlow mainFlow--${heroSceneMode === 'night' ? 'night' : 'day'}`}>
           <section className="showcaseBand">
             <Reveal>
               <div className="page sectionHeader sectionHeader--light">
