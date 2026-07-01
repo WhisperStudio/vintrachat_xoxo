@@ -47,16 +47,16 @@ const policyContent: Record<'no' | 'en', PolicyContent> = {
         body: 'Vi samler bare data som er nødvendig for drift, support og dialog.',
       },
       {
-        title: 'AI med ansvar',
-        body: 'Chatlogg og AI-data håndteres konfidensielt og brukes kun for oppfølging.',
+        title: 'Åpenhet rundt behandling',
+        body: 'Roller, regioner, underleverandører og transfermekanismer beskrives i avtalen og DPA-en.',
       },
       {
         title: 'Sikker drift',
-        body: 'Server-side lagring og tilgangskontroll beskytter informasjonen.',
+        body: 'Server-side lagring, tilgangskontroll og overvåkning beskytter informasjonen.',
       },
     ],
     contactTitle: 'Kontaktinformasjon',
-    contactText: 'For innsyn, sletting, korrigering eller spørsmål om databehandling kan du kontakte oss direkte.',
+    contactText: 'For innsyn, sletting, korrigering eller spørsmål om databehandling kan du kontakte oss direkte. For produksjonsløsninger kan vi også sende relevante avtaler, DPA og tjenestevilkår.',
     labels: {
       company: 'Selskap',
       email: 'E-post',
@@ -66,8 +66,8 @@ const policyContent: Record<'no' | 'en', PolicyContent> = {
     companyValue: 'Polyscope Secker (enkeltmannsforetak)',
     sections: [
       {
-        title: '1. Ansvarlig for behandling',
-        body: 'Polyscope Secker er behandlingsansvarlig for informasjon knyttet til Vintra-tjenester. Dette omfatter drift av nettsider, chat-widgeter, kundedialog og supportløsninger.',
+        title: '1. Roller og ansvar',
+        body: 'For kundens chatbot-data fungerer Vintra som leverandør og behandlingsansvarlig på vegne av kunden når tjenesten brukes som en betrodd prosessør. Kunden er behandlingsansvarlig for egne personopplysninger som samles gjennom sin chatbot eller nettside, og Vintra bistår med drift, lagring og støtte i henhold til avtale.',
       },
       {
         title: '2. Hvilke data vi samler inn',
@@ -91,22 +91,22 @@ const policyContent: Record<'no' | 'en', PolicyContent> = {
         ],
       },
       {
-        title: '4. Hvordan data lagres',
-        body: 'Data lagres i sikre backend-systemer og behandles slik at konfidensialitet og integritet ivaretas.',
+        title: '4. Dataplattform, regioner og underleverandører',
+        body: 'Data lagres i sikre backend-systemer, og den konkrete lagringsregionen og infrastrukturen avhenger av valgt løsning, avtale og geografiske krav.',
         bullets: [
-          'Forretningsdata og chathistorikk lagres i en sikret databaseplattform, blant annet Firebase/Firestore.',
-          'Server-side behandling sikrer at sensitive nøkler og tokens ikke eksponeres i klienten.',
-          'Lokal lagring og informasjonskapsler brukes bare til brukerpreferanser og funksjonelle formål.',
-          'Data som ikke lenger er relevante, ryddes opp i henhold til lagringsregler og avtalte behov.',
+          'Forretningsdata og chathistorikk lagres i sikre sky- og databasemiljøer, blant annet i løsninger som Firebase/Firestore.',
+          'Vi bruker pålitelige underleverandører for hosting, lagring, support og vedlikehold, og alle samarbeidspartnere er bundet av kontraktuelle krav om sikkerhet og konfidensialitet.',
+          'AI-integrasjoner og modellvalg kan involvere tredjepartsleverandører, og den konkrete leverandøren avhenger av valgt konfigurasjon.',
+          'Overføring av data utenfor EØS skjer kun når det er nødvendig, og da med passende juridiske og tekniske beskyttelsesmekanismer.',
         ],
       },
       {
-        title: '5. Rettslig grunnlag',
-        body: 'Behandling av data skjer på et rettslig grunnlag som kontrakt, berettiget interesse eller samtykke.',
+        title: '5. Rettslig grunnlag og avtaler',
+        body: 'Behandling skjer på et rettslig grunnlag som kontrakt, berettiget interesse eller samtykke, og den konkrete behandlingen er nærmere regulert i avtale, DPA og tjenestevilkår.',
         bullets: [
           'Tjenestedrift og support basert på avtale og nødvendig behandling.',
           'Sikkerhet, stabilitet og forretningsbeskyttelse basert på berettiget interesse.',
-          'Kommunikasjon og administrasjon av tjenesten i henhold til kundeavtale.',
+          'Kommunikasjon og administrasjon av tjenesten i henhold til kundeavtale, DPA og søknads-/oppstartsprosess.',
         ],
       },
       {
@@ -120,11 +120,12 @@ const policyContent: Record<'no' | 'en', PolicyContent> = {
       },
       {
         title: '7. Tredjepartsleverandører',
-        body: 'Vi samarbeider med pålitelige leverandører for drift, support og lagring. Data deles kun når det er nødvendig for å levere tjenesten.',
+        body: 'Vi samarbeider med pålitelige leverandører for hosting, support, lagring og AI-tilkoblinger. Data deles kun når det er nødvendig for å levere tjenesten.',
         bullets: [
           'Drift og lagring kan involvere plattformer som Firebase og relevante skytjenester.',
           'Support og kommunikasjon kan håndteres av e-post- og infrastrukturleverandører.',
-          'Informasjon deles aldri med uvedkommende og kun i samsvar med formål og avtale.',
+          'AI-tjenester og integrasjoner kan benyttes som del av den valgte konfigurasjonen, med samme krav til sikkerhet og taushet.',
+          'Informasjon deles aldri med uvedkommende og kun i samsvar med formål, avtale og relevante beskyttelsesmekanismer.',
         ],
       },
       {
@@ -160,8 +161,8 @@ const policyContent: Record<'no' | 'en', PolicyContent> = {
         body: 'Denne policyen kan oppdateres ved endringer i tjenesten, teknologi eller lovverk. Endringer publiseres på denne siden, og siste versjon gjelder.',
       },
       {
-        title: '12. Juridisk merknad',
-        body: 'Dette dokumentet er et faglig utarbeidet policyutkast for Vintra. Det erstatter ikke juridisk rådgivning og bør kvalitetssikres før det benyttes som endelig offentlig dokument.',
+        title: '12. Avtaler og juridisk dokumentasjon',
+        body: 'Dette dokumentet er et praktisk og kunderelevant personvern- og serviceoppslag for Vintra. For produksjonsbruk, avtalebasert drift og chatbot-løsninger brukes det sammen med databehandleravtale (DPA), tjenestevilkår og eventuelle sikkerhets- eller innholdsretningslinjer som den endelige dokumentasjonen.',
       },
     ],
   },
@@ -177,16 +178,16 @@ const policyContent: Record<'no' | 'en', PolicyContent> = {
         body: 'We only collect data that is necessary for operations, support, and conversation flow.',
       },
       {
-        title: 'Responsible AI',
-        body: 'Chat logs and AI data are handled confidentially and used only for follow-up and service quality.',
+        title: 'Transparent processing',
+        body: 'Roles, regions, sub-processors, and transfer safeguards are explained in the agreement and DPA.',
       },
       {
         title: 'Secure operations',
-        body: 'Server-side storage and access controls protect the information we process.',
+        body: 'Server-side storage, access controls, and monitoring protect the information we process.',
       },
     ],
     contactTitle: 'Contact information',
-    contactText: 'For requests about access, deletion, correction, or data processing, please contact us directly.',
+    contactText: 'For requests about access, deletion, correction, or data processing, please contact us directly. For production deployments we can also provide the relevant agreements, DPA, and service terms.',
     labels: {
       company: 'Company',
       email: 'Email',
@@ -196,8 +197,8 @@ const policyContent: Record<'no' | 'en', PolicyContent> = {
     companyValue: 'Polyscope Secker (sole proprietorship)',
     sections: [
       {
-        title: '1. Data controller',
-        body: 'Polyscope Secker is the data controller for information related to Vintra services. This includes the operation of websites, chat widgets, customer dialogue, and support solutions.',
+        title: '1. Roles and responsibilities',
+        body: 'For a customer chatbot deployment, Vintra acts as the service provider and processor on behalf of the customer when processing is carried out under contract. The customer remains the controller for the personal data it collects through its own chatbot or website, and Vintra supports operations, storage, and support under the agreement.',
       },
       {
         title: '2. What data we collect',
@@ -221,22 +222,22 @@ const policyContent: Record<'no' | 'en', PolicyContent> = {
         ],
       },
       {
-        title: '4. How data is stored',
-        body: 'Data is stored in secure backend systems and handled so that confidentiality and integrity are maintained.',
+        title: '4. Hosting region, sub-processors and transfers',
+        body: 'Data is stored in secure backend systems, and the specific hosting region and infrastructure depend on the chosen solution, agreement, and geographic requirements.',
         bullets: [
-          'Business data and chat history are stored in a secure database platform, including Firebase/Firestore.',
-          'Server-side processing ensures that sensitive keys and tokens are not exposed to the client.',
-          'Local storage and cookies are used only for user preferences and functional purposes.',
-          'Data that is no longer relevant is removed in accordance with storage rules and agreed needs.',
+          'Business data and chat history are stored in secure cloud and database environments, including solutions such as Firebase/Firestore.',
+          'We use trusted sub-processors for hosting, storage, support, and maintenance, and all partners are bound by contractual requirements for security and confidentiality.',
+          'AI integrations and model selection may involve third-party providers, and the specific provider depends on the selected configuration.',
+          'Transfers of data outside the EEA occur only where necessary and are covered by appropriate legal and technical safeguards.',
         ],
       },
       {
-        title: '5. Legal basis',
-        body: 'Data processing is carried out on a legal basis such as contract, legitimate interest, or consent.',
+        title: '5. Legal basis and agreements',
+        body: 'Data processing is carried out on a legal basis such as contract, legitimate interest, or consent, and the detailed handling is set out in the agreement, DPA, and service terms.',
         bullets: [
           'Service delivery and support based on contract and necessary processing.',
           'Security, stability, and business protection based on legitimate interest.',
-          'Communication and administration of the service in line with customer agreements.',
+          'Communication and administration of the service in line with customer agreements, the DPA, and onboarding requirements.',
         ],
       },
       {
@@ -250,11 +251,12 @@ const policyContent: Record<'no' | 'en', PolicyContent> = {
       },
       {
         title: '7. Third-party providers',
-        body: 'We work with reliable providers for operations, support, and storage. Data is shared only when necessary to deliver the service.',
+        body: 'We work with reliable providers for hosting, support, storage, and AI integrations. Data is shared only when necessary to deliver the service.',
         bullets: [
           'Operations and storage may involve platforms such as Firebase and relevant cloud services.',
           'Support and communication may be handled by email and infrastructure providers.',
-          'Information is never shared with unauthorized parties and only in line with purpose and agreement.',
+          'AI services and integrations may be used as part of the selected configuration, with the same requirements for security and confidentiality.',
+          'Information is never shared with unauthorized parties and only in line with purpose, agreement, and applicable safeguards.',
         ],
       },
       {
@@ -290,8 +292,8 @@ const policyContent: Record<'no' | 'en', PolicyContent> = {
         body: 'This policy may be updated when the service, technology, or legal requirements change. Updates are published on this page and the latest version applies.',
       },
       {
-        title: '12. Legal note',
-        body: 'This document is a professional policy draft for Vintra. It does not replace legal advice and should be quality-checked before use as a final public document.',
+        title: '12. Agreements and legal documentation',
+        body: 'This document is a practical and customer-facing privacy and service overview for Vintra. For production use, contract-based deployment, and chatbot solutions, it should be read together with the data processing agreement (DPA), service terms, and any applicable security or content guidelines as the final documentation.',
       },
     ],
   },

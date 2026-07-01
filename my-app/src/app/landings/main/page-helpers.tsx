@@ -40,28 +40,28 @@ const websites = [
     label: 'Portfolio',
     color: '#1A6BFF',
     accent: '#EEF4FF',
-    lines: ['Ola Nordmann', 'Designer & Utvikler', 'Se arbeid ->'],
+    lines: ['North Studio', 'Brand & web design', 'Se arbeid ->'],
     img: 'P',
   },
   {
     label: 'Nettbutikk',
     color: '#0C9E6A',
     accent: '#EEFAF4',
-    lines: ['NordicShop', 'Fri frakt over 499kr', 'Handl na ->'],
+    lines: ['Nordic Retail', 'Fri frakt over 499kr', 'Handl na ->'],
     img: 'S',
   },
   {
     label: 'Startup',
     color: '#7C3AED',
     accent: '#F5F0FF',
-    lines: ['LaunchFast', 'Fra ide til produkt', 'Book demo ->'],
+    lines: ['Growth Labs', 'Fra ide til første salg', 'Book demo ->'],
     img: 'A',
   },
   {
     label: 'Frisor / Spa',
     color: '#D4449A',
     accent: '#FDF0F8',
-    lines: ['Studio Ella', 'Book din time', 'Bestill na ->'],
+    lines: ['Bloom Studio', 'Book din time', 'Bestill na ->'],
     img: 'F',
   },
   {
@@ -171,7 +171,7 @@ function DetailedSitePreview({ site, language }: { site: typeof websites[0]; lan
             <div style={{ width: 36, height: 36, borderRadius: 12, background: 'rgba(255,255,255,0.18)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 18 }}>?</div>
             <div>
               <div style={{ color: 'rgba(255,255,255,0.74)', fontSize: 10, fontWeight: 800, letterSpacing: 1.4, textTransform: 'uppercase' }}>{text.eyebrow}</div>
-              <div style={{ color: '#fff', fontWeight: 900, fontSize: 18 }}>Ola Nordmann Studio</div>
+              <div style={{ color: '#fff', fontWeight: 900, fontSize: 18 }}>North Studio</div>
             </div>
           </div>
           <div style={{ color: '#fff', fontWeight: 900, fontSize: 21, lineHeight: 1.05 }}>{text.title}</div>

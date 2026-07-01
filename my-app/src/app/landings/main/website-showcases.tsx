@@ -22,10 +22,10 @@ const showcaseMap: Record<string, ShowcaseComponent> = {
 
 export const websites = [
   { label: 'Restaurant', color: '#E85D26', accent: '#FFF4EE', lines: ['Smakenes Hus', 'Moderne norsk mat', '★★★★★'], img: '🍽️' },
-  { label: 'Portfolio', color: '#1A6BFF', accent: '#EEF4FF', lines: ['Ola Nordmann', 'Designer & Utvikler', 'Se arbeid →'], img: '🎨' },
-  { label: 'Nettbutikk', color: '#0C9E6A', accent: '#EEFAF4', lines: ['NordicShop', 'Fri frakt over 499kr', 'Handl nå →'], img: '🛍️' },
-  { label: 'Startup', color: '#7C3AED', accent: '#F5F0FF', lines: ['LaunchFast', 'Fra idé til produkt', 'Book demo →'], img: '🚀' },
-  { label: 'Frisør / Spa', color: '#D4449A', accent: '#FDF0F8', lines: ['Studio Ella', 'Book din time', 'Bestill nå →'], img: '✂️' },
+  { label: 'Portfolio', color: '#1A6BFF', accent: '#EEF4FF', lines: ['North Studio', 'Brand & web design', 'Se arbeid →'], img: '🎨' },
+  { label: 'Nettbutikk', color: '#0C9E6A', accent: '#EEFAF4', lines: ['Nordic Retail', 'Fri frakt over 499kr', 'Handl nå →'], img: '🛍️' },
+  { label: 'Startup', color: '#7C3AED', accent: '#F5F0FF', lines: ['Growth Labs', 'Fra idé til første salg', 'Book demo →'], img: '🚀' },
+  { label: 'Frisør / Spa', color: '#D4449A', accent: '#FDF0F8', lines: ['Bloom Studio', 'Book din time', 'Bestill nå →'], img: '✂️' },
   { label: 'Bedrift', color: '#1E3A5F', accent: '#EFF3F8', lines: ['Nordvest AS', 'Pålitelig siden 1998', 'Kontakt oss →'], img: '🏢' },
 ]
 
