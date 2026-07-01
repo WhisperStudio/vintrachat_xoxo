@@ -6,7 +6,35 @@ import styles from './page.module.css'
 
 const lastUpdated = '1. juli 2026'
 
-const policyContent = {
+type PolicySection = {
+  title: string
+  body: string
+  bullets?: string[]
+}
+
+type PolicyContent = {
+  eyebrow: string
+  title: string
+  lead: string
+  metaUpdated: string
+  metaOperator: string
+  highlights: Array<{
+    title: string
+    body: string
+  }>
+  contactTitle: string
+  contactText: string
+  labels: {
+    company: string
+    email: string
+    phone: string
+    language: string
+  }
+  companyValue: string
+  sections: PolicySection[]
+}
+
+const policyContent: Record<'no' | 'en', PolicyContent> = {
   no: {
     eyebrow: 'Personvern & policy',
     title: 'Policy for Vintra og Polyscope Secker',
