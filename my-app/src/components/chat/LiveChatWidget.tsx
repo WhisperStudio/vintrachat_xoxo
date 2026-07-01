@@ -993,7 +993,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
 
   const title = config.customBranding?.title || configResponse?.businessName || 'Support Chat'
   const description =
-    config.customBranding?.description || 'Ask a question and we will help you.'
+    config.customBranding?.description || 'Ask a question and we will help you. Please avoid sharing sensitive information in chat.'
 
   const widgetMessages = messages.length
     ? messages.map((message) => ({
@@ -1005,7 +1005,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     : [
         {
           id: 'initial-runtime-message',
-          text: `Ask a question to start chatting with ${configResponse?.businessName || 'us'}.`,
+          text: `Ask a question to start chatting with ${configResponse?.businessName || 'us'}. Please avoid sharing sensitive information in chat.`,
           isBot: true,
         },
       ]

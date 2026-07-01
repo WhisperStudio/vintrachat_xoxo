@@ -74,6 +74,11 @@ export default function MainLanding() {
   const [solutionsProgress, setSolutionsProgress] = useState(0)
   const { language } = useVintraLanguage()
   const text = mainLandingCopy[language]
+  const footerPolicyLabel = language === 'no' ? 'Personvern' : 'Privacy'
+  const footerCookiesLabel = language === 'no' ? 'Cookies' : 'Cookies'
+  const footerLegalLine = language === 'no'
+    ? 'Enkeltmannsforetak under Polyscope Secker.'
+    : 'Sole proprietorship under Polyscope Secker.'
   const isNightTheme = heroSceneMode === 'night'
   const solutionsTitleColor = isNightTheme ? '#f8fafc' : '#24384c'
   const solutionsAccentColor = isNightTheme ? '#6366f1' : '#e58a3a'
@@ -527,7 +532,9 @@ export default function MainLanding() {
             <div>
               <span style={{ fontWeight: 900, fontSize: 18 }}>vintra</span>
               <div style={{ color: '#777', fontSize: 13, marginTop: 6 }}>
-                Enkeltmannsforetak under <strong>Polyscope Secker</strong>. <Link href="/policy" style={{ color: '#3b82f6', textDecoration: 'underline' }}>Personvern og policy</Link>
+                {footerLegalLine} <Link href="/policy" style={{ color: '#3b82f6', textDecoration: 'underline' }}>{footerPolicyLabel}</Link>
+                {' · '}
+                <Link href="/cookies" style={{ color: '#3b82f6', textDecoration: 'underline' }}>{footerCookiesLabel}</Link>
               </div>
             </div>
             <span style={{ color: '#999', fontSize: 13 }}>(c) {currentYear} Vintra. {text.footerRights}</span>
@@ -536,6 +543,8 @@ export default function MainLanding() {
               {phoneHref ? (
                 <a href={phoneHref} style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>{siteConfig.contact.phoneDisplay}</a>
               ) : null}
+              <Link href="/policy" style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>{footerPolicyLabel}</Link>
+              <Link href="/cookies" style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>{footerCookiesLabel}</Link>
               <a href="#contact" style={{ fontSize: 13, color: '#888', textDecoration: 'none' }}>{text.contact}</a>
             </div>
           </div>

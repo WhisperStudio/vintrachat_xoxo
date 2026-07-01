@@ -38,7 +38,7 @@ const policyContent: Record<'no' | 'en', PolicyContent> = {
   no: {
     eyebrow: 'Personvern & policy',
     title: 'Policy for Vintra og Polyscope Secker',
-    lead: 'Vintra drives som et enkeltmannsforetak under Polyscope Secker. Denne policyen beskriver hvordan vi samler inn, lagrer, bruker og beskytter data i tilknytning til nettsider, chatbot-løsninger, supporttjenester og AI-drevet kundedialog.',
+    lead: 'Vintra drives som et enkeltmannsforetak under Polyscope Secker. Denne policyen beskriver hvordan vi samler inn, lagrer, bruker og beskytter data i tilknytning til nettsider, chatbot-løsninger, supporttjenester og AI-drevet kundedialog. For cookies og nettleserlagring finnes det også en egen oversikt.',
     metaUpdated: 'Sist oppdatert',
     metaOperator: 'Databehandler',
     highlights: [
@@ -169,7 +169,7 @@ const policyContent: Record<'no' | 'en', PolicyContent> = {
   en: {
     eyebrow: 'Privacy & policy',
     title: 'Policy for Vintra and Polyscope Secker',
-    lead: 'Vintra is operated as a sole proprietorship under Polyscope Secker. This policy explains how we collect, store, use, and protect data in connection with websites, chatbot solutions, support services, and AI-powered customer dialogue.',
+    lead: 'Vintra is operated as a sole proprietorship under Polyscope Secker. This policy explains how we collect, store, use, and protect data in connection with websites, chatbot solutions, support services, and AI-powered customer dialogue. A separate cookie overview is also available.',
     metaUpdated: 'Last updated',
     metaOperator: 'Data processor',
     highlights: [
