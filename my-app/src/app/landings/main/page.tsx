@@ -23,11 +23,13 @@ import {
   WebsiteCarousel,
   createHeroParticles,
 } from './page-helpers'
+import MountainBackground from '@/svgs/MountainBackground'
 
 const organizationId = `${siteConfig.url}/#organization`
 const websiteId = `${siteConfig.url}/#website`
 const emailHref = `mailto:${siteConfig.contact.email}`
 const phoneHref = siteConfig.contact.phone ? `tel:${siteConfig.contact.phone.replace(/\s+/g, '')}` : ''
+const siteHost = new URL(siteConfig.url).host
 const contactStructuredData = {
   '@context': 'https://schema.org',
   '@graph': [
@@ -160,6 +162,7 @@ export default function MainLanding() {
         {/* -- HERO ----------------------------------------- */}
         <section className={`heroShell heroShell--${heroSceneMode}`}>
           <div className="heroBackdrop" aria-hidden="true">
+            <MountainBackground className={`heroMountain heroMountain--${heroSceneMode}`} />
             {heroSceneMode === 'night' ? (
               <>
                 {nightStars.map((star) => (
@@ -324,403 +327,199 @@ export default function MainLanding() {
       </div>
     </Reveal>
 
-    <div className="solutionsGrid" style={{
-      display: 'grid', 
-      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-      gap: '40px',
-      perspective: '1000px'
-    }}>
-      
-      {/* OPTION A: MANAGED WEBSITE SERVICE */}
+    <div className="solutionsBasecamp">
       <Reveal delay={100}>
-        <div className="product-card-group solutionsCard solutionsCard--website" style={{
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.035) 100%)',
-          border: '1px solid rgba(148, 163, 184, 0.18)',
-          borderRadius: '40px',
-          padding: '52px 44px',
-          transition: 'all 0.5s cubic-bezier(0.2, 1, 0.3, 1)',
-          position: 'relative',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.4)';
-          e.currentTarget.style.transform = 'translateY(-12px) scale(1.02)';
-          e.currentTarget.style.boxShadow = '0 30px 60px -12px rgba(0,0,0,0.5)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-          e.currentTarget.style.transform = 'translateY(0) scale(1)';
-        }}
-        >
-          <div style={{ 
-            width: '80px', 
-            height: '80px', 
-            borderRadius: '24px', 
-            background: 'linear-gradient(180deg, #FFFFFF 0%, #DCE7FF 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '34px',
-            boxShadow: '0 20px 40px rgba(15,23,42,0.18)'
-          }}>
-            <GlobeIcon size={38} color="#000" />
+        <article className="basecampChoice basecampChoice--website">
+          <div className="basecampVisual" aria-hidden="true">
+            <div className="basecampSiteFrame">
+              <span />
+              <div />
+              <i />
+              <i />
+            </div>
           </div>
 
-          <h3 style={{ color: '#F8FAFC', fontSize: 'clamp(26px, 2.2vw, 32px)', fontWeight: 800, lineHeight: 1.08, marginBottom: '16px' }}>{text.websiteCardTitle}</h3>
-          <p style={{ color: '#cbd5e1', fontSize: 'clamp(15px, 1.4vw, 18px)', lineHeight: '1.75', marginBottom: '30px' }}>
-            {text.websiteCardBody}
-          </p>
-
-          <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 38px 0', flexGrow: 1 }}>
-            {text.websiteCardFeatures.map((item) => (
-              <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#d8e2ef', marginBottom: '14px', fontSize: '15px', lineHeight: 1.5 }}>
-                <div style={{ color: '#6366f1' }}><CheckIcon size={18} /></div> {item}
-              </li>
-            ))}
-          </ul>
-
-          <Link href="/landings/guest/websites" style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            gap: '12px',
-            background: 'linear-gradient(180deg, #FFFFFF 0%, #E8EEF9 100%)',
-            color: '#0f172a',
-            height: '70px',
-            borderRadius: '20px',
-            fontWeight: '800',
-            fontSize: '18px',
-            textDecoration: 'none',
-            transition: '0.3s'
-          }}>
-            {text.websiteCardCta} <ArrowRight size={20} />
-          </Link>
-        </div>
+          <div className="basecampCopy">
+            <span className="basecampKicker"><GlobeIcon size={17} />{text.websiteCardTitle}</span>
+            <h3>{text.websiteCardCta}</h3>
+            <p>{text.websiteCardFeatures[1]}</p>
+            <Link href="/landings/guest/websites" className="basecampAction">
+              {text.websiteCardCta} <ArrowRight size={16} />
+            </Link>
+          </div>
+        </article>
       </Reveal>
 
-      {/* OPTION B: AUTOMATED CHATBOT */}
-      <Reveal delay={300}>
-        <div className="solutionsCard solutionsCard--chatbot" style={{
-          background: 'linear-gradient(180deg, rgba(99, 102, 241, 0.17) 0%, rgba(12, 17, 29, 0.22) 100%)',
-          border: '1px solid rgba(129, 140, 248, 0.24)',
-          borderRadius: '40px',
-          padding: '52px 44px',
-          transition: 'all 0.5s cubic-bezier(0.2, 1, 0.3, 1)',
-          position: 'relative',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-12px) scale(1.02)';
-          e.currentTarget.style.boxShadow = '0 30px 60px -12px rgba(99, 102, 241, 0.2)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0) scale(1)';
-        }}
-        >
-          <div style={{ 
-            width: '80px', 
-            height: '80px', 
-            borderRadius: '24px', 
-            background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '34px'
-          }}>
-            <BotIcon size={38} color="#fff" />
+      <Reveal delay={180}>
+        <article className="basecampChoice basecampChoice--chatbot">
+          <div className="basecampVisual" aria-hidden="true">
+            <div className="basecampChatFrame">
+              <div>
+                <span><BotIcon size={15} /></span>
+                <strong>{text.chatTitle}</strong>
+              </div>
+              <i />
+              <i />
+            </div>
           </div>
 
-          <h3 style={{ color: '#F8FAFC', fontSize: 'clamp(26px, 2.2vw, 32px)', fontWeight: 800, lineHeight: 1.08, marginBottom: '16px' }}>{text.chatbotCardTitle}</h3>
-          <p style={{ color: '#cbd5e1', fontSize: 'clamp(15px, 1.4vw, 18px)', lineHeight: '1.75', marginBottom: '30px' }}>
-            {text.chatbotCardBody}
-          </p>
-
-          <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 38px 0', flexGrow: 1 }}>
-            {text.chatbotCardFeatures.map((item) => (
-              <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#d8e2ef', marginBottom: '14px', fontSize: '15px', lineHeight: 1.5 }}>
-                <div style={{ color: '#a855f7' }}><CheckIcon size={18} /></div> {item}
-              </li>
-            ))}
-          </ul>
-
-          <Link href="/landings/auth/chatWidget" style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            gap: '12px',
-            background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
-            color: '#fff',
-            height: '70px',
-            borderRadius: '20px',
-            fontWeight: '800',
-            fontSize: '18px',
-            textDecoration: 'none',
-            transition: '0.3s'
-          }}>
-            {text.chatbotCardCta} <ArrowRight size={20} />
-          </Link>
-          
-          <div style={{
-            position: 'absolute',
-            top: '30px',
-            right: '30px',
-            background: 'rgba(255,255,255,0.1)',
-            backdropFilter: 'blur(10px)',
-            padding: '6px 14px',
-            borderRadius: '100px',
-            fontSize: '11px',
-            fontWeight: 700,
-            color: '#fff',
-            textTransform: 'uppercase',
-            border: '1px solid rgba(255,255,255,0.1)'
-          }}>{text.selfService}</div>
-        </div>
+          <div className="basecampCopy">
+            <span className="basecampKicker"><BotIcon size={17} />{text.chatbotCardTitle}</span>
+            <h3>{text.chatbotCardCta}</h3>
+            <p>{text.chatbotCardFeatures[0]}</p>
+            <Link href="/landings/auth/chatWidget" className="basecampAction basecampAction--chatbot">
+              {text.chatbotCardCta} <ArrowRight size={16} />
+            </Link>
+          </div>
+        </article>
       </Reveal>
     </div>
-
-    <Reveal delay={500}>
-      <div className="solutionsFooter" style={{
-        marginTop: '68px',
-        textAlign: 'center',
-        background: 'rgba(255,255,255,0.04)',
-        padding: '24px',
-        borderRadius: '24px',
-        border: '1px solid rgba(148, 163, 184, 0.14)',
-        maxWidth: 'fit-content',
-        margin: '68px auto 0 auto'
-      }}>
-        <p style={{ margin: 0, color: '#cbd5e1', fontWeight: 500 }}>
-          {text.togetherLead} <span style={{ color: '#fff' }}>{text.togetherStrong}</span>
-        </p>
-      </div>
-    </Reveal>
   </div>
           </div>
         </section>
 
-        {/* -- WEBSITE SHOWCASE CAROUSEL -------------------- */}
-        <section style={{ background: '#111', padding: '80px 0', overflow: 'hidden' }}>
-          <Reveal>
-            <div className="page">
-              <h2 style={{ fontSize: 'clamp(26px,3.5vw,40px)', color: '#fff', fontWeight: 900, textAlign: 'center', letterSpacing: -0.8, marginBottom: 8 }}>
-                {text.carouselTitle}
-              </h2>
-              <p style={{ textAlign: 'center', color: '#e0e0e0', fontSize: 16, marginBottom: 48 }}>
-                {text.carouselBody}
-              </p>
-            </div>
-          </Reveal>
-          <WebsiteCarousel language={language} />
-        </section>
-
-        {/* -- CHATBOT SHOWCASE ---------------------------- */}
-        <section
-          id="chatbot"
-          className="chatbotShowcaseSection"
-        >
-          <div className="page">
+        <div className="mainFlow">
+          <section className="showcaseBand">
             <Reveal>
-              <div style={{ textAlign: 'center', maxWidth: 760, margin: '0 auto 58px' }}>
-                <div style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '8px 14px',
-                  borderRadius: 999,
-                  background: '#EFE7FF',
-                  color: '#6D28D9',
-                  fontSize: 12,
-                  fontWeight: 800,
-                  letterSpacing: 0.6,
-                  marginBottom: 16,
-                }}>
-                  <span>{text.chatbotCardTitle}</span>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E' }} />
-                  <span>{text.alwaysOn}</span>
-                </div>
-                <h2 style={{ fontSize: 'clamp(30px,4vw,46px)', fontWeight: 900, letterSpacing: -1, marginBottom: 16 }}>
-                  {text.chatbotShowcaseTitle}
-                </h2>
-                <p style={{ color: '#5B6472', fontSize: 17, lineHeight: 1.8 }}>
-                  {text.chatbotShowcaseBody}
-                </p>
+              <div className="page sectionHeader sectionHeader--light">
+                <span className="sectionKicker">{text.websiteCardTitle}</span>
+                <h2>{text.carouselTitle}</h2>
+                <p>{text.carouselBody}</p>
               </div>
             </Reveal>
+            <WebsiteCarousel language={language} />
+          </section>
 
-            <div className="chatbotShowcaseLayout">
-              <Reveal delay={0}>
-                <div className="chatbotContentPanel">
-                  <div className="chatbotUseCaseGrid">
-                    {[
-                      { icon: '??', label: text.useCases[0], color: '#EEF4FF' },
-                      { icon: '??', label: text.useCases[1], color: '#FFF4EE' },
-                      { icon: '??', label: text.useCases[2], color: '#EEFAF4' },
-                      { icon: '??', label: text.useCases[3], color: '#FDF0F8' },
-                      { icon: '??', label: text.useCases[4], color: '#F5F0FF' },
-                      { icon: '??', label: text.useCases[5], color: '#F5F5F5' },
-                    ].map(({ icon, label, color }) => (
-                      <div
-                        key={label}
-                        className="chatbotUseCaseCard"
-                        style={{
-                          background: color,
-                        }}
-                      >
-                        <div style={{ fontSize: 26, marginBottom: 8 }}>{icon}</div>
-                        <div style={{ fontSize: 13, fontWeight: 800, color: '#1F2937' }}>{label}</div>
-                      </div>
-                    ))}
-                  </div>
+          <section id="chatbot" className="chatbotShowcaseSection">
+            <div className="page">
+              <Reveal>
+                <div className="sectionHeader sectionHeader--light sectionHeader--left">
+                  <span className="sectionKicker sectionKicker--green">{text.chatbotCardTitle} / {text.alwaysOn}</span>
+                  <h2>{text.chatbotShowcaseTitle}</h2>
+                  <p>{text.chatbotShowcaseBody}</p>
+                </div>
+              </Reveal>
 
-                  <div style={{ display: 'grid', gap: 22 }}>
-                    <div>
-                      <h3 style={{ fontSize: 'clamp(26px,3vw,34px)', fontWeight: 900, letterSpacing: -0.7, marginBottom: 12 }}>
-                        {text.chatbotFeatureTitle}
-                      </h3>
-                      <p style={{ color: '#5B6472', fontSize: 16, lineHeight: 1.8 }}>
-                        {text.chatbotFeatureBody}
-                      </p>
-                    </div>
-
-                    <div className="chatbotFeatureList">
-                      {[
-                        ...text.chatbotFeatures,
-                      ].map((item) => (
-                        <div
-                          key={item}
-                          className="chatbotFeatureItem"
-                        >
-                          <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#7C3AED', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                            <CheckIcon />
-                          </div>
-                          <span>{item}</span>
+              <div className="chatbotShowcaseLayout">
+                <Reveal delay={0}>
+                  <div className="chatbotContentPanel">
+                    <div className="chatbotUseCaseGrid">
+                      {text.useCases.map((label, index) => (
+                        <div key={label} className="chatbotUseCaseCard">
+                          <div className="chatbotUseCaseNumber">{String(index + 1).padStart(2, '0')}</div>
+                          <div className="chatbotUseCaseLabel">{label}</div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                </div>
-              </Reveal>
 
-              <Reveal delay={160}>
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <ChatbotShowcasePreview language={language} />
-                </div>
-              </Reveal>
-            </div>
-          </div>
-        </section>
+                    <div className="chatbotFeatureBlock">
+                      <div>
+                        <h3>{text.chatbotFeatureTitle}</h3>
+                        <p>{text.chatbotFeatureBody}</p>
+                      </div>
 
-        {/* -- PRICING TEASER ------------------------------- */}
-        <section id="priser" style={{ background: '#111', padding: '80px 24px' }}>
-          <div className="page">
-            <Reveal>
-              <h2 style={{ fontSize: 'clamp(26px,3.5vw,40px)', fontWeight: 900, textAlign: 'center', color: '#fff', letterSpacing: -0.8, marginBottom: 16 }}>
-                {text.pricingTitle}
-              </h2>
-              <p style={{ textAlign: 'center', color: '#999', fontSize: 16, marginBottom: 56, maxWidth: 480, margin: '0 auto 56px' }}>
-                {text.pricingBody}
-              </p>
-            </Reveal>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20, marginBottom: 48 }}>
-              {[
-                ...text.pricingCards,
-              ].map(({ label, from, desc, color }) => (
-                <Reveal key={label} delay={100}>
-                  <div style={{
-                    background: '#1A1A1A', borderRadius: 20, padding: '28px 24px',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                  }}>
-                    <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>{label}</div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 8 }}>
-                      <span style={{ fontSize: 12, color: '#666' }}>{text.from}</span>
-                      <span style={{ fontSize: 36, fontWeight: 900, color: '#fff', letterSpacing: -1 }}>{from === '0' ? text.free : `${from} kr`}</span>
+                      <div className="chatbotFeatureList">
+                        {text.chatbotFeatures.map((item) => (
+                          <div key={item} className="chatbotFeatureItem">
+                            <span className="featureCheck"><CheckIcon /></span>
+                            <span>{item}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div style={{ fontSize: 14, color: '#666', marginBottom: 20 }}>{desc}</div>
-                    <div style={{ height: 3, borderRadius: 2, background: color }} />
                   </div>
                 </Reveal>
-              ))}
-            </div>
 
-            <div style={{ textAlign: 'center' }}>
-              <Link href="/landings/guest/websites" className="cta-primary" style={{ background: '#fff', color: '#111' }}>
-                {text.pricingCta} <ArrowRight />
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* -- BOTTOM CTA ----------------------------------- */}
-        <section className="page" style={{ padding: '100px 24px', textAlign: 'center' }}>
-          <Reveal>
-            <div style={{ fontSize: 64, marginBottom: 24 }}>??</div>
-            <h2 style={{ fontSize: 'clamp(28px,4vw,48px)', fontWeight: 900, letterSpacing: -1, marginBottom: 16 }}>
-              {text.bottomTitle}
-            </h2>
-            <p style={{ color: '#666', fontSize: 17, marginBottom: 40, maxWidth: 420, margin: '0 auto 40px' }}>
-              {text.bottomBody}
-            </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link href="/landings/guest/websites" className="cta-primary">
-                {text.bottomWebsiteCta} <ArrowRight />
-              </Link>
-              <Link href="/landings/auth/chatWidget" className="cta-secondary">
-                {text.bottomChatbotCta}
-              </Link>
-            </div>
-          </Reveal>
-        </section>
-
-        <section id="contact" style={{ background: '#F7F8FA', borderTop: '1px solid #ECEEF2', borderBottom: '1px solid #ECEEF2' }}>
-          <div className="page" style={{ padding: '72px 24px' }}>
-            <Reveal>
-              <div style={{ maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
-                <div style={{ display: 'inline-block', padding: '8px 14px', borderRadius: 999, background: '#E8F0FF', color: '#1A6BFF', fontSize: 12, fontWeight: 800, letterSpacing: 0.5, marginBottom: 18 }}>
-                  {text.contactEyebrow}
-                </div>
-                <h2 style={{ fontSize: 'clamp(28px,4vw,42px)', fontWeight: 900, letterSpacing: -0.9, marginBottom: 14 }}>
-                  {text.contactTitle}
-                </h2>
-                <p style={{ color: '#5B6472', fontSize: 17, lineHeight: 1.8, marginBottom: 34 }}>
-                  {text.contactBody}
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, textAlign: 'left' }}>
-                  <a
-                    href={emailHref}
-                    style={{ background: '#fff', borderRadius: 18, padding: '22px 20px', textDecoration: 'none', color: '#111', border: '1px solid #E6EAF0', boxShadow: '0 12px 28px rgba(15,23,42,0.06)' }}
-                  >
-                    <div style={{ fontSize: 12, fontWeight: 800, color: '#1A6BFF', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{text.email}</div>
-                    <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>{siteConfig.contact.email}</div>
-                    <div style={{ color: '#5B6472', fontSize: 14, lineHeight: 1.6 }}>{text.emailDescription}</div>
-                  </a>
-                  {phoneHref ? (
-                    <a
-                      href={phoneHref}
-                      style={{ background: '#fff', borderRadius: 18, padding: '22px 20px', textDecoration: 'none', color: '#111', border: '1px solid #E6EAF0', boxShadow: '0 12px 28px rgba(15,23,42,0.06)' }}
-                    >
-                      <div style={{ fontSize: 12, fontWeight: 800, color: '#0C9E6A', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{text.phone}</div>
-                      <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>{siteConfig.contact.phoneDisplay}</div>
-                      <div style={{ color: '#5B6472', fontSize: 14, lineHeight: 1.6 }}>{text.phoneDescription}</div>
-                    </a>
-                  ) : null}
-                  <a
-                    href={siteConfig.url}
-                    style={{ background: '#fff', borderRadius: 18, padding: '22px 20px', textDecoration: 'none', color: '#111', border: '1px solid #E6EAF0', boxShadow: '0 12px 28px rgba(15,23,42,0.06)' }}
-                  >
-                    <div style={{ fontSize: 12, fontWeight: 800, color: '#7C3AED', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>{text.websiteCardTitle}</div>
-                    <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>chat.vintrastudio.com</div>
-                    <div style={{ color: '#5B6472', fontSize: 14, lineHeight: 1.6 }}>{text.websiteDescription}</div>
-                  </a>
-                </div>
+                <Reveal delay={160}>
+                  <div className="chatbotPreviewColumn">
+                    <ChatbotShowcasePreview language={language} />
+                  </div>
+                </Reveal>
               </div>
-            </Reveal>
-          </div>
-        </section>
+            </div>
+          </section>
+
+          <section id="priser" className="pricingBand">
+            <div className="page">
+              <Reveal>
+                <div className="sectionHeader sectionHeader--light">
+                  <span className="sectionKicker">{text.pricingCta}</span>
+                  <h2>{text.pricingTitle}</h2>
+                  <p>{text.pricingBody}</p>
+                </div>
+              </Reveal>
+
+              <div className="pricingGrid">
+                {text.pricingCards.map(({ label, from, desc, color }) => (
+                  <Reveal key={label} delay={100}>
+                    <div className="pricingCard">
+                      <div className="pricingCardTop">
+                        <span>{label}</span>
+                        <span className="pricingDot" style={{ background: color }} />
+                      </div>
+                      <div className="pricingPrice">
+                        <span>{text.from}</span>
+                        <strong>{from === '0' ? text.free : `${from} kr`}</strong>
+                      </div>
+                      <p>{desc}</p>
+                    </div>
+                  </Reveal>
+                ))}
+              </div>
+
+              <Reveal delay={180}>
+                <div className="bottomCtaPanel">
+                  <div>
+                    <span className="sectionKicker sectionKicker--green">{text.bottomTitle}</span>
+                    <h2>{text.bottomBody}</h2>
+                  </div>
+                  <div className="bottomCtaActions">
+                    <Link href="/landings/guest/websites" className="cta-primary cta-primary--light">
+                      {text.bottomWebsiteCta} <ArrowRight />
+                    </Link>
+                    <Link href="/landings/auth/chatWidget" className="cta-secondary cta-secondary--dark">
+                      {text.bottomChatbotCta}
+                    </Link>
+                  </div>
+                </div>
+              </Reveal>
+            </div>
+          </section>
+
+          <section id="contact" className="contactBand">
+            <div className="page">
+              <Reveal>
+                <div className="contactPanel">
+                  <div className="contactIntro">
+                    <span className="sectionKicker">{text.contactEyebrow}</span>
+                    <h2>{text.contactTitle}</h2>
+                    <p>{text.contactBody}</p>
+                  </div>
+
+                  <div className="contactGrid">
+                    <a href={emailHref} className="contactCard">
+                      <span className="contactCardLabel">{text.email}</span>
+                      <strong>{siteConfig.contact.email}</strong>
+                      <p>{text.emailDescription}</p>
+                    </a>
+                    {phoneHref ? (
+                      <a href={phoneHref} className="contactCard">
+                        <span className="contactCardLabel contactCardLabel--green">{text.phone}</span>
+                        <strong>{siteConfig.contact.phoneDisplay}</strong>
+                        <p>{text.phoneDescription}</p>
+                      </a>
+                    ) : null}
+                    <a href={siteConfig.url} className="contactCard">
+                      <span className="contactCardLabel contactCardLabel--blue">{text.websiteCardTitle}</span>
+                      <strong>{siteHost}</strong>
+                      <p>{text.websiteDescription}</p>
+                    </a>
+                  </div>
+                </div>
+              </Reveal>
+            </div>
+          </section>
+        </div>
 
         {/* -- FOOTER --------------------------------------- */}
         <footer style={{ borderTop: '1px solid #F0F0F0', padding: '32px 24px' }}>
@@ -740,6 +539,3 @@ export default function MainLanding() {
     </>
   )
 }
-
-
-

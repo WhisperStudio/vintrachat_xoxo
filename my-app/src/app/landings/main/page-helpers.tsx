@@ -618,13 +618,22 @@ export function ChatbotShowcasePreview({ language }: { language: Language }) {
 }
 
 export function createHeroParticles(count: number, variant: 'star' | 'mote') {
+  const nextRandom = (seed: number) => {
+    const value = Math.sin(seed * 9301 + 49297) * 233280
+    return value - Math.floor(value)
+  }
+  const fixed = (value: number, precision = 4) => Number(value.toFixed(precision))
+  const percent = (value: number) => `${fixed(value, 6)}%`
+  const pixels = (value: number) => `${fixed(value, 4)}px`
+  const seconds = (value: number) => `${fixed(value, 6)}s`
+
   return Array.from({ length: count }, (_, index) => ({
     id: `${variant}-${index}`,
-    left: `${Math.random() * 100}%`,
-    top: `${Math.random() * 78}%`,
-    size: variant === 'star' ? 1 + Math.random() * 3.4 : 18 + Math.random() * 42,
-    delay: `${Math.random() * 8}s`,
-    duration: `${3.4 + Math.random() * 5.6}s`,
-    opacity: variant === 'star' ? 0.35 + Math.random() * 0.65 : 0.18 + Math.random() * 0.34,
+    left: percent(nextRandom(index + 1) * 100),
+    top: percent(nextRandom(index + 101) * 78),
+    size: pixels(variant === 'star' ? 1 + nextRandom(index + 201) * 3.4 : 18 + nextRandom(index + 201) * 42),
+    delay: seconds(nextRandom(index + 301) * 8),
+    duration: seconds(3.4 + nextRandom(index + 401) * 5.6),
+    opacity: fixed(variant === 'star' ? 0.35 + nextRandom(index + 501) * 0.65 : 0.18 + nextRandom(index + 501) * 0.34, 6),
   }))
 }
