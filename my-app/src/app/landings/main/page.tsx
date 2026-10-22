@@ -134,7 +134,7 @@ export default function MainLanding() {
     const end = -rect.height * 0.15
 
     const rawProgress = (start - rect.top) / (start - end)
-    const progress = Math.min(Math.max(rawProgress, 0), 1)
+    const progress = Math.min(Math.max(rawProgress, 0), 1) * Math.min(window.scrollY / 180, 1)
 
     setSolutionsProgress(progress)
   }
@@ -270,7 +270,7 @@ export default function MainLanding() {
 
   <div className="page solutionsShell" style={{ position: 'relative', zIndex: 1, maxWidth: '4240px', margin: '0 auto'}}>
 
-    <Reveal className="solutionsIntroArc">
+    <div className="solutionsIntroArc">
       <div className="mountainLayer" aria-hidden="true">
         <svg className="mountainSide mountainSide--left" viewBox="0 0 800 400" preserveAspectRatio="none">
           <path
@@ -298,7 +298,7 @@ export default function MainLanding() {
           <path className="mountainCenterFoot" d="M0,500 L600,500 L600,462 L502,432 L420,454 L300,420 L180,454 L98,432 L0,462 Z" />
         </svg>
       </div>
-      <div className={`solutionsIntro solutionsIntroArcContent${solutionsProgress > 0.18 ? ' visible' : ''}`}>
+      <div className="solutionsIntro solutionsIntroArcContent" aria-hidden={solutionsProgress <= 0.16}>
         <h2 style={{ 
           fontSize: 'clamp(42px, 6vw, 72px)', 
           fontWeight: 900, 
@@ -331,24 +331,26 @@ export default function MainLanding() {
           {text.togetherLead} <span style={{ color: solutionsStrongColor, fontWeight: 700 }}>{text.togetherStrong}</span>
         </p>
       </div>
-    </Reveal>
+    </div>
 
-    <div className="solutionsBasecamp">
+  </div>
+  <section className="solutionsProducts" aria-label={language === 'no' ? 'Våre løsninger' : 'Our solutions'}>
+    <div className="solutionsBasecamp solutionsBasecamp--refined">
       <Reveal delay={100}>
         <article className="basecampChoice basecampChoice--website">
           <div className="basecampVisual" aria-hidden="true">
             <div className="basecampSiteFrame">
-              <span />
-              <div />
-              <i />
-              <i />
+              <span className="productPreviewAddress">vintra.studio / {language === 'no' ? 'din-bedrift' : 'your-business'}</span>
+              <strong>{language === 'no' ? 'Bygget for å bli lagt merke til.' : 'Designed to stand out.'}</strong>
+              <div className="productPreviewTiles"><span /><span /><span /></div>
+              <small>{language === 'no' ? 'DESIGN SOM GIR ET GODT FØRSTEINNTRYKK' : 'DESIGN THAT MAKES A FIRST IMPRESSION'}</small>
             </div>
           </div>
 
           <div className="basecampCopy">
             <span className="basecampKicker"><GlobeIcon size={17} />{text.websiteCardTitle}</span>
-            <h3>{text.websiteCardCta}</h3>
-            <p>{text.websiteCardFeatures[1]}</p>
+            <h3>{language === 'no' ? 'Et bedre førsteinntrykk.' : 'A better first impression.'}</h3>
+            <p>{language === 'no' ? 'En profesjonell nettside med gjennomtenkt design, tydelig innhold og plass til bedriften din.' : 'A professional website with thoughtful design, clear content and room for your business.'}</p>
             <Link href="/landings/guest/websites" className="basecampAction">
               {text.websiteCardCta} <ArrowRight size={16} />
             </Link>
@@ -364,23 +366,24 @@ export default function MainLanding() {
                 <span><BotIcon size={15} /></span>
                 <strong>{text.chatTitle}</strong>
               </div>
-              <i />
-              <i />
+              <p className="productPreviewBubble">{language === 'no' ? 'Hei! Hva kan jeg hjelpe deg med?' : 'Hi! How can I help you?'}</p>
+              <p className="productPreviewBubble productPreviewBubble--user">{language === 'no' ? 'Hva tilbyr dere?' : 'What do you offer?'}</p>
+              <p className="productPreviewBubble">{language === 'no' ? 'Jeg hjelper deg å finne informasjon om tjenestene våre.' : 'I can help you find information about our services.'}</p>
             </div>
           </div>
 
           <div className="basecampCopy">
             <span className="basecampKicker"><BotIcon size={17} />{text.chatbotCardTitle}</span>
-            <h3>{text.chatbotCardCta}</h3>
-            <p>{text.chatbotCardFeatures[0]}</p>
+            <h3>{language === 'no' ? 'Gode svar starter her.' : 'Good answers start here.'}</h3>
+            <p>{language === 'no' ? 'En AI-assistent som svarer ut fra informasjonen din. Tilpass uttrykket og prøv den selv.' : 'An AI assistant that answers using your information. Make it your own and try it out.'}</p>
             <Link href="/landings/auth/chatWidget" className="basecampAction basecampAction--chatbot">
-              {text.chatbotCardCta} <ArrowRight size={16} />
+              {text.bottomChatbotCta} <ArrowRight size={16} />
             </Link>
           </div>
         </article>
       </Reveal>
     </div>
-  </div>
+  </section>
           </div>
         </section>
 

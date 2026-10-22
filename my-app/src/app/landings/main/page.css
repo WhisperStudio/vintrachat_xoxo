@@ -239,6 +239,218 @@
   border-color: rgba(226, 232, 240, 0.18);
 }
 
+.solutionsSection .solutionsShell {
+  min-height: 0;
+  padding: 0;
+}
+
+.solutionsSection .solutionsIntroArc {
+  position: relative;
+  top: auto;
+  min-height: clamp(560px, 78vh, 820px);
+  padding: 160px 24px 80px;
+  transform: none;
+}
+
+.solutionsSection .mountainLayer {
+  display: block;
+  transform: translate3d(0, calc(var(--mountain-progress, 0) * -72px), 0);
+  height: 100%;
+}
+
+.solutionsProducts {
+  position: relative;
+  z-index: 4;
+  padding: clamp(64px, 8vw, 110px) 24px;
+  background: linear-gradient(180deg, var(--solutions-base), var(--solutions-floor));
+}
+
+.solutionsSection .solutionsIntroArcContent {
+  filter: none;
+  visibility: visible;
+  opacity: clamp(0, calc((var(--mountain-progress, 0) - 0.16) * 4), 1);
+  transform: translate3d(0, calc((1 - var(--mountain-progress, 0)) * 48px), 0);
+  transition: opacity 100ms linear, transform 100ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .solutionsSection .mountainLayer,
+  .solutionsSection .solutionsIntroArcContent {
+    transform: none;
+    transition: none;
+  }
+}
+
+.scrollReveal,
+.solutionsSection .solutionsIntroArcContent.scrollReveal {
+  opacity: 0;
+  transform: translate3d(0, 36px, 0);
+  transition: opacity 800ms ease, transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.solutionsProducts .scrollReveal {
+  transform: translate3d(0, 48px, 0) scale(0.97);
+}
+
+.chatbotShowcaseSection .scrollReveal {
+  transform: translate3d(-28px, 20px, 0);
+}
+
+.scrollReveal.isRevealed,
+.solutionsSection .solutionsIntroArcContent.scrollReveal.isRevealed {
+  opacity: 1;
+  transform: none;
+}
+
+.mainFlow > section {
+  scroll-margin-top: 90px;
+}
+
+.mainFlow .showcaseBand,
+.mainFlow .chatbotShowcaseSection,
+.mainFlow .pricingBand,
+.mainFlow .contactBand {
+  padding-top: clamp(72px, 8vw, 112px);
+  padding-bottom: clamp(72px, 8vw, 112px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrollReveal,
+  .solutionsSection .solutionsIntroArcContent.scrollReveal {
+    transform: none;
+    transition: none;
+  }
+}
+
+.solutionsSection .solutionsBasecamp--refined {
+  max-width: 1180px;
+  gap: 28px;
+  margin-top: 0;
+}
+
+.solutionsSection .solutionsBasecamp--refined .basecampChoice {
+  flex-direction: column;
+  gap: 30px;
+  padding: 28px;
+}
+
+.solutionsSection .solutionsBasecamp--refined .basecampVisual {
+  display: flex;
+  width: 100%;
+  height: 250px;
+  min-height: 250px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 16px;
+  background: radial-gradient(ellipse at top right, #447be855, transparent 75%), #e9f0fd;
+}
+
+.solutionsSection .solutionsBasecamp--refined .basecampChatFrame,
+.solutionsSection .solutionsBasecamp--refined .basecampSiteFrame {
+  width: 85%;
+  max-width: 340px;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  border-radius: 14px;
+  background: #fff;
+  color: #14243e;
+  box-shadow: 0 16px 35px #16366425;
+}
+
+.solutionsSection .basecampSiteFrame .productPreviewAddress {
+  background: none;
+  min-height: 0;
+  font-size: 10px;
+  color: #6b7890;
+}
+
+.solutionsSection .basecampSiteFrame strong {
+  font-size: 23px;
+  line-height: 1.15;
+  max-width: 18ch;
+}
+
+.solutionsSection .basecampSiteFrame .productPreviewTiles {
+  display: flex;
+  gap: 8px;
+  background: none;
+  border: none;
+}
+
+.solutionsSection .productPreviewTiles span {
+  flex: 1;
+  min-height: 44px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #b5cefa, #6994df);
+}
+
+.solutionsSection .basecampSiteFrame small {
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: #64748b;
+}
+
+.solutionsSection .basecampChatFrame strong {
+  display: block;
+  font-size: 12px;
+}
+
+.solutionsSection .productPreviewBubble {
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 10px 10px 10px 2px;
+  background: #f0f4f9;
+  font-size: 11px;
+  line-height: 1.4;
+  max-width: 88%;
+}
+
+.solutionsSection .productPreviewBubble--user {
+  align-self: flex-end;
+  background: #16756e;
+  color: white;
+  border-radius: 10px 10px 2px 10px;
+}
+
+.solutionsSection .solutionsBasecamp--refined .basecampCopy {
+  flex: 1;
+}
+
+.solutionsSection .solutionsBasecamp--refined .basecampCopy h3 {
+  max-width: 22ch;
+  min-height: 0;
+}
+
+.solutionsSection .solutionsBasecamp--refined .basecampCopy p {
+  max-width: 44ch;
+  margin: 16px 0 24px;
+}
+
+.solutionsSection .solutionsBasecamp--refined .basecampKicker {
+  margin-bottom: 16px;
+}
+
+.solutionsSection .solutionsBasecamp--refined .basecampVisual {
+  height: 270px;
+  min-height: 270px;
+  padding: 16px;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, #dce8fa, #c4d6ee);
+}
+
+.solutionsSection .solutionsBasecamp--refined .basecampChatFrame {
+  gap: 8px;
+  padding: 14px;
+}
+
+.solutionsSection--night .solutionsBasecamp--refined .basecampVisual {
+  background: radial-gradient(ellipse at center, #29405e, #1a2b42);
+}
+
 .solutionsSection {
   position: relative;
   overflow: clip;
@@ -1031,6 +1243,98 @@
   margin: 68px auto 0;
 }
 
+.solutionsBasecamp--refined.solutionsBasecamp {
+  align-items: stretch;
+}
+
+.solutionsBasecamp--refined > div {
+  height: 100%;
+}
+
+.solutionsBasecamp--refined .basecampChoice {
+  display: flex;
+  height: 100%;
+  min-height: 330px;
+  padding: clamp(26px, 4vw, 44px);
+  border-radius: 24px;
+}
+
+.solutionsBasecamp--refined .basecampVisual {
+  display: none;
+}
+
+.solutionsBasecamp--refined .basecampCopy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+}
+
+.solutionsBasecamp--refined .basecampKicker {
+  margin: 0 0 26px;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.solutionsBasecamp--refined .basecampCopy h3 {
+  max-width: 15ch;
+  font-size: clamp(28px, 2.7vw, 36px);
+  font-weight: 750;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+  text-align: left;
+}
+
+.solutionsBasecamp--refined .basecampCopy p {
+  max-width: 38ch;
+  margin: 18px 0 28px;
+  font-size: 15px;
+  line-height: 1.7;
+  text-align: left;
+}
+
+.solutionsBasecamp--refined .basecampAction {
+  margin: auto 0 0;
+  min-height: 46px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.solutionsBasecamp--refined .basecampAction svg {
+  flex-shrink: 0;
+}
+
+.solutionsSection--night .solutionsBasecamp--refined .basecampChoice {
+  background: linear-gradient(145deg, #152238, #101a2b);
+  border-color: #2a3a52;
+  box-shadow: 0 20px 50px #00000020;
+  --basecamp-accent: #75aaff;
+}
+
+.solutionsSection--night .solutionsBasecamp--refined .basecampCopy h3 {
+  color: #f3f7ff;
+}
+
+.solutionsSection--night .solutionsBasecamp--refined .basecampCopy p {
+  color: #b0bed2;
+}
+
+.solutionsSection--night .solutionsBasecamp--refined .basecampAction {
+  background: #2563eb;
+}
+
+.solutionsSection--night .solutionsBasecamp--refined .basecampChoice--chatbot {
+  --basecamp-accent: #79d8cc;
+}
+
+.solutionsSection--night .solutionsBasecamp--refined .basecampAction--chatbot {
+  background: #16756e;
+}
+
 .solutionsBasecamp {
   position: relative;
   z-index: 4;
@@ -1256,13 +1560,12 @@
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(circle at 10% 8%, rgba(56, 189, 248, 0.1), transparent 28%),
-    radial-gradient(circle at 88% 28%, rgba(52, 211, 153, 0.08), transparent 26%),
-    linear-gradient(180deg, #0c1322 0%, #0a101d 38%, #0f1725 72%, #eef3f7 100%);
+    linear-gradient(180deg, #0c1322 0%, #101a2b 55%, #0c1322 100%);
   color: #f8fafc;
 }
 
 .mainFlow::before {
+  display: none;
   content: "";
   position: absolute;
   inset: 0;

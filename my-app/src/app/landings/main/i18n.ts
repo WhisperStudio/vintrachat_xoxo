@@ -27,11 +27,11 @@ export const mainLandingCopy = {
     carouselBody: 'Each concept gets a larger preview in the middle before the next one takes over',
     alwaysOn: 'Always on',
     chatbotShowcaseTitle: 'The chatbot that never sleeps',
-    chatbotShowcaseBody: 'Built to answer faster, book smarter and guide customers to the right next step without making your team do repetitive work all day.',
+    chatbotShowcaseBody: 'Help visitors find answers about your business, services and opening hours — with an AI assistant you can tailor to your website.',
     useCases: ['E-commerce', 'Hotel', 'Clinic', 'Salon', 'Course', 'Business'],
-    chatbotFeatureTitle: 'Answer questions. Book appointments. Sell more.',
-    chatbotFeatureBody: 'Our AI chatbot learns about your business and answers your customers 24/7. You set the rules, the tone and the next step. It handles the routine work while your team focuses on what matters.',
-    chatbotFeatures: ['Answer common questions automatically', 'Book appointments and meetings directly in chat', 'Direct traffic to the right page or person', 'Integrate with existing tools'],
+    chatbotFeatureTitle: 'Your business. Your answers. Your AI assistant.',
+    chatbotFeatureBody: 'Give the chatbot information about your business, FAQs and documents to use in its answers. Customize its tone and appearance, test the conversation and add the widget to your website.',
+    chatbotFeatures: ['Answer questions using your business information', 'Add FAQs, notes and documents', 'Customize the tone and widget appearance', 'Test the chatbot before adding it to your website'],
     pricingTitle: 'Transparent prices. No surprises.',
     pricingBody: 'Use our free calculator and see exactly what your solution costs before you decide.',
     pricingCards: [
@@ -57,7 +57,7 @@ export const mainLandingCopy = {
     footerRights: 'All rights reserved.',
     contact: 'Contact',
     chatTitle: 'Vintra Assistant',
-    chatSubtitle: 'Live help and support',
+    chatSubtitle: 'AI assistant · Example conversation',
     online: 'Online',
     writeMessage: 'Write a message...',
     sendPreview: 'Send preview message',
@@ -70,8 +70,8 @@ export const mainLandingCopy = {
     ],
     showcaseChatMessages: [
       { from: 'bot', text: 'Hi! I can help with opening hours, prices, or send you to the right place.' },
-      { from: 'user', text: 'Can you help me tomorrow?' },
-      { from: 'bot', text: 'Yes, I can check availability and find the next step for you.' },
+      { from: 'user', text: 'What can I ask you about?' },
+      { from: 'bot', text: 'I can answer questions using the business information provided, such as services, opening hours and contact details.' },
     ],
     preview: {
       restaurant: {
@@ -150,11 +150,11 @@ export const mainLandingCopy = {
     carouselBody: 'Hvert konsept får en større forhåndsvisning i midten før neste tar over',
     alwaysOn: 'Alltid på',
     chatbotShowcaseTitle: 'Chatboten som aldri sover',
-    chatbotShowcaseBody: 'Bygget for å svare raskere, booke smartere og hjelpe kunder til riktig neste steg uten at teamet ditt må gjøre repeterende arbeid hele dagen.',
+    chatbotShowcaseBody: 'Hjelp besøkende med å finne svar om bedriften, tjenestene og åpningstidene dine — med en AI-assistent du kan tilpasse til nettsiden din.',
     useCases: ['Nettbutikk', 'Hotell', 'Klinikk', 'Salong', 'Kurs', 'Bedrift'],
-    chatbotFeatureTitle: 'Svar på spørsmål. Book timer. Selg mer.',
-    chatbotFeatureBody: 'AI-chatboten vår lærer om bedriften din og svarer kundene dine 24/7. Du setter reglene, tonen og neste steg. Den tar rutinearbeidet mens teamet ditt fokuserer på det som betyr mest.',
-    chatbotFeatures: ['Svar automatisk på vanlige spørsmål', 'Book timer og møter direkte i chat', 'Send trafikk til riktig side eller person', 'Koble til eksisterende verktøy'],
+    chatbotFeatureTitle: 'Din bedrift. Dine svar. Din AI-assistent.',
+    chatbotFeatureBody: 'Gi chatboten bedriftsinformasjon, vanlige spørsmål og dokumenter den kan bruke i svarene sine. Tilpass tonen og utseendet, test samtalen og legg widgeten på nettsiden din.',
+    chatbotFeatures: ['Svar på spørsmål med informasjon fra bedriften din', 'Legg til vanlige spørsmål, notater og dokumenter', 'Tilpass tonen og utseendet på widgeten', 'Test chatboten før du legger den på nettsiden'],
     pricingTitle: 'Tydelige priser. Ingen overraskelser.',
     pricingBody: 'Bruk vår gratis kalkulator og se nøyaktig hva løsningen din koster før du bestemmer deg.',
     pricingCards: [
@@ -180,7 +180,7 @@ export const mainLandingCopy = {
     footerRights: 'Alle rettigheter reservert.',
     contact: 'Kontakt',
     chatTitle: 'Vintra-assistenten',
-    chatSubtitle: 'Live hjelp og support',
+    chatSubtitle: 'AI-assistent · Eksempelsamtale',
     online: 'På nett',
     writeMessage: 'Skriv en melding...',
     sendPreview: 'Send forhåndsvisningsmelding',
@@ -193,8 +193,8 @@ export const mainLandingCopy = {
     ],
     showcaseChatMessages: [
       { from: 'bot', text: 'Hei! Jeg kan hjelpe med åpningstider, priser eller sende deg riktig sted.' },
-      { from: 'user', text: 'Kan dere hjelpe meg i morgen?' },
-      { from: 'bot', text: 'Ja, jeg kan sjekke tilgjengelighet og finne neste steg for deg.' },
+      { from: 'user', text: 'Hva kan jeg spørre deg om?' },
+      { from: 'bot', text: 'Jeg kan svare ut fra informasjonen bedriften har lagt inn, for eksempel om tjenester, åpningstider og kontaktinformasjon.' },
     ],
     preview: {
       restaurant: {

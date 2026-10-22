@@ -382,35 +382,49 @@ export function ChatWidgetPreview({ language }: { language: Language }) {
 
 // --- Scroll reveal hook ------------------------------------------------------
 
-function useReveal(threshold = 0.15) {
+function useReveal(threshold = 0.15, requireScroll = false) {
   const ref = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
   useEffect(() => {
     const el = ref.current
     if (!el) return
+    let hasScrolled = !requireScroll
+    let inView = false
+    const initialY = window.scrollY
+    const reveal = () => {
+      if (hasScrolled && inView) {
+        setVisible(true)
+        obs.disconnect()
+        window.removeEventListener('scroll', onScroll)
+      }
+    }
+    const onScroll = () => {
+      if (Math.abs(window.scrollY - initialY) > 12) hasScrolled = true
+      reveal()
+    }
     const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect() } },
+      ([e]) => { inView = e.isIntersecting; reveal() },
       { threshold }
     )
     obs.observe(el)
-    return () => obs.disconnect()
-  }, [threshold])
+    if (requireScroll) window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      obs.disconnect()
+      window.removeEventListener('scroll', onScroll)
+    }
+  }, [threshold, requireScroll])
   return { ref, visible }
 }
 
 // --- Slide-in section wrapper ------------------------------------------------
 
-export function Reveal({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
-  const { ref, visible } = useReveal()
+export function Reveal({ children, delay = 0, className = '', requireScroll = false }: { children: React.ReactNode; delay?: number; className?: string; requireScroll?: boolean }) {
+  const { ref, visible } = useReveal(0.15, requireScroll)
   return (
     <div
       ref={ref}
-      className={className}
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? 'translateY(0)' : 'translateY(40px)',
-        transition: `opacity 0.7s ease ${delay}ms, transform 0.7s ease ${delay}ms`,
-      }}
+      className={`scrollReveal ${visible ? 'isRevealed' : ''} ${className}`}
+      style={{ transitionDelay: `${delay}ms` }}
     >
       {children}
     </div>
@@ -556,19 +570,6 @@ export function ChatbotShowcasePreview({ language }: { language: Language }) {
   return (
     <div className="chatbotPreviewShell">
       <div className="chatbotPreviewGlow" />
-      <div className="chatbotScheduleCard">
-        <div className="chatbotScheduleLabel">
-          {text.today}
-        </div>
-        <div className="chatbotScheduleSlots">
-          {['13:30', '15:00', '17:15'].map((slot) => (
-            <div key={slot} className="chatbotScheduleSlot">
-              {slot}
-            </div>
-          ))}
-        </div>
-      </div>
-
       <div className="chatbotWidgetMockup">
         <div className="chatbotWidgetHeader">
           <div className="chatbotWidgetAvatar">
