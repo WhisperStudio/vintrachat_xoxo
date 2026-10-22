@@ -14,22 +14,28 @@ import {
 import { FaRegLightbulb } from 'react-icons/fa'
 import {
   FiChevronDown,
+  FiChevronRight,
   FiCpu,
   FiDroplet,
   FiImage,
   FiLayout,
   FiLifeBuoy,
   FiLock,
+  FiArrowLeft,
+  FiEdit3,
   FiMessageCircle,
   FiMessageSquare,
   FiPhone,
+  FiPlus,
   FiSend,
   FiSliders,
+  FiTrash2,
 } from 'react-icons/fi'
 import IconPickerBubble from '@/components/IconPickerBubble'
 import { chatWidgetStyleI18n, useVintraLanguage } from '@/lib/i18n'
 import { defaultConversationCards } from '@/lib/conversation-cards'
 import { isPlanFeatureAvailable } from '@/lib/subscription'
+import { renderWidgetIcon } from '@/lib/widget-icons'
 import type { AssistantConversationCard, BubbleIconChoice, ChatWidgetInterfaceIcons, OrbStyleConfig } from '@/types/database'
 import './StyleSelector.css'
 
@@ -585,28 +591,71 @@ function StarterCardEditor({
   onChange: (nextCard: AssistantConversationCard) => void
   onRemove: () => void
 }) {
+  const [activeField, setActiveField] = useState<'icon' | 'title' | 'description' | 'image' | null>(null)
+
+  const updateOption = (optionIndex: number, patch: Partial<AssistantConversationCard['options'][number]>) => {
+    onChange({
+      ...card,
+      options: card.options.map((option, index) => (index === optionIndex ? { ...option, ...patch } : option)),
+    })
+  }
+
+  const addOption = () => {
+    onChange({
+      ...card,
+      options: [
+        ...card.options,
+        {
+          label: `Option ${card.options.length + 1}`,
+          prompt: 'How can you help me?',
+          description: '',
+        },
+      ],
+    })
+  }
+
   return (
     <article className={`starterCardEditor ${disabled ? 'is-disabled' : ''}`}>
       <div className="starterCardEditor__header">
-        <strong>{card.title || `Card ${index + 1}`}</strong>
+        <div>
+          <span className="starterCardEditor__eyebrow">Card {index + 1}</span>
+          <strong>{card.title || `Card ${index + 1}`}</strong>
+        </div>
         <button type="button" className="starterCardEditor__remove" onClick={onRemove} disabled={disabled}>
-          Remove
+          <FiTrash2 aria-hidden="true" /> Remove
         </button>
       </div>
 
-      <div className="starterCardEditor__grid">
-        <label className="branding-field">
-          <span>Card title</span>
-          <input type="text" value={card.title} disabled={disabled} onChange={(event) => onChange({ ...card, title: event.target.value })} placeholder="Opening hours" />
-        </label>
-
-        <label className="branding-field">
-          <span>Description</span>
-          <input type="text" value={card.description} disabled={disabled} onChange={(event) => onChange({ ...card, description: event.target.value })} placeholder="Help visitors choose the right topic." />
-        </label>
+      <div className={`starterCardVisual starterCardVisual--${style}`}>
+        <button type="button" className="starterCardVisual__field starterCardVisual__icon" onClick={() => setActiveField(activeField === 'icon' ? null : 'icon')} disabled={disabled || style === 'image'} aria-label="Edit card icon">
+          {renderWidgetIcon(card.icon, { 'aria-hidden': true }) || <FiMessageCircle aria-hidden="true" />}
+          <span className="starterCardVisual__edit"><FiEdit3 aria-hidden="true" /></span>
+        </button>
+        <div className="starterCardVisual__copy">
+          <button type="button" className="starterCardVisual__field starterCardVisual__title" onClick={() => setActiveField(activeField === 'title' ? null : 'title')} disabled={disabled}>
+            <span>{card.title || 'Untitled card'}</span><FiEdit3 aria-hidden="true" />
+          </button>
+          <button type="button" className="starterCardVisual__field starterCardVisual__description" onClick={() => setActiveField(activeField === 'description' ? null : 'description')} disabled={disabled}>
+            <span>{card.description || 'Add a short description'}</span><FiEdit3 aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
-      <div className="starterCardEditor__grid">
+      {activeField === 'title' ? (
+        <label className="starterCardInlineEditor">
+          <span>Edit title</span>
+          <input autoFocus type="text" value={card.title} disabled={disabled} onChange={(event) => onChange({ ...card, title: event.target.value })} placeholder="Opening hours" />
+        </label>
+      ) : null}
+
+      {activeField === 'description' ? (
+        <label className="starterCardInlineEditor">
+          <span>Edit description</span>
+          <input autoFocus type="text" value={card.description} disabled={disabled} onChange={(event) => onChange({ ...card, description: event.target.value })} placeholder="Help visitors choose the right topic." />
+        </label>
+      ) : null}
+
+      {activeField === 'icon' ? (
         <IconPickerBubble
           label="Card icon"
           value={card.icon || ''}
@@ -614,50 +663,37 @@ function StarterCardEditor({
           helperText="Shown on the starter card unless the card is image-first."
           disabled={disabled || style === 'image'}
         />
+      ) : null}
 
-        <label className="branding-field">
+      <button type="button" className="starterCardImageToggle" onClick={() => setActiveField(activeField === 'image' ? null : 'image')} disabled={disabled}>
+        <FiImage aria-hidden="true" /> {card.image ? 'Edit card image' : 'Add card image'} <FiChevronDown aria-hidden="true" />
+      </button>
+      {activeField === 'image' ? (
+        <label className="starterCardInlineEditor">
           <span>Image URL</span>
-          <input type="url" value={card.image || ''} disabled={disabled} onChange={(event) => onChange({ ...card, image: event.target.value })} placeholder="https://..." />
+          <input autoFocus type="url" value={card.image || ''} disabled={disabled} onChange={(event) => onChange({ ...card, image: event.target.value })} placeholder="https://..." />
         </label>
+      ) : null}
+
+      <div className="starterOptionsEditor">
+        <div className="starterOptionsEditor__header">
+          <div><strong>Options</strong><span>{card.options.length} branches under this card</span></div>
+          <button type="button" onClick={addOption} disabled={disabled}><FiPlus aria-hidden="true" /> Add option</button>
+        </div>
+        <div className="starterOptionsEditor__list">
+          {card.options.map((option, optionIndex) => (
+            <div className="starterOptionRow" key={`${card.id}-option-${optionIndex}`}>
+              <span className="starterOptionRow__branch" aria-hidden="true" />
+              <div className="starterOptionRow__fields">
+                <label><span>Label</span><input value={option.label} disabled={disabled} onChange={(event) => updateOption(optionIndex, { label: event.target.value })} /></label>
+                <label><span>Message sent</span><input value={option.prompt} disabled={disabled} onChange={(event) => updateOption(optionIndex, { prompt: event.target.value })} /></label>
+                <label className="starterOptionRow__description"><span>Description</span><input value={option.description || ''} disabled={disabled} onChange={(event) => updateOption(optionIndex, { description: event.target.value || undefined })} placeholder="Optional" /></label>
+              </div>
+              <button type="button" className="starterOptionRow__remove" onClick={() => onChange({ ...card, options: card.options.filter((_, currentIndex) => currentIndex !== optionIndex) })} disabled={disabled} aria-label={`Remove option ${optionIndex + 1}`}><FiTrash2 aria-hidden="true" /></button>
+            </div>
+          ))}
+        </div>
       </div>
-
-      <label className="branding-field">
-        <span>Options</span>
-        <textarea
-          className="starterCardEditor__textarea"
-          rows={4}
-          disabled={disabled}
-          value={card.options.map((option) => [option.label, option.prompt, option.description].filter(Boolean).join(' | ')).join('\n')}
-          onChange={(event) => {
-            const nextOptions = event.target.value
-              .split(/\n/)
-              .map((line) => line.trim())
-              .filter(Boolean)
-              .map((line, optionIndex) => {
-                const [label = '', prompt = '', description = ''] = line.split('|').map((part) => part.trim())
-                return {
-                  label: label || prompt || `Option ${optionIndex + 1}`,
-                  prompt: prompt || label || `Option ${optionIndex + 1}`,
-                  description: description || undefined,
-                }
-              })
-
-            onChange({
-              ...card,
-              options: nextOptions.length
-                ? nextOptions
-                : [
-                    {
-                      label: 'Example question',
-                      prompt: 'How can you help me?',
-                      description: 'Add one option per line using label | prompt | description.',
-                    },
-                  ],
-            })
-          }}
-          placeholder={'Opening hours | What are your opening hours? | Show when you are open.\nPrices | What are your prices?'}
-        />
-      </label>
     </article>
   )
 }
@@ -705,6 +741,7 @@ export default function StyleSelector({
     height: number
     opacity: number
   } | null>(null)
+  const [selectedStarterCardId, setSelectedStarterCardId] = useState<string | null>(null)
 
   const activeIconChoice = useMemo(() => bubbleStyle.iconChoice, [bubbleStyle.iconChoice])
   const customInterfaceIconsAvailable = isPlanFeatureAvailable(plan, 'customInterfaceIcons')
@@ -750,10 +787,11 @@ export default function StyleSelector({
   }
 
   const addConversationCard = () => {
+    const id = crypto.randomUUID()
     onConversationCardsChange([
       ...conversationCards,
       {
-        id: crypto.randomUUID(),
+        id,
         title: `Starter card ${conversationCards.length + 1}`,
         description: 'Help visitors choose the right topic quickly.',
         icon: 'FiMessageCircle',
@@ -766,6 +804,7 @@ export default function StyleSelector({
         ],
       },
     ])
+    setSelectedStarterCardId(id)
   }
 
   const handleToggleCardKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>, onToggle: () => void) => {
@@ -994,30 +1033,57 @@ export default function StyleSelector({
                 </label>
               </div>
 
-              <div className="starterCardsPanel__controls">
-                <label className="branding-field">
-                  <span>Cards shown</span>
-                  <input type="number" min="1" max="12" value={conversationCardsLimit} disabled={!conversationCardsEnabled} onChange={(event) => onConversationCardsLimitChange(Math.max(1, Math.min(12, Number(event.target.value) || 1)))} />
-                </label>
-                <div className="starterCardsPanel__actions">
-                  <button type="button" className="starterCardsPanel__action" onClick={addConversationCard} disabled={!conversationCardsEnabled}>Add card</button>
-                  <button type="button" className="starterCardsPanel__action secondary" onClick={() => onConversationCardsChange(defaultConversationCards)} disabled={!conversationCardsEnabled}>Reset</button>
+              {selectedStarterCardId && conversationCards.some((card) => card.id === selectedStarterCardId) ? (
+                <div className="starterCardsPanel__detail">
+                  <button type="button" className="starterCardsPanel__back" onClick={() => setSelectedStarterCardId(null)}>
+                    <FiArrowLeft aria-hidden="true" /> Back to cards
+                  </button>
+                  {conversationCards.map((card, index) => card.id === selectedStarterCardId ? (
+                    <StarterCardEditor
+                      key={card.id}
+                      card={card}
+                      index={index}
+                      disabled={!conversationCardsEnabled}
+                      style={bodyStyle.conversationCardsStyle}
+                      onChange={(nextCard) => updateConversationCard(index, nextCard)}
+                      onRemove={() => {
+                        onConversationCardsChange(conversationCards.filter((_, cardIndex) => cardIndex !== index))
+                        setSelectedStarterCardId(null)
+                      }}
+                    />
+                  ) : null)}
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="starterCardsPanel__controls">
+                    <label className="branding-field">
+                      <span>Cards shown</span>
+                      <input type="number" min="1" max="12" value={conversationCardsLimit} disabled={!conversationCardsEnabled} onChange={(event) => onConversationCardsLimitChange(Math.max(1, Math.min(12, Number(event.target.value) || 1)))} />
+                    </label>
+                    <div className="starterCardsPanel__actions">
+                      <button type="button" className="starterCardsPanel__action" onClick={addConversationCard} disabled={!conversationCardsEnabled}><FiPlus aria-hidden="true" /> Add card</button>
+                      <button type="button" className="starterCardsPanel__action secondary" onClick={() => { onConversationCardsChange(defaultConversationCards); setSelectedStarterCardId(null) }} disabled={!conversationCardsEnabled}>Reset</button>
+                    </div>
+                  </div>
 
-              <div className="starterCardsPanel__list">
-                {conversationCards.map((card, index) => (
-                  <StarterCardEditor
-                    key={card.id}
-                    card={card}
-                    index={index}
-                    disabled={!conversationCardsEnabled}
-                    style={bodyStyle.conversationCardsStyle}
-                    onChange={(nextCard) => updateConversationCard(index, nextCard)}
-                    onRemove={() => onConversationCardsChange(conversationCards.filter((_, cardIndex) => cardIndex !== index))}
-                  />
-                ))}
-              </div>
+                  <div className="starterCardsTree" role="tree" aria-label="Starter cards">
+                    {conversationCards.map((card, index) => (
+                      <button key={card.id} type="button" role="treeitem" className="starterCardsTree__card" onClick={() => setSelectedStarterCardId(card.id)} disabled={!conversationCardsEnabled}>
+                        <span className="starterCardsTree__line" aria-hidden="true" />
+                        <span className="starterCardsTree__icon">{renderWidgetIcon(card.icon, { 'aria-hidden': true }) || <FiMessageCircle aria-hidden="true" />}</span>
+                        <span className="starterCardsTree__copy">
+                          <span className="starterCardsTree__eyebrow">Card {index + 1}</span>
+                          <strong>{card.title || `Untitled card ${index + 1}`}</strong>
+                          <span>{card.description || 'No description yet'}</span>
+                        </span>
+                        <span className="starterCardsTree__meta">{card.options.length} options</span>
+                        <FiChevronRight className="starterCardsTree__chevron" aria-hidden="true" />
+                      </button>
+                    ))}
+                    <button type="button" className="starterCardsTree__add" onClick={addConversationCard} disabled={!conversationCardsEnabled}><FiPlus aria-hidden="true" /> Add another card</button>
+                  </div>
+                </>
+              )}
             </div>
           ) : null}
         </div>

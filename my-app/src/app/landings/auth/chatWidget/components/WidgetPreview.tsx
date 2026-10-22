@@ -90,6 +90,7 @@ interface WidgetPreviewProps {
   variant?: 'default' | 'embedded'
   previewMode?: 'desktop' | 'mobile'
   enablePreviewChat?: boolean
+  showConditionalFeaturePreview?: boolean
   previewReply?: string
   keyboardOffset?: number
   faqSuggestionsEnabled?: boolean
@@ -191,6 +192,7 @@ export default function WidgetPreview({
   variant = 'default',
   previewMode = 'desktop',
   enablePreviewChat = false,
+  showConditionalFeaturePreview = false,
   previewReply = 'hi, this is only a test',
   keyboardOffset = 0,
   faqSuggestionsEnabled = false,
@@ -249,7 +251,7 @@ export default function WidgetPreview({
   const [faqSuggestionsDismissed, setFaqSuggestionsDismissed] = useState(false)
   const [isComposerFocused, setIsComposerFocused] = useState(false)
   const [activeConversationCardId, setActiveConversationCardId] = useState<string | null>(null)
-  const [activePortalPanel, setActivePortalPanel] = useState<'chats' | 'tasks' | 'review'>('chats')
+  const [activePortalPanel, setActivePortalPanel] = useState<'chats' | 'tasks'>('chats')
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
   const effectiveAssistantIcons = {
@@ -276,9 +278,8 @@ export default function WidgetPreview({
     feedbackKeywords.some((keyword) => text.toLowerCase().includes(keyword))
   const internalRequestedTask = (text: string) =>
     taskKeywords.some((keyword) => text.toLowerCase().includes(keyword))
-  const showTasksTab = settings?.tasksEnabled === true
-  const showReviewTab = settings?.reviewsEnabled === true
-  const showPortalTabs = showTasksTab || showReviewTab
+  const showTasksTab = showConditionalFeaturePreview || settings?.tasksEnabled === true
+  const showPortalTabs = showTasksTab
   const activeFaqSuggestions = useMemo(() => {
     if (!faqSuggestionsEnabled) return []
 
@@ -465,10 +466,7 @@ export default function WidgetPreview({
       setActivePortalPanel('chats')
       return
     }
-    if (activePortalPanel === 'review' && !showReviewTab) {
-      setActivePortalPanel('chats')
-    }
-  }, [activePortalPanel, showPortalTabs, showReviewTab, showTasksTab])
+  }, [activePortalPanel, showPortalTabs, showTasksTab])
 
   useEffect(() => {
     if (!isChatOpen) return
@@ -512,9 +510,6 @@ export default function WidgetPreview({
     setFaqSuggestionsDismissed(true)
 
     if (!onSendMessage && internalRequestedFeedback(nextText)) {
-      if (showReviewTab) {
-        setActivePortalPanel('review')
-      }
       setInternalMessages((prev) => [
         ...prev,
         {
@@ -753,7 +748,7 @@ export default function WidgetPreview({
         <div className="widgetcontainer">
           <div className={`chat-widget ${isChatOpen ? 'open' : ''} ${showStarterCards ? 'chat-widget--starter' : ''}`} hidden={!isChatOpen} aria-hidden={!isChatOpen}>
             <div
-              className="chat-widget-interaction-surface"
+              className="chat-content chat-widget-interaction-surface"
               onPointerDownCapture={(event) => {
                 const target = event.target as HTMLElement | null
                 if (!target) return
@@ -783,14 +778,16 @@ export default function WidgetPreview({
                     {headerStyle.showAvatar && (customBranding.logo || effectiveAssistantIcons.avatarIcon) ? (
                       <div className={`avatar ${customBranding.logo ? 'avatar--image' : ''}`}>
                         {customBranding.logo ? (
-                          <div
-                            className="avatar-image"
+                          <img
+                            className="avatar-image avatar-image--img"
+                            src={customBranding.logo}
+                            alt=""
                             aria-hidden="true"
                             style={{
-                              backgroundImage: `url(${customBranding.logo})`,
-                              backgroundRepeat: 'no-repeat',
-                              backgroundSize: `${logoStyle.zoom}% ${logoStyle.zoom}%`,
-                              backgroundPosition: `${logoStyle.focusX}% ${logoStyle.focusY}%`,
+                              objectFit: 'contain',
+                              objectPosition: `${logoStyle.focusX}% ${logoStyle.focusY}%`,
+                              transform: `scale(${logoStyle.zoom / 100})`,
+                              transformOrigin: `${logoStyle.focusX}% ${logoStyle.focusY}%`,
                             }}
                           />
                         ) : (
@@ -809,14 +806,16 @@ export default function WidgetPreview({
                     {headerStyle.showAvatar && (customBranding.logo || effectiveAssistantIcons.avatarIcon) ? (
                       <div className={`avatar ${customBranding.logo ? 'avatar--image' : ''}`}>
                         {customBranding.logo ? (
-                          <div
-                            className="avatar-image"
+                          <img
+                            className="avatar-image avatar-image--img"
+                            src={customBranding.logo}
+                            alt=""
                             aria-hidden="true"
                             style={{
-                              backgroundImage: `url(${customBranding.logo})`,
-                              backgroundRepeat: 'no-repeat',
-                              backgroundSize: `${logoStyle.zoom}% ${logoStyle.zoom}%`,
-                              backgroundPosition: `${logoStyle.focusX}% ${logoStyle.focusY}%`,
+                              objectFit: 'contain',
+                              objectPosition: `${logoStyle.focusX}% ${logoStyle.focusY}%`,
+                              transform: `scale(${logoStyle.zoom / 100})`,
+                              transformOrigin: `${logoStyle.focusX}% ${logoStyle.focusY}%`,
                             }}
                           />
                         ) : (
@@ -866,7 +865,7 @@ export default function WidgetPreview({
 
               <div className={`${bodyClasses} ${highlightedSection === 'body' ? 'preview-section-highlight' : ''} ${flashSection === 'body' ? 'preview-section-flash' : ''}`.trim()} ref={chatBodyRef}>
               {showPortalTabs ? (
-                <div className="widget-panel-tabs" role="tablist" aria-label="Widget pages">
+                <div className={`widget-panel-tabs ${showConditionalFeaturePreview ? 'widget-panel-tabs--preview-only' : ''}`} role="tablist" aria-label="Widget pages">
                   <button
                     type="button"
                     className={`widget-panel-tab ${activePortalPanel === 'chats' ? 'is-active' : ''}`}
@@ -885,17 +884,6 @@ export default function WidgetPreview({
                       aria-selected={activePortalPanel === 'tasks'}
                     >
                       Ticket
-                    </button>
-                  ) : null}
-                  {showReviewTab ? (
-                    <button
-                      type="button"
-                      className={`widget-panel-tab ${activePortalPanel === 'review' ? 'is-active' : ''}`}
-                      onClick={() => setActivePortalPanel('review')}
-                      role="tab"
-                      aria-selected={activePortalPanel === 'review'}
-                    >
-                      Review
                     </button>
                   ) : null}
                 </div>
@@ -933,21 +921,6 @@ export default function WidgetPreview({
                       </div>
                     </article>
                   </div>
-                </div>
-              ) : activePortalPanel === 'review' && showReviewTab ? (
-                <div className="widget-panel-page widget-panel-page--review">
-                  <div className="widget-panel-page__hero">
-                    <strong>Leave a review</strong>
-                    <p>Tell us how the chat went and give us a star rating.</p>
-                  </div>
-                  <button
-                    type="button"
-                    className="widget-feedback-primary"
-                    onClick={() => activeFeedbackOverlay.onSubmit()}
-                    disabled={Boolean(activeFeedbackOverlay.submitting)}
-                  >
-                    {activeFeedbackOverlay.submitting ? 'Sending...' : 'Open review form'}
-                  </button>
                 </div>
               ) : showStarterCards && !showStarterCardList ? (
                 <div className={`widget-starter-cards widget-starter-cards--${bodyStyle.conversationCardsLayout} widget-starter-cards--${bodyStyle.conversationCardsStyle} ${useDenseStarterGrid ? 'widget-starter-cards--dense' : ''}`.trim()}>

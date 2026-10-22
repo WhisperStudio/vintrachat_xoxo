@@ -550,10 +550,13 @@ export default function ChatWidgetBuilderPage() {
     previewFlashTimeoutRef.current = window.setTimeout(() => {
       setPreviewFlashTarget(null)
       previewFlashTimeoutRef.current = null
-    }, 2000)
+    }, 450)
   }
 
   const toggleSection = (section: BuilderSectionKey) => {
+    // A click should not leave the hover outline behind after the pointer moves
+    // into the newly opened section.
+    setPreviewHighlightTarget(null)
     setOpenSections((prev) => {
       const closed = Object.keys(prev).reduce((acc, key) => {
         acc[key as keyof typeof prev] = false
@@ -940,6 +943,7 @@ export default function ChatWidgetBuilderPage() {
               assistantIcons={inputs.widgetIcons}
               initialOpen={true}
               enablePreviewChat={true}
+              showConditionalFeaturePreview={true}
               previewReply={t.previewReply}
               previewMode={previewMode}
               conversationCardsEnabled={inputs.conversationCardsEnabled}

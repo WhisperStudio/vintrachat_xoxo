@@ -414,8 +414,8 @@ const widgetStyles = `
 }
 
 .vintra-root.viewport-mobile .widget-icon {
-  width: 64px;
-  height: 64px;
+  width: calc(58px * var(--widget-scale, 1));
+  height: calc(58px * var(--widget-scale, 1));
   touch-action: manipulation;
   position: relative;
   right: auto;
@@ -1402,18 +1402,13 @@ export async function GET(
     return Boolean(getWidgetSettings().tasksEnabled);
   }
 
-  function isReviewsTabEnabled() {
-    return Boolean(getWidgetSettings().reviewsEnabled);
-  }
-
   function shouldShowPortalTabs() {
-    return isTasksTabEnabled() || isReviewsTabEnabled();
+    return isTasksTabEnabled() && state.tasks.length > 0;
   }
 
   function getAvailablePanels() {
     var panels = [{ id: 'chats', label: 'Chats' }];
-    if (isTasksTabEnabled()) panels.push({ id: 'tasks', label: 'Ticket' });
-    if (isReviewsTabEnabled()) panels.push({ id: 'review', label: 'Review' });
+    if (isTasksTabEnabled() && state.tasks.length > 0) panels.push({ id: 'tasks', label: 'Ticket' });
     return panels;
   }
 
@@ -1525,36 +1520,6 @@ export async function GET(
         '</div>' +
         (state.taskNotice ? '<div class="widget-panel-inline-note">' + escapeHtml(state.taskNotice) + '</div>' : '') +
         tasksMarkup +
-      '</div>'
-    );
-  }
-
-  function getReviewPanelMarkup() {
-    if (!isReviewsTabEnabled()) return '';
-
-    var stars = Array.from({ length: 5 }, function (_, index) {
-      var value = index + 1;
-      return (
-        '<button type="button" class="widget-feedback-star' + (value <= state.feedbackRating ? ' is-active' : '') + '" data-feedback-rating="' + value + '" aria-label="' + value + ' star' + (value === 1 ? '' : 's') + '">' +
-          '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.6 3.1 6.29 6.94 1.01-5.02 4.9 1.18 6.9L12 18.98 5.8 21.7l1.18-6.9-5.02-4.9 6.94-1.01Z"></path></svg>' +
-        '</button>'
-      );
-    }).join('');
-
-    return (
-      '<div class="widget-panel-page widget-panel-page--review">' +
-        '<div class="widget-panel-page__hero">' +
-          '<strong>Leave a review</strong>' +
-          '<p>Tell us how the chat went and give us a star rating.</p>' +
-        '</div>' +
-        '<div class="widget-feedback-rating" aria-label="Rating selector">' + stars + '</div>' +
-        '<label class="widget-feedback-field">' +
-          '<span>Your feedback</span>' +
-          '<textarea rows="5" class="widget-feedback-textarea" placeholder="What went well, and what could be better?">' + escapeHtml(state.feedbackText) + '</textarea>' +
-        '</label>' +
-        '<div class="widget-feedback-actions">' +
-          '<button type="button" class="widget-feedback-primary" ' + (state.feedbackSubmitting ? 'disabled' : '') + '>' + (state.feedbackSubmitting ? 'Submitting...' : 'Submit feedback') + '</button>' +
-        '</div>' +
       '</div>'
     );
   }
@@ -2477,6 +2442,7 @@ export async function GET(
       }
 
       if (target.tagName === 'TEXTAREA') {
+        var hadTypedMessage = countCharacters(String(state.inputValue || '').trim()) > 0;
         var nextValue = truncateTextByCharacters(String(target.value || ''), MAX_WIDGET_MESSAGE_CHARS);
         if (target.value !== nextValue) {
           target.value = nextValue;
@@ -2486,6 +2452,18 @@ export async function GET(
         if (nextValue) {
           state.activeConversationCardId = '';
           state.starterCardPageIndex = 0;
+        }
+        var hasTypedMessage = countCharacters(String(nextValue || '').trim()) > 0;
+        if (hadTypedMessage !== hasTypedMessage) {
+          markOrbActivity();
+          scheduleVisitorTypingSync();
+          render();
+          var refreshedInput = mount.querySelector('.chat-footer textarea');
+          if (refreshedInput) {
+            refreshedInput.focus();
+            refreshedInput.setSelectionRange(nextValue.length, nextValue.length);
+          }
+          return;
         }
         syncComposerMode();
         markOrbActivity();
@@ -2617,9 +2595,7 @@ export async function GET(
     var showPortalTabs = shouldShowPortalTabs();
     var panelMarkup = state.activePanel === 'tasks'
       ? getTaskPanelMarkup()
-      : state.activePanel === 'review'
-        ? getReviewPanelMarkup()
-        : (showStarterCards ? starterCardsMarkup : getMessagesMarkup(config) + getFaqSuggestionsMarkup());
+      : (showStarterCards ? starterCardsMarkup : getMessagesMarkup(config) + getFaqSuggestionsMarkup());
 
     mount.className = 'vintra-root position-' + position;
     applyViewportStateToMount();
@@ -2821,6 +2797,9 @@ export async function GET(
       refreshFaqSuggestions();
 
       render();
+      if (state.sessionId && isTasksTabEnabled()) {
+        void loadTasks();
+      }
     } catch (error) {
       state.error = error instanceof Error ? error.message : 'Failed to load widget config';
       state.configLoaded = false;
@@ -2985,7 +2964,7 @@ export async function GET(
           state.feedbackOpen = true;
           state.feedbackText = '';
           state.feedbackRating = 5;
-          state.activePanel = 'review';
+          state.activePanel = 'chats';
         }
 
         if (json.taskFormRequested) {

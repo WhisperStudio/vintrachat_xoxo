@@ -121,6 +121,20 @@ function didUserRequestFeedback(message: string, keywords: string[]) {
   return keywords.some((keyword) => normalized.includes(keyword.toLowerCase()))
 }
 
+function didAssistantOfferFeedback(history: IncomingMessage[]) {
+  const latestAssistantMessage = [...history].reverse().find((entry) => entry.role === 'assistant')
+  if (!latestAssistantMessage) return false
+  return /(?:give|leave|write|submit).{0,24}(?:review|feedback)|(?:gi|legge igjen|skrive).{0,24}(?:anmeldelse|tilbakemelding)/i.test(
+    latestAssistantMessage.text
+  )
+}
+
+function isAffirmativeReply(message: string) {
+  return /^(?:yes|yes please|sure|okay|ok|yep|yeah|ja|ja takk|gjerne|klart|selvsagt|absolutely)[.!\s]*$/i.test(
+    message.trim()
+  )
+}
+
 function didUserRequestTask(message: string, keywords: string[]) {
   const normalized = message.toLowerCase()
   return keywords.some((keyword) => normalized.includes(keyword.toLowerCase()))
@@ -313,6 +327,7 @@ function buildPrompt(args: {
   replyInUserLanguage: boolean
   responseStyle: string
   extraInstructions: string
+  reviewsEnabled: boolean
   history: IncomingMessage[]
   message: string
 }) {
@@ -426,6 +441,9 @@ function buildPrompt(args: {
     `Treat these phrases as likely requests for human support: ${args.supportKeywords.join(', ')}`,
     'Return JSON with keys "reply" and "needsHumanSupport".',
     'Set "needsHumanSupport" to true only when the user explicitly asks to contact support, a human, an agent, or similar human follow-up.',
+    args.reviewsEnabled
+      ? 'When the visitor clearly seems finished and their issue is resolved, you may end by asking once whether they would like to leave a short review. Do not ask mid-conversation or repeatedly.'
+      : 'Do not ask the visitor for a review or feedback.',
     'Keep the reply concise and suitable for a website chat widget.',
     historyText ? `Conversation so far:\n${historyText}` : 'Conversation so far:\nNo previous messages.',
     `Latest user message:\n${args.message}`,
@@ -577,7 +595,9 @@ export async function POST(req: NextRequest) {
     const requestHumanSupport = Boolean(body.requestHumanSupport)
     const supportRequestText = body.supportRequestText ? String(body.supportRequestText).trim() : ''
     const history = trimHistory(Array.isArray(body.history) ? body.history : [])
-    const requestFeedbackForm = didUserRequestFeedback(message, fallbackFeedbackKeywords)
+    const requestFeedbackForm =
+      didUserRequestFeedback(message, fallbackFeedbackKeywords) ||
+      (didAssistantOfferFeedback(history) && isAffirmativeReply(message))
     const requestTaskForm = didUserRequestTask(message, fallbackTaskKeywords)
     const fingerprint = String(req.headers.get('x-vintra-fingerprint') || body.fingerprint || '').trim()
     const captchaToken = String(req.headers.get('x-vintra-captcha-token') || body.captchaToken || '').trim()
@@ -1005,6 +1025,7 @@ export async function POST(req: NextRequest) {
         replyInUserLanguage: assistantConfig.replyInUserLanguage !== false,
         responseStyle: assistantConfig.responseStyle || '',
         extraInstructions: assistantConfig.extraInstructions || '',
+        reviewsEnabled: reviewTabEnabled,
         history,
         message,
       })
