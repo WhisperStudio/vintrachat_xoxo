@@ -1,3 +1,4 @@
+import { verifyActiveUserToken } from '@/lib/verified-auth.server'
 import { NextRequest, NextResponse } from 'next/server'
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminAuth, adminDb } from '@/lib/firebase-admin'
@@ -184,7 +185,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing authorization token' }, { status: 401 })
     }
 
-    const decoded = await adminAuth.verifyIdToken(token)
+    const decoded = await verifyActiveUserToken(token)
     const body = await req.json()
     const businessId = String(body.businessId || '').trim()
 
@@ -201,9 +202,9 @@ export async function POST(req: NextRequest) {
     const businessData = businessSnap.data() || {}
     const userRef = businessRef.collection('users').doc(decoded.uid)
     const userSnap = await userRef.get()
-    const isAdmin =
-      Boolean(userSnap.exists && String(userSnap.data()?.role || '').toLowerCase() === 'admin') ||
-      String(businessData.ownerId || '') === decoded.uid
+    const isAdmin = decoded.email_verified && (
+      Boolean(userSnap.exists && userSnap.data()?.status === 'active' && String(userSnap.data()?.role || '').toLowerCase() === 'admin') ||
+      (String(businessData.ownerId || '') === decoded.uid && userSnap.data()?.status !== 'disabled'))
 
     if (!isAdmin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

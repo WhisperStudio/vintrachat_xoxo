@@ -1,3 +1,4 @@
+import { accessRequest } from '@/lib/access-client';
 import { auth, db } from "@/lib/firebase";
 
 import {
@@ -88,6 +89,7 @@ export async function signInWithGoogle(): Promise<AuthResponse> {
     const result = await signInWithPopup(auth, googleProvider);
     const firebaseUser = result.user;
 
+    if (!firebaseUser.emailVerified) return { success: false, message: 'Verifiser emailen din først.' };
     const pendingRef = doc(db, "pending_users", firebaseUser.uid);
     const pendingSnap = await getDoc(pendingRef);
 
@@ -132,10 +134,7 @@ export async function updateUserRole(
   userId: string,
   role: UserRole
 ) {
-  await updateDoc(doc(db, `businesses/${businessId}/users/${userId}`), {
-    role,
-    updatedAt: serverTimestamp(),
-  });
+  await accessRequest('updateUserRole', { businessId, userId, role });
 }
 
 // ----------------------
@@ -659,315 +658,6 @@ export async function verifyEmail(token: string) {
     businessId: typeof payload?.businessId === 'string' ? payload.businessId : undefined,
   }
 
-  const q = query(
-    collection(db, "pending_auth"),
-    where("tokenHash", "==", token)
-  );
-
-  const snap = await getDocs(q);
-
-  if (snap.empty) {
-    return { success: false, message: "Ugyldig token" };
-  }
-
-  const docSnap = snap.docs[0];
-  const data = docSnap.data();
-  const userId = docSnap.id;
-
-  try {
-    if (data.accountType === 'business' && data.businessName) {
-      // OPPRETT BUSINESS + ADMIN USER
-      const businessId = await createBusinessWithWidgets(userId, data.businessName, data.email);
-      
-      // Slett pending_auth etter vellykket opprettelse
-      await deleteDoc(docSnap.ref);
-      
-      return { 
-        success: true, 
-        message: `Business "${data.businessName}" opprettet! Du er nå admin.`,
-        businessId 
-      };
-    } else {
-      // VANLIG BRUKER - legg til i pending_users (venter på invitasjon)
-      await setDoc(doc(db, "pending_users", userId), {
-        email: data.email,
-        displayName: data.displayName,
-        createdAt: serverTimestamp(),
-      });
-
-      await deleteDoc(docSnap.ref);
-
-      return { 
-        success: true, 
-        message: "Email verifisert. Du venter nå på invitasjon fra en bedrift." 
-      };
-    }
-  } catch (err) {
-    console.error("Verify email error:", err);
-    return { success: false, message: "Feil ved verifisering" };
-  }
-}
-
-// ----------------------
-// CREATE BUSINESS (ADMIN)
-// ----------------------
-export async function createBusiness(
-  userId: string,
-  businessName: string,
-  email: string
-) {
-  const businessRef = doc(collection(db, "businesses"));
-  const businessId = businessRef.id;
-
-  // Default chat widget config
-const defaultWidgetConfig: ChatWidgetConfig = {
-  plan: "free",
-  billingCycle: "monthly",
-  colorTheme: "modern",
-  appearance: {
-    glassLookEnabled: false,
-  },
-  position: "bottom-right",
-  bubbleStyle: {
-    showStatus: true,
-    iconChoice: "chat",
-    borderType: "rounded",
-    shadowType: "medium",
-    animationType: "fade",
-    sizeType: "medium",
-    orbStyle: {
-      hoverEnabled: true,
-      hoverGlyph: 'A',
-      replyEnabled: false,
-      replyGlyphs: '',
-      inactiveEnabled: false,
-      inactiveGlyphs: '',
-      inactivityMinMinutes: 2,
-      inactivityMaxMinutes: 4,
-    },
-  },
-  headerStyle: {
-    showStatus: true,
-    showCloseButton: true,
-    borderType: "rounded",
-    cornerStyle: 'rounded',
-    showBorder: true,
-    shadowType: "light",
-    showAvatar: true,
-    showTitle: true,
-  },
-  bodyStyle: {
-    borderType: "none",
-    shadowType: "none",
-    messageStyle: "bubble",
-    showTimestamps: true,
-    showReadReceipts: false,
-    showConversationCards: true,
-    conversationCardsLayout: 'grid',
-    conversationCardsStyle: 'modern',
-  },
-  footerStyle: {
-    showSendButton: true,
-    borderType: "none",
-    cornerStyle: 'rounded',
-    showBorder: false,
-    shadowType: "none",
-    inputStyle: "rounded",
-    showPlaceholder: true,
-  },
-  customBranding: {
-    title: businessName,
-    description: "Vi er her for å hjelpe deg!",
-  },
-  widgetIcons: {
-    launcherIcon: 'FiMessageCircle',
-    avatarIcon: 'FiMessageCircle',
-    heroIcon: 'FiMessageCircle',
-    closeIcon: 'FiX',
-    backIcon: 'FiArrowLeft',
-    sendIcon: 'FiSend',
-    aiIcon: 'FiCpu',
-    supportIcon: 'FiLifeBuoy',
-    userIcon: 'FiUser',
-  },
-  settings: {
-    autoOpen: false,
-    delayMs: 3000,
-    tasksEnabled: false,
-    reviewsEnabled: false,
-  },
-  allowedDomains: [],
-};
-
-  const defaultAssistantConfig: ChatAssistantConfig = {
-  enabled: true,
-  provider: "gemini",
-  model: "gemini-2.5-flash-lite",
-  strictContextOnly: true,
-  strictness: 'balanced',
-  systemPrompt:
-    "You are a helpful customer service assistant for the business. Use approved business information, keep answers concise, and be honest about uncertainty.",
-  businessContext: "",
-  businessProfile: {
-    businessName,
-    industry: '',
-    shortDescription: '',
-    toneOfVoice: 'professional, warm, helpful',
-    language: 'English',
-    multilingual: false,
-    mainGoal: 'convert visitors into leads',
-    fallbackContact: email,
-  },
-  knowledgeBase: {
-    websiteUrls: [],
-    uploadedDocuments: [],
-    manualNotes: '',
-    openingHours: '',
-    contactInfo: '',
-    addresses: '',
-    keyFAQs: [],
-  },
-  integrations: {
-    replyToQuestions: true,
-    collectLeads: true,
-    bookMeetings: false,
-    routeToPages: true,
-    createSupportTickets: false,
-    fetchOrderStatus: false,
-    handoffToHuman: true,
-  },
-  restrictions:
-    "Do not invent policies, prices, opening hours, or legal guarantees. Only answer from the provided business context when possible.",
-  supportTriggerKeywords: [
-    "support",
-    "human",
-    "person",
-    "agent",
-    "contact",
-    "call me",
-    "ring me",
-    "email me",
-  ],
-  humanSupportEnabled: true,
-  handoffMessage:
-    "I can help with that. I will flag this conversation for human follow-up so the team can contact you.",
-  faqSuggestionsEnabled: true,
-  faqSuggestions: [
-    'What are your opening hours?',
-    'How do I contact support?',
-    'What services do you offer?',
-  ],
-  conversationCardsEnabled: true,
-  conversationCardsLimit: 4,
-  conversationCards: defaultConversationCards,
-  widgetIcons: {
-    avatarIcon: 'FiMessageCircle',
-    heroIcon: 'FiMessageCircle',
-    aiIcon: 'FiCpu',
-    supportIcon: 'FiLifeBuoy',
-    userIcon: 'FiUser',
-  },
-  startLanguage: 'English',
-  replyInUserLanguage: true,
-  responseStyle: 'Friendly, clear, and concise',
-  extraInstructions: 'Always keep answers short unless the user asks for more detail.',
-  forceSelectedModelOnly: false,
-};
-
-const defaultChatAnalytics: ChatAnalytics = {
-  totalSessions: 0,
-  totalMessages: 0,
-  aiOnlySessions: 0,
-  supportRequests: 0,
-  savedSupportChats: 0,
-  dailyConversationCounts: {},
-  dailyStats: {},
-  countryCounts: {},
-  modelUsage: {},
-  timeline: [],
-};
-
-  // business root
-  await setDoc(businessRef, {
-    name: businessName,
-    email,
-    ownerId: userId,
-    chatWidgetKey: generateChatWidgetKey(),
-    chatWidgetEmbedSecret: generateSecureSecret(32),
-    chatWidgetConfig: defaultWidgetConfig,
-    chatAssistantConfig: defaultAssistantConfig,
-    chatAnalytics: defaultChatAnalytics,
-  supportTaskCategories: defaultSupportTaskCategories,
-  onboarding: {
-    tutorialCompletedAt: null,
-  },
-  createdAt: serverTimestamp(),
-  updatedAt: serverTimestamp(),
-  });
-
-  // legg user som admin
-  await setDoc(
-    doc(db, `businesses/${businessId}/users/${userId}`),
-    {
-      email,
-      role: "admin",
-      status: "active",
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    }
-  );
-
-  return businessId;
-}
-
-export async function createBusinessWithWidgets(
-  userId: string,
-  businessName: string,
-  email: string
-) {
-  const businessRef = doc(collection(db, 'businesses'))
-  const businessId = businessRef.id
-  const widgetKey = generateChatWidgetKey()
-  const widgetConfig = buildDefaultWidgetConfig(businessName)
-  const assistantConfig = buildDefaultAssistantConfig()
-
-  await setDoc(businessRef, {
-    name: businessName,
-    email,
-    ownerId: userId,
-    chatWidgetKey: widgetKey,
-    activeChatWidgetKey: widgetKey,
-    chatWidgetEmbedSecret: generateSecureSecret(32),
-    chatWidgetConfig: widgetConfig,
-    chatAssistantConfig: assistantConfig,
-    chatAnalytics: buildDefaultChatAnalytics(),
-    supportTaskCategories: defaultSupportTaskCategories,
-    onboarding: {
-      tutorialCompletedAt: null,
-    },
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  })
-
-  await setDoc(doc(db, `businesses/${businessId}/users/${userId}`), {
-    email,
-    role: 'admin',
-    status: 'active',
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  })
-
-  await setDoc(doc(db, `businesses/${businessId}/chatWidgets/${widgetKey}`), stripUndefinedForFirestore({
-    widgetKey,
-    name: 'Main widget',
-    config: widgetConfig,
-    assistantConfig,
-    isDefault: true,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  }))
-
-  return businessId
 }
 
 // ----------------------
@@ -1001,6 +691,7 @@ export async function signInWithEmail(email: string, password: string) {
       }
     }
 
+    if (!cred.user.emailVerified) return { success: false, message: 'Verifiser emailen din først.' };
     const pendingRef = doc(db, "pending_users", cred.user.uid);
     const pendingSnap = await getDoc(pendingRef);
 
@@ -1025,8 +716,9 @@ export async function signInWithEmail(email: string, password: string) {
 
     if (!userExists) {
       return {
-        success: false,
-        message: "Bruker ikke funnet. Du m? verifisere emailen din f?rst.",
+        success: true,
+        message: "Du venter på invitasjon fra en bedrift.",
+        redirectTo: "/invite",
       };
     }
 
@@ -1045,29 +737,6 @@ export async function signInWithEmail(email: string, password: string) {
       code === "auth/user-not-found" ||
       code === "auth/wrong-password"
     ) {
-      try {
-        const emailCandidates = Array.from(new Set([trimmedEmail, normalizedEmail].filter(Boolean)))
-
-        for (const candidateEmail of emailCandidates) {
-          const pendingQuery = query(
-            collection(db, "pending_auth"),
-            where("email", "==", candidateEmail),
-            limit(1)
-          )
-          const pendingSnap = await getDocs(pendingQuery)
-
-          if (pendingSnap.empty) continue
-
-          return {
-            success: false,
-            message:
-              "Kontoen din er ikke ferdig verifisert ennå. Sjekk verifikasjonsmailen eller be om å få den sendt på nytt.",
-          }
-        }
-      } catch (pendingErr) {
-        console.error("Pending auth lookup failed:", pendingErr)
-      }
-
       return {
         success: false,
         message: "Feil email eller passord. Prøv igjen eller nullstill passordet ditt.",
@@ -1136,38 +805,6 @@ export async function resetPassword(token: string, newPassword: string) {
       message: data.message,
     };
 
-    const q = query(
-      collection(db, "pending_password_resets"),
-      where("token", "==", token),
-      where("expiresAt", ">", new Date())
-    );
-    
-    const snap = await getDocs(q);
-    
-    if (snap.empty) {
-      return { success: false, message: "Ugyldig eller utløpt token" };
-    }
-    
-    const resetDoc = snap.docs[0];
-    const email = resetDoc.data().email;
-    
-    // Finn bruker basert på email (i business structure)
-    const usersRef = collection(db, "businesses");
-    const businessQuery = query(usersRef, where("email", "==", email));
-    const businessSnap = await getDocs(businessQuery);
-    
-    if (businessSnap.empty) {
-      return { success: false, message: "Bruker ikke funnet" };
-    }
-    
-    // Reset passord i Firebase Auth
-    // Dette krever Firebase Admin SDK - implementer senere
-    console.log(`Would reset password for ${email}`);
-    
-    // Slett reset token
-    await deleteDoc(resetDoc.ref);
-    
-    return { success: true };
   } catch (err: any) {
     return { success: false, message: err.message };
   }
@@ -1177,59 +814,12 @@ export async function resetPassword(token: string, newPassword: string) {
 // GET CURRENT USER (fra business)
 // ----------------------
 export async function getCurrentUser(firebaseUser: FirebaseUser): Promise<BusinessUser | null> {
-  // Sjekk om user er admin/owner først
-  const businessesRef = collection(db, "businesses");
-  const ownerQuery = query(businessesRef, where("ownerId", "==", firebaseUser.uid));
-  const ownerSnap = await getDocs(ownerQuery);
-  
-  if (!ownerSnap.empty) {
-    // User er admin/owner
-    const businessDoc = ownerSnap.docs[0];
-    const userDoc = await getDoc(
-      doc(db, `businesses/${businessDoc.id}/users/${firebaseUser.uid}`)
-    );
-    
-    if (userDoc.exists()) {
-      const userData = userDoc.data();
-      return {
-        id: firebaseUser.uid,
-        email: userData.email || firebaseUser.email || "",
-        displayName: userData.displayName,
-        businessId: businessDoc.id,
-        role: userData.role,
-        status: userData.status,
-        createdAt: userData.createdAt?.toDate() || new Date(),
-        updatedAt: userData.updatedAt?.toDate() || new Date(),
-        lastLogin: userData.lastLogin?.toDate(),
-      } as BusinessUser;
-    }
-  }
-  
-  // Sjekk om user er vanlig user i noen business
-  const businessDocs = await getDocs(businessesRef);
-  
-  for (const businessDoc of businessDocs.docs) {
-    const userDoc = await getDoc(
-      doc(db, `businesses/${businessDoc.id}/users/${firebaseUser.uid}`)
-    );
-    
-    if (userDoc.exists()) {
-      const userData = userDoc.data();
-      return {
-        id: firebaseUser.uid,
-        email: userData.email || firebaseUser.email || "",
-        displayName: userData.displayName,
-        businessId: businessDoc.id,
-        role: userData.role,
-        status: userData.status,
-        createdAt: userData.createdAt?.toDate() || new Date(),
-        updatedAt: userData.updatedAt?.toDate() || new Date(),
-        lastLogin: userData.lastLogin?.toDate(),
-      } as BusinessUser;
-    }
-  }
-  
-  return null;
+  if (!firebaseUser.emailVerified) return null;
+  const profiles = await accessRequest<Array<{ businessId: string; email: string; displayName: string; role: string }>>('listBusinesses');
+  const profile = profiles[0];
+  if (!profile) return null;
+  return { id: firebaseUser.uid, ...profile, role: profile.role === 'owner' ? 'admin' : profile.role,
+    status: 'active', createdAt: new Date(), updatedAt: new Date() } as BusinessUser;
 }
 
 // ----------------------

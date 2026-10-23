@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test:notifications": "node --test tests/notifications.test.mjs"
   },
   "dependencies": {
     "@types/styled-components": "^5.1.36",
@@ -22,11 +23,13 @@
     "three": "^0.183.2"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/three": "^0.183.1",
     "babel-plugin-react-compiler": "1.0.0",
+    "firebase-tools": "^15.34.1",
     "typescript": "^5"
   }
 }

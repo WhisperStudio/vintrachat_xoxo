@@ -8,6 +8,10 @@ import { authorizeWidgetRequest, getOrCreateWidgetEmbedSecret } from '@/lib/widg
 import { createWidgetCaptchaChallenge, verifyWidgetCaptchaToken } from '@/lib/widget-captcha.server'
 import { getAnalyticsHourKey, getAnalyticsDayKey } from '@/lib/chat-analytics'
 
+import { saveChatWithNotifications } from '@/lib/notifications.server'
+
+export const maxDuration = 180
+
 const MAX_WIDGET_MESSAGE_CHARS = 300
 
 function corsHeaders(origin?: string | null) {
@@ -381,8 +385,7 @@ export async function POST(req: NextRequest) {
 
     const existingMessages = Array.isArray(data.messages) ? data.messages : []
     const alreadyStored = existingMessages.some((entry: any) => String(entry?.id || '') === nextMessageId)
-    const mergedMessages = alreadyStored ? existingMessages : [...existingMessages, nextMessage]
-    await chatRef.set(
+    await saveChatWithNotifications(chatRef,
       {
         sessionId,
         businessId: business.id,
@@ -397,14 +400,15 @@ export async function POST(req: NextRequest) {
         pageTitle: data.pageTitle || null,
         pageUrl: data.pageUrl || null,
         messageCount: FieldValue.increment(alreadyStored ? 0 : 1),
-        messages: mergedMessages,
+        messages: alreadyStored ? existingMessages : FieldValue.arrayUnion(nextMessage),
         supportRequestedAt: data.supportRequestedAt || FieldValue.serverTimestamp(),
         visitorTypingAt: FieldValue.delete(),
         visitorTypingBy: FieldValue.delete(),
         createdAt: data.createdAt || FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       },
-      { merge: true }
+      [nextMessage],
+      true,
     )
 
     await businessRef.update({

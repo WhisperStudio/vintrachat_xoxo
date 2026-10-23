@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
-import { adminAuth } from '@/lib/firebase-admin'
-import { isVintraAdminEmail } from '@/lib/vintra-admin'
+import { verifyActiveUserToken } from '@/lib/verified-auth.server'
+import { isSuperAdmin } from '@/lib/notifications/core.mjs'
 
 export class VintraAdminAuthError extends Error {
   status: number
@@ -22,8 +22,8 @@ export async function requireVintraAdmin(req: NextRequest) {
     throw new VintraAdminAuthError(401, 'Missing authorization token')
   }
 
-  const decoded = await adminAuth.verifyIdToken(token)
-  if (!isVintraAdminEmail(decoded.email || '')) {
+  const decoded = await verifyActiveUserToken(token).catch(() => { throw new VintraAdminAuthError(401, 'Invalid session') })
+  if (!isSuperAdmin(decoded)) {
     throw new VintraAdminAuthError(403, 'Forbidden')
   }
 

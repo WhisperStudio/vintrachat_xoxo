@@ -318,7 +318,7 @@ export async function activatePendingAuthToken(rawToken: string) {
   try {
     const authUser = await adminAuth.getUser(userId)
     const authEmail = normalizeEmail(authUser.email || '')
-    if (!authEmail || authEmail !== email) {
+    if (authUser.disabled || !authEmail || authEmail !== email) {
       return { success: false as const, message: 'Verifiseringsdata stemmer ikke med kontoen.' }
     }
   } catch {
@@ -326,6 +326,7 @@ export async function activatePendingAuthToken(rawToken: string) {
   }
 
   try {
+    await adminAuth.updateUser(userId, { emailVerified: true })
     if (data.accountType === 'business' && typeof data.businessName === 'string' && data.businessName.trim()) {
       const existingBusiness = await adminDb
         .collection('businesses')

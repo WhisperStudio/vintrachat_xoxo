@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function verified() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    function globalAdmin() {
+      return verified() && (request.auth.token.get('superAdmin', false) == true
+        || request.auth.token.get('email', '') == 'vintrastudio@gmail.com');
+    }
+    function business(bid) { return get(/databases/$(database)/documents/businesses/$(bid)).data; }
+    function membership(bid) { return get(/databases/$(database)/documents/businesses/$(bid)/users/$(request.auth.uid)).data; }
+    function hasMember(bid) { return exists(/databases/$(database)/documents/businesses/$(bid)/users/$(request.auth.uid)); }
+    function owner(bid) {
+      return verified() && business(bid).ownerId == request.auth.uid
+        && (!hasMember(bid) || membership(bid).get('status', '') != 'disabled');
+    }
+    function member(bid) {
+      return verified() && (owner(bid) || (hasMember(bid)
+        && membership(bid).get('status', '') == 'active'
+        && membership(bid).role in ['admin', 'manager', 'support', 'viewer', 'user']));
+    }
+    function manager(bid) {
+      return verified() && (owner(bid) || (member(bid) && membership(bid).role == 'admin'));
+    }
+    function staff(bid) {
+      return verified() && (owner(bid) || (member(bid) && membership(bid).role in ['admin', 'manager', 'support']));
+    }
+    function unchangedPlan(before, after) {
+      return before.get('plan', 'free') == after.get('plan', 'free')
+        && before.get('billingCycle', 'monthly') == after.get('billingCycle', 'monthly');
+    }
+    match /businesses/{bid} {
+      allow read: if member(bid) || globalAdmin();
+      // Ownership, billing and membership creation are server operations only.
+      allow create, delete: if false;
+      allow update: if
+        (staff(bid) && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['chatAnalytics', 'updatedAt', 'supportTaskCategories']))
+        || (manager(bid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'name', 'chatWidgetKey', 'activeChatWidgetKey', 'chatWidgetConfig', 'chatAssistantConfig',
+            'supportTaskCategories', 'onboarding', 'updatedAt', 'chatAnalytics'])
+          && unchangedPlan(resource.data.get('chatWidgetConfig', {}), request.resource.data.get('chatWidgetConfig', {})));
+      match /users/{uid} {
+        allow read: if member(bid) || globalAdmin();
+        allow write: if false;
+      }
+      match /invitations/{iid} {
+        allow read: if manager(bid) || globalAdmin();
+        allow write: if false;
+      }
+      match /chatWidgets/{wid} {
+        allow read: if member(bid) || globalAdmin();
+        allow create: if manager(bid)
+          && request.resource.data.keys().hasOnly(['widgetKey', 'name', 'config', 'assistantConfig', 'isDefault', 'createdAt', 'updatedAt'])
+          && request.resource.data.widgetKey == wid
+          && unchangedPlan(business(bid).get('chatWidgetConfig', {}), request.resource.data.config);
+        allow update: if manager(bid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'config', 'assistantConfig', 'isDefault', 'updatedAt'])
+          && unchangedPlan(resource.data.config, request.resource.data.config);
+        allow delete: if manager(bid);
+      }
+      match /supportChats/{cid} {
+        function validMessages() {
+          let before = resource.data.get('messages', []);
+          let after = request.resource.data.get('messages', []);
+          // Clients can append one staff/system response, never replay/forge visitor history.
+          return after == before || (after.size() == before.size() + 1
+            && after.removeAll([after[after.size() - 1]]) == before
+            && after[after.size() - 1].role in ['support', 'system']);
+        }
+        allow read: if member(bid) || globalAdmin();
+        allow create: if false;
+        allow update: if staff(bid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'messages', 'messageCount', 'status', 'updatedAt', 'supportTypingAt', 'supportTypingBy',
+            'visitorEmail', 'visitorPhone'])
+          && validMessages();
+        allow delete: if staff(bid);
+      }
+      match /aiChatLogs/{cid} {
+        allow read: if member(bid) || globalAdmin();
+        allow write: if false;
+      }
+      match /supportTasks/{tid} {
+        allow read: if member(bid) || globalAdmin();
+        allow write: if staff(bid);
+      }
+      match /feedback/{fid} {
+        allow read: if member(bid) || globalAdmin();
+        allow write: if false;
+      }
+    }
+    match /pending_users/{uid} {
+      allow get: if verified() && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+    match /notificationDevices/{document=**} { allow read, write: if false; }
+    match /notificationJobs/{document=**} { allow read, write: if false; }
+    match /notificationAnnouncements/{document=**} { allow read, write: if false; }
+    match /notificationReceipts/{document=**} { allow read, write: if false; }
+    // Includes pending_auth, password reset records, embed/session secrets and rate limits.
+    match /{document=**} { allow read, write: if false; }
+  }
+}

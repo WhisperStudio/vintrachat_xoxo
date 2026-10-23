@@ -1,3 +1,4 @@
+import { saveChatWithNotifications } from '@/lib/notifications.server'
 import { NextRequest, NextResponse } from 'next/server'
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/firebase-admin'
@@ -9,6 +10,8 @@ import { authorizeWidgetRequest, getOrCreateWidgetEmbedSecret } from '@/lib/widg
 import { createWidgetCaptchaChallenge, verifyWidgetCaptchaToken } from '@/lib/widget-captcha.server'
 import { getGeminiModelCandidates } from '@/lib/gemini-models.server'
 import { getAnalyticsDayKey, getAnalyticsHourKey } from '@/lib/chat-analytics'
+
+export const maxDuration = 180
 
 function corsHeaders(origin?: string | null) {
   return {
@@ -920,7 +923,7 @@ export async function POST(req: NextRequest) {
       const isNewSupportChat = !supportChatSnap.exists
       const statPaths = buildDailyStatUpdatePaths(now, countryCode)
 
-      await supportChatRef.set(
+      await saveChatWithNotifications(supportChatRef,
         {
           sessionId,
           widgetKey,
@@ -946,7 +949,7 @@ export async function POST(req: NextRequest) {
             : FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         },
-        { merge: true }
+        [userSupportMessage]
       )
 
       const analyticsUpdates: Record<string, unknown> = {
@@ -1095,7 +1098,7 @@ export async function POST(req: NextRequest) {
         ? [...existingSupportChat.messages, nextSupportMessage]
         : [nextSupportMessage]
 
-      await supportChatRef.set(
+      await saveChatWithNotifications(supportChatRef,
         {
           sessionId,
           widgetKey,
@@ -1118,7 +1121,8 @@ export async function POST(req: NextRequest) {
           createdAt: existingSupportChat.createdAt || FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         },
-        { merge: true }
+        [nextSupportMessage],
+        true,
       )
 
       await businessRef.update({
@@ -1203,7 +1207,7 @@ export async function POST(req: NextRequest) {
         analyticsUpdates['chatAnalytics.aiOnlySessions'] = FieldValue.increment(-1)
       }
 
-      await supportChatRef.set(
+      await saveChatWithNotifications(supportChatRef,
         {
           sessionId,
           widgetKey,
@@ -1229,10 +1233,10 @@ export async function POST(req: NextRequest) {
             : FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         },
-        { merge: true }
+        [messageTimeline[history.length]]
       )
     } else if (existingSupportChat) {
-      await supportChatRef.set(
+      await saveChatWithNotifications(supportChatRef,
         {
           sessionId,
           widgetKey,
@@ -1258,7 +1262,7 @@ export async function POST(req: NextRequest) {
           createdAt: existingSupportChat.createdAt || FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         },
-        { merge: true }
+        [messageTimeline[history.length]]
       )
     } else {
       await persistAiOnlyChatLog({
