@@ -1,3 +1,4 @@
+import { signRecord, validRecord } from '@/lib/auth-records.server'
 import crypto from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const decoded = await adminAuth.verifyIdToken(idToken)
+    const decoded = await adminAuth.verifyIdToken(idToken, true)
     const normalizedEmail = normalizeEmail(decoded.email || '')
 
     if (!decoded.uid || !normalizedEmail) {
@@ -47,36 +48,20 @@ export async function POST(req: NextRequest) {
 
     const pendingDoc = await adminDb.collection('pending_auth').doc(decoded.uid).get()
 
-    if (!pendingDoc.exists) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'No pending verification was found for this account.',
-        },
-        { status: 404 }
-      )
-    }
-
     const pendingUser = pendingDoc.data() || {}
-    if (normalizeEmail(String(pendingUser.email || '')) !== normalizedEmail) {
-      return NextResponse.json(
-        { success: false, message: 'Verification account mismatch.' },
-        { status: 403 }
-      )
-    }
-
+    // Legacy unsigned records may have been forged under the old public rules.
+    const trusted = validRecord('verify', decoded.uid, pendingUser)
     const token = crypto.randomBytes(32).toString('hex')
     const tokenHash = hashOpaqueToken(token)
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
 
-    await pendingDoc.ref.set({
-      tokenHash,
-      token: null,
-      email: normalizedEmail,
-      normalizedEmail,
-      expiresAt,
-      updatedAt: new Date(),
-    });
+    const record = {
+      tokenHash, email: normalizedEmail, normalizedEmail, expiresAt, updatedAt: new Date(),
+      displayName: typeof pendingUser.displayName === 'string' ? pendingUser.displayName : '',
+      accountType: trusted ? pendingUser.accountType : 'user',
+      businessName: trusted ? pendingUser.businessName || '' : '',
+    }
+    await pendingDoc.ref.set({ ...record, signature: signRecord('verify', decoded.uid, record) });
 
     const resend = new Resend(process.env.RESEND_API_KEY!);
     const link = `${process.env.NEXT_PUBLIC_APP_URL}/auth/verify-email?token=${token}`;

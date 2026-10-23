@@ -11,7 +11,7 @@ const id = value => {
   return value;
 };
 export function accessRole(business, member, uid) {
-  if (!business || member?.status === 'disabled') return null;
+  if (!business || typeof uid !== 'string' || !uid || member?.status === 'disabled') return null;
   if (business.ownerId === uid) return 'owner';
   return member?.status === 'active' && roles.includes(member.role) ? member.role : null;
 }
@@ -25,7 +25,9 @@ export function invitationMatches(invite, token) {
 }
 const millis = value => value?.toMillis?.() || (value ? new Date(value).getTime() : 0);
 
-export function createAccessService(db, { teamLimit = () => 1 } = {}) {
+/** @param {import('firebase-admin/firestore').Firestore} db
+ * @param {{ teamLimit?: (plan: string) => number | null }} options */
+export function createAccessService(db, { teamLimit = (_plan) => 1 } = {}) {
   function user(request) {
     if (!request.auth?.uid || request.auth.token.email_verified !== true)
       fail('unauthenticated', 'Sign in with a verified email.');
@@ -90,7 +92,7 @@ export function createAccessService(db, { teamLimit = () => 1 } = {}) {
       const pending = await tx.get(invites.where('status', '==', 'pending'));
       const reserved = pending.docs.filter(d => millis(d.data().expiresAt) > Date.now());
       const limit = teamLimit(b.data().chatWidgetConfig?.plan || 'free');
-      if (limit !== null && team.size + reserved.length >= limit)
+      if (limit !== null && team.size + (team.docs.some(d => d.id === b.data().ownerId) ? 0 : 1) + reserved.length >= limit)
         fail('permission-denied', 'Team limit reached for this subscription.');
       if (reserved.some(d => email(d.data().email) === recipient))
         fail('invalid-argument', 'A pending invitation already exists.');
@@ -119,7 +121,7 @@ export function createAccessService(db, { teamLimit = () => 1 } = {}) {
       if (!['owner', 'admin'].includes(accessRole(b.data(), issuer.data(), invite.createdBy)))
         fail('permission-denied', 'The inviting administrator no longer has access.');
       const limit = teamLimit(b.data().chatWidgetConfig?.plan || 'free');
-      if (!member.exists && limit !== null && team.size >= limit)
+      if (!member.exists && limit !== null && team.size + (team.docs.some(d => d.id === b.data().ownerId) ? 0 : 1) >= limit)
         fail('permission-denied', 'Team limit reached for this subscription.');
       if (member.exists && !accessRole(b.data(), member.data(), auth.uid))
         fail('permission-denied', 'An administrator must restore your membership.');

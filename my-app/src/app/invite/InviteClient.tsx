@@ -112,9 +112,14 @@ export default function InviteClient() {
       }
 
       if (firebaseUser.email) {
-        const nextInvitations = await getInvitationsForEmail(firebaseUser.email)
-        setInvitations(nextInvitations)
-        setLoading(false)
+        try {
+          const nextInvitations = await getInvitationsForEmail(firebaseUser.email)
+          setInvitations(nextInvitations)
+        } catch (error) {
+          setError(error instanceof Error ? error.message : 'Kunne ikke hente invitasjonene.')
+        } finally {
+          setLoading(false)
+        }
         return
       }
 
@@ -158,7 +163,8 @@ export default function InviteClient() {
     setResendMessage('')
 
     try {
-      await deleteInvitation(invite.businessId, invite.id)
+      const result = await deleteInvitation(invite.businessId, invite.id)
+      if (!result.success) { setError(result.message || 'Kunne ikke avslå invitasjonen.'); return }
       const nextInvitations = firebaseUser.email ? await getInvitationsForEmail(firebaseUser.email) : []
       setInvitations(nextInvitations)
       setMessage(

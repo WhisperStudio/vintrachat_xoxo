@@ -32,24 +32,15 @@ function sign(value: string, secret: string) {
 }
 
 export async function getOrCreateWidgetEmbedSecret(businessId: string) {
-  const ref = adminDb.collection('businesses').doc(businessId)
-  const snap = await ref.get()
-  const data = snap.data() || {}
-
-  if (typeof data.chatWidgetEmbedSecret === 'string' && data.chatWidgetEmbedSecret.trim()) {
-    return data.chatWidgetEmbedSecret.trim()
-  }
-
-  const secret = crypto.randomBytes(32).toString('hex')
-  await ref.set(
-    {
-      chatWidgetEmbedSecret: secret,
-      updatedAt: new Date(),
-    },
-    { merge: true }
-  )
-
-  return secret
+  // Legacy secrets lived in publicly readable business documents. Never reuse them.
+  const ref = adminDb.collection('_widgetSecrets').doc(businessId)
+  return adminDb.runTransaction(async tx => {
+    const snap = await tx.get(ref)
+    if (typeof snap.data()?.secret === 'string') return snap.data()!.secret as string
+    const secret = crypto.randomBytes(32).toString('hex')
+    tx.create(ref, { secret, createdAt: new Date() })
+    return secret
+  })
 }
 
 export function createWidgetEmbedToken(args: {

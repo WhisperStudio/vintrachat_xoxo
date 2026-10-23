@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test:notifications": "node --test tests/notifications.test.mjs"
+    "test:notifications": "node --test tests/notifications.test.mjs tests/auth-records.test.mjs",
+    "test:rules": "firebase emulators:exec --project demo-vintra-notifications --only firestore \"node --test tests/firestore.test.mjs\"",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@types/styled-components": "^5.1.36",

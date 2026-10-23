@@ -39,17 +39,6 @@ export function createNotificationHandler({
       return new Response(null, { status: 204, headers });
     if (request.method !== 'POST')
       return reply({ error: { code: 'invalid-argument', message: 'Use POST.' } }, 405);
-    if (!enabled())
-      return reply(
-        {
-          error: {
-            code: 'unavailable',
-            message:
-              'Notifications are not activated yet. Please try again later.',
-          },
-        },
-        503,
-      );
     try {
       const bearer = request.headers
         .get('authorization')
@@ -99,12 +88,23 @@ export function createNotificationHandler({
           'Invalid notification request.',
         );
       }
+      if (!enabled() && input.action !== 'unregisterNotificationDevice')
+        return reply(
+          {
+            error: {
+              code: 'unavailable',
+              message:
+                'Notifications are not activated yet. Please try again later.',
+            },
+          },
+          503,
+        );
       const api = service();
       const result = await api[input.action]({
         auth: { uid: token.uid, token },
         data: input.data,
       });
-      schedule(() =>
+      if (enabled()) schedule(() =>
         api.drain(input.action === 'queueAnnouncement' ? result.id : undefined),
       );
       return reply({ data: result });

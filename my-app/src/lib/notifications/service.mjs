@@ -26,7 +26,7 @@ export function createNotificationService(
   const jobs = db.collection('notificationJobs');
   const receipts = db.collection('notificationReceipts');
   function requireUser(request) {
-    if (!request.auth || request.auth.token.email_verified !== true)
+    if (!request.auth?.uid || request.auth.token.email_verified !== true)
       throw new NotificationError(
         'unauthenticated',
         'Sign in with a verified account.',

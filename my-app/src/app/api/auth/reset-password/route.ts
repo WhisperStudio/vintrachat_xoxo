@@ -1,3 +1,4 @@
+import { validRecord } from '@/lib/auth-records.server'
 import crypto from 'node:crypto'
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
@@ -55,6 +56,9 @@ export async function POST(req: NextRequest) {
 
     const resetDoc = resetQuery.docs[0];
     const resetData = resetDoc.data();
+    if (!validRecord('reset', resetDoc.id, resetData)) {
+      return NextResponse.json({ success: false, message: 'Request a new password reset link.' }, { status: 400 });
+    }
     const expiry = toDate(resetData.expiresAt);
 
     if (!expiry || new Date() > expiry) {
@@ -65,15 +69,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const uid =
-      typeof resetData.uid === "string" && resetData.uid
-        ? resetData.uid
-        : (await adminAuth.getUserByEmail(String(resetData.email))).uid;
+    const uid = resetDoc.id;
 
     await adminAuth.updateUser(uid, {
       password: String(newPassword),
     });
 
+    await adminAuth.revokeRefreshTokens(uid);
     await resetDoc.ref.delete();
 
     return NextResponse.json({

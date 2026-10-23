@@ -1,3 +1,4 @@
+import { signRecord } from '@/lib/auth-records.server'
 import crypto from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
@@ -42,13 +43,12 @@ export async function POST(req: NextRequest) {
     const resetToken = crypto.randomBytes(32).toString('hex')
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60)
 
-    await adminDb.collection("pending_password_resets").doc(userRecord.uid).set({
-      uid: userRecord.uid,
-      email: normalizedEmail,
-      displayName: userRecord.displayName || "",
-      tokenHash: hashToken(resetToken),
-      createdAt: new Date(),
-      expiresAt,
+    const record = {
+      uid: userRecord.uid, email: normalizedEmail, displayName: userRecord.displayName || '',
+      tokenHash: hashToken(resetToken), createdAt: new Date(), expiresAt,
+    }
+    await adminDb.collection('pending_password_resets').doc(userRecord.uid).set({
+      ...record, signature: signRecord('reset', userRecord.uid, record),
     })
 
     const resend = new Resend(process.env.RESEND_API_KEY!)

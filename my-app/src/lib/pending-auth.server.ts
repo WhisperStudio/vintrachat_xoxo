@@ -1,3 +1,4 @@
+import { validRecord } from '@/lib/auth-records.server'
 import crypto from 'node:crypto'
 import { adminAuth, adminDb } from '@/lib/firebase-admin'
 import { defaultConversationCards } from '@/lib/conversation-cards'
@@ -14,10 +15,6 @@ function generateToken(length = 30) {
   return Array.from({ length })
     .map(() => chars[Math.floor(Math.random() * chars.length)])
     .join('')
-}
-
-function generateSecureSecret(bytesLength = 32) {
-  return crypto.randomBytes(bytesLength).toString('hex')
 }
 
 function generateChatWidgetKey() {
@@ -230,19 +227,19 @@ function readDate(value: unknown) {
 
 async function createBusinessWithWidgetsServer(userId: string, businessName: string, email: string) {
   const normalizedEmail = normalizeEmail(email)
-  const businessRef = adminDb.collection('businesses').doc()
+  const businessRef = adminDb.collection('businesses').doc(`account-${hashOpaqueToken(userId)}`)
   const businessId = businessRef.id
   const widgetKey = generateChatWidgetKey()
   const widgetConfig = buildDefaultWidgetConfig(businessName)
   const assistantConfig = buildDefaultAssistantConfig(businessName, normalizedEmail)
 
-  await businessRef.set({
+  const batch = adminDb.batch()
+  batch.create(businessRef, {
     name: businessName,
     email: normalizedEmail,
     ownerId: userId,
     chatWidgetKey: widgetKey,
     activeChatWidgetKey: widgetKey,
-    chatWidgetEmbedSecret: generateSecureSecret(32),
     chatWidgetConfig: widgetConfig,
     chatAssistantConfig: assistantConfig,
     chatAnalytics: buildDefaultChatAnalytics(),
@@ -254,7 +251,7 @@ async function createBusinessWithWidgetsServer(userId: string, businessName: str
     updatedAt: new Date(),
   })
 
-  await businessRef.collection('users').doc(userId).set({
+  batch.create(businessRef.collection('users').doc(userId), {
     email: normalizedEmail,
     role: 'admin',
     status: 'active',
@@ -262,7 +259,7 @@ async function createBusinessWithWidgetsServer(userId: string, businessName: str
     updatedAt: new Date(),
   })
 
-  await businessRef.collection('chatWidgets').doc(widgetKey).set({
+  batch.create(businessRef.collection('chatWidgets').doc(widgetKey), {
     widgetKey,
     name: 'Main widget',
     config: widgetConfig,
@@ -272,6 +269,7 @@ async function createBusinessWithWidgetsServer(userId: string, businessName: str
     updatedAt: new Date(),
   })
 
+  await batch.commit()
   return businessId
 }
 
@@ -289,20 +287,13 @@ export async function activatePendingAuthToken(rawToken: string) {
     .get()
 
   if (snap.empty) {
-    snap = await adminDb
-      .collection('pending_auth')
-      .where('token', '==', token)
-      .limit(1)
-      .get()
-  }
-
-  if (snap.empty) {
     return { success: false as const, message: 'Ugyldig token' }
   }
 
   const docSnap = snap.docs[0]
   const data = docSnap.data() || {}
   const userId = docSnap.id
+  if (!validRecord('verify', userId, data)) return { success: false as const, message: 'Be om en ny verifiseringslenke.' }
   const expiresAt = readDate(data.expiresAt)
 
   if (!expiresAt || expiresAt.getTime() < Date.now()) {

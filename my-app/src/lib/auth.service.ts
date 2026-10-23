@@ -19,9 +19,6 @@ import {
   updateDoc,
   serverTimestamp,
   collection,
-  query,
-  where,
-  limit,
   getDocs,
   deleteDoc,
 } from "firebase/firestore";
@@ -90,21 +87,9 @@ export async function signInWithGoogle(): Promise<AuthResponse> {
     const firebaseUser = result.user;
 
     if (!firebaseUser.emailVerified) return { success: false, message: 'Verifiser emailen din først.' };
-    const pendingRef = doc(db, "pending_users", firebaseUser.uid);
-    const pendingSnap = await getDoc(pendingRef);
-
-    if (pendingSnap.exists()) {
-      return {
-        success: true,
-        message: "Du har invitasjoner som venter",
-        redirectTo: "/invite",
-      };
-    }
-
-    return {
-      success: true,
-      message: "Innlogging OK",
-    };
+    const profile = await getCurrentUser(firebaseUser);
+    return { success: true, message: 'Innlogging OK',
+      redirectTo: profile || isVintraAdminEmail(firebaseUser.email) ? '/admin' : '/invite' };
   } catch (error) {
     console.error(error);
     return { success: false, message: "Innlogging feilet" };
@@ -156,33 +141,8 @@ export function setupAuthListener(
 // ----------------------
 // Utils
 // ----------------------
-function generateToken(length: number = 30) {
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  return Array.from({ length })
-    .map(() => chars[Math.floor(Math.random() * chars.length)])
-    .join("");
-}
-
-function generateSecureSecret(bytesLength: number = 32) {
-  const cryptoObject: any =
-    typeof globalThis !== 'undefined'
-      ? (globalThis.crypto || (globalThis as any).msCrypto || null)
-      : null
-
-  if (cryptoObject && typeof cryptoObject.getRandomValues === 'function') {
-    const bytes = new Uint8Array(bytesLength)
-    cryptoObject.getRandomValues(bytes)
-    return Array.from(bytes)
-      .map((byte) => byte.toString(16).padStart(2, '0'))
-      .join('')
-  }
-
-  return generateToken(bytesLength * 2)
-}
-
 export function generateChatWidgetKey() {
-  return generateToken(24);
+  return crypto.randomUUID().replace(/-/g, '').slice(0, 24);
 }
 
 const defaultSupportTaskCategories: SupportTaskCategory[] = [
@@ -692,17 +652,6 @@ export async function signInWithEmail(email: string, password: string) {
     }
 
     if (!cred.user.emailVerified) return { success: false, message: 'Verifiser emailen din først.' };
-    const pendingRef = doc(db, "pending_users", cred.user.uid);
-    const pendingSnap = await getDoc(pendingRef);
-
-    if (pendingSnap.exists()) {
-      return {
-        success: true,
-        message: "Du har invitasjoner som venter.",
-        redirectTo: "/invite",
-      };
-    }
-
     const signedInEmail = normalizeEmail(cred.user.email || normalizedEmail)
     if (isVintraAdminEmail(signedInEmail)) {
       return {

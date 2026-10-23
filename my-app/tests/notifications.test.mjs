@@ -5,6 +5,13 @@ import { createNotificationService } from '../src/lib/notifications/service.mjs'
 import { createNotificationHandler } from '../src/lib/notifications/http.mjs';
 import { hash } from '../src/lib/notifications/core.mjs';
 import { memoryDb } from './notification-memory-db.mjs';
+import { deliveryEnabled } from '../src/lib/notifications/release.mjs';
+
+test('this migration release cannot send pushes even with an unknown enabled environment', () => {
+  assert.equal(deliveryEnabled('true'), false);
+  assert.equal(deliveryEnabled('false'), false);
+  assert.equal(deliveryEnabled(undefined), false);
+});
 
 const staff = {
   uid: 'staff',
@@ -92,7 +99,7 @@ test('visitor message and job persist together; replay, staff and AI replies do 
     widgetKey: 'widget1',
     notificationId: hash('b1:c1:m1'),
   });
-  assert.equal(db.store.get('businesses/b1/supportChats/c1').messageCount, 1);
+  assert.equal(db.store.get('businesses/b1/supportChats/c1').messageCount, 2);
   assert.equal(
     db.store.get(`notificationJobs/${hash('b1:c1:m1')}`).status,
     'accepted',
@@ -260,4 +267,79 @@ test('HTTP valid registration uses authenticated identity and schedules delivery
   assert.equal(call.auth.uid, 'server-user');
   assert.deepEqual(await response.json(), { data: { registered: true } });
   assert.equal(typeof scheduled, 'function');
+});
+
+test('multiple phones, opt-out, unregister and account reassignment stay independent', async () => {
+  const sent = [];
+  const { db, service } = await setup(async (_, options) => {
+    sent.push(JSON.parse(options.body)[0].to);
+    return Response.json({ data: [{ status: 'ok', id: `r${sent.length}` }] });
+  });
+  const second = 'ExpoPushToken[second]';
+  const third = 'ExpoPushToken[third]';
+  for (const token of [second, third]) await service.registerNotificationDevice(req(staff, { token, businessIds: ['b1'], platform: 'ios' }));
+  await service.registerNotificationDevice(req(staff, { token: second, businessIds: ['b1'], platform: 'ios', enabled: false }));
+  await service.unregisterNotificationDevice(req(staff, { token: third }));
+  await save(db, service);
+  await service.drain();
+  assert.deepEqual(sent, [deviceToken]);
+  await service.registerNotificationDevice(req({ ...staff, uid: 'outsider' }, { token: deviceToken, businessIds: ['b1'], platform: 'ios' }));
+  await save(db, service, [{ ...message, id: 'm2' }]);
+  await service.drain();
+  assert.deepEqual(sent, [deviceToken]);
+});
+test('global announcements exclude recipients with revoked or missing business access', async () => {
+  let sends = 0;
+  const { db, service } = await setup(async () => { sends++; return Response.json({ data: [] }); });
+  await service.queueAnnouncement(req(admin, { title: 'Test', body: 'Mock only', targetBusinessId: 'all', requestId: 'global-123456' }));
+  await db.doc('businesses/b1/users/staff').update({ status: 'disabled' });
+  await service.drain();
+  assert.equal(sends, 0);
+});
+test('recipient Auth disablement/revocation prevents delivery even with a membership', async () => {
+  const { db } = await setup();
+  const service = createNotificationService(db, {
+    recipientActive: async () => false,
+    fetchImpl: () => { throw new Error('Must not send'); },
+  });
+  await save(db, service);
+  await service.drain();
+  assert.equal(db.store.get(`notificationJobs/${hash('b1:c1:m1')}`).status, 'no-recipients');
+});
+test('DeviceNotRegistered receipts disable a previously accepted device', async () => {
+  const { db, service } = await setup(async url => Response.json({ data: url.endsWith('getReceipts')
+    ? { receipt1: { status: 'error', details: { error: 'DeviceNotRegistered' } } }
+    : [{ status: 'ok', id: 'receipt1' }] }));
+  await save(db, service);
+  await service.drain();
+  await db.doc('notificationReceipts/receipt1').update({ createdAt: Timestamp.fromMillis(Date.now() - 120000) });
+  await service.drain();
+  assert.equal(db.store.get(`notificationDevices/${hash(deviceToken)}`).enabled, false);
+  assert.equal(db.store.get(`notificationJobs/${hash('b1:c1:m1')}`).receiptFailedCount, 1);
+});
+test('all HTTP errors include code and message; invalid and revoked tokens fail authentication', async () => {
+  const handle = createNotificationHandler({ enabled: () => true, origins: [],
+    verifyToken: async () => { throw new Error('revoked'); }, service: () => { throw new Error('must not run'); }, schedule: () => {} });
+  for (const request of [
+    new Request('https://test', { method: 'POST', headers: { Origin: 'https://evil.example' } }),
+    new Request('https://test', { method: 'GET' }),
+    new Request('https://test', { method: 'POST', headers: { Authorization: 'Bearer invalid' } }),
+  ]) {
+    const response = await handle(request);
+    assert.ok(response.status >= 400);
+    const body = await response.json();
+    assert.equal(typeof body.error.code, 'string');
+    assert.equal(typeof body.error.message, 'string');
+  }
+});
+test('unregister still works while delivery is disabled and never drains jobs', async () => {
+  let removed = false;
+  const handle = createNotificationHandler({ enabled: () => false, origins: [],
+    verifyToken: async () => ({ uid: 'staff', email_verified: true }),
+    service: () => ({ unregisterNotificationDevice: async () => { removed = true; return { removed: true }; } }),
+    schedule: () => { throw new Error('Disabled delivery must not run'); } });
+  const response = await handle(new Request('https://test', { method: 'POST', headers: { Authorization: 'Bearer verified' },
+    body: JSON.stringify({ action: 'unregisterNotificationDevice', data: { token: deviceToken } }) }));
+  assert.equal(response.status, 200);
+  assert.equal(removed, true);
 });

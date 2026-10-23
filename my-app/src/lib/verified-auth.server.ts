@@ -1,14 +1,9 @@
 import { getAdminAuth } from '@/lib/firebase-admin';
+import { verifyActiveToken } from './verified-auth.mjs';
 
 export async function verifyActiveUserToken(token: string) {
-  const auth = getAdminAuth();
-  const decoded = await auth.verifyIdToken(token, true);
-  const user = await auth.getUser(decoded.uid);
-  if (user.disabled) throw new Error('Account disabled');
   // Check current Auth state as well as signed claims; pending Firestore data is not identity proof.
-  return { ...decoded, email: user.email, phone_number: user.phoneNumber,
-    email_verified: decoded.email_verified === true && user.emailVerified,
-    superAdmin: decoded.superAdmin === true && user.customClaims?.superAdmin === true };
+  return verifyActiveToken(getAdminAuth(), token);
 }
 
 export const apiOrigins = () => [

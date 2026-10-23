@@ -2,9 +2,10 @@ import { after } from 'next/server';
 import type { DocumentReference, DocumentData } from 'firebase-admin/firestore';
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { createNotificationService } from './notifications/service.mjs';
+import { deliveryEnabled } from './notifications/release.mjs';
 
 export const notificationsEnabled = () =>
-  process.env.VINTRA_NOTIFICATIONS_ENABLED === 'true';
+  deliveryEnabled(process.env.VINTRA_NOTIFICATIONS_ENABLED);
 
 export function notificationService() {
   return createNotificationService(getAdminDb(), {

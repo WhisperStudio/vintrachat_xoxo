@@ -1,3 +1,4 @@
+import { signRecord } from '@/lib/auth-records.server'
 import crypto from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const decoded = await adminAuth.verifyIdToken(idToken)
+    const decoded = await adminAuth.verifyIdToken(idToken, true)
     const { displayName, accountType, businessName } = await req.json()
     const email = normalizeEmail(decoded.email || '')
 
@@ -57,23 +58,16 @@ export async function POST(req: NextRequest) {
     const tokenHash = hashOpaqueToken(token)
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
 
-    await adminDb.collection('pending_auth').doc(decoded.uid).set(
-      {
-        email,
-        normalizedEmail: email,
-        displayName: typeof displayName === 'string' ? displayName.trim() : '',
-        tokenHash,
-        token: null,
-        accountType: accountType === 'business' ? 'business' : 'user',
-        ...(accountType === 'business' && typeof businessName === 'string' && businessName.trim()
-          ? { businessName: businessName.trim() }
-          : {}),
-        expiresAt,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      { merge: true }
-    )
+    const record = {
+      email, normalizedEmail: email,
+      displayName: typeof displayName === 'string' ? displayName.trim() : '',
+      tokenHash, accountType: accountType === 'business' ? 'business' : 'user',
+      businessName: accountType === 'business' && typeof businessName === 'string' ? businessName.trim() : '',
+      expiresAt, createdAt: new Date(), updatedAt: new Date(),
+    }
+    await adminDb.collection('pending_auth').doc(decoded.uid).set({
+      ...record, signature: signRecord('verify', decoded.uid, record),
+    })
 
     const link = `${process.env.NEXT_PUBLIC_APP_URL}/auth/verify-email?token=${token}`
     const message = buildVerificationEmail({
