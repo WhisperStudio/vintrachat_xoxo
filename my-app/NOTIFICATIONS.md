@@ -1,6 +1,32 @@
 # Vintra notifications and access migration
 
-## Current release state (23 October 2026)
+## Current release state (25 October 2026)
+
+Published and verified:
+- Website commit `96d216787199ae34ea143c5bfea8b5fd2fe879c7` is on `main` and live at
+  `https://chat.vintrastudio.com`. Production deployment
+  `dpl_48KDvP43L8HLLfWEucJ4mTuZNBKp` is READY.
+- Tested Firestore rules were published at `2026-10-23T12:22:19.958705Z`.
+  Published content matches `firestore.rules`, SHA-256
+  `8fcd32513ab6571bcfd98d7a440b7ff8af364e6e8c2a6dd8c97f9f9a6646840f`.
+- Production API checks passed: anonymous requests 401; unverified test account 403;
+  verified test account 200 with an empty business list; disabled account 401;
+  direct protected Firestore reads 403. The temporary Auth account was deleted.
+  This verifies server credentials and isolation, not an existing user's full mobile flow.
+- iOS **1.0.0 (9)** built successfully from mobile commit `dfb7f8d`:
+  [EAS build](https://expo.dev/accounts/vintrastudio/projects/VintraApp/builds/51348747-04a0-4741-b781-f86a788c77ec).
+  [TestFlight submission](https://expo.dev/accounts/vintrastudio/projects/VintraApp/submissions/584830fc-f2bd-4182-a2d6-464fd7fb966f)
+  finished successfully on 25 October. App Store Connect app ID is `6776323865`.
+  Apple processing and availability on the user's phone have not been independently verified.
+- Notification delivery remains disabled by the checked-in release gate; a signed
+  notification request returned 503 as intended. No announcement or phone push was sent.
+
+Remaining before push activation: review existing business ownership/memberships below,
+resolve unverified/missing owner accounts, explicitly set the environment flag to false
+until that review passes, and test the new build on consenting phones. No billing or
+subscription changes were made.
+
+### Migration history and remaining access review
 
 Website: `/Users/martinsecker/Documents/vintrachat_xoxo`, branch
 `codex/secure-vercel-notifications`, Next.js root `my-app/`.
@@ -8,11 +34,10 @@ Mobile: `/Users/martinsecker/Documents/VSCode/VintraAPP/VintraApp`.
 The original notification patch (base `791257323af5afb15a68134a6bc34cf038cbe90d`)
 was applied and compared byte-for-byte with the sibling implementation before changes.
 The sibling checkout and original integration patch were not overwritten.
-Commit `752c3df` was created/pushed externally during this work; publish the completed
-working tree after committing the follow-up fixes, not that intermediate commit alone.
+Commit `752c3df` was an intermediate change; the published `96d2167` includes the completed fixes.
 
-Read-only production checks:
-- `POST https://chat.vintrastudio.com/api/access` returned **404**. This causes the
+Production checks before publication:
+- `POST https://chat.vintrastudio.com/api/access` previously returned **404**. This caused the
   mobile “Account access is not activated yet” error. A preview branch does not update
   the production custom domain.
 - Initially, active Firestore rules allowed all reads/writes (release from 27 March).
@@ -30,8 +55,8 @@ Read-only production checks:
   or changed. This migration release also has a checked-in `accessReviewComplete=false` gate in
   `src/lib/notifications/release.mjs`; no environment value can enable delivery yet.
 
-No production deployment, Firebase rule publication, billing change, subscription
-change, real announcement or device push was performed by this work.
+The website and rules are now published as recorded above. Existing ownership data
+has not been approved or silently repaired.
 
 ## What ships
 
@@ -74,7 +99,7 @@ change, real announcement or device push was performed by this work.
 
 ## Local validation
 
-Completed locally: 12 emulator tests, 17 notification/authentication tests, 4 mobile
+Completed locally: 12 emulator tests, 18 notification/authentication tests, 4 mobile
 transport tests, TypeScript in both projects and the website production build passed.
 The built Next.js server also returned the expected 401 JSON for unsigned POSTs to both
 APIs, 403 JSON for untrusted origins and 204 for allowed preflights. These HTTP checks
@@ -104,7 +129,10 @@ npx tsc --noEmit
 node --test tests/notification-api.test.mjs
 ```
 
-## Production publication sequence (notifications remain off)
+## Release and activation checklist (notifications remain off)
+
+The website, rules and TestFlight upload steps below are complete. Retain this sequence
+for follow-up releases; ownership review, real-user acceptance and push activation remain open.
 
 1. Review `.audit/access.json` with the business owner. Old public rules cannot prove that
    existing owner IDs, memberships or pending invitations are legitimate. Resolve unknown
