@@ -10,7 +10,10 @@ export const isSuperAdmin = (token) =>
     token.email?.toLowerCase() === 'vintrastudio@gmail.com');
 export const isMember = (business, membership, uid) =>
   membership?.status !== 'disabled' && (business?.ownerId === uid ||
-    (membership && ['admin', 'support', 'manager'].includes(membership.role) && membership.status === 'active'));
+    (membership && ['admin', 'support', 'manager', 'viewer', 'user'].includes(membership.role) && membership.status === 'active'));
+export const isSupportMember = (business, membership, uid) =>
+  isMember(business, membership, uid) && (business?.ownerId === uid ||
+    ['admin', 'support', 'manager'].includes(membership?.role));
 export function messageKey(message) {
   return String(
     message.id ||

@@ -4,6 +4,7 @@ import {
   validToken,
   isSuperAdmin,
   isMember,
+  isSupportMember,
   incomingMessages,
   messageKey,
   channelId,
@@ -42,12 +43,13 @@ export function createNotificationService(
       );
     return auth;
   }
-  async function hasAccess(uid, businessId) {
+  async function hasAccess(uid, businessId, supportOnly = false) {
     const [business, member] = await Promise.all([
       db.doc(`businesses/${businessId}`).get(),
       db.doc(`businesses/${businessId}/users/${uid}`).get(),
     ]);
-    return business.exists && isMember(business.data(), member.data(), uid);
+    const permits = supportOnly ? isSupportMember : isMember;
+    return business.exists && permits(business.data(), member.data(), uid);
   }
 
   async function registerNotificationDevice(request) {
@@ -265,7 +267,7 @@ export function createNotificationService(
         if (
           job.targetBusinessId !== 'all' &&
           !job.testToken &&
-          !(await hasAccess(d.userId, job.targetBusinessId))
+          !(await hasAccess(d.userId, job.targetBusinessId, job.kind === 'chat'))
         )
           continue;
         if (job.targetBusinessId === 'all' || job.testToken) {

@@ -1,6 +1,33 @@
 # Vintra notifications and access migration
 
-## Current release state (25 October 2026)
+## Activation follow-up (26 October 2026)
+
+The owner requested activation with `vintrastudio@gmail.com` managing the panel and
+other users receiving announcements. The verified Vintra account already meets the
+server's administrator policy; no roles or email-verification flags were changed.
+
+This release removes the temporary migration code gate. Production delivery now requires
+`VINTRA_NOTIFICATIONS_ENABLED=true` **and** `VERCEL_ENV=production`. Preview deployments
+never send. The admin panel, device registration and unregister work while delivery is off;
+queuing announcements still returns 503 until enabled and no background delivery runs.
+
+All active business roles, including `user` and `viewer`, can receive announcements.
+Customer-message alerts remain limited to the owner, admin, manager and support roles.
+Recipients must have a verified, enabled Auth account, a valid session, active business
+access and an opted-in registered phone. Only authorized notification administrators can
+open the panel or send announcements; receiving never grants sending permission.
+
+Vercel environment access still returns 403 and the CLI cannot access the team. Therefore
+the environment switch cannot be changed or read with the current connection. Set
+`VINTRA_NOTIFICATIONS_ENABLED=true` for **Production** in the existing project's
+environment settings and redeploy to activate delivery; keep Preview false. No further
+code edit or new mobile build is needed beyond TestFlight **1.0.0 (9)** for this follow-up.
+
+Unverified/missing accounts remain individually ineligible; they do not block eligible
+users globally. Existing memberships were not silently approved or repaired. Phone
+delivery remains unverified, and no real announcement has been sent during this work.
+
+## Previous published release (25 October 2026)
 
 Published and verified:
 - Website commit `96d216787199ae34ea143c5bfea8b5fd2fe879c7` is on `main` and live at
@@ -21,10 +48,8 @@ Published and verified:
 - Notification delivery remains disabled by the checked-in release gate; a signed
   notification request returned 503 as intended. No announcement or phone push was sent.
 
-Remaining before push activation: review existing business ownership/memberships below,
-resolve unverified/missing owner accounts, explicitly set the environment flag to false
-until that review passes, and test the new build on consenting phones. No billing or
-subscription changes were made.
+At that point, push was still blocked pending activation. The 26 October follow-up above
+supersedes that global block. No billing or subscription changes were made.
 
 ### Migration history and remaining access review
 
@@ -52,8 +77,8 @@ Production checks before publication:
   `vintrastudios-projects`, project ID `prj_MxVgYXGLkWevB21hg7eGmSJqFFLr`.
   Environment metadata access returned 403; CLI fallback could not access that scope.
   Production environment values and the notification flag have **not** been verified
-  or changed. This migration release also has a checked-in `accessReviewComplete=false` gate in
-  `src/lib/notifications/release.mjs`; no environment value can enable delivery yet.
+  or changed. The original migration had a checked-in `accessReviewComplete=false` gate;
+  the activation follow-up replaces it with the production environment switch.
 
 The website and rules are now published as recorded above. Existing ownership data
 has not been approved or silently repaired.
@@ -87,7 +112,8 @@ has not been approved or silently repaired.
   messages are still transactionally saved but notification jobs are not created.
 - Expo tokens are per device, not per account. Opt-out/unregister, token reassignment,
   duplicate job/attempt protection, leases, retries and invalid-token handling remain.
-  Unregister is allowed while notifications are disabled and never starts delivery.
+  Registration, unregister and the admin panel are allowed while delivery is disabled;
+  none starts delivery while disabled.
   Every send rechecks current device preferences, active business access (including
   announcements to all businesses), Auth verification/disablement and session revocation.
 - Email verification now sets Firebase Auth `emailVerified`. Server-signed verification
@@ -99,7 +125,7 @@ has not been approved or silently repaired.
 
 ## Local validation
 
-Completed locally: 12 emulator tests, 18 notification/authentication tests, 4 mobile
+Completed locally: 12 emulator tests, 20 notification/authentication tests, 4 mobile
 transport tests, TypeScript in both projects and the website production build passed.
 The built Next.js server also returned the expected 401 JSON for unsigned POSTs to both
 APIs, 403 JSON for untrusted origins and 204 for allowed preflights. These HTTP checks
@@ -129,10 +155,11 @@ npx tsc --noEmit
 node --test tests/notification-api.test.mjs
 ```
 
-## Release and activation checklist (notifications remain off)
+## Release and activation checklist
 
 The website, rules and TestFlight upload steps below are complete. Retain this sequence
-for follow-up releases; ownership review, real-user acceptance and push activation remain open.
+for follow-up releases; real-user acceptance and confirmation of the production environment
+switch remain open. Missing/unverified accounts must be resolved individually.
 
 1. Review `.audit/access.json` with the business owner. Old public rules cannot prove that
    existing owner IDs, memberships or pending invitations are legitimate. Resolve unknown
@@ -158,9 +185,9 @@ for follow-up releases; ownership review, real-user acceptance and push activati
 5. Verify production login, business selection, invitation acceptance, staff reply and
    anonymous denial. Publish a **new TestFlight/native build** from the updated mobile tree.
    Old builds use Firebase Functions and old discovery/invitation logic; they are incompatible.
-6. Only after access inventory and production authorization checks pass, consider setting
-   `VINTRA_NOTIFICATIONS_ENABLED=true` and redeploying. This activation needs a separate decision and a reviewed change to
-   `accessReviewComplete` in `src/lib/notifications/release.mjs` before redeployment.
+6. Activation was requested on 26 October. Set `VINTRA_NOTIFICATIONS_ENABLED=true` for
+   Production and redeploy the tested follow-up. Preview stays disabled by code as well
+   as its environment setting. Setting the production flag to false stops delivery again.
    Test only a consented device/support message first; no bulk announcement is needed.
 
 Additional environment settings:

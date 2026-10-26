@@ -88,7 +88,8 @@ export function createNotificationHandler({
           'Invalid notification request.',
         );
       }
-      if (!enabled() && input.action !== 'unregisterNotificationDevice')
+      // The kill switch stops sends, not device preferences or the admin panel.
+      if (!enabled() && input.action === 'queueAnnouncement')
         return reply(
           {
             error: {

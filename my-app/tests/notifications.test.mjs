@@ -7,10 +7,12 @@ import { hash } from '../src/lib/notifications/core.mjs';
 import { memoryDb } from './notification-memory-db.mjs';
 import { deliveryEnabled } from '../src/lib/notifications/release.mjs';
 
-test('this migration release cannot send pushes even with an unknown enabled environment', () => {
-  assert.equal(deliveryEnabled('true'), false);
-  assert.equal(deliveryEnabled('false'), false);
-  assert.equal(deliveryEnabled(undefined), false);
+test('delivery requires explicit activation in production, never in previews', () => {
+  assert.equal(deliveryEnabled('true', 'production'), true);
+  for (const environment of ['preview', 'development', undefined])
+    assert.equal(deliveryEnabled('true', environment), false);
+  for (const value of ['false', undefined, '', 'TRUE'])
+    assert.equal(deliveryEnabled(value, 'production'), false);
 });
 
 const staff = {
@@ -232,7 +234,7 @@ test('HTTP blocks unsigned, unverified, malformed, disallowed-origin and disable
     400,
   );
   enabled = false;
-  assert.equal((await handle(request('verified', data))).status, 503);
+  assert.equal((await handle(request('verified', { action: 'queueAnnouncement', data: {} }))).status, 503);
   assert.equal(calls, 0);
 });
 test('HTTP valid registration uses authenticated identity and schedules delivery after response', async () => {
@@ -295,6 +297,55 @@ test('global announcements exclude recipients with revoked or missing business a
   await db.doc('businesses/b1/users/staff').update({ status: 'disabled' });
   await service.drain();
   assert.equal(sends, 0);
+});
+test('all active roles receive announcements, while customer messages only reach support staff', async () => {
+  const sent = [];
+  const { db, service } = await setup(async (_, options) => {
+    sent.push(JSON.parse(options.body)[0]);
+    return Response.json({ data: [{ status: 'ok', id: `receipt-${sent.length}` }] });
+  });
+  const recipientTokens = [deviceToken];
+  for (const role of ['viewer', 'user', 'admin', 'manager']) {
+    await db.doc(`businesses/b1/users/${role}`).set({ role, status: 'active' });
+    const token = `ExpoPushToken[${role}]`;
+    recipientTokens.push(token);
+    const result = await service.registerNotificationDevice(req({ ...staff, uid: role }, { token, businessIds: ['b1'], platform: 'ios' }));
+    assert.equal(result.businesses, 1);
+  }
+  await service.registerNotificationDevice(req({ ...staff, uid: 'outsider' }, { token: 'ExpoPushToken[outsider]', businessIds: ['b1'], platform: 'ios' }));
+  await save(db, service);
+  await service.drain();
+  assert.deepEqual(sent.map(x => x.to).sort(), [deviceToken, 'ExpoPushToken[admin]', 'ExpoPushToken[manager]'].sort());
+  for (const targetBusinessId of ['b1', 'all']) {
+    const start = sent.length;
+    await service.queueAnnouncement(req(admin, { title: 'News', body: 'Mock only', targetBusinessId, requestId: `all-roles-${targetBusinessId}-123456` }));
+    await service.drain();
+    assert.deepEqual(sent.slice(start).map(x => x.to).sort(), [...recipientTokens].sort());
+  }
+  await db.doc('businesses/b1/users/viewer').update({ status: 'disabled' });
+  const start = sent.length;
+  await service.queueAnnouncement(req(admin, { title: 'News', body: 'Mock only', targetBusinessId: 'all', requestId: 'revoked-viewer-123456' }));
+  await service.drain();
+  assert.ok(!sent.slice(start).some(x => x.to === 'ExpoPushToken[viewer]'));
+});
+
+test('Vintra admin can open the panel while ordinary recipients cannot; disabled delivery still allows device registration', async () => {
+  const { db, service } = await setup(() => { throw new Error('No real pushes'); });
+  const vintra = { uid: 'vintra', email_verified: true, email: 'vintrastudio@gmail.com' };
+  const handle = createNotificationHandler({ enabled: () => false, origins: [],
+    verifyToken: async token => token === 'vintra' ? vintra : { uid: 'staff', ...staff.token },
+    service: () => service, schedule: () => { throw new Error('Disabled delivery must not run'); } });
+  const call = (token, action, data = {}) => handle(new Request('https://test', {
+    method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ action, data }),
+  }));
+  const panel = await call('vintra', 'notificationCenter');
+  assert.equal(panel.status, 200);
+  assert.equal((await panel.json()).data.businesses.length, 1);
+  assert.equal((await call('staff', 'notificationCenter')).status, 403);
+  await assert.rejects(() => service.queueAnnouncement(req(staff, { title: 'News', body: 'Mock', targetBusinessId: 'all', requestId: 'staff-cannot-send-123' })), { code: 'permission-denied' });
+  assert.equal((await call('staff', 'registerNotificationDevice', { token: 'ExpoPushToken[pending-activation]', businessIds: ['b1'], platform: 'ios' })).status, 200);
+  assert.equal((await call('vintra', 'queueAnnouncement', { title: 'News', body: 'Mock', targetBusinessId: 'all', requestId: 'no-queue-disabled-123' })).status, 503);
+  assert.equal((await db.collection('notificationJobs').get()).size, 0);
 });
 test('recipient Auth disablement/revocation prevents delivery even with a membership', async () => {
   const { db } = await setup();

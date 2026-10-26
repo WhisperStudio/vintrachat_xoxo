@@ -5,7 +5,7 @@ import { createNotificationService } from './notifications/service.mjs';
 import { deliveryEnabled } from './notifications/release.mjs';
 
 export const notificationsEnabled = () =>
-  deliveryEnabled(process.env.VINTRA_NOTIFICATIONS_ENABLED);
+  deliveryEnabled(process.env.VINTRA_NOTIFICATIONS_ENABLED, process.env.VERCEL_ENV);
 
 export function notificationService() {
   return createNotificationService(getAdminDb(), {

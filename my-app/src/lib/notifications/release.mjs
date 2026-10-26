@@ -1,5 +1,4 @@
-// Keep this release off until production ownership/membership has been reviewed.
-// This code gate also protects deployment when Vercel environment access is unavailable.
-export const accessReviewComplete = false;
-export const deliveryEnabled = (environmentValue) =>
-  accessReviewComplete && environmentValue === 'true';
+// Access checks are enforced per sender and recipient. Only production can send;
+// missing/false configuration and preview deployments never deliver notifications.
+export const deliveryEnabled = (environmentValue, deploymentEnvironment) =>
+  deploymentEnvironment === 'production' && environmentValue === 'true';
