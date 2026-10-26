@@ -2,6 +2,15 @@
 
 ## Activation follow-up (26 October 2026)
 
+Published commit: `a2a6f21f18905e3175cd123fd3cc175bd0b33ae2`, deployment
+`dpl_2EK5e63dzTn3rKe1m4HxRVSxfsAz` (READY), on `https://chat.vintrastudio.com`.
+20 server tests, TypeScript and the production build passed. Production checks with
+a temporary test account confirmed: anonymous 401, ordinary account denied panel 403,
+authorized administrator panel 200, disabled account 401, opted-out device registration
+and unregister 200. The test account and device were deleted. An ordinary account's
+queue attempt returned 503, confirming **delivery is currently off** without creating
+an announcement. No runtime errors were reported in the deployment check window.
+
 The owner requested activation with `vintrastudio@gmail.com` managing the panel and
 other users receiving announcements. The verified Vintra account already meets the
 server's administrator policy; no roles or email-verification flags were changed.
