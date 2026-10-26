@@ -1,5 +1,24 @@
 # Vintra notifications and access migration
 
+## Customer chat alert fix (26 October 2026)
+
+The support-message route sends `FieldValue.arrayUnion` to the chat save helper.
+The helper previously treated this transform as an array and failed before saving
+the message or queuing its push. It now merges the accepted messages transactionally,
+preserving existing replies and using message IDs to suppress replayed requests.
+The same save path runs with queuing disabled when delivery is off.
+
+Each new customer message in a support chat gets a separate push with the customer's
+name, message preview and a link to that chat. The existing device settings control
+the default notification sound and Android channel. Staff/AI replies do not enqueue
+pushes. AI-only conversations in `aiChatLogs` retain their existing behavior.
+
+Verified locally: 23 notification/auth tests, 12 Firestore emulator tests (including
+the actual arrayUnion input), website TypeScript and production build, mobile
+TypeScript and 4 transport tests. No real phone push was sent during validation.
+The fix takes effect when the website backend is published. The existing mobile
+build already supports its push payload, so no new native build is required.
+
 ## Activation follow-up (26 October 2026)
 
 Published commit: `a2a6f21f18905e3175cd123fd3cc175bd0b33ae2`, deployment

@@ -343,10 +343,17 @@ export function createNotificationService(
     }
   }
 
-  async function saveChat(ref, data, newMessages, append = false) {
+  async function saveChat(ref, data, newMessages, append = false, { enqueueNotifications = true } = {}) {
     // Called only after widget authorization/rate limiting. Ignore client-supplied
     // history: callers pass only the visitor message accepted by this request.
-    const candidates = incomingMessages(null, { messages: newMessages });
+    const candidates = enqueueNotifications
+      ? incomingMessages(null, { messages: newMessages })
+      : [];
+    // The support route passes a Firestore arrayUnion transform. Merge the
+    // accepted messages ourselves so message history and jobs commit together.
+    const incoming = Array.isArray(data.messages)
+      ? data.messages
+      : append ? newMessages : [];
     return db.runTransaction(async (tx) => {
       const chat = await tx.get(ref);
       const entries = candidates.map((message) => ({
@@ -360,11 +367,8 @@ export function createNotificationService(
       );
       const previousMessages = chat.data()?.messages || [];
       const previous = new Set(previousMessages.map(messageKey));
-      const fresh = candidates.filter(
-        (message) => !previous.has(messageKey(message)),
-      );
       const seen = new Set(previousMessages.map(messageKey));
-      const additions = (data.messages || []).filter(message => {
+      const additions = incoming.filter(message => {
         const key = messageKey(message);
         if (seen.has(key)) return false;
         seen.add(key);

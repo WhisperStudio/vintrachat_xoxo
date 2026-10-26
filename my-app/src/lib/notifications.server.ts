@@ -41,17 +41,10 @@ export async function saveChatWithNotifications(
   messages: { id?: string; role: string; text: string; createdAt?: string }[],
   append = false,
 ) {
-  if (!notificationsEnabled()) {
-    await getAdminDb().runTransaction(async tx => {
-      const snap = await tx.get(ref);
-      const previous = snap.data()?.messages || [];
-      const known = new Set(previous.map((message: { id: string }) => message.id));
-      const merged = [...previous, ...(data.messages || []).filter((message: { id: string }) => !known.has(message.id))];
-      tx.set(ref, { ...data, messages: merged, messageCount: merged.length }, { merge: true });
-    });
-    return;
-  }
+  const enabled = notificationsEnabled();
   const service = notificationService();
-  const ids = await service.saveChat(ref, data, messages, append);
-  scheduleNotificationDelivery(() => service.drain(ids));
+  const ids = await service.saveChat(ref, data, messages, append, {
+    enqueueNotifications: enabled,
+  });
+  if (enabled) scheduleNotificationDelivery(() => service.drain(ids));
 }

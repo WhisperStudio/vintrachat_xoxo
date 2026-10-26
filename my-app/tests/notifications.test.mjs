@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { createNotificationService } from '../src/lib/notifications/service.mjs';
 import { createNotificationHandler } from '../src/lib/notifications/http.mjs';
 import { hash } from '../src/lib/notifications/core.mjs';
@@ -121,6 +121,76 @@ test('revoked membership and disabled devices receive no chat pushes', async () 
     db.store.get(`notificationJobs/${hash('b1:c1:m1')}`).status,
     'no-recipients',
   );
+});
+
+test('each customer message sends an audible chat alert; support-route transforms and replays preserve history', async () => {
+  const sent = [];
+  const { db, service } = await setup(async (_, options) => {
+    sent.push(JSON.parse(options.body)[0]);
+    return Response.json({ data: [{ status: 'ok', id: `chat-receipt-${sent.length}` }] });
+  });
+  const ref = db.doc('businesses/b1/supportChats/c1');
+  await save(db, service);
+  await service.drain();
+  const reply = { id: 'reply', role: 'support', text: 'How can I help?' };
+  await service.saveChat(ref, { businessId: 'b1', messages: [reply] }, []);
+  const next = { ...message, id: 'm2' }; // Same text, but a genuinely new message.
+  const data = {
+    businessId: 'b1', visitorName: 'Visitor', widgetKey: 'widget1',
+    messages: FieldValue.arrayUnion(next), messageCount: FieldValue.increment(1),
+  };
+  await service.saveChat(ref, data, [next], true);
+  await service.saveChat(ref, data, [next], true);
+  await service.drain();
+  await service.drain();
+  assert.deepEqual((await ref.get()).data().messages.map(m => m.id), ['m1', 'reply', 'm2']);
+  assert.equal((await ref.get()).data().messageCount, 3);
+  assert.equal(sent.length, 2);
+  assert.deepEqual(sent.map(push => push.data.notificationId), [hash('b1:c1:m1'), hash('b1:c1:m2')]);
+  for (const push of sent) {
+    assert.equal(push.sound, 'default');
+    assert.equal(push.channelId, 'messages-sound-vibrate');
+    assert.equal(push.priority, 'high');
+    assert.equal(push.data.type, 'chat');
+    assert.equal(push.data.businessId, 'b1');
+    assert.equal(push.data.chatId, 'c1');
+  }
+});
+
+test('disabled delivery still saves support messages and never alerts for them later', async () => {
+  const { db, service } = await setup(() => { throw new Error('Must not send'); });
+  const ref = db.doc('businesses/b1/supportChats/c1');
+  const data = { businessId: 'b1', messages: FieldValue.arrayUnion(message) };
+  await service.saveChat(ref, data, [message], true, { enqueueNotifications: false });
+  await service.saveChat(ref, data, [message], true, { enqueueNotifications: false });
+  assert.equal((await ref.get()).data().messageCount, 1);
+  assert.equal((await db.collection('notificationJobs').get()).size, 0);
+  await service.saveChat(ref, data, [message], true);
+  await service.drain();
+  assert.equal((await db.collection('notificationJobs').get()).size, 0);
+});
+
+test('new customers trigger separate alerts and chat delivery respects sound and vibration preferences', async () => {
+  const sent = [];
+  const { db, service } = await setup(async (_, options) => {
+    sent.push(JSON.parse(options.body)[0]);
+    return Response.json({ data: [{ status: 'ok', id: `customer-receipt-${sent.length}` }] });
+  });
+  await save(db, service);
+  await service.drain();
+  await service.registerNotificationDevice(req(staff, {
+    token: deviceToken, businessIds: ['b1'], platform: 'android', sound: false, vibration: false,
+  }));
+  await service.saveChat(db.doc('businesses/b1/supportChats/c2'), {
+    businessId: 'b1', visitorName: 'Second customer', messages: [message],
+  }, [message]);
+  await service.drain();
+  assert.equal(sent.length, 2);
+  assert.equal(sent[1].data.chatId, 'c2');
+  assert.equal(sent[1].title, 'Second customer');
+  assert.equal(sent[1].body, 'Hello');
+  assert.equal(sent[1].sound, null);
+  assert.equal(sent[1].channelId, 'messages-silent-still');
 });
 test('network failure stays retryable; accepted retry is not sent again', async () => {
   let sends = 0;

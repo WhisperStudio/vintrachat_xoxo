@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
 import { doc, collection, getDoc, getDocs, setDoc, updateDoc, deleteDoc, arrayUnion } from 'firebase/firestore';
 import { initializeApp, deleteApp } from 'firebase-admin/app';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { createAccessService } from '../src/lib/access/service.mjs';
 import { createNotificationService } from '../src/lib/notifications/service.mjs';
 import { hash } from '../src/lib/notifications/core.mjs';
@@ -140,7 +140,7 @@ test('real Firestore transaction atomically saves message and job; repeated hist
   const notifications = createNotificationService(db, { fetchImpl: () => { throw new Error('External network forbidden'); } });
   const ref = db.doc('businesses/b1/supportChats/chat');
   const message = { id: 'm2', role: 'user', text: 'Help' };
-  await notifications.saveChat(ref, { businessId: 'b1', messages: [message] }, [message], true);
+  await notifications.saveChat(ref, { businessId: 'b1', messages: FieldValue.arrayUnion(message) }, [message], true);
   await notifications.saveChat(ref, { businessId: 'b1', messages: [message] }, [message], true);
   await notifications.saveChat(ref, { businessId: 'b1', messages: [{ id: 's2', role: 'support', text: 'Staff' }] }, [], true);
   assert.equal((await db.collection('notificationJobs').get()).size, 1);
