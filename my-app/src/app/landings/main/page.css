@@ -466,11 +466,10 @@
   --solutions-sky: #081224;
   --solutions-base: #09111f;
   --solutions-floor: #0c1322;
-  --mountain-side-base: #0d1726;
-  --mountain-side-shade: #091018;
-  --mountain-center-back: #101d30;
-  --mountain-center-front: #0a1424;
-  --mountain-center-foot: #070d18;
+  --mountain-side-base: #26394c;
+  --mountain-side-shade: #101c2a;
+  --mountain-center-back: #31465b;
+  --mountain-center-foot: #172536;
   --solutions-ridge: rgba(125, 211, 252, 0.08);
 }
 
@@ -479,11 +478,10 @@
   --solutions-sky: #d8e9f1;
   --solutions-base: #dde7ea;
   --solutions-floor: #d5ddd8;
-  --mountain-side-base: #adc4cf;
-  --mountain-side-shade: #9fb8c7;
-  --mountain-center-back: #b9cfdd;
-  --mountain-center-front: #a7bfd0;
-  --mountain-center-foot: #98b1c0;
+  --mountain-side-base: #b4cad5;
+  --mountain-side-shade: #8faaba;
+  --mountain-center-back: #c3d8e3;
+  --mountain-center-foot: #9fb8c6;
   --solutions-ridge: rgba(255, 255, 255, 0.22);
 }
 
@@ -525,64 +523,60 @@
   will-change: transform;
 }
 
-.mountainLayer {
+.solutionsSection .mountainLayer {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: clamp(470px, 68vh, 740px);
+  inset: 0;
+  height: 100%;
+  overflow: hidden;
   pointer-events: none;
-  transform: translateY(calc(-18px - (var(--mountain-progress, 0) * 96px)));
+  transform: translate3d(0, calc(var(--mountain-progress, 0) * -72px), 0);
   will-change: transform;
 }
 
-.mountainLayer svg {
+.solutionsSection .mountainLayer svg {
   position: absolute;
-  bottom: 0;
   display: block;
+  bottom: 0;
 }
 
-.mountainSide {
-  width: 72%;
-  height: clamp(220px, 38vh, 390px);
+.solutionsSection .mountainSide {
+  width: 76%;
+  height: clamp(270px, 42vh, 450px);
 }
 
-.mountainSide--left {
+.solutionsSection .mountainSide--left {
   left: 0;
 }
 
-.mountainSide--right {
+.solutionsSection .mountainSide--right {
   right: 0;
   transform: scaleX(-1);
   transform-origin: center;
 }
 
-.mountainSideBase {
+.solutionsSection .mountainSideBase {
   fill: var(--mountain-side-base);
 }
 
-.mountainSideShade {
+.solutionsSection .mountainSideShade {
   fill: var(--mountain-side-shade);
-  opacity: 0.85;
+  opacity: 0.52;
 }
 
-.mountainCenter {
+.solutionsSection .mountainCenter {
   left: 50%;
-  width: min(90%, 1220px);
-  height: clamp(520px, 82vh, 860px);
+  width: min(100%, 1450px);
+  height: clamp(530px, 78vh, 850px);
   transform: translateX(-50%);
-  filter: drop-shadow(0 -20px 50px rgba(15, 23, 42, 0.08));
+  filter: drop-shadow(0 12px 28px rgba(25, 48, 65, 0.12));
 }
 
-.mountainCenterBack {
+.solutionsSection .mountainCenterBack {
   fill: var(--mountain-center-back);
+  opacity: 0.7;
 }
 
-.mountainCenterFront {
-  fill: var(--mountain-center-front);
-}
-
-.mountainCenterFoot {
+.solutionsSection .mountainCenterFoot {
   fill: var(--mountain-center-foot);
 }
 
