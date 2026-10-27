@@ -1064,8 +1064,7 @@ export default function Header() {
               {!isAdminRoute ? <GlobeSwitcher size={62} /> : null}
               {isMainLandingRoute ? (
                 <ThemeModeButton type="button" onClick={toggleMainLandingThemeMode} aria-label={themeToggleLabel}>
-                  {mainLandingThemeMode === 'night' ? <FiMoon /> : <FiSun />}
-                  <span>{themeToggleLabel}</span>
+                  {mainLandingThemeMode === 'night' ? <FiMoon style={{ color: 'white', fontSize: 20 }} /> : <FiSun style={{ color: 'darkgray', fontSize: 20 }} />}
                 </ThemeModeButton>
               ) : null}
 

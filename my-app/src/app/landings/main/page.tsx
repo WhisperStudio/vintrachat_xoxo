@@ -272,30 +272,59 @@ export default function MainLanding() {
 
     <div className="solutionsIntroArc">
       <div className="mountainLayer" aria-hidden="true">
-        <svg className="mountainSide mountainSide--left" viewBox="0 0 800 400" preserveAspectRatio="none">
+        {/* Bakre fjellkjede – myk og fjern */}
+        <svg className="mountainSide mountainSide--left" viewBox="0 0 1000 440" preserveAspectRatio="none">
           <path
             className="mountainSideBase"
-            d="M0,400 L0,260 L70,180 L140,230 L210,140 L290,210 L360,150 L430,240 L520,170 L600,260 L680,200 L800,280 L800,400 Z"
+            d="M0 440 L0 300 L65 264 L108 279 L164 228 L207 247 L269 181 L314 213 L355 197 L408 235 L462 165 L507 205 L556 187 L608 236 L657 209 L708 244 L762 190 L815 230 L874 207 L931 253 L1000 222 L1000 440 Z"
           />
           <path
             className="mountainSideShade"
-            d="M0,400 L0,320 L120,260 L240,310 L380,250 L500,320 L620,270 L800,340 L800,400 Z"
+            d="M0 440 L0 353 L89 326 L158 344 L236 295 L299 321 L373 283 L432 310 L512 270 L576 315 L650 289 L728 327 L801 293 L881 329 L945 307 L1000 329 L1000 440 Z"
           />
         </svg>
-        <svg className="mountainSide mountainSide--right" viewBox="0 0 800 400" preserveAspectRatio="none">
+
+        {/* Speilvendt fjellkjede på høyre side */}
+        <svg className="mountainSide mountainSide--right" viewBox="0 0 1000 440" preserveAspectRatio="none">
           <path
             className="mountainSideBase"
-            d="M0,400 L0,260 L70,180 L140,230 L210,140 L290,210 L360,150 L430,240 L520,170 L600,260 L680,200 L800,280 L800,400 Z"
+            d="M0 440 L0 315 L61 280 L119 294 L176 244 L224 263 L283 205 L326 229 L385 171 L431 211 L484 187 L536 236 L588 194 L635 224 L695 176 L742 216 L798 193 L855 238 L918 207 L1000 259 L1000 440 Z"
           />
           <path
             className="mountainSideShade"
-            d="M0,400 L0,320 L120,260 L240,310 L380,250 L500,320 L620,270 L800,340 L800,400 Z"
+            d="M0 440 L0 360 L95 326 L164 346 L245 301 L313 327 L384 285 L451 316 L526 281 L603 318 L674 293 L745 331 L822 299 L895 330 L957 313 L1000 333 L1000 440 Z"
           />
         </svg>
-        <svg className="mountainCenter" viewBox="0 0 600 500" preserveAspectRatio="none">
-          <path className="mountainCenterBack" d="M0,500 L34,346 L132,390 L300,24 L468,390 L566,346 L600,500 Z" />
-          <path className="mountainCenterFront" d="M0,500 L62,404 L182,312 L300,124 L418,312 L538,404 L600,500 Z" />
-          <path className="mountainCenterFoot" d="M0,500 L600,500 L600,462 L502,432 L420,454 L300,420 L180,454 L98,432 L0,462 Z" />
+
+        {/* Hovedfjellet */}
+        <svg className="mountainCenter" viewBox="0 0 1000 700" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="mountainSunlit" x1="0" y1="0" x2="1" y2="0.65">
+              <stop offset="0%" stopColor="#e1edf1" />
+              <stop offset="42%" stopColor="#c5d9e4" />
+              <stop offset="100%" stopColor="#91adbf" />
+            </linearGradient>
+            <linearGradient id="mountainShadow" x1="0" y1="0" x2="1" y2="0.8">
+              <stop offset="0%" stopColor="#819db1" />
+              <stop offset="55%" stopColor="#6e899e" />
+              <stop offset="100%" stopColor="#a5bdcb" />
+            </linearGradient>
+            <linearGradient id="snowLight" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#ffffff" />
+              <stop offset="100%" stopColor="#d6e5ec" />
+            </linearGradient>
+          </defs>
+
+          <path className="mountainCenterBack" d="M65 700 L102 540 L175 480 L224 433 L278 389 L319 313 L358 281 L401 194 L443 127 L471 75 L489 36 L505 18 L523 43 L544 88 L568 119 L596 183 L631 230 L659 285 L706 319 L749 365 L795 409 L846 454 L900 504 L936 568 L965 700 Z" />
+          <path d="M65 700 L102 540 L175 480 L224 433 L278 389 L319 313 L358 281 L401 194 L443 127 L471 75 L489 36 L505 18 L510 112 L484 176 L468 228 L447 273 L420 326 L395 374 L366 420 L326 466 L284 510 L241 565 L195 610 L155 700 Z" fill="url(#mountainSunlit)" />
+          <path d="M510 112 L523 43 L544 88 L568 119 L596 183 L631 230 L659 285 L706 319 L749 365 L795 409 L846 454 L900 504 L936 568 L965 700 L155 700 L195 610 L241 565 L284 510 L326 466 L366 420 L395 374 L420 326 L447 273 L468 228 L484 176 Z" fill="url(#mountainShadow)" opacity="0.85" />
+          <path d="M505 18 L510 112 L484 176 L447 273 L468 228 L501 202 L523 151 L544 88 L523 43 Z" fill="url(#snowLight)" opacity="0.94" />
+          <path d="M443 127 L471 75 L489 36 L505 18 L498 68 L477 101 L464 142 L443 174 L401 194 Z" fill="url(#snowLight)" opacity="0.96" />
+          <path d="M358 281 L401 194 L443 174 L420 226 L395 252 L382 289 L347 326 L319 313 Z" fill="#a7c1d1" opacity="0.8" />
+          <path d="M544 88 L568 119 L596 183 L631 230 L602 212 L579 178 L558 154 L535 123 Z" fill="#718ca1" opacity="0.72" />
+          <path d="M468 228 L501 202 L484 250 L447 273 L420 326 L395 374 L366 420 L326 466 L350 424 L380 383 L399 339 L430 296 Z" fill="#718ca1" opacity="0.48" />
+          <path d="M596 183 L631 230 L659 285 L706 319 L749 365 L711 350 L671 322 L643 284 L618 249 Z" fill="#d1e0e8" opacity="0.55" />
+          <path className="mountainCenterFoot" d="M0 700 L0 638 L90 615 L153 627 L231 594 L298 616 L371 581 L437 604 L503 578 L570 608 L645 585 L716 614 L786 591 L855 619 L925 601 L1000 631 L1000 700 Z" />
         </svg>
       </div>
       <div className="solutionsIntro solutionsIntroArcContent" aria-hidden={solutionsProgress <= 0.16}>
