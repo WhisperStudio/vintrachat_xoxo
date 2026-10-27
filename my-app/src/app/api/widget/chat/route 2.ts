@@ -1,0 +1,1271 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { FieldValue } from 'firebase-admin/firestore'
+import { adminDb } from '@/lib/firebase-admin'
+import { getBusinessByWidgetKey } from '@/lib/widget.server'
+import { getDailyConversationCount, getPlanLimits, getTodayUsageKey } from '@/lib/subscription'
+import { countCharacters, getClientIp } from '@/lib/widget-security'
+import { enforceWidgetRateLimit } from '@/lib/widget-rate-limit.server'
+import { authorizeWidgetRequest, getOrCreateWidgetEmbedSecret } from '@/lib/widget-embed-token.server'
+import { createWidgetCaptchaChallenge, verifyWidgetCaptchaToken } from '@/lib/widget-captcha.server'
+import { getGeminiModelCandidates } from '@/lib/gemini-models.server'
+import { getAnalyticsDayKey, getAnalyticsHourKey } from '@/lib/chat-analytics'
+
+function corsHeaders(origin?: string | null) {
+  return {
+    'Access-Control-Allow-Origin': origin || '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers':
+      'Content-Type, X-Vintra-Embed-Token, X-Vintra-Fingerprint, X-Vintra-Captcha-Token, X-Vintra-App-Origin, X-Vintra-Debug',
+    Vary: 'Origin',
+  }
+}
+
+type IncomingMessage = {
+  id?: string
+  role: 'user' | 'assistant'
+  text: string
+  createdAt?: string
+}
+
+type GeminiResult = {
+  reply: string
+  needsHumanSupport: boolean
+  modelUsed: string
+}
+
+class GeminiApiError extends Error {
+  status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'GeminiApiError'
+    this.status = status
+  }
+}
+
+const fallbackSupportKeywords = [
+  'support',
+  'human',
+  'person',
+  'agent',
+  'contact',
+  'call me',
+  'email me',
+  'customer service',
+]
+
+const fallbackFeedbackKeywords = [
+  'feedback',
+  'review',
+  'rating',
+  'star',
+  'stars',
+  'vurdering',
+  'anmeldelse',
+  'tilbakemelding',
+]
+
+const fallbackTaskKeywords = [
+  'ticket',
+  'task',
+  'case',
+  'issue',
+  'problem',
+  'support ticket',
+  'create ticket',
+  'open ticket',
+  'lag oppgave',
+  'lag ticket',
+  'opprett ticket',
+  'opprett sak',
+]
+
+const MAX_WIDGET_MESSAGE_CHARS = 300
+function buildHumanHandoffReply() {
+  return 'Takk for info, jeg har flagget det inn til et menneske. Mens vi venter, er det noe annet du lurer på?'
+}
+function normalizeGeminiModel(model: string | null | undefined) {
+  const value = String(model || '').trim()
+  const allowed = ['gemini-2.5-flash-lite', 'gemma-4-26b-a4b-it', 'gemma-4-31b-it']
+  const cleaned = value.startsWith('models/') ? value.slice('models/'.length) : value
+  return allowed.includes(cleaned) ? cleaned : 'gemini-2.5-flash-lite'
+}
+
+function trimHistory(history: unknown[]): IncomingMessage[] {
+  return history
+    .filter((message): message is IncomingMessage => {
+      return (
+        typeof message === 'object' &&
+        message !== null &&
+        'text' in message &&
+        typeof message.text === 'string' &&
+        message.text.trim().length > 0
+      )
+    })
+    .slice(-10)
+    .map((message): IncomingMessage => ({
+      id: message.id || crypto.randomUUID(),
+      role: message.role === 'assistant' ? 'assistant' : 'user',
+      text: message.text.trim(),
+      createdAt: message.createdAt || new Date().toISOString(),
+    }))
+}
+
+function didUserRequestHumanSupport(message: string, keywords: string[]) {
+  const normalized = message.toLowerCase()
+  return keywords.some((keyword) => normalized.includes(keyword.toLowerCase()))
+}
+
+function didUserRequestFeedback(message: string, keywords: string[]) {
+  const normalized = message.toLowerCase()
+  return keywords.some((keyword) => normalized.includes(keyword.toLowerCase()))
+}
+
+function didUserRequestTask(message: string, keywords: string[]) {
+  const normalized = message.toLowerCase()
+  return keywords.some((keyword) => normalized.includes(keyword.toLowerCase()))
+}
+
+function getRequestCountryCode(req: NextRequest) {
+  const headerCountry =
+    req.headers.get('x-vercel-ip-country') ||
+    req.headers.get('x-country-code') ||
+    (req as any).geo?.country
+
+  const country = String(headerCountry || 'XX').trim().toUpperCase()
+  return /^[A-Z]{2}$/.test(country) ? country : 'XX'
+}
+
+function createAnalyticsEvent(
+  kind: string,
+  sessionId: string,
+  countryCode?: string,
+  widgetKey?: string
+) {
+  return {
+    id: crypto.randomUUID(),
+    kind,
+    sessionId,
+    widgetKey,
+    countryCode,
+    createdAt: new Date(),
+  }
+}
+
+function buildDailyStatUpdatePaths(date: Date, countryCode: string) {
+  const dayKey = getAnalyticsDayKey(date)
+  const hourKey = getAnalyticsHourKey(date)
+
+  return {
+    dayKey,
+    hourKey,
+    messageCountPath: `chatAnalytics.dailyStats.${dayKey}.totalMessages`,
+    sessionCountPath: `chatAnalytics.dailyStats.${dayKey}.totalSessions`,
+    supportRequestsPath: `chatAnalytics.dailyStats.${dayKey}.supportRequests`,
+    savedSupportChatsPath: `chatAnalytics.dailyStats.${dayKey}.savedSupportChats`,
+    hourPath: `chatAnalytics.dailyStats.${dayKey}.hours.${hourKey}`,
+    countryPath: `chatAnalytics.dailyStats.${dayKey}.countryCounts.${countryCode}`,
+  }
+}
+
+function sanitizeAiChatMessages(history: IncomingMessage[]) {
+  return history
+    .filter((entry) => entry.role === 'user' || entry.role === 'assistant')
+    .map((entry) => ({
+      id: entry.id || crypto.randomUUID(),
+      role: entry.role,
+      text: String(entry.text || '').trim(),
+      createdAt: entry.createdAt ? new Date(entry.createdAt) : new Date(),
+    }))
+    .filter((entry) => entry.text.length > 0)
+}
+
+async function persistAiOnlyChatLog(args: {
+  businessId: string
+  sessionId: string
+  widgetKey: string
+  countryCode: string
+  pageTitle?: string
+  pageUrl?: string
+  visitorName?: string
+  messageTimeline: IncomingMessage[]
+}) {
+  const aiChatLogRef = adminDb
+    .collection('businesses')
+    .doc(args.businessId)
+    .collection('aiChatLogs')
+    .doc(args.sessionId)
+  const aiChatLogSnap = await aiChatLogRef.get()
+  const sanitizedMessages = sanitizeAiChatMessages(args.messageTimeline)
+  const latestVisitorMessage = [...sanitizedMessages]
+    .reverse()
+    .find((entry) => entry.role === 'user')
+  const preview = latestVisitorMessage?.text || sanitizedMessages.at(-1)?.text || ''
+
+  await aiChatLogRef.set(
+    {
+      sessionId: args.sessionId,
+      businessId: args.businessId,
+      widgetKey: args.widgetKey,
+      countryCode: args.countryCode,
+      pageTitle: args.pageTitle || null,
+      pageUrl: args.pageUrl || null,
+      visitorName: args.visitorName || null,
+      preview,
+      messageCount: sanitizedMessages.length,
+      messages: sanitizedMessages,
+      createdAt: aiChatLogSnap.exists
+        ? aiChatLogSnap.data()?.createdAt || FieldValue.serverTimestamp()
+        : FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  )
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function supportsNativeJsonMode(model: string) {
+  const supportsJson = !model.toLowerCase().startsWith('gemma-')
+  console.log(`[Gemini Debug] Model: ${model}, supportsNativeJsonMode: ${supportsJson}`)
+  return supportsJson
+}
+
+function isNonRetryableFallbackError(status: number) {
+  return status === 400 || status === 403 || status === 404
+}
+
+function extractGeminiResult(rawText: string): Omit<GeminiResult, 'modelUsed'> {
+  try {
+    const parsed = JSON.parse(rawText)
+
+    return {
+      reply: typeof parsed.reply === 'string' ? parsed.reply : 'I could not generate a reply.',
+      needsHumanSupport: Boolean(parsed.needsHumanSupport),
+    }
+  } catch {
+    const replyMatch = rawText.match(/"reply"\s*:\s*"([\s\S]*?)"/)
+    const supportMatch = rawText.match(/"needsHumanSupport"\s*:\s*(true|false)/i)
+
+    const reply = replyMatch?.[1]
+      ? replyMatch[1]
+          .replace(/\\"/g, '"')
+          .replace(/\\n/g, '\n')
+          .trim()
+      : rawText.trim()
+
+    return {
+      reply: reply || 'I could not generate a reply.',
+      needsHumanSupport: supportMatch?.[1]?.toLowerCase() === 'true',
+    }
+  }
+}
+
+function buildPrompt(args: {
+  businessName: string
+  systemPrompt: string
+  businessContext: string
+  businessProfile?: {
+    businessName: string
+    industry: string
+    shortDescription: string
+    toneOfVoice: string
+    language: string
+    multilingual: boolean
+    mainGoal: string
+    fallbackContact: string
+  }
+  knowledgeBase?: {
+    websiteUrls: string[]
+    uploadedDocuments: { name: string; type: string; status?: string; url?: string; text?: string }[]
+    manualNotes: string
+    openingHours: string
+    contactInfo: string
+    addresses: string
+    keyFAQs: string[]
+  }
+  integrations?: {
+    replyToQuestions: boolean
+    collectLeads: boolean
+    bookMeetings: boolean
+    routeToPages: boolean
+    createSupportTickets: boolean
+    fetchOrderStatus: boolean
+    handoffToHuman: boolean
+  }
+  restrictions: string
+  strictContextOnly: boolean
+  strictness?: 'sales' | 'balanced' | 'support'
+  supportKeywords: string[]
+  faqSuggestions: string[]
+  conversationCards: {
+    title: string
+    description: string
+    options: {
+      label: string
+      prompt: string
+      description?: string
+    }[]
+  }[]
+  startLanguage: string
+  replyInUserLanguage: boolean
+  responseStyle: string
+  extraInstructions: string
+  history: IncomingMessage[]
+  message: string
+}) {
+  const historyText = args.history
+    .map((entry) => `${entry.role === 'assistant' ? 'Assistant' : 'User'}: ${entry.text}`)
+    .join('\n')
+
+  const faqSuggestions = args.faqSuggestions
+    .map((entry) => String(entry || '').trim())
+    .filter(Boolean)
+  const faqText = faqSuggestions.length
+    ? faqSuggestions.map((item) => `- ${item}`).join('\n')
+    : 'No FAQ suggestions configured.'
+  const conversationCards = Array.isArray(args.conversationCards) ? args.conversationCards : []
+  const conversationCardsText = conversationCards.length
+    ? conversationCards
+        .map((card, index) => {
+          const options = card.options.length
+            ? card.options
+                .map((option) => {
+                  const note = option.description ? ` (${option.description})` : ''
+                  return `  - ${option.label}: ${option.prompt}${note}`
+                })
+                .join('\n')
+            : '  - No options configured.'
+          return `${index + 1}. ${card.title} - ${card.description}\n${options}`
+        })
+        .join('\n\n')
+    : 'No starter cards configured.'
+
+  const languageRule = args.replyInUserLanguage
+    ? `For the first assistant reply in a conversation, start in ${args.startLanguage || 'English'}. After that, reply in the same language as the latest user message.`
+    : `Reply in ${args.startLanguage || 'English'} unless the business context explicitly requires another language.`
+
+  const profile = args.businessProfile || {
+    businessName: args.businessName,
+    industry: '',
+    shortDescription: '',
+    toneOfVoice: '',
+    language: args.startLanguage || 'English',
+    multilingual: args.replyInUserLanguage,
+    mainGoal: '',
+    fallbackContact: '',
+  }
+
+  const knowledgeBase = args.knowledgeBase || {
+    websiteUrls: [],
+    uploadedDocuments: [],
+    manualNotes: '',
+    openingHours: '',
+    contactInfo: '',
+    addresses: '',
+    keyFAQs: [],
+  }
+
+  const integrations = args.integrations || {
+    replyToQuestions: true,
+    collectLeads: true,
+    bookMeetings: false,
+    routeToPages: true,
+    createSupportTickets: false,
+    fetchOrderStatus: false,
+    handoffToHuman: true,
+  }
+
+  const strictnessRule =
+    args.strictness === 'sales'
+      ? 'Strictness level: sales mode. You may explain broadly, suggest next steps, and be proactive, but never invent prices, guarantees, or legal terms.'
+      : args.strictness === 'support'
+        ? 'Strictness level: support/legal mode. Only answer from approved business information. Do not guess or fill gaps with assumptions. If a fact is missing, say that you do not know and offer human support.'
+        : 'Strictness level: balanced mode. Answer from approved information first, explain clearly in your own words, and admit uncertainty when needed.'
+
+  const knowledgeDocuments = knowledgeBase.uploadedDocuments.length
+    ? knowledgeBase.uploadedDocuments
+        .map((doc) => {
+          const status = doc.status ? ` (${doc.status})` : ''
+          const body = doc.text ? `\n${doc.text}` : doc.url ? `\nSource: ${doc.url}` : ''
+          return `- ${doc.name}${status}${body}`
+        })
+        .join('\n')
+    : 'No uploaded documents configured.'
+
+  const activeIntegrations = Object.entries(integrations)
+    .filter(([, enabled]) => enabled)
+    .map(([key]) => key.replace(/([A-Z])/g, ' $1').replace(/^./, (value) => value.toUpperCase()))
+
+  return [
+    `Global system prompt:\n${args.systemPrompt}`,
+    `Business profile:\n${JSON.stringify(profile, null, 2)}`,
+    `Knowledge base summary:\n${[
+      knowledgeBase.websiteUrls.length ? `Website URLs: ${knowledgeBase.websiteUrls.join(', ')}` : 'Website URLs: none',
+      knowledgeBase.openingHours ? `Opening hours: ${knowledgeBase.openingHours}` : 'Opening hours: none',
+      knowledgeBase.contactInfo ? `Contact info: ${knowledgeBase.contactInfo}` : 'Contact info: none',
+      knowledgeBase.addresses ? `Addresses: ${knowledgeBase.addresses}` : 'Addresses: none',
+      knowledgeBase.manualNotes ? `Manual notes:\n${knowledgeBase.manualNotes}` : 'Manual notes: none',
+      knowledgeBase.keyFAQs.length ? `Key FAQs: ${knowledgeBase.keyFAQs.map((item) => `- ${item}`).join('\n')}` : 'Key FAQs: none',
+      `Uploaded documents:\n${knowledgeDocuments}`,
+    ].join('\n\n')}`,
+    `Actions / integrations:\n${activeIntegrations.length ? activeIntegrations.map((item) => `- ${item}`).join('\n') : 'No integrations enabled.'}`,
+    languageRule,
+    args.strictContextOnly
+      ? 'Use only the provided business context for factual claims. If context is missing, say that clearly.'
+      : 'Use the provided context as your primary source, but you may answer generally when the context is silent.',
+    strictnessRule,
+    `Business context:\n${args.businessContext || 'No business context has been configured yet.'}`,
+    `Restrictions:\n${args.restrictions || 'No additional restrictions configured.'}`,
+    args.responseStyle ? `Response style:\n${args.responseStyle}` : 'Response style:\nKeep the answer natural and helpful.',
+    args.extraInstructions ? `Extra instructions:\n${args.extraInstructions}` : 'Extra instructions:\nNone.',
+    `FAQ suggestions / common questions to anticipate:\n${faqText}`,
+    `Starter cards / quick entry points:\n${conversationCardsText}`,
+    `Treat these phrases as likely requests for human support: ${args.supportKeywords.join(', ')}`,
+    'Return JSON with keys "reply" and "needsHumanSupport".',
+    'Set "needsHumanSupport" to true only when the user explicitly asks to contact support, a human, an agent, or similar human follow-up.',
+    'Keep the reply concise and suitable for a website chat widget.',
+    historyText ? `Conversation so far:\n${historyText}` : 'Conversation so far:\nNo previous messages.',
+    `Latest user message:\n${args.message}`,
+  ].join('\n\n')
+}
+
+function buildNameRequestReply() {
+  return 'To contact human support, please write your name first. Is there anything else I can help you with?'
+}
+
+async function generateGeminiReply(
+  prompt: string,
+  model: string,
+  allowFallbacks = true
+): Promise<GeminiResult> {
+  const apiKey = process.env.GEMINI_API_KEY
+
+  if (!apiKey) {
+    return {
+      reply:
+        'AI is ready in the app, but Gemini is not configured yet. Add GEMINI_API_KEY to enable live answers.',
+      needsHumanSupport: false,
+      modelUsed: model,
+    }
+  }
+
+  const retryDelays = [800, 1600, 3000]
+  const modelCandidates = allowFallbacks
+    ? await getGeminiModelCandidates(model, apiKey)
+    : [normalizeGeminiModel(model)]
+  
+  console.log(`[Gemini Debug] Starting generateGeminiReply with primary model: ${model}, allowFallbacks: ${allowFallbacks}`)
+  console.log(`[Gemini Debug] Model candidates: ${modelCandidates.join(', ')}`)
+
+  for (const candidate of modelCandidates) {
+    const useNativeJsonMode = supportsNativeJsonMode(candidate)
+    console.log(`[Gemini Debug] Trying model: ${candidate}, useNativeJsonMode: ${useNativeJsonMode}`)
+
+    for (let attempt = 0; attempt <= retryDelays.length; attempt += 1) {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${candidate}:generateContent`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey,
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [{ text: prompt }],
+              },
+            ],
+            generationConfig: useNativeJsonMode
+              ? {
+                  responseMimeType: 'application/json',
+                  responseJsonSchema: {
+                    type: 'object',
+                    properties: {
+                      reply: {
+                        type: 'string',
+                        description: 'The assistant reply shown to the visitor.',
+                      },
+                      needsHumanSupport: {
+                        type: 'boolean',
+                        description:
+                          'True only when the visitor explicitly asks for human support or contact.',
+                      },
+                    },
+                    required: ['reply', 'needsHumanSupport'],
+                  },
+                }
+              : undefined,
+          }),
+        }
+      )
+
+      if (response.ok) {
+        const json = await response.json()
+        const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text
+        
+        console.log(`[Gemini Debug] Model ${candidate} response:`, { 
+          hasText: !!rawText, 
+          textLength: rawText?.length,
+          rawTextPreview: rawText?.substring(0, 100)
+        })
+
+        if (!rawText) {
+          throw new Error('Gemini returned no text')
+        }
+
+        return {
+          ...extractGeminiResult(rawText),
+          modelUsed: candidate,
+        }
+      }
+
+      const errorText = await response.text()
+      console.log(`[Gemini Debug] Model ${candidate} error (${response.status}):`, errorText)
+      const retryable =
+        response.status === 429 ||
+        response.status === 503 ||
+        /quota|resource exhausted|too many requests/i.test(errorText)
+
+      if (retryable && attempt < retryDelays.length) {
+        await sleep(retryDelays[attempt])
+        continue
+      }
+
+      if (retryable) {
+        break
+      }
+
+      if (isNonRetryableFallbackError(response.status)) {
+        console.warn(
+          `Gemini model ${candidate} unavailable (${response.status}), trying next fallback if available.`
+        )
+        break
+      }
+
+      throw new GeminiApiError(response.status, `Gemini request failed: ${response.status} ${errorText}`)
+    }
+  }
+
+  console.log(`[Gemini Debug] All model candidates failed after retries`)
+  throw new Error('Gemini request failed after retries and model fallbacks')
+}
+
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: corsHeaders(req.headers.get('origin')),
+  })
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const headers = corsHeaders(req.headers.get('origin'))
+    const body = await req.json()
+    const widgetKey = String(body.widgetKey || '')
+    const message = String(body.message || '').trim()
+    const sessionId = String(body.sessionId || crypto.randomUUID())
+    const pageTitle = body.pageTitle ? String(body.pageTitle) : undefined
+    const pageUrl = body.pageUrl ? String(body.pageUrl) : undefined
+    const visitorName = body.visitorName ? String(body.visitorName).trim() : ''
+    const visitorEmail = body.visitorEmail ? String(body.visitorEmail).trim() : ''
+    const visitorPhone = body.visitorPhone ? String(body.visitorPhone).trim() : ''
+    const countryCode = getRequestCountryCode(req)
+    const requestHumanSupport = Boolean(body.requestHumanSupport)
+    const supportRequestText = body.supportRequestText ? String(body.supportRequestText).trim() : ''
+    const history = trimHistory(Array.isArray(body.history) ? body.history : [])
+    const requestFeedbackForm = didUserRequestFeedback(message, fallbackFeedbackKeywords)
+    const requestTaskForm = didUserRequestTask(message, fallbackTaskKeywords)
+    const fingerprint = String(req.headers.get('x-vintra-fingerprint') || body.fingerprint || '').trim()
+    const captchaToken = String(req.headers.get('x-vintra-captcha-token') || body.captchaToken || '').trim()
+
+    if (!widgetKey || (!message && !requestHumanSupport)) {
+      return NextResponse.json(
+        { error: 'Missing widget key or message' },
+        { status: 400, headers }
+      )
+    }
+
+    const business = await getBusinessByWidgetKey(widgetKey)
+
+    if (!business?.chatWidgetConfig) {
+      return NextResponse.json({ error: 'Widget not found' }, { status: 404, headers })
+    }
+
+    const access = await authorizeWidgetRequest({ req, business })
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.reason }, { status: 403, headers })
+    }
+
+    const captchaSecret = await getOrCreateWidgetEmbedSecret(business.id)
+    const captchaVerification = captchaToken
+      ? verifyWidgetCaptchaToken({
+          secret: captchaSecret,
+          captchaToken,
+          businessId: business.id,
+          widgetKey,
+          sessionId,
+          fingerprint,
+          clientIp: getClientIp(req),
+        })
+      : { valid: false as const }
+
+    const clientId = getClientIp(req)
+    const rateLimitCheck = await enforceWidgetRateLimit({
+      businessId: business.id,
+      widgetKey,
+      clientId,
+      sessionId,
+      fingerprint,
+      action: 'widget-chat',
+      rules: [
+        { windowMs: 10_000, maxRequests: 3 },
+        { windowMs: 60_000, maxRequests: 15 },
+      ],
+      captchaRules: [
+        { windowMs: 60_000, maxRequests: 60 },
+        { windowMs: 3_600_000, maxRequests: 240 },
+      ],
+      captchaTokenValid: captchaVerification.valid,
+    })
+
+    if (!rateLimitCheck.allowed) {
+      if (rateLimitCheck.captchaRequired) {
+        const challenge = createWidgetCaptchaChallenge({
+          secret: captchaSecret,
+          businessId: business.id,
+          widgetKey,
+          sessionId,
+          fingerprint,
+          clientIp: clientId,
+        })
+
+        return NextResponse.json(
+          {
+            error: 'Captcha required',
+            captchaRequired: true,
+            captchaQuestion: challenge.question,
+            captchaToken: challenge.challengeToken,
+            captchaExpiresInSeconds: challenge.expiresInSeconds,
+          },
+          { status: 429, headers }
+        )
+      }
+
+      return NextResponse.json(
+        {
+          error: `You're sending messages too quickly. Please wait ${rateLimitCheck.retryAfterSeconds}s and try again.`,
+          retryAfterSeconds: rateLimitCheck.retryAfterSeconds,
+        },
+        { status: 429, headers }
+      )
+    }
+
+    if (message && countCharacters(message) > MAX_WIDGET_MESSAGE_CHARS) {
+      return NextResponse.json(
+        { error: `Message is too long. Max ${MAX_WIDGET_MESSAGE_CHARS} characters.` },
+        { status: 400, headers }
+      )
+    }
+
+    const plan = business.chatWidgetConfig.plan || 'free'
+    const planLimits = getPlanLimits(plan)
+    const todayKey = getTodayUsageKey()
+    const currentDailyConversationCount = getDailyConversationCount(business.chatAnalytics, new Date())
+    const isNewConversation = !body.sessionId
+
+    if (
+      plan === 'free' &&
+      isNewConversation &&
+      planLimits.maxDailyConversations !== null &&
+      currentDailyConversationCount >= planLimits.maxDailyConversations
+    ) {
+      return NextResponse.json(
+        { error: 'The Limit for todays usages is met' },
+        { status: 429, headers }
+      )
+    }
+
+    const assistantConfig = business.chatAssistantConfig || {
+      enabled: true,
+      provider: 'gemini' as const,
+      model: 'gemini-2.5-flash-lite',
+      strictContextOnly: true,
+      strictness: 'balanced' as const,
+      systemPrompt: '',
+      businessContext: '',
+      businessProfile: {
+        businessName: String(business.name || ''),
+        industry: '',
+        shortDescription: '',
+        toneOfVoice: 'professional, warm, helpful',
+        language: 'English',
+        multilingual: false,
+        mainGoal: 'convert visitors into leads',
+        fallbackContact: '',
+      },
+      knowledgeBase: {
+        websiteUrls: [],
+        uploadedDocuments: [],
+        manualNotes: '',
+        openingHours: '',
+        contactInfo: '',
+        addresses: '',
+        keyFAQs: [],
+      },
+      integrations: {
+        replyToQuestions: true,
+        collectLeads: true,
+        bookMeetings: false,
+        routeToPages: true,
+        createSupportTickets: false,
+        fetchOrderStatus: false,
+        handoffToHuman: true,
+      },
+      restrictions: '',
+      supportTriggerKeywords: fallbackSupportKeywords,
+      humanSupportEnabled: true,
+      handoffMessage:
+        'I understand. I am putting you through to a human assistant now. Please hold on while I connect you with someone available.',
+      faqSuggestionsEnabled: false,
+      faqSuggestions: [],
+      conversationCardsEnabled: false,
+      conversationCards: [],
+      widgetIcons: {
+        avatarIcon: 'FiMessageCircle',
+        heroIcon: 'FiMessageCircle',
+        aiIcon: 'FiCpu',
+        supportIcon: 'FiLifeBuoy',
+        userIcon: 'FiUser',
+      },
+      startLanguage: 'English',
+      replyInUserLanguage: true,
+      responseStyle: '',
+      extraInstructions: '',
+      forceSelectedModelOnly: false,
+    }
+    const humanSupportEnabled = assistantConfig.humanSupportEnabled !== false
+    const taskTabEnabled = business.chatWidgetConfig?.settings?.tasksEnabled === true
+    const reviewTabEnabled = business.chatWidgetConfig?.settings?.reviewsEnabled === true
+
+    if (requestFeedbackForm && reviewTabEnabled) {
+      const businessRef = adminDb.collection('businesses').doc(business.id)
+      const todayKey = getTodayUsageKey()
+      const now = new Date()
+      const statPaths = buildDailyStatUpdatePaths(now, countryCode)
+      const analyticsTimelineEvents = [
+        createAnalyticsEvent('visitor-message', sessionId, countryCode, widgetKey),
+      ]
+
+      if (!body.sessionId) {
+        analyticsTimelineEvents.unshift(
+          createAnalyticsEvent('session-start', sessionId, countryCode, widgetKey)
+        )
+      }
+
+      const finalReply = 'Absolutely. I opened a quick feedback form for you.'
+
+      await businessRef.update({
+        updatedAt: FieldValue.serverTimestamp(),
+        'chatAnalytics.totalMessages': FieldValue.increment(1),
+        'chatAnalytics.lastChatAt': FieldValue.serverTimestamp(),
+        'chatAnalytics.timeline': FieldValue.arrayUnion(...analyticsTimelineEvents),
+        [statPaths.messageCountPath]: FieldValue.increment(1),
+        [statPaths.hourPath]: FieldValue.increment(1),
+        ...(body.sessionId ? {} : {
+          'chatAnalytics.totalSessions': FieldValue.increment(1),
+          'chatAnalytics.aiOnlySessions': FieldValue.increment(1),
+          [`chatAnalytics.dailyConversationCounts.${todayKey}`]: FieldValue.increment(1),
+          [`chatAnalytics.countryCounts.${countryCode}`]: FieldValue.increment(1),
+          [statPaths.sessionCountPath]: FieldValue.increment(1),
+          [statPaths.countryPath]: FieldValue.increment(1),
+        }),
+      })
+
+      return NextResponse.json(
+        {
+          sessionId,
+          reply: finalReply,
+          feedbackFormRequested: true,
+          countryCode,
+        },
+        { headers }
+      )
+    }
+
+    if (requestTaskForm && taskTabEnabled) {
+      const businessRef = adminDb.collection('businesses').doc(business.id)
+      const todayKey = getTodayUsageKey()
+      const now = new Date()
+      const statPaths = buildDailyStatUpdatePaths(now, countryCode)
+      const analyticsTimelineEvents = [
+        createAnalyticsEvent('visitor-message', sessionId, countryCode, widgetKey),
+      ]
+
+      if (!body.sessionId) {
+        analyticsTimelineEvents.unshift(
+          createAnalyticsEvent('session-start', sessionId, countryCode, widgetKey)
+        )
+      }
+
+      await businessRef.update({
+        updatedAt: FieldValue.serverTimestamp(),
+        'chatAnalytics.totalMessages': FieldValue.increment(1),
+        'chatAnalytics.lastChatAt': FieldValue.serverTimestamp(),
+        'chatAnalytics.timeline': FieldValue.arrayUnion(...analyticsTimelineEvents),
+        [statPaths.messageCountPath]: FieldValue.increment(1),
+        [statPaths.hourPath]: FieldValue.increment(1),
+        ...(body.sessionId ? {} : {
+          'chatAnalytics.totalSessions': FieldValue.increment(1),
+          'chatAnalytics.aiOnlySessions': FieldValue.increment(1),
+          [`chatAnalytics.dailyConversationCounts.${todayKey}`]: FieldValue.increment(1),
+          [`chatAnalytics.countryCounts.${countryCode}`]: FieldValue.increment(1),
+          [statPaths.sessionCountPath]: FieldValue.increment(1),
+          [statPaths.countryPath]: FieldValue.increment(1),
+        }),
+      })
+
+      return NextResponse.json(
+        {
+          sessionId,
+          reply: 'Absolutely. I opened a support ticket form for you.',
+          taskFormRequested: true,
+          countryCode,
+        },
+        { headers }
+      )
+    }
+
+    if (requestHumanSupport) {
+      if (!humanSupportEnabled) {
+        return NextResponse.json(
+          {
+            sessionId,
+            reply:
+              'Human support is currently turned off for this website. Please continue with the AI assistant or try again later.',
+            supportRequested: false,
+            countryCode,
+          },
+          { headers }
+        )
+      }
+
+      if (!visitorName) {
+        return NextResponse.json(
+          {
+            sessionId,
+            reply: buildNameRequestReply(),
+            supportRequested: false,
+            visitorNameRequired: true,
+            countryCode,
+          },
+          { headers }
+        )
+      }
+
+      if (!supportRequestText) {
+        return NextResponse.json(
+          { error: 'Missing support request text' },
+          { status: 400, headers }
+        )
+      }
+
+      if (countCharacters(supportRequestText) > MAX_WIDGET_MESSAGE_CHARS) {
+        return NextResponse.json(
+          { error: `Support request is too long. Max ${MAX_WIDGET_MESSAGE_CHARS} characters.` },
+          { status: 400, headers }
+        )
+      }
+
+      const now = new Date()
+      const userSupportMessage = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        text: supportRequestText,
+        createdAt: now.toISOString(),
+      }
+      const assistantSupportMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        text: buildHumanHandoffReply(),
+        createdAt: now.toISOString(),
+      }
+      const supportMessages = [userSupportMessage, assistantSupportMessage]
+      const businessRef = adminDb.collection('businesses').doc(business.id)
+      const supportChatRef = businessRef.collection('supportChats').doc(sessionId)
+      const supportChatSnap = await supportChatRef.get()
+      const isNewSupportChat = !supportChatSnap.exists
+      const statPaths = buildDailyStatUpdatePaths(now, countryCode)
+
+      await supportChatRef.set(
+        {
+          sessionId,
+          widgetKey,
+          businessId: business.id,
+          status: 'needs-human',
+          source: 'widget',
+          preview: supportRequestText,
+          visitorName,
+          visitorEmail: visitorEmail || null,
+          visitorPhone: visitorPhone || null,
+          countryCode,
+          pageTitle: pageTitle || null,
+          pageUrl: pageUrl || null,
+          messageCount: supportMessages.length,
+          messages: supportMessages,
+          supportRequestedAt: supportChatSnap.exists
+            ? supportChatSnap.data()?.supportRequestedAt || FieldValue.serverTimestamp()
+            : FieldValue.serverTimestamp(),
+          visitorTypingAt: FieldValue.delete(),
+          visitorTypingBy: FieldValue.delete(),
+          createdAt: supportChatSnap.exists
+            ? supportChatSnap.data()?.createdAt || FieldValue.serverTimestamp()
+            : FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      )
+
+      const analyticsUpdates: Record<string, unknown> = {
+        updatedAt: FieldValue.serverTimestamp(),
+        'chatAnalytics.totalMessages': FieldValue.increment(1),
+        'chatAnalytics.lastChatAt': FieldValue.serverTimestamp(),
+        'chatAnalytics.supportRequests': FieldValue.increment(isNewSupportChat ? 1 : 0),
+        'chatAnalytics.savedSupportChats': FieldValue.increment(isNewSupportChat ? 1 : 0),
+        'chatAnalytics.timeline': FieldValue.arrayUnion(
+          ...(!body.sessionId ? [createAnalyticsEvent('session-start', sessionId, countryCode, widgetKey)] : []),
+          createAnalyticsEvent('support-request', sessionId, countryCode, widgetKey)
+        ),
+        [statPaths.messageCountPath]: FieldValue.increment(1),
+        [statPaths.hourPath]: FieldValue.increment(1),
+        [statPaths.supportRequestsPath]: FieldValue.increment(isNewSupportChat ? 1 : 0),
+        [statPaths.savedSupportChatsPath]: FieldValue.increment(isNewSupportChat ? 1 : 0),
+      }
+
+      if (!body.sessionId) {
+        analyticsUpdates['chatAnalytics.totalSessions'] = FieldValue.increment(1)
+        analyticsUpdates[`chatAnalytics.dailyConversationCounts.${getTodayUsageKey(now)}`] = FieldValue.increment(1)
+        analyticsUpdates[`chatAnalytics.countryCounts.${countryCode}`] = FieldValue.increment(1)
+        analyticsUpdates[statPaths.sessionCountPath] = FieldValue.increment(1)
+        analyticsUpdates[statPaths.countryPath] = FieldValue.increment(1)
+      }
+
+      await businessRef.update(analyticsUpdates)
+
+      return NextResponse.json(
+        {
+          sessionId,
+          reply: buildHumanHandoffReply(),
+          supportRequested: true,
+          countryCode,
+        },
+        { headers }
+      )
+    }
+
+    const supportKeywords =
+      assistantConfig.supportTriggerKeywords?.length > 0
+        ? assistantConfig.supportTriggerKeywords
+        : fallbackSupportKeywords
+
+    const heuristicsTriggered = didUserRequestHumanSupport(message, supportKeywords)
+
+    let aiReply = 'The AI assistant is currently disabled.'
+    let aiWantsHumanSupport = false
+    let modelUsed = normalizeGeminiModel(assistantConfig.model || process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite')
+    const allowFallbacks = !assistantConfig.forceSelectedModelOnly
+
+    if (assistantConfig.enabled) {
+      const prompt = buildPrompt({
+        businessName: business.name,
+        systemPrompt: assistantConfig.systemPrompt,
+        businessContext: assistantConfig.businessContext,
+        businessProfile: assistantConfig.businessProfile,
+        knowledgeBase: assistantConfig.knowledgeBase,
+        integrations: assistantConfig.integrations,
+        restrictions: assistantConfig.restrictions,
+        strictContextOnly: assistantConfig.strictContextOnly,
+        strictness: assistantConfig.strictness || 'balanced',
+        supportKeywords,
+        faqSuggestions:
+          assistantConfig.faqSuggestionsEnabled && Array.isArray(assistantConfig.faqSuggestions)
+            ? assistantConfig.faqSuggestions
+            : [],
+        conversationCards:
+          assistantConfig.conversationCardsEnabled && Array.isArray(assistantConfig.conversationCards)
+            ? assistantConfig.conversationCards.slice(
+                0,
+                Math.max(1, Number(assistantConfig.conversationCardsLimit || 4))
+              )
+            : [],
+        startLanguage: assistantConfig.startLanguage || 'English',
+        replyInUserLanguage: assistantConfig.replyInUserLanguage !== false,
+        responseStyle: assistantConfig.responseStyle || '',
+        extraInstructions: assistantConfig.extraInstructions || '',
+        history,
+        message,
+      })
+
+      try {
+        const result = await generateGeminiReply(
+          prompt,
+          modelUsed,
+          allowFallbacks
+        )
+
+        aiReply = result.reply
+        aiWantsHumanSupport = result.needsHumanSupport
+        assistantConfig.model = result.modelUsed
+        modelUsed = result.modelUsed
+      } catch (error) {
+        if (error instanceof GeminiApiError && (error.status === 429 || error.status === 503)) {
+          console.warn('Gemini temporarily unavailable:', error.message)
+        } else {
+          console.warn(
+            'Gemini fallback chain failed, using safe fallback reply:',
+            error instanceof Error ? error.message : String(error)
+          )
+        }
+
+        aiReply =
+          'AI assistant is temporarily unavailable right now. Please try again in a little while.'
+        aiWantsHumanSupport = false
+      }
+    }
+
+    const needsHumanSupport = humanSupportEnabled && (heuristicsTriggered || aiWantsHumanSupport)
+    const requiresName = needsHumanSupport && !visitorName
+    const finalReply = requiresName ? buildNameRequestReply() : aiReply
+
+    const now = new Date()
+    const messageTimeline: IncomingMessage[] = [
+      ...history,
+      {
+        id: crypto.randomUUID(),
+        role: 'user',
+        text: message,
+        createdAt: now.toISOString(),
+      },
+      {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        text: finalReply,
+        createdAt: now.toISOString(),
+      },
+    ]
+
+    const businessRef = adminDb.collection('businesses').doc(business.id)
+    const supportChatRef = businessRef.collection('supportChats').doc(sessionId)
+    const supportChatSnap = await supportChatRef.get()
+    const existingSupportChat = supportChatSnap.exists ? supportChatSnap.data() || {} : null
+
+    if (existingSupportChat && existingSupportChat.status === 'open') {
+      const statPaths = buildDailyStatUpdatePaths(new Date(), countryCode)
+      const nextSupportMessage = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        text: message,
+        createdAt: new Date().toISOString(),
+      }
+      const nextSupportMessages = Array.isArray(existingSupportChat.messages)
+        ? [...existingSupportChat.messages, nextSupportMessage]
+        : [nextSupportMessage]
+
+      await supportChatRef.set(
+        {
+          sessionId,
+          widgetKey,
+          businessId: business.id,
+          status: existingSupportChat.status || 'needs-human',
+          source: 'widget',
+          preview: message,
+          visitorName: visitorName || existingSupportChat.visitorName || null,
+          visitorEmail: visitorEmail || existingSupportChat.visitorEmail || null,
+          visitorPhone: visitorPhone || existingSupportChat.visitorPhone || null,
+          countryCode: countryCode || existingSupportChat.countryCode || null,
+          pageTitle: pageTitle || existingSupportChat.pageTitle || null,
+          pageUrl: pageUrl || existingSupportChat.pageUrl || null,
+          messageCount: nextSupportMessages.length,
+          messages: nextSupportMessages,
+          supportRequestedAt:
+            existingSupportChat.supportRequestedAt || FieldValue.serverTimestamp(),
+          visitorTypingAt: FieldValue.delete(),
+          visitorTypingBy: FieldValue.delete(),
+          createdAt: existingSupportChat.createdAt || FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      )
+
+      await businessRef.update({
+        updatedAt: FieldValue.serverTimestamp(),
+        'chatAnalytics.totalMessages': FieldValue.increment(1),
+        'chatAnalytics.lastChatAt': FieldValue.serverTimestamp(),
+        'chatAnalytics.timeline': FieldValue.arrayUnion(
+          createAnalyticsEvent('visitor-message', sessionId, countryCode, widgetKey)
+        ),
+        [statPaths.messageCountPath]: FieldValue.increment(1),
+        [statPaths.hourPath]: FieldValue.increment(1),
+      })
+
+      return NextResponse.json(
+        {
+          sessionId,
+          reply: buildHumanHandoffReply(),
+          supportRequested: false,
+          visitorNameRequired: false,
+          countryCode,
+        },
+        { headers }
+      )
+    }
+
+    const isNewSupportChat = needsHumanSupport && !requiresName && !supportChatSnap.exists
+    const statPaths = buildDailyStatUpdatePaths(now, countryCode)
+
+    const analyticsTimelineEvents = [
+      createAnalyticsEvent('visitor-message', sessionId, countryCode, widgetKey),
+    ]
+
+    if (!body.sessionId) {
+      analyticsTimelineEvents.unshift(
+        createAnalyticsEvent('session-start', sessionId, countryCode, widgetKey)
+      )
+    }
+
+    if (needsHumanSupport && !requiresName) {
+      analyticsTimelineEvents.push(
+        createAnalyticsEvent('support-request', sessionId, countryCode, widgetKey)
+      )
+    }
+
+    const analyticsUpdates: Record<string, unknown> = {
+      updatedAt: FieldValue.serverTimestamp(),
+      'chatAnalytics.totalMessages': FieldValue.increment(1),
+      'chatAnalytics.lastChatAt': FieldValue.serverTimestamp(),
+      'chatAnalytics.timeline': FieldValue.arrayUnion(...analyticsTimelineEvents),
+      [statPaths.messageCountPath]: FieldValue.increment(1),
+      [statPaths.hourPath]: FieldValue.increment(1),
+    }
+
+    if (isNewConversation) {
+      analyticsUpdates['chatAnalytics.totalSessions'] = FieldValue.increment(1)
+      analyticsUpdates['chatAnalytics.aiOnlySessions'] = FieldValue.increment(1)
+      analyticsUpdates[`chatAnalytics.dailyConversationCounts.${todayKey}`] = FieldValue.increment(1)
+      analyticsUpdates[`chatAnalytics.countryCounts.${countryCode}`] = FieldValue.increment(1)
+      analyticsUpdates[statPaths.sessionCountPath] = FieldValue.increment(1)
+      analyticsUpdates[statPaths.countryPath] = FieldValue.increment(1)
+    }
+
+    if (assistantConfig.enabled) {
+      analyticsUpdates[`chatAnalytics.modelUsage.${modelUsed}`] =
+        FieldValue.increment(1)
+    }
+
+    if (needsHumanSupport && !requiresName) {
+      analyticsUpdates['chatAnalytics.supportRequests'] = FieldValue.increment(
+        isNewSupportChat ? 1 : 0
+      )
+      analyticsUpdates['chatAnalytics.savedSupportChats'] = FieldValue.increment(
+        isNewSupportChat ? 1 : 0
+      )
+      analyticsUpdates[statPaths.supportRequestsPath] = FieldValue.increment(
+        isNewSupportChat ? 1 : 0
+      )
+      analyticsUpdates[statPaths.savedSupportChatsPath] = FieldValue.increment(
+        isNewSupportChat ? 1 : 0
+      )
+      if (!body.sessionId) {
+        analyticsUpdates['chatAnalytics.aiOnlySessions'] = FieldValue.increment(-1)
+      }
+
+      await supportChatRef.set(
+        {
+          sessionId,
+          widgetKey,
+          businessId: business.id,
+          status: 'needs-human',
+          source: 'widget',
+          preview: message,
+          visitorName: visitorName || null,
+          visitorEmail: visitorEmail || null,
+          visitorPhone: visitorPhone || null,
+          countryCode,
+          pageTitle: pageTitle || null,
+          pageUrl: pageUrl || null,
+          messageCount: messageTimeline.length,
+          messages: messageTimeline,
+          supportRequestedAt: supportChatSnap.exists
+            ? supportChatSnap.data()?.supportRequestedAt || FieldValue.serverTimestamp()
+            : FieldValue.serverTimestamp(),
+          visitorTypingAt: FieldValue.delete(),
+          visitorTypingBy: FieldValue.delete(),
+          createdAt: supportChatSnap.exists
+            ? supportChatSnap.data()?.createdAt || FieldValue.serverTimestamp()
+            : FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      )
+    } else if (existingSupportChat) {
+      await supportChatRef.set(
+        {
+          sessionId,
+          widgetKey,
+          businessId: business.id,
+          status:
+            existingSupportChat.status === 'ai-active'
+              ? 'ai-active'
+              : existingSupportChat.status || 'ai-active',
+          source: 'widget',
+          preview: message,
+          visitorName: visitorName || existingSupportChat.visitorName || null,
+          visitorEmail: visitorEmail || existingSupportChat.visitorEmail || null,
+          visitorPhone: visitorPhone || existingSupportChat.visitorPhone || null,
+          countryCode: countryCode || existingSupportChat.countryCode || null,
+          pageTitle: pageTitle || existingSupportChat.pageTitle || null,
+          pageUrl: pageUrl || existingSupportChat.pageUrl || null,
+          messageCount: messageTimeline.length,
+          messages: messageTimeline,
+          supportRequestedAt:
+            existingSupportChat.supportRequestedAt || FieldValue.serverTimestamp(),
+          visitorTypingAt: FieldValue.delete(),
+          visitorTypingBy: FieldValue.delete(),
+          createdAt: existingSupportChat.createdAt || FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      )
+    } else {
+      await persistAiOnlyChatLog({
+        businessId: business.id,
+        sessionId,
+        widgetKey,
+        countryCode,
+        pageTitle,
+        pageUrl,
+        visitorName,
+        messageTimeline,
+      })
+    }
+
+    await businessRef.update(analyticsUpdates)
+
+    return NextResponse.json({
+      sessionId,
+      reply: finalReply,
+      supportRequested: needsHumanSupport && !requiresName && !existingSupportChat,
+      visitorNameRequired: requiresName,
+      countryCode,
+    }, { headers })
+  } catch (error) {
+    console.error('Widget chat error:', error)
+    return NextResponse.json(
+      { error: 'Failed to process chat' },
+      { status: 500, headers: corsHeaders(req.headers.get('origin')) }
+    )
+  }
+}

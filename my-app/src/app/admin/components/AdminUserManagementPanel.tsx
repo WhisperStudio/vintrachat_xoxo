@@ -291,6 +291,8 @@ export default function AdminUserManagementPanel() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [managerMap, setManagerMap] = useState<Record<string, string | null>>({})
   const [invitePanelOpen, setInvitePanelOpen] = useState(false)
+  const [teamView, setTeamView] = useState<'list' | 'structure'>('list')
+  const [userSearch, setUserSearch] = useState('')
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
 
   const plan = business?.chatWidgetConfig?.plan || 'free'
@@ -574,7 +576,7 @@ export default function AdminUserManagementPanel() {
     let selectionListener: any
 
     async function drawChart() {
-      if (!chartRef.current) return
+      if (teamView !== 'structure' || !chartRef.current) return
 
       await loadGoogleCharts()
       if (!mounted || !window.google?.charts) return
@@ -643,7 +645,7 @@ export default function AdminUserManagementPanel() {
         window.google.visualization.events.removeListener(selectionListener)
       }
     }
-  }, [chartNodes])
+  }, [chartNodes, teamView])
 
   function persistManagerMap(nextMap: Record<string, string | null>) {
     setManagerMap(nextMap)
@@ -752,13 +754,13 @@ export default function AdminUserManagementPanel() {
 
   if (loading) {
     return (
-      <PageShell>
+      <PageShell className="adminUsersPanel">
         <OrgChartGlobalStyle />
-        <PageHero>
+        <PageHero className="adminUsersHero">
           <PageTitleBlock>
-            <PageEyebrow>
+            <PageEyebrow className="adminUsersEyebrow">
               <FiUsers />
-              Workspace users
+              {language === 'no' ? 'TEAMET DITT' : 'YOUR TEAM'}
             </PageEyebrow>
             <PageTitle>{text.title}</PageTitle>
             <PageDescription>{text.loading}</PageDescription>
@@ -769,23 +771,23 @@ export default function AdminUserManagementPanel() {
   }
 
   return (
-    <PageShell>
+    <PageShell className="adminUsersPanel">
       <OrgChartGlobalStyle />
 
-      <PageHero>
+      <PageHero className="adminUsersHero">
         <PageTitleBlock>
-          <PageEyebrow>
+          <PageEyebrow className="adminUsersEyebrow">
             <FiUsers />
-            Workspace users
+            {language === 'no' ? 'TEAMET DITT' : 'YOUR TEAM'}
           </PageEyebrow>
-          <PageTitle>Brukere</PageTitle>
+          <PageTitle>{text.title}</PageTitle>
           <PageDescription>
-            Administrer brukere, roller, ventende invitasjoner og hele organisasjonskartet fra ett sted.
+            {language === 'no' ? 'Et samlet team. Tydelige roller og riktige tilganger.' : 'One team. Clear roles and the right access.'}
           </PageDescription>
         </PageTitleBlock>
 
-        <WorkspaceCard>
-          <span>Workspace</span>
+        <WorkspaceCard className="adminUsersBusiness">
+          <span>{language === 'no' ? 'Bedrift' : 'Workspace'}</span>
           <strong>{business?.name || text.workspace}</strong>
           <small>
             {usersWithManagers.length} {text.users}
@@ -793,8 +795,8 @@ export default function AdminUserManagementPanel() {
         </WorkspaceCard>
       </PageHero>
 
-      <StatsGrid>
-        <StatCard $alert={false}>
+      <StatsGrid className="adminUsersStats">
+        <StatCard className="adminUsersStat" $alert={false}>
           <span>{text.plan}</span>
           <strong>{getPlanLabel(plan)}</strong>
           <small>
@@ -804,7 +806,7 @@ export default function AdminUserManagementPanel() {
           </small>
         </StatCard>
 
-        <StatCard $alert={dailyConversationLimitReached}>
+        <StatCard className="adminUsersStat" $alert={dailyConversationLimitReached}>
           <span>{text.today}</span>
           <strong>
             {todayConversationCount}
@@ -813,7 +815,7 @@ export default function AdminUserManagementPanel() {
           <small>{dailyConversationLimitReached ? text.limitReachedToday : todayKey}</small>
         </StatCard>
 
-        <StatCard $alert={memberLimitReached}>
+        <StatCard className="adminUsersStat" $alert={memberLimitReached}>
           <span>{text.members}</span>
           <strong>
             {usersWithManagers.length}
@@ -824,7 +826,7 @@ export default function AdminUserManagementPanel() {
           </small>
         </StatCard>
 
-        <StatCard $alert={false}>
+        <StatCard className="adminUsersStat" $alert={false}>
           <span>{text.orbAccess}</span>
           <strong>{planLimits.orbAvailable ? text.enabled : text.locked}</strong>
           <small>
@@ -833,8 +835,8 @@ export default function AdminUserManagementPanel() {
         </StatCard>
       </StatsGrid>
 
-      <InviteShell>
-        <InviteToggle
+      <InviteShell className="adminUsersInvite">
+        <InviteToggle className="adminUsersInviteToggle"
           type="button"
           onClick={() => setInvitePanelOpen((current) => !current)}
           aria-expanded={invitePanelOpen}
@@ -842,15 +844,15 @@ export default function AdminUserManagementPanel() {
           <InviteToggleCopy>
             <MiniEyebrow>
               <FiUserPlus />
-              Invite flow
+              {language === 'no' ? 'INVITASJONER' : 'INVITATIONS'}
             </MiniEyebrow>
-            <strong>Legg til ny bruker</strong>
+            <strong>{language === 'no' ? 'Inviter en kollega' : 'Invite a colleague'}</strong>
             <span>
-              Trykk her for a utvide invitasjonsskjemaet og se alle som fortsatt ikke har svart.
+              {language === 'no' ? 'Gi nye teammedlemmer tilgang til arbeidsområdet.' : 'Give new team members access to your workspace.'}
             </span>
           </InviteToggleCopy>
           <InviteToggleMeta>
-            <PendingPill>{invitations.filter((invite) => invite.status === 'pending').length} pending</PendingPill>
+            <PendingPill>{invitations.filter((invite) => invite.status === 'pending').length} {language === 'no' ? 'venter' : 'pending'}</PendingPill>
             {invitePanelOpen ? <FiChevronUp /> : <FiChevronDown />}
           </InviteToggleMeta>
         </InviteToggle>
@@ -887,7 +889,7 @@ export default function AdminUserManagementPanel() {
                 />
               </Field>
 
-              <InviteButton
+              <InviteButton className="adminUsersInviteButton"
                 type="button"
                 onClick={handleInvite}
                 disabled={savingInvite || inviteLocked}
@@ -920,7 +922,7 @@ export default function AdminUserManagementPanel() {
                     </PendingInlineCard>
                   ))
               ) : (
-                <EmptyState>No pending invites right now.</EmptyState>
+                <EmptyState className="adminTeamEmptyState">{language === 'no' ? 'Ingen ventende invitasjoner.' : 'No pending invites right now.'}</EmptyState>
               )}
             </PendingInlineList>
           </InvitePanelBody>
@@ -928,27 +930,29 @@ export default function AdminUserManagementPanel() {
       </InviteShell>
 
       <MainLayout>
-        <ChartCard>
-          <ChartHeader>
-            <div>
-              <MiniEyebrow>
-                <FiGitBranch />
-                Organization roadmap
-              </MiniEyebrow>
-              <h2>Organisasjonskart</h2>
-              <p>
-                Admin er markert i rodt, support i gront, og invitasjoner som ikke er besvart vises nedtonet i kartet.
-              </p>
+        <ChartCard className="adminUsersDirectory">
+          <ChartHeader className="adminUsersDirectoryHeader">
+            <div><h2>{language === 'no' ? 'Teammedlemmer' : 'Team members'}</h2>
+              <p>{language === 'no' ? 'Velg en person for å se og administrere tilgangen.' : 'Select a person to view and manage access.'}</p></div>
+            <div className="adminTeamViewToggle" aria-label={language === 'no' ? 'Visning' : 'View'}>
+              <button aria-pressed={teamView === 'list'} onClick={() => setTeamView('list')}><FiUsers />{language === 'no' ? 'Liste' : 'List'}</button>
+              <button aria-pressed={teamView === 'structure'} onClick={() => setTeamView('structure')}><FiGitBranch />{language === 'no' ? 'Struktur' : 'Structure'}</button>
             </div>
-
-            <LegendRow>
-              <LegendItem $role="admin">Admin</LegendItem>
-              <LegendItem $role="manager">Manager</LegendItem>
-              <LegendItem $role="support">Support</LegendItem>
-              <LegendItem $role="viewer">Viewer</LegendItem>
-            </LegendRow>
           </ChartHeader>
-
+          {teamView === 'list' ? <>
+            <label className="adminTeamSearch"><FiUsers /><input value={userSearch} onChange={event => setUserSearch(event.target.value)}
+              placeholder={language === 'no' ? 'Søk på navn eller e-post …' : 'Search name or email …'} aria-label={language === 'no' ? 'Søk etter teammedlem' : 'Search team members'} /></label>
+            <div className="adminTeamList">
+              {usersWithManagers.filter(user => `${user.displayName || ''} ${user.email}`.toLowerCase().includes(userSearch.toLowerCase())).map(user =>
+                <button key={user.id} className={`adminTeamRow ${selectedUser?.id === user.id ? 'selected' : ''}`} onClick={() => setSelectedUserId(user.id)} aria-pressed={selectedUser?.id === user.id}>
+                  <span className="adminContactAvatar">{getUserInitials(user)}</span>
+                  <span className="adminTeamIdentity"><strong>{user.displayName || user.email.split('@')[0]}</strong><small>{user.email}</small></span>
+                  <span className="adminTeamRole">{roleLabel(user.role, text)}</span><FiChevronDown />
+                </button>)}
+              {!usersWithManagers.some(user => `${user.displayName || ''} ${user.email}`.toLowerCase().includes(userSearch.toLowerCase())) &&
+                <p className="adminTeamEmpty">{language === 'no' ? 'Ingen teammedlemmer matcher søket.' : 'No team members match your search.'}</p>}
+            </div>
+          </> : <>
           {collapsibleGroups.length ? (
             <ClusterToolbar>
               {collapsibleGroups.map((group) => (
@@ -971,20 +975,21 @@ export default function AdminUserManagementPanel() {
           <ChartFrame>
             <div ref={chartRef} />
           </ChartFrame>
+          </>}
         </ChartCard>
 
-        <InspectorCard>
+        <InspectorCard className="adminUsersInspector">
           {selectedUser ? (
             <>
               <InspectorTop>
-                <InspectorAvatar $role={normalizeRole(selectedUser.role)}>
+                <InspectorAvatar className="adminMemberAvatar" $role={normalizeRole(selectedUser.role)}>
                   {getUserInitials(selectedUser)}
                 </InspectorAvatar>
 
                 <div>
                   <MiniEyebrow>
                     <FiUserCheck />
-                    Selected user
+                    {language === 'no' ? 'Valgt medlem' : 'Selected member'}
                   </MiniEyebrow>
                   <h2>{getUserName(selectedUser)}</h2>
                   <p>{selectedUser.email}</p>
@@ -992,31 +997,31 @@ export default function AdminUserManagementPanel() {
               </InspectorTop>
 
               <InspectorRows>
-                <InspectorRow>
+                <InspectorRow className="adminMemberDetailRow">
                   <span>{text.status}</span>
-                  <strong>{selectedUser.status}</strong>
+                  <strong>{language === 'no' && selectedUser.status === 'active' ? 'Aktiv' : selectedUser.status}</strong>
                 </InspectorRow>
 
-                <InspectorRow>
+                <InspectorRow className="adminMemberDetailRow">
                   <span>{text.joined}</span>
                   <strong>{formatDate(selectedUser.createdAt, text.unknown)}</strong>
                 </InspectorRow>
 
-                <InspectorRow>
+                <InspectorRow className="adminMemberDetailRow">
                   <span>{text.role}</span>
                   <strong>{roleLabel(selectedUser.role, text)}</strong>
                 </InspectorRow>
 
-                <InspectorRow>
-                  <span>Reports to</span>
-                  <strong>{selectedManager ? getUserName(selectedManager) : 'No leader selected'}</strong>
+                <InspectorRow className="adminMemberDetailRow">
+                  <span>{language === 'no' ? 'Leder' : 'Reports to'}</span>
+                  <strong>{selectedManager ? getUserName(selectedManager) : (language === 'no' ? 'Ingen valgt' : 'No leader selected')}</strong>
                 </InspectorRow>
               </InspectorRows>
 
               <InspectorField>
                 <span>
                   <FiShield />
-                  Change role
+                  {language === 'no' ? 'Endre rolle' : 'Change role'}
                 </span>
 
                 <AdminDropdown
@@ -1034,14 +1039,14 @@ export default function AdminUserManagementPanel() {
               <InspectorField>
                 <span>
                   <FiBriefcase />
-                  Assign leader
+                  {language === 'no' ? 'Velg leder' : 'Assign leader'}
                 </span>
 
                 <NativeSelect
                   value={selectedUser.managerId || 'none'}
                   onChange={(event) => handleManagerChange(selectedUser.id, event.target.value)}
                 >
-                  <option value="none">No leader</option>
+                  <option value="none">{language === 'no' ? 'Ingen leder' : 'No leader'}</option>
 
                   {possibleManagers.map((manager) => (
                     <option key={manager.id} value={manager.id}>
@@ -1051,8 +1056,7 @@ export default function AdminUserManagementPanel() {
                 </NativeSelect>
 
                 <FieldHint>
-                  This leader relation is saved locally for now. If you later want it permanent, we can store
-                  `managerId` on the user in the database too.
+                  {language === 'no' ? 'Lagres i denne nettleseren. Endrer ikke medlemmets tilgang.' : 'Saved in this browser. Does not change member access.'}
                 </FieldHint>
               </InspectorField>
 
@@ -1085,13 +1089,13 @@ export default function AdminUserManagementPanel() {
                         </PendingInviteCard>
                       ))
                   ) : (
-                    <EmptyState>{text.noPendingInvites}</EmptyState>
+                    <EmptyState className="adminTeamEmptyState">{text.noPendingInvites}</EmptyState>
                   )}
                 </PendingSectionList>
               </PendingSection>
             </>
           ) : (
-            <EmptyState>No user selected.</EmptyState>
+            <EmptyState className="adminTeamEmptyState">{language === 'no' ? 'Velg et medlem for å se detaljer.' : 'Select a member to view details.'}</EmptyState>
           )}
         </InspectorCard>
       </MainLayout>
@@ -1460,7 +1464,7 @@ const MiniEyebrow = styled.span`
   align-items: center;
   gap: 0.45rem;
   width: fit-content;
-  color: #475569;
+  color: var(--admin-text-soft);
   font-size: 0.72rem;
   font-weight: 900;
   letter-spacing: 0.14em;
@@ -1474,7 +1478,7 @@ const InviteForm = styled.div`
   align-items: end;
   padding: 14px;
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--admin-surface-soft);
 
   @media (max-width: 920px) {
     grid-template-columns: 1fr;
@@ -1490,7 +1494,7 @@ const Field = styled.label`
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    color: #475569;
+    color: var(--admin-text-soft);
     font-size: 0.86rem;
     font-weight: 800;
   }
@@ -1501,8 +1505,8 @@ const Field = styled.label`
     padding: 0 16px;
     border: 1px solid rgba(148, 163, 184, 0.2);
     border-radius: 16px;
-    background: rgba(255, 255, 255, 0.96);
-    color: #0f172a;
+    background: var(--admin-surface-soft);
+    color: var(--admin-text);
     outline: none;
   }
 
@@ -1757,7 +1761,7 @@ const InspectorField = styled.label`
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    color: #475569;
+    color: var(--admin-text-soft);
     font-size: 0.88rem;
     font-weight: 900;
   }
@@ -1806,7 +1810,7 @@ const PendingSectionHeader = styled.div`
 
   h3 {
     margin: 0;
-    color: #0f172a;
+    color: var(--admin-text);
     font-size: 1rem;
   }
 
@@ -1816,8 +1820,8 @@ const PendingSectionHeader = styled.div`
     display: grid;
     place-items: center;
     border-radius: 999px;
-    background: rgba(37, 99, 235, 0.1);
-    color: #1d4ed8;
+    background: var(--admin-info-bg);
+    color: var(--admin-info-text);
     font-size: 0.8rem;
     font-weight: 950;
   }

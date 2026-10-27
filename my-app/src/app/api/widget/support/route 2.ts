@@ -1,0 +1,441 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { FieldValue } from 'firebase-admin/firestore'
+import { adminDb } from '@/lib/firebase-admin'
+import { getBusinessByWidgetKey } from '@/lib/widget.server'
+import { countCharacters, getClientIp } from '@/lib/widget-security'
+import { enforceWidgetRateLimit } from '@/lib/widget-rate-limit.server'
+import { authorizeWidgetRequest, getOrCreateWidgetEmbedSecret } from '@/lib/widget-embed-token.server'
+import { createWidgetCaptchaChallenge, verifyWidgetCaptchaToken } from '@/lib/widget-captcha.server'
+import { getAnalyticsHourKey, getAnalyticsDayKey } from '@/lib/chat-analytics'
+
+const MAX_WIDGET_MESSAGE_CHARS = 300
+
+function corsHeaders(origin?: string | null) {
+  return {
+    'Access-Control-Allow-Origin': origin || '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers':
+      'Content-Type, X-Vintra-Embed-Token, X-Vintra-Fingerprint, X-Vintra-Captcha-Token, X-Vintra-App-Origin, X-Vintra-Debug',
+    Vary: 'Origin',
+  }
+}
+
+function getFallbackMessageId(message: any) {
+  const role = String(message.role || 'user')
+  const text = String(message.text || '')
+  const createdAt =
+    typeof message.createdAt?.toDate === 'function'
+      ? message.createdAt.toDate().toISOString()
+      : String(message.createdAt || '')
+
+  return `${role}:${createdAt}:${text}`
+}
+
+function mapMessage(message: any) {
+  return {
+    id: String(message.id || getFallbackMessageId(message)),
+    role:
+      message.role === 'assistant' ||
+      message.role === 'support' ||
+      message.role === 'system'
+        ? message.role
+        : 'user',
+    text: String(message.text || ''),
+    attachments: Array.isArray(message.attachments)
+      ? message.attachments
+          .map((attachment: any) => ({
+            id: String(attachment?.id || crypto.randomUUID()),
+            kind: attachment?.kind === 'image' ? 'image' : 'file',
+            name: String(attachment?.name || 'Attachment'),
+            url: String(attachment?.url || ''),
+            storagePath: String(attachment?.storagePath || ''),
+            contentType: attachment?.contentType ? String(attachment.contentType) : undefined,
+            size: Number.isFinite(Number(attachment?.size)) ? Number(attachment.size) : undefined,
+          }))
+          .filter((attachment: { url: string }) => Boolean(attachment.url))
+      : [],
+    createdAt:
+      typeof message.createdAt?.toDate === 'function'
+        ? message.createdAt.toDate().toISOString()
+        : String(message.createdAt || new Date().toISOString()),
+  }
+}
+
+function getRequestCountryCode(req: NextRequest) {
+  const headerCountry =
+    req.headers.get('x-vercel-ip-country') ||
+    req.headers.get('x-country-code') ||
+    (req as any).geo?.country
+
+  const country = String(headerCountry || 'XX').trim().toUpperCase()
+  return /^[A-Z]{2}$/.test(country) ? country : 'XX'
+}
+
+function createAnalyticsEvent(
+  kind: string,
+  sessionId: string,
+  countryCode: string,
+  widgetKey: string
+) {
+  return {
+    id: crypto.randomUUID(),
+    kind,
+    sessionId,
+    widgetKey,
+    countryCode,
+    createdAt: new Date(),
+  }
+}
+
+function buildDailyStatUpdatePaths(date: Date, countryCode: string) {
+  const dayKey = getAnalyticsDayKey(date)
+  const hourKey = getAnalyticsHourKey(date)
+
+  return {
+    messageCountPath: `chatAnalytics.dailyStats.${dayKey}.totalMessages`,
+    hourPath: `chatAnalytics.dailyStats.${dayKey}.hours.${hourKey}`,
+  }
+}
+
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: corsHeaders(req.headers.get('origin')),
+  })
+}
+
+export async function GET(req: NextRequest) {
+  const headers = corsHeaders(req.headers.get('origin'))
+
+  try {
+    const widgetKey = req.nextUrl.searchParams.get('key')
+    const sessionId = req.nextUrl.searchParams.get('sessionId')
+
+    if (!widgetKey || !sessionId) {
+      return NextResponse.json({ error: 'Missing widget key or sessionId' }, { status: 400, headers })
+    }
+
+    const business = await getBusinessByWidgetKey(widgetKey)
+
+    if (!business?.id) {
+      return NextResponse.json({ error: 'Widget not found' }, { status: 404, headers })
+    }
+
+    const access = await authorizeWidgetRequest({ req, business })
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.reason }, { status: 403, headers })
+    }
+
+    const chatRef = adminDb.collection('businesses').doc(business.id).collection('supportChats').doc(sessionId)
+    const snap = await chatRef.get()
+
+    if (!snap.exists) {
+      return NextResponse.json(
+        {
+          sessionId,
+          status: 'none',
+          messageCount: 0,
+          visitorName: null,
+          countryCode: null,
+          messages: [],
+        },
+        { headers }
+      )
+    }
+
+    const data = snap.data() || {}
+
+    return NextResponse.json(
+      {
+        sessionId,
+        status: data.status || 'needs-human',
+        messageCount: Number(data.messageCount || 0),
+        visitorName: data.visitorName,
+        visitorEmail: data.visitorEmail,
+        visitorPhone: data.visitorPhone,
+        countryCode: data.countryCode,
+        supportTypingAt:
+          typeof data.supportTypingAt?.toDate === 'function'
+            ? data.supportTypingAt.toDate().toISOString()
+            : data.supportTypingAt || null,
+        visitorTypingAt:
+          typeof data.visitorTypingAt?.toDate === 'function'
+            ? data.visitorTypingAt.toDate().toISOString()
+            : data.visitorTypingAt || null,
+        messages: Array.isArray(data.messages) ? data.messages.map(mapMessage) : [],
+      },
+      { headers }
+    )
+  } catch (error) {
+    console.error('Widget support GET error:', error)
+    return NextResponse.json({ error: 'Failed to load support chat' }, { status: 500, headers })
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const headers = corsHeaders(req.headers.get('origin'))
+
+  try {
+    const body = await req.json()
+    const widgetKey = String(body.widgetKey || '')
+    const sessionId = String(body.sessionId || '')
+    const message = String(body.message || '').trim()
+    const clientMessageId = String(body.clientMessageId || body.messageId || '').trim()
+    const typing = Boolean(body.typing)
+    const countryCode = String(body.countryCode || getRequestCountryCode(req) || 'XX').toUpperCase()
+    const fingerprint = String(req.headers.get('x-vintra-fingerprint') || body.fingerprint || '').trim()
+    const captchaToken = String(req.headers.get('x-vintra-captcha-token') || body.captchaToken || '').trim()
+    const visitorName = typeof body.visitorName === 'string' ? body.visitorName.trim() : ''
+    const visitorEmail = typeof body.visitorEmail === 'string' ? body.visitorEmail.trim() : ''
+    const visitorPhone = typeof body.visitorPhone === 'string' ? body.visitorPhone.trim() : ''
+
+    if (!widgetKey || !sessionId) {
+      return NextResponse.json(
+        { error: 'Missing widget key or sessionId' },
+        { status: 400, headers }
+      )
+    }
+
+    const business = await getBusinessByWidgetKey(widgetKey)
+
+    if (!business?.id) {
+      return NextResponse.json({ error: 'Widget not found' }, { status: 404, headers })
+    }
+
+    const access = await authorizeWidgetRequest({ req, business })
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.reason }, { status: 403, headers })
+    }
+
+    const captchaSecret = await getOrCreateWidgetEmbedSecret(business.id)
+    const captchaVerification = captchaToken
+      ? verifyWidgetCaptchaToken({
+          secret: captchaSecret,
+          captchaToken,
+          businessId: business.id,
+          widgetKey,
+          sessionId,
+          fingerprint,
+          clientIp: getClientIp(req),
+        })
+      : { valid: false as const }
+
+    if (typing && !message) {
+      const chatRef = adminDb.collection('businesses').doc(business.id).collection('supportChats').doc(sessionId)
+      const snap = await chatRef.get()
+      const data = snap.data() || {}
+
+      if (snap.exists) {
+        await chatRef.set(
+          {
+            sessionId,
+            businessId: business.id,
+            widgetKey,
+            status: data.status || 'needs-human',
+            source: 'widget',
+            preview: data.preview || '',
+            visitorName: data.visitorName || null,
+            visitorEmail: data.visitorEmail || null,
+            visitorPhone: data.visitorPhone || null,
+            countryCode: countryCode || data.countryCode || null,
+            pageTitle: data.pageTitle || null,
+            pageUrl: data.pageUrl || null,
+            visitorTypingAt: FieldValue.serverTimestamp(),
+            visitorTypingBy: fingerprint || data.visitorTypingBy || null,
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        )
+      }
+
+      return NextResponse.json(
+        {
+          sessionId,
+          status: data.status || 'needs-human',
+          messageCount: Number(data.messageCount || 0),
+          visitorName: data.visitorName,
+          visitorEmail: data.visitorEmail,
+          visitorPhone: data.visitorPhone,
+          countryCode: data.countryCode || countryCode,
+          messages: Array.isArray(data.messages) ? data.messages.map(mapMessage) : [],
+        },
+        { headers }
+      )
+    }
+
+    if (!message) {
+      const chatRef = adminDb.collection('businesses').doc(business.id).collection('supportChats').doc(sessionId)
+      const snap = await chatRef.get()
+      const data = snap.data() || {}
+
+      if (snap.exists) {
+        await chatRef.set(
+          {
+            sessionId,
+            businessId: business.id,
+            widgetKey,
+            status: data.status || 'needs-human',
+            source: 'widget',
+            preview: data.preview || '',
+            visitorName: data.visitorName || null,
+            visitorEmail: data.visitorEmail || null,
+            visitorPhone: data.visitorPhone || null,
+            countryCode: countryCode || data.countryCode || null,
+            pageTitle: data.pageTitle || null,
+            pageUrl: data.pageUrl || null,
+            visitorTypingAt: FieldValue.delete(),
+            visitorTypingBy: FieldValue.delete(),
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        )
+      }
+
+      return NextResponse.json(
+        {
+          sessionId,
+          status: data.status || 'needs-human',
+          messageCount: Number(data.messageCount || 0),
+          visitorName: data.visitorName,
+          visitorEmail: data.visitorEmail,
+          visitorPhone: data.visitorPhone,
+          countryCode: data.countryCode || countryCode,
+          messages: Array.isArray(data.messages) ? data.messages.map(mapMessage) : [],
+        },
+        { headers }
+      )
+    } else {
+      const rateLimitCheck = await enforceWidgetRateLimit({
+        businessId: business.id,
+        widgetKey,
+        clientId: getClientIp(req),
+        sessionId,
+        fingerprint,
+        action: 'widget-support',
+        rules: [
+          { windowMs: 10_000, maxRequests: 4 },
+          { windowMs: 60_000, maxRequests: 12 },
+        ],
+        captchaRules: [
+          { windowMs: 60_000, maxRequests: 60 },
+          { windowMs: 3_600_000, maxRequests: 240 },
+        ],
+        captchaTokenValid: captchaVerification.valid,
+      })
+
+      if (!rateLimitCheck.allowed) {
+        if (rateLimitCheck.captchaRequired) {
+          const challenge = createWidgetCaptchaChallenge({
+            secret: captchaSecret,
+            businessId: business.id,
+            widgetKey,
+            sessionId,
+            fingerprint,
+            clientIp: getClientIp(req),
+          })
+
+          return NextResponse.json(
+            {
+              error: 'Captcha required',
+              captchaRequired: true,
+              captchaQuestion: challenge.question,
+              captchaToken: challenge.challengeToken,
+              captchaExpiresInSeconds: challenge.expiresInSeconds,
+            },
+            { status: 429, headers }
+          )
+        }
+
+        return NextResponse.json(
+          {
+            error: `You're sending messages too quickly. Please wait ${rateLimitCheck.retryAfterSeconds}s and try again.`,
+            retryAfterSeconds: rateLimitCheck.retryAfterSeconds,
+          },
+          { status: 429, headers }
+        )
+      }
+    }
+
+    if (countCharacters(message) > MAX_WIDGET_MESSAGE_CHARS) {
+      return NextResponse.json(
+        { error: `Message is too long. Max ${MAX_WIDGET_MESSAGE_CHARS} characters.` },
+        { status: 400, headers }
+      )
+    }
+
+    const chatRef = adminDb.collection('businesses').doc(business.id).collection('supportChats').doc(sessionId)
+    const snap = await chatRef.get()
+
+    const data = snap.data() || {}
+    const businessRef = adminDb.collection('businesses').doc(business.id)
+    const nextMessageId = clientMessageId || crypto.randomUUID()
+    const now = new Date()
+    const statPaths = buildDailyStatUpdatePaths(now, countryCode)
+
+    const nextMessage = {
+      id: nextMessageId,
+      role: 'user',
+      text: message,
+      createdAt: now.toISOString(),
+    }
+
+    const existingMessages = Array.isArray(data.messages) ? data.messages : []
+    const alreadyStored = existingMessages.some((entry: any) => String(entry?.id || '') === nextMessageId)
+    const mergedMessages = alreadyStored ? existingMessages : [...existingMessages, nextMessage]
+    await chatRef.set(
+      {
+        sessionId,
+        businessId: business.id,
+        widgetKey,
+        status: data.status || 'needs-human',
+        source: 'widget',
+        preview: message,
+        visitorName: data.visitorName || null,
+        visitorEmail: data.visitorEmail || null,
+        visitorPhone: data.visitorPhone || null,
+        countryCode: countryCode || data.countryCode || null,
+        pageTitle: data.pageTitle || null,
+        pageUrl: data.pageUrl || null,
+        messageCount: FieldValue.increment(alreadyStored ? 0 : 1),
+        messages: mergedMessages,
+        supportRequestedAt: data.supportRequestedAt || FieldValue.serverTimestamp(),
+        visitorTypingAt: FieldValue.delete(),
+        visitorTypingBy: FieldValue.delete(),
+        createdAt: data.createdAt || FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    )
+
+    await businessRef.update({
+      updatedAt: FieldValue.serverTimestamp(),
+      'chatAnalytics.totalMessages': FieldValue.increment(1),
+      'chatAnalytics.lastChatAt': FieldValue.serverTimestamp(),
+      'chatAnalytics.timeline': FieldValue.arrayUnion(
+        createAnalyticsEvent('visitor-message', sessionId, countryCode, widgetKey)
+      ),
+      [statPaths.messageCountPath]: FieldValue.increment(1),
+      [statPaths.hourPath]: FieldValue.increment(1),
+    })
+
+    const nextSnap = await chatRef.get()
+    const nextData = nextSnap.data() || data
+
+    return NextResponse.json(
+      {
+        sessionId,
+        status: nextData.status || data.status || 'needs-human',
+        messageCount: Number(nextData.messageCount || 0),
+        visitorName: nextData.visitorName || data.visitorName,
+        visitorEmail: nextData.visitorEmail || data.visitorEmail,
+        visitorPhone: nextData.visitorPhone || data.visitorPhone,
+        countryCode: nextData.countryCode || data.countryCode || countryCode,
+        messages: Array.isArray(nextData.messages) ? nextData.messages.map(mapMessage) : [],
+      },
+      { headers }
+    )
+  } catch (error) {
+    console.error('Widget support POST error:', error)
+    return NextResponse.json({ error: 'Failed to update support chat' }, { status: 500, headers })
+  }
+}

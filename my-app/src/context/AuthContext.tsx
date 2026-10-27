@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { User as FirebaseUser } from "firebase/auth";
 
 import {
@@ -32,7 +32,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [business, setBusiness] = useState<Business | null>(null);
 
   const [loading, setLoading] = useState(true);
-  const [error] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const accountRequest = useRef(0);
+
+  const loadAccount = useCallback(async (authUser: FirebaseUser | null) => {
+    const request = ++accountRequest.current;
+    setFirebaseUser(authUser);
+    setLoading(true);
+    setError(null);
+    setDbUser(null);
+    setBusiness(null);
+
+    try {
+      if (!authUser) return;
+      const user = await getCurrentUser(authUser);
+      const biz = user?.businessId ? await getBusinessInfo(user.businessId) : null;
+      if (request !== accountRequest.current) return;
+      setDbUser(user);
+      setBusiness(biz);
+    } catch (err) {
+      if (request !== accountRequest.current) return;
+      setError(err instanceof Error ? err.message : 'Kunne ikke hente kontoen. Prøv igjen.');
+    } finally {
+      if (request === accountRequest.current) setLoading(false);
+    }
+  }, []);
 
   const refreshBusiness = useCallback(async () => {
     if (!dbUser?.businessId) return;
@@ -47,49 +71,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshCurrentUser = useCallback(async () => {
     if (!firebaseUser) return;
-
-    try {
-      const user = await getCurrentUser(firebaseUser);
-      setDbUser(user);
-
-      if (user?.businessId) {
-        const biz = await getBusinessInfo(user.businessId);
-        setBusiness(biz);
-      }
-    } catch (err) {
-      console.error('Current user refresh error:', err);
-    }
-  }, [firebaseUser]);
+    await loadAccount(firebaseUser);
+  }, [firebaseUser, loadAccount]);
 
   useEffect(() => {
-    const unsub = setupAuthListener(async (authUser) => {
-      try {
-        setFirebaseUser(authUser);
-
-        if (!authUser) {
-          setDbUser(null);
-          setBusiness(null);
-          setLoading(false);
-          return;
-        }
-
-        const user = await getCurrentUser(authUser);
-        setDbUser(user);
-
-        if (user?.businessId) {
-          const biz = await getBusinessInfo(user.businessId);
-          setBusiness(biz);
-        }
-
-        setLoading(false);
-      } catch (err) {
-        console.error("Auth error:", err);
-        setLoading(false);
-      }
-    });
-
-    return () => unsub();
-  }, []);
+    const unsub = setupAuthListener(loadAccount);
+    return () => { accountRequest.current += 1; unsub(); };
+  }, [loadAccount]);
 
   const logout = async () => {
     await signOut();

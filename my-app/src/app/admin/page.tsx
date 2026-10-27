@@ -3,11 +3,12 @@
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import { db } from '@/lib/firebase'
+import { isVintraAdminEmail } from '@/lib/vintra-admin'
 import { useActiveWidgetSelection } from '@/lib/active-widget'
 import { useRouter } from 'next/navigation'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore'
-import { FiArrowLeft, FiArrowRight, FiArrowUpRight, FiCheck, FiChevronLeft, FiChevronRight, FiMoon, FiPlay, FiSun } from 'react-icons/fi'
+import { FiArrowLeft, FiArrowRight, FiArrowUpRight, FiCheck, FiChevronLeft, FiChevronRight, FiMoon, FiSun, FiGrid, FiMessageSquare, FiCheckSquare, FiStar, FiBarChart2, FiUsers, FiLayers, FiGlobe, FiSettings, FiMenu, FiX, FiLogOut, FiHelpCircle } from 'react-icons/fi'
 import { businessAdminI18n, useVintraLanguage } from '@/lib/i18n'
 import {
   APP_THEME_EVENT,
@@ -22,7 +23,9 @@ import AdminFeedbackPanel from './components/AdminFeedbackPanel'
 import AdminUserManagementPanel from './components/AdminUserManagementPanel'
 import AdminTasksPanel from './components/AdminTasksPanel'
 import WidgetAdminPanel from './widget/page'
+import AdminOverviewPanel from './components/AdminOverviewPanel'
 import './page.css'
+import './workspace.css'
 
 type AdminTab =
   | 'overview'
@@ -48,12 +51,13 @@ type TutorialStep = {
 type AdminAppearanceTheme = 'light' | 'dark'
 
 export default function AdminPage() {
-  const { isAuthenticated, dbUser, business, loading, firebaseUser } = useAuth()
+  const { isAuthenticated, dbUser, business, loading, firebaseUser, logout } = useAuth()
   const router = useRouter()
   const { language } = useVintraLanguage()
   const text = businessAdminI18n[language]
   const [adminTheme, setAdminTheme] = useState<AdminAppearanceTheme>('light')
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
+  const [selectedItemId, setSelectedItemId] = useState<string | undefined>()
   const sidebarRef = useRef<HTMLElement | null>(null)
   const adminHeaderRef = useRef<HTMLDivElement | null>(null)
   const tutorialOrbRef = useRef<HTMLButtonElement | null>(null)
@@ -64,13 +68,13 @@ export default function AdminPage() {
   const usersPanelRef = useRef<HTMLDivElement | null>(null)
   const widgetsPanelRef = useRef<HTMLDivElement | null>(null)
   const tabButtonRefs = useRef<Partial<Record<AdminTab, HTMLButtonElement | null>>>({})
-  const [indicatorStyle, setIndicatorStyle] = useState<{ top: number; height: number } | null>(
-    null
-  )
   const [tutorialDismissed, setTutorialDismissed] = useState(false)
   const [tutorialActive, setTutorialActive] = useState(false)
   const [tutorialStepIndex, setTutorialStepIndex] = useState(0)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [logoutError, setLogoutError] = useState('')
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null)
   const [tutorialSpotlight, setTutorialSpotlight] = useState<{
     top: number
     left: number
@@ -215,6 +219,7 @@ export default function AdminPage() {
   const tutorialMaxStepIndex = tutorialSteps.length - 1
 
   const openTutorial = () => {
+    setMobileNavOpen(false)
     setTutorialActive(true)
     setTutorialStepIndex(0)
   }
@@ -227,7 +232,7 @@ export default function AdminPage() {
       return
     }
 
-    await completeTutorial()
+    try { await completeTutorial() } catch { setTutorialDismissed(true) }
   }
 
   const goToTutorialStep = (nextIndex: number) => {
@@ -249,12 +254,12 @@ export default function AdminPage() {
     })
   }
 
-  const handleSidebarTabClick = (tab: AdminTab) => {
+  const handleSidebarTabClick = (tab: AdminTab, itemId?: string) => {
+    setSelectedItemId(itemId)
     setActiveTab(tab)
 
-    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches) {
-      setSidebarCollapsed(true)
-    }
+    if (mobileNavOpen) window.requestAnimationFrame(() => document.getElementById('admin-workspace')?.focus())
+    setMobileNavOpen(false)
   }
 
   useEffect(() => {
@@ -282,38 +287,29 @@ export default function AdminPage() {
   }, [])
 
   useEffect(() => {
-    if (typeof document === 'undefined') return
-    const isMobile = window.matchMedia('(max-width: 720px)').matches
-    document.body.classList.toggle('admin-mobile-sidebar-open', isMobile && !sidebarCollapsed)
-
-    return () => {
-      document.body.classList.remove('admin-mobile-sidebar-open')
-    }
-  }, [sidebarCollapsed])
-
-  useLayoutEffect(() => {
-    const updateIndicator = () => {
-      const sidebarEl = sidebarRef.current
-      const activeButton = tabButtonRefs.current[activeTab]
-
-      if (!sidebarEl || !activeButton) {
-        setIndicatorStyle(null)
-        return
+    document.body.classList.toggle('admin-mobile-sidebar-open', mobileNavOpen)
+    if (mobileNavOpen) sidebarRef.current?.querySelector<HTMLElement>('a, button')?.focus()
+    const onResize = () => { if (window.innerWidth > 900) setMobileNavOpen(false) }
+    window.addEventListener('resize', onResize)
+    const close = (event: KeyboardEvent) => {
+      if (event.key === 'Tab' && mobileNavOpen) {
+        const items = Array.from(sidebarRef.current?.querySelectorAll<HTMLElement>('a, button:not(:disabled)') || []).filter(item => item.getClientRects().length)
+        const first = items[0], last = items.at(-1)
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
+        if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
       }
-
-      const sidebarRect = sidebarEl.getBoundingClientRect()
-      const buttonRect = activeButton.getBoundingClientRect()
-
-      setIndicatorStyle({
-        top: buttonRect.top - sidebarRect.top + sidebarEl.scrollTop,
-        height: buttonRect.height,
-      })
+      if (event.key === 'Escape' && mobileNavOpen) {
+        setMobileNavOpen(false)
+        window.requestAnimationFrame(() => menuButtonRef.current?.focus())
+      }
     }
-
-    updateIndicator()
-    window.addEventListener('resize', updateIndicator)
-    return () => window.removeEventListener('resize', updateIndicator)
-  }, [activeTab])
+    window.addEventListener('keydown', close)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      document.body.classList.remove('admin-mobile-sidebar-open')
+      window.removeEventListener('keydown', close)
+    }
+  }, [mobileNavOpen])
 
   useEffect(() => {
     if (!visibleTabs.includes(activeTab)) {
@@ -368,229 +364,127 @@ export default function AdminPage() {
     }
   }, [activeTab, activeTutorialStep, tutorialActive, tutorialStepIndex])
 
-  if (loading) return <div>{text.loading}</div>
+  useEffect(() => {
+    if (!tutorialActive) return
+    const coach = document.querySelector<HTMLElement>('.adminTutorialCoachCard')
+    coach?.focus()
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { setTutorialActive(false); tutorialOrbRef.current?.focus() }
+      if (event.key === 'Tab') {
+        const items = Array.from(coach?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') || [])
+        const first = items[0], last = items.at(-1)
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === coach)) { event.preventDefault(); last?.focus() }
+        if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
+      }
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [tutorialActive])
+
+  if (loading) return <main className="adminLoading" aria-busy="true"><FiLayers /><p>{text.loading}</p></main>
   if (!isAuthenticated || !dbUser) return null
+
+  const no = language === 'no'
+  const navIcons = { overview: FiGrid, chats: FiMessageSquare, tasks: FiCheckSquare,
+    feedback: FiStar, analytics: FiBarChart2, users: FiUsers, widgets: FiLayers,
+    websites: FiGlobe, settings: FiSettings }
+  const renderNavItem = (tab: AdminTab, label: string) => {
+    const Icon = navIcons[tab]
+    return <button key={tab} type="button" title={label}
+      ref={node => { tabButtonRefs.current[tab] = node }}
+      onClick={() => handleSidebarTabClick(tab)}
+      className={activeTab === tab ? 'sideActive' : ''}
+      aria-current={activeTab === tab ? 'page' : undefined}>
+      <Icon aria-hidden="true" /><span>{label}</span>
+      {activeTab === tab && <span className="adminNavDot" aria-hidden="true" />}
+    </button>
+  }
 
   return (
     <>
-      <main
-        data-admin-theme={adminTheme}
-        className={`adminPage ${tutorialActive ? 'adminPageTutorialMode' : ''} ${
-          sidebarCollapsed ? 'adminPageSidebarCollapsed' : ''
-        }`}
-      >
-        <button
-          type="button"
-          className="adminMobileHeader"
-          onClick={() => setSidebarCollapsed((current) => !current)}
-          aria-label={sidebarCollapsed ? text.sidebar.expand : text.sidebar.collapse}
-          title={sidebarCollapsed ? text.sidebar.expand : text.sidebar.collapse}
-        >
-          <div className="adminMobileHeaderCopy">
-            <span className="adminSidebarEyebrow">{text.sidebar.eyebrow}</span>
-            <strong>{text.sidebar.title}</strong>
-          </div>
-          <span className="adminMobileCollapseToggle" aria-hidden="true">
-            {sidebarCollapsed ? <FiChevronRight /> : <FiChevronLeft />}
-          </span>
-        </button>
-
+      <main data-admin-theme={adminTheme}
+        className={`adminPage ${tutorialActive ? 'adminPageTutorialMode' : ''} ${sidebarCollapsed ? 'adminPageSidebarCollapsed' : ''} ${mobileNavOpen ? 'adminPageMobileOpen' : ''}`}>
+        <a className="adminSkipLink" href="#admin-workspace">{no ? 'Hopp til innhold' : 'Skip to content'}</a>
+        {mobileNavOpen && <button className="adminMobileBackdrop" tabIndex={-1} aria-label={no ? 'Lukk meny' : 'Close menu'} onClick={() => setMobileNavOpen(false)} />}
         <div className="adminSidebarFollowScreen">
-        <aside className={`adminSidebar ${sidebarCollapsed ? 'adminSidebarCollapsed' : ''}`} ref={sidebarRef}>
-          <button
-            type="button"
-            className="adminSidebarCollapseToggle"
-            onClick={() => setSidebarCollapsed((current) => !current)}
-            aria-label={sidebarCollapsed ? text.sidebar.expand : text.sidebar.collapse}
-            title={sidebarCollapsed ? text.sidebar.expand : text.sidebar.collapse}
-          >
-            {sidebarCollapsed ? <FiChevronRight /> : <FiChevronLeft />}
-          </button>
-          {indicatorStyle ? (
-            <span
-              className="adminSidebarIndicator"
-              style={{
-                top: `${indicatorStyle.top}px`,
-                height: `${indicatorStyle.height}px`,
-              }}
-            />
-          ) : null}
-          <div className="adminSidebarHeader" ref={adminHeaderRef}>
-            <div className="adminSidebarBrand">
-              <img className="adminSidebarLogo" src="/image/logo.png" alt="" aria-hidden="true" />
-              <div className="adminSidebarBrandCopy">
-                <span className="adminSidebarEyebrow">{text.sidebar.eyebrow}</span>
-                <h2>{text.sidebar.title}</h2>
-              </div>
+          <aside id="admin-navigation" className={`adminSidebar ${sidebarCollapsed ? 'adminSidebarCollapsed' : ''}`} ref={sidebarRef}>
+            <div className="adminSidebarHeader">
+              <Link href="/landings/main" className="adminSidebarBrand" aria-label="Vintra">
+                <span className="adminBrandMark"><FiLayers /></span>
+                <span className="adminSidebarBrandCopy"><strong>vintra<span>®</span></strong><small>{no ? 'ARBEIDSOMRÅDE' : 'WORKSPACE'}</small></span>
+              </Link>
+              <button type="button" className="adminSidebarCollapseToggle" onClick={() => setSidebarCollapsed(current => !current)}
+                aria-label={sidebarCollapsed ? text.sidebar.expand : text.sidebar.collapse} title={sidebarCollapsed ? text.sidebar.expand : text.sidebar.collapse}>
+                {sidebarCollapsed ? <FiChevronRight /> : <FiChevronLeft />}
+              </button>
+              <button type="button" className="adminMobileClose" aria-label={no ? 'Lukk meny' : 'Close menu'} onClick={() => { setMobileNavOpen(false); window.requestAnimationFrame(() => menuButtonRef.current?.focus()) }}><FiX /></button>
             </div>
-          </div>
-          <div className="adminSidebarGroup">
-            <div className="adminSidebarGroupLabel">{text.sidebar.general}</div>
-            <button
-              ref={(node) => {
-                tabButtonRefs.current.overview = node
-              }}
-              onClick={() => handleSidebarTabClick('overview')}
-              className={activeTab === 'overview' ? 'sideActive' : ''}
-            >
-              {text.sidebar.overview}
+            <button className="adminBusinessCard" onClick={() => handleSidebarTabClick('overview')} title={business?.name}>
+              <span className="adminBusinessAvatar">{(business?.name || 'V').slice(0, 1).toUpperCase()}</span>
+              <span><strong>{business?.name || 'Vintra'}</strong><small>{no ? 'Din bedrift' : 'Your business'}</small></span>
             </button>
-          </div>
-          {visibleSupportItems.length > 0 ? (
-          <div className="adminSidebarGroup">
-            <div className="adminSidebarGroupLabel">{text.sidebar.support}</div>
-            {visibleSupportItems.map((item) => (
-              <button
-                key={item.tab}
-                ref={(node) => {
-                  tabButtonRefs.current[item.tab] = node
-                }}
-                onClick={() => handleSidebarTabClick(item.tab)}
-                className={activeTab === item.tab ? 'sideActive' : ''}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-          ) : null}
-
-          {visibleFeedbackItems.length > 0 ? (
-            <div className="adminSidebarGroup">
-              <div className="adminSidebarGroupLabel">{text.sidebar.feedback}</div>
-              {visibleFeedbackItems.map((item) => (
-            <button
-              key={item.tab}
-              ref={(node) => {
-                tabButtonRefs.current[item.tab] = node
-              }}
-              onClick={() => handleSidebarTabClick(item.tab)}
-              className={activeTab === item.tab ? 'sideActive' : ''}
-            >
-                  {item.label}
-                </button>
-              ))}
+            <nav className="adminNavigation" aria-label={text.sidebar.title}>
+              <div className="adminSidebarGroup">
+                <div className="adminSidebarGroupLabel">{no ? 'Arbeidsområde' : 'Workspace'}</div>
+                {renderNavItem('overview', text.sidebar.overview)}
+                {visibleSupportItems.map(item => renderNavItem(item.tab, item.label))}
+                {visibleFeedbackItems.map(item => renderNavItem(item.tab, item.label))}
+              </div>
+              <div className="adminSidebarGroup">
+                <div className="adminSidebarGroupLabel">{text.sidebar.administrative}</div>
+                {visibleAdminItems.map(item => renderNavItem(item.tab, item.label))}
+              </div>
+            </nav>
+            <div className="adminSidebarBottom">
+              {isVintraAdminEmail(firebaseUser?.email) && <Link className="adminSidebarHelp" href="/vintra-admin" title="Vintra-admin"><FiSettings /><span>Vintra-admin</span><FiArrowUpRight /></Link>}
+              <button className="adminSidebarHelp" onClick={openTutorial} title={text.overview.tutorial}><FiHelpCircle /><span>{text.overview.tutorial}</span><FiArrowUpRight /></button>
+              <div className="adminProfile">
+                <span className="adminProfileAvatar">{(dbUser.displayName || dbUser.email).slice(0, 2).toUpperCase()}</span>
+                <Link href="/landings/user" className="adminProfileLink" title={no ? 'Min konto' : 'My account'}><strong>{dbUser.displayName || dbUser.email.split('@')[0]}</strong><small>{dbUser.email}</small></Link>
+                <button type="button" title={no ? 'Logg ut' : 'Sign out'} aria-label={no ? 'Logg ut' : 'Sign out'}
+                  onClick={async () => { try { await logout(); router.push('/auth/login') } catch { setLogoutError(no ? 'Kunne ikke logge ut. Prøv igjen.' : 'Could not sign out. Try again.') } }}><FiLogOut /></button>
+              </div>
+              {logoutError && <p className="adminLogoutError" role="alert">{logoutError}</p>}
             </div>
-          ) : null}
-
-          {visibleAdminItems.length > 0 ? (
-          <div className="adminSidebarGroup">
-            <div className="adminSidebarGroupLabel">{text.sidebar.administrative}</div>
-            {visibleAdminItems.map((item) => (
-              <button
-                key={item.tab}
-                ref={(node) => {
-                  tabButtonRefs.current[item.tab] = node
-                }}
-                onClick={() => handleSidebarTabClick(item.tab)}
-                className={activeTab === item.tab ? 'sideActive' : ''}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-          ) : null}
-        </aside>
+          </aside>
         </div>
 
-        <section className="adminContent">
-          <section className="adminContentTopbar">
-            <div className="adminContentTopbarCopy">
-              <span className="adminSidebarEyebrow">{text.overview.widgetScope}</span>
-              <h1>{activeTabTitle}</h1>
-              <p>{text.overview.widgetBody}</p>
+        <div className="adminMain" inert={mobileNavOpen || undefined}>
+          <header className="adminContentTopbar" ref={adminHeaderRef}>
+            <div className="adminBreadcrumb">
+              <button type="button" ref={menuButtonRef} className="adminMobileMenu" aria-expanded={mobileNavOpen} aria-controls="admin-navigation"
+                aria-label={text.sidebar.expand} onClick={() => setMobileNavOpen(current => !current)}><FiMenu /></button>
+              <span>{business?.name || 'Vintra'}</span><FiChevronRight aria-hidden="true" /><strong>{activeTabTitle}</strong>
             </div>
-
             <div className="adminContentTopbarActions">
-              <div className="adminContentWidgetPicker">
-                <span>{text.overview.selectWidget}</span>
-                <AdminDropdown
-                  value={resolvedWidgetKey}
-                  placeholder={text.overview.selectWidget}
-                  options={widgetList.map((widget) => ({
-                    value: widget.widgetKey,
-                    label: widget.name,
-                    description: widget.isDefault ? text.overview.defaultWidget : text.overview.customWidget,
-                  }))}
-                  onChange={(nextValue) => setSelectedWidgetKey(nextValue)}
-                  disabled={!widgetList.length}
-                />
-              </div>
-
-              {activeTab === 'overview' ? (
-                <button
-                  type="button"
-                  ref={tutorialOrbRef}
-                  className="adminTutorialOrb"
-                  onClick={openTutorial}
-                  aria-label={text.overview.tutorialAria}
-                  title={text.overview.tutorialAria}
-                >
-                  <FiPlay />
-                  <span>{text.overview.tutorial}</span>
-                </button>
-              ) : null}
+              {!['users', 'websites', 'settings'].includes(activeTab) && <div className="adminContentWidgetPicker">
+                <FiLayers aria-hidden="true" />
+                <AdminDropdown value={resolvedWidgetKey} placeholder={text.overview.selectWidget}
+                  options={widgetList.map(widget => ({ value: widget.widgetKey, label: widget.name }))}
+                  onChange={setSelectedWidgetKey} disabled={!widgetList.length} />
+              </div>}
+              <button type="button" className="adminHeaderIcon" onClick={() => writeAppThemePreference(adminTheme === 'light' ? 'dark' : 'light')}
+                aria-label={adminTheme === 'light' ? text.settings.darkMode : text.settings.lightMode} title={adminTheme === 'light' ? text.settings.darkMode : text.settings.lightMode}>
+                {adminTheme === 'light' ? <FiMoon /> : <FiSun />}
+              </button>
+              <button type="button" ref={tutorialOrbRef} className="adminHeaderIcon" onClick={openTutorial} aria-label={text.overview.tutorialAria} title={text.overview.tutorialAria}><FiHelpCircle /></button>
             </div>
-          </section>
-
-          {activeTab === 'overview' && (
-            <div className="infoCard">
-              <div className="adminOverviewHero">
-                <div>
-                  <h1>{text.overview.title}</h1>
-                  <p>{text.overview.body}</p>
-                </div>
-              </div>
-              {showTutorial ? (
-                <section className="adminTutorialCard">
-                  <div className="adminTutorialHeader">
-                    <div>
-                      <span className="adminTutorialEyebrow">{text.overview.welcomeTutorial}</span>
-                      <h2>{text.overview.learnAreas}</h2>
-                      <p>{text.overview.learnBody}</p>
-                    </div>
-                    <button type="button" className="secondaryBtn" onClick={() => void completeTutorial()}>
-                      {text.overview.dismissTutorial}
-                    </button>
-                  </div>
-
-                  <div className="adminTutorialGrid">
-                    <button type="button" className="adminTutorialTile" onClick={() => setActiveTab('chats')}>
-                      <strong>{text.sidebar.chats}</strong>
-                      <p>{text.overview.chatsTile}</p>
-                    </button>
-                    <button type="button" className="adminTutorialTile" onClick={() => setActiveTab('tasks')}>
-                      <strong>{text.sidebar.tasks}</strong>
-                      <p>{text.overview.tasksTile}</p>
-                    </button>
-                    <button type="button" className="adminTutorialTile" onClick={() => setActiveTab('feedback')}>
-                      <strong>{text.sidebar.feedback}</strong>
-                      <p>{text.overview.feedbackTile}</p>
-                    </button>
-                  </div>
-                </section>
-              ) : null}
-              <div className="miniGrid">
-                <div className="miniStat">
-                  <strong>{dbUser?.displayName || text.overview.fallbackUser}</strong>
-                  <span>{text.overview.accountName}</span>
-                </div>
-                <div className="miniStat">
-                  <strong>{dbUser?.email}</strong>
-                  <span>{text.overview.email}</span>
-                </div>
-              </div>
-            </div>
-          )}
+          </header>
+          <section className="adminContent" id="admin-workspace" tabIndex={-1} aria-label={activeTabTitle}>
+          {activeTab === 'overview' && <AdminOverviewPanel key={dbUser.businessId} selectedWidgetKey={resolvedWidgetKey}
+            onNavigate={handleSidebarTabClick} showTutorial={showTutorial} onStartTutorial={openTutorial} />}
 
           {activeTab === 'analytics' && (
             <div ref={analyticsPanelRef}>
-              <AdminAnalyticsPanel selectedWidgetKey={resolvedWidgetKey} />
+              <AdminAnalyticsPanel selectedWidgetKey={resolvedWidgetKey} theme={adminTheme} />
             </div>
           )}
 
           {activeTab === 'chats' && (
             <div ref={chatsPanelRef}>
               <AdminChatsPanel
+                hideWidgetPicker
+                initialChatId={selectedItemId}
                 selectedWidgetKey={resolvedWidgetKey}
                 onWidgetSelected={setSelectedWidgetKey}
               />
@@ -599,7 +493,7 @@ export default function AdminPage() {
 
           {activeTab === 'tasks' && (
             <div ref={tasksPanelRef}>
-              <AdminTasksPanel selectedWidgetKey={resolvedWidgetKey} />
+              <AdminTasksPanel initialTaskId={selectedItemId} selectedWidgetKey={resolvedWidgetKey} />
             </div>
           )}
 
@@ -616,9 +510,11 @@ export default function AdminPage() {
           )}
 
           {activeTab === 'websites' && (
-            <div className="infoCard">
+            <div className="infoCard adminWebsitesPanel">
+              <span className="adminEmptyIcon"><FiGlobe /></span>
               <h1>{text.websites.title}</h1>
               <p>{text.websites.body}</p>
+              <Link href="/landings/auth/websites" className="primaryBtn">{no ? 'Åpne mine nettsider' : 'Open my websites'}<FiArrowUpRight /></Link>
             </div>
           )}
 
@@ -632,7 +528,7 @@ export default function AdminPage() {
           )}
 
           {activeTab === 'settings' && (
-            <div className="infoCard">
+            <div className="infoCard adminSettingsPanel">
               <h1>{text.settings.title}</h1>
               <p>{text.settings.body}</p>
               <div className="adminSettingsGrid">
@@ -655,7 +551,7 @@ export default function AdminPage() {
                       <p>{text.settings.themeBody}</p>
                     </div>
                   </div>
-                  <div className="adminThemeOptions" role="radiogroup" aria-label={text.settings.themeTitle}>
+                  <div className="adminThemeOptions" role="group" aria-label={text.settings.themeTitle}>
                     <button
                       type="button"
                       className={`adminThemeOption ${adminTheme === 'light' ? 'active' : ''}`}
@@ -714,7 +610,8 @@ export default function AdminPage() {
               </div>
             </div>
           )}
-        </section>
+          </section>
+        </div>
 
         {tutorialActive && tutorialSpotlight ? (
           <>
@@ -759,7 +656,7 @@ export default function AdminPage() {
               }}
             />
             <div className="adminTutorialCoach">
-              <div className="adminTutorialCoachCard">
+              <div className="adminTutorialCoachCard" role="dialog" aria-modal="true" aria-labelledby="admin-guide-title" tabIndex={-1}>
                 <div className="adminTutorialCoachTop">
                   <span className="adminTutorialCoachStep">
                     {text.tutorial.step} {tutorialStepIndex + 1} {text.tutorial.of} {tutorialSteps.length}
@@ -773,7 +670,7 @@ export default function AdminPage() {
                   </button>
                 </div>
 
-                <h3>{activeTutorialStep?.title}</h3>
+                <h3 id="admin-guide-title">{activeTutorialStep?.title}</h3>
                 <p>{activeTutorialStep?.description}</p>
 
                 {activeTutorialStep?.ctaHref ? (

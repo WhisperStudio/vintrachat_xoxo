@@ -9,7 +9,7 @@ import { authPagesI18n, useVintraLanguage } from '@/lib/i18n'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { firebaseUser, isAuthenticated, loading } = useAuth()
+  const { firebaseUser, isAuthenticated, loading, error: accountError, refreshCurrentUser } = useAuth()
   const { language } = useVintraLanguage()
   const text = authPagesI18n[language]
   const [email, setEmail] = useState('')
@@ -19,7 +19,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      router.push('/admin')
+      router.replace('/admin')
     }
   }, [firebaseUser?.email, isAuthenticated, loading, router])
 
@@ -43,7 +43,9 @@ export default function LoginPage() {
       const result = await signInWithEmail(email, password)
 
       if (result.success) {
-        if (result.redirectTo) {
+        // The provider must finish loading the verified account before the
+        // protected admin page can render. Its effect above handles that move.
+        if (result.redirectTo && result.redirectTo !== '/admin') {
           router.push(result.redirectTo)
         }
       } else {
@@ -93,12 +95,19 @@ export default function LoginPage() {
               />
             </label>
 
-            {error && <div className="errorBox">{error}</div>}
+            {(error || accountError) && <div className="errorBox" role="alert">{error || accountError}</div>}
 
             <button className="primaryBtn fullWidth" type="submit" disabled={loginLoading}>
               {loginLoading ? text.login.submitting : text.login.submit}
             </button>
           </form>
+
+          {firebaseUser && accountError && (
+            <button type="button" className="secondaryBtn fullWidth"
+              onClick={() => { setError(''); void refreshCurrentUser() }}>
+              {language === 'no' ? 'Prøv å hente kontoen igjen' : 'Try loading your account again'}
+            </button>
+          )}
 
           <p className="authSwitch">
             <Link href="/auth/forgot-password">{text.login.forgotPassword}</Link>

@@ -431,6 +431,7 @@ function mapTask(task: any): SupportTask {
   return {
     id: task.id || crypto.randomUUID(),
     businessId: String(task.businessId || ''),
+    widgetKey: task.widgetKey || undefined,
     chatId: task.chatId || task.sourceChatId || undefined,
     sessionId: task.sessionId || task.sourceChatId || undefined,
     visitorName: task.visitorName || undefined,

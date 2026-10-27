@@ -249,7 +249,7 @@ function addMonths(date: Date, months: number) {
   return next
 }
 
-export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { selectedWidgetKey?: string }) {
+export default function AdminAnalyticsPanel({ selectedWidgetKey = '', theme = 'light' }: { selectedWidgetKey?: string; theme?: 'light' | 'dark' }) {
   const { dbUser } = useAuth()
   const { language } = useVintraLanguage()
   const text = adminAnalyticsI18n[language]
@@ -749,6 +749,17 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
     if (!chartReady || !window.google?.charts) return
 
     const google = window.google
+    const chartNode = overviewRef.current || timelineRef.current || geographyRef.current
+    const styles = chartNode ? getComputedStyle(chartNode) : null
+    const color = (token: string, fallback: string) => styles?.getPropertyValue(token).trim() || fallback
+    const palette = {
+      text: color('--admin-muted', theme === 'dark' ? '#a4b6ce' : '#536780'),
+      grid: color('--admin-border', theme === 'dark' ? '#293d58' : '#dbe4ef'),
+      empty: color('--admin-surface-soft', theme === 'dark' ? '#16253b' : '#f5f8fc'),
+      blue: color('--admin-chart-active', '#2563eb'),
+      teal: color('--admin-chart-teal', '#168577'),
+      violet: color('--admin-chart-violet', '#8064c5'),
+    }
 
     if (view === 'overview' && overviewRef.current) {
       const hasOverviewData =
@@ -771,11 +782,11 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
       pieChart.draw(pieData, {
         backgroundColor: 'transparent',
         pieHole: 0.72,
-        legend: { position: 'bottom', textStyle: { color: '#475569', fontName: 'Inter' } },
+        legend: { position: 'bottom', textStyle: { color: palette.text, fontName: 'Inter' } },
         chartArea: { left: 10, top: 10, width: '92%', height: '82%' },
-        colors: hasOverviewData ? ['#f97316', '#8b5cf6', '#ec4899'] : ['#cbd5e1'],
+        colors: hasOverviewData ? [palette.blue, palette.teal, palette.violet] : [palette.grid],
         pieSliceText: 'none',
-        tooltip: { textStyle: { fontName: 'Inter' } },
+        tooltip: { isHtml: true, textStyle: { color: palette.text, fontName: 'Inter' } },
         fontName: 'Inter',
       })
     }
@@ -792,23 +803,23 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
 
       lineChart.draw(lineData, {
         backgroundColor: 'transparent',
-        legend: { position: 'bottom', textStyle: { color: '#475569', fontName: 'Inter' } },
+        legend: { position: 'bottom', textStyle: { color: palette.text, fontName: 'Inter' } },
         chartArea: { left: 56, top: 24, width: '84%', height: '68%' },
-        colors: ['#8b5cf6', '#f97316'],
+        colors: [palette.blue, palette.teal],
         pointSize: 5,
         hAxis: {
-          textStyle: { color: '#64748b', fontName: 'Inter' },
-          gridlines: { color: 'rgba(148, 163, 184, 0.12)' },
+          textStyle: { color: palette.text, fontName: 'Inter' },
+          gridlines: { color: palette.grid },
           format: range === '24h' ? 'HH:mm' : range === 'all' ? 'MMM yyyy' : 'MMM d',
         },
         vAxis: {
-          textStyle: { color: '#64748b', fontName: 'Inter' },
-          gridlines: { color: 'rgba(148, 163, 184, 0.12)' },
+          textStyle: { color: palette.text, fontName: 'Inter' },
+          gridlines: { color: palette.grid },
           minValue: 0,
           format: '0',
           viewWindow: { min: 0 },
         },
-        tooltip: { textStyle: { fontName: 'Inter' } },
+        tooltip: { isHtml: true, textStyle: { color: palette.text, fontName: 'Inter' } },
         fontName: 'Inter',
       })
     }
@@ -822,15 +833,16 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '' }: { select
       const geoChart = new google.visualization.GeoChart(geographyRef.current)
       geoChart.draw(geoData, {
         backgroundColor: 'transparent',
-        colorAxis: { colors: ['#fde7d8', '#c084fc', '#0ea5e9'] },
-        datalessRegionColor: '#eef2f7',
-        defaultColor: '#94a3b8',
+        colorAxis: { colors: [palette.grid, palette.violet, palette.blue] },
+        datalessRegionColor: palette.empty,
+        defaultColor: palette.text,
         legend: 'none',
-        tooltip: { textStyle: { fontName: 'Inter' } },
+        tooltip: { isHtml: true, textStyle: { color: palette.text, fontName: 'Inter' } },
       })
     }
   }, [
     chartReady,
+    theme,
     countryEntries,
     range,
     rangeAnalytics.aiOnlySessions,

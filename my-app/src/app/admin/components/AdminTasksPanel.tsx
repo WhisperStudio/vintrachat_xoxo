@@ -25,20 +25,6 @@ import type {
 } from '@/types/database'
 import './admin-components.css'
 
-const taskPriorityLabels: Record<SupportTaskPriority, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  critical: 'Critical',
-}
-
-const taskStatusLabels: Record<SupportTaskStatus, string> = {
-  open: 'Open',
-  'in-progress': 'In progress',
-  blocked: 'Blocked',
-  done: 'Done',
-}
-
 const taskPriorityOrder: SupportTaskPriority[] = ['critical', 'high', 'medium', 'low']
 
 const taskPriorityAccents: Record<
@@ -83,8 +69,8 @@ function speakerLabel(role: SupportChatMessage['role'], language: 'no' | 'en') {
 }
 
 function formatDate(value?: Date) {
-  if (!value) return 'Unknown'
-  return new Date(value).toLocaleString()
+  if (!value) return '—'
+  return new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 function formatMessageTime(value?: Date) {
@@ -103,12 +89,22 @@ function getInitials(label: string) {
   return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase()
 }
 
-export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWidgetKey?: string }) {
+export default function AdminTasksPanel({ selectedWidgetKey = '', initialTaskId }: { selectedWidgetKey?: string; initialTaskId?: string }) {
   const { dbUser, business } = useAuth()
   const { language } = useVintraLanguage()
   const text = adminTasksI18n[language]
+  const no = language === 'no'
+  const taskPriorityLabels: Record<SupportTaskPriority, string> = no
+    ? { low: 'Lav', medium: 'Middels', high: 'Høy', critical: 'Kritisk' }
+    : { low: 'Low', medium: 'Medium', high: 'High', critical: 'Critical' }
+  const taskStatusLabels: Record<SupportTaskStatus, string> = no
+    ? { open: 'Åpen', 'in-progress': 'Pågår', blocked: 'Blokkert', done: 'Fullført' }
+    : { open: 'Open', 'in-progress': 'In progress', blocked: 'Blocked', done: 'Done' }
+
   const humanSupportEnabled = business?.chatAssistantConfig?.humanSupportEnabled !== false
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [tasks, setTasks] = useState<SupportTask[]>([])
   const [chats, setChats] = useState<SupportChatSession[]>([])
   const [categories, setCategories] = useState<SupportTaskCategory[]>([])
@@ -119,7 +115,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
   const [creatorBusy, setCreatorBusy] = useState(false)
   const [commentSaving, setCommentSaving] = useState(false)
   const [taskDeleteBusy, setTaskDeleteBusy] = useState(false)
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(initialTaskId || null)
   const [commentText, setCommentText] = useState('')
   const [filters, setFilters] = useState<{
     status: SupportTaskStatus | 'all'
@@ -170,15 +166,16 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
       categories.map((category) => ({
         value: category.id,
         label: category.name,
-        description: category.default ? 'Default category' : 'Custom category',
+        description: category.default ? (no ? 'Standardkategori' : 'Default category') : (no ? 'Egen kategori' : 'Custom category'),
         accent: accentForKey(category.id).color,
         accentSoft: accentForKey(category.id).soft,
       })),
-    [categories]
+    [categories, no]
   )
 
   const filteredTasks = useMemo(() => {
     const nextTasks = tasks.filter((task) => {
+      if (selectedWidgetKey && task.widgetKey !== selectedWidgetKey) return false
       if (filters.status !== 'all' && task.status !== filters.status) return false
       if (filters.priority !== 'all' && task.priority !== filters.priority) return false
       if (filters.categoryId !== 'all' && task.categoryId !== filters.categoryId) return false
@@ -190,7 +187,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
       const bTime = new Date(b.createdAt).getTime()
       return filters.sortBy === 'newest' ? bTime - aTime : aTime - bTime
     })
-  }, [filters.categoryId, filters.priority, filters.sortBy, filters.status, tasks])
+  }, [filters.categoryId, filters.priority, filters.sortBy, filters.status, tasks, selectedWidgetKey])
 
   useEffect(() => {
     let mounted = true
@@ -198,28 +195,34 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
     async function load() {
       if (!dbUser?.businessId) return
 
-      const [nextCategories, nextTasks, nextChats] = await Promise.all([
-        business?.supportTaskCategories?.length
-          ? Promise.resolve(business.supportTaskCategories)
-          : getSupportTaskCategories(dbUser.businessId),
-        getSupportTasks(dbUser.businessId),
-        getSupportChats(dbUser.businessId),
-      ])
+      try {
+        const [nextCategories, nextTasks, nextChats] = await Promise.all([
+          business?.supportTaskCategories?.length
+            ? Promise.resolve(business.supportTaskCategories)
+            : getSupportTaskCategories(dbUser.businessId),
+          getSupportTasks(dbUser.businessId),
+          getSupportChats(dbUser.businessId),
+        ])
 
-      if (!mounted) return
+        if (!mounted) return
 
-      setCategories(nextCategories ?? [])
-      setTasks(nextTasks)
-      setChats(nextChats)
-      setSelectedTaskId((prev) => {
-        if (!prev) return null
-        return nextTasks.some((task) => task.id === prev) ? prev : null
-      })
-      setCreatorDraft((prev) => ({
-        ...prev,
-        categoryId: prev.categoryId || nextCategories[0]?.id || 'general',
-      }))
-      setLoading(false)
+        setCategories(nextCategories ?? [])
+        setTasks(nextTasks)
+        setChats(nextChats)
+        setSelectedTaskId((prev) => {
+          if (!prev) return null
+          return nextTasks.some((task) => task.id === prev) ? prev : null
+        })
+        setCreatorDraft((prev) => ({
+          ...prev,
+          categoryId: prev.categoryId || nextCategories[0]?.id || 'general',
+        }))
+        setLoadError(false)
+      } catch {
+        if (mounted) setLoadError(true)
+      } finally {
+        if (mounted) setLoading(false)
+      }
     }
 
     void load()
@@ -232,7 +235,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
       mounted = false
       window.clearInterval(interval)
     }
-  }, [business?.supportTaskCategories, dbUser?.businessId])
+  }, [business?.supportTaskCategories, dbUser?.businessId, reloadKey])
 
   useLayoutEffect(() => {
     const el = detailScrollRef.current
@@ -465,10 +468,21 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
               })
             }
           >
-            Reset filters
+            {no ? 'Nullstill filtre' : 'Reset filters'}
           </button>
         </div>
       </div>
+
+      {loadError ? (
+        <div className="adminTaskLoadError" role="alert">
+          <p>{no
+            ? 'Kunne ikke hente oppgavene. Listen kan være utdatert. Prøv igjen.'
+            : 'Could not load tasks. The list may be out of date. Please try again.'}</p>
+          <button type="button" className="secondaryBtn" onClick={() => setReloadKey((key) => key + 1)}>
+            {no ? 'Prøv igjen' : 'Try again'}
+          </button>
+        </div>
+      ) : null}
 
       <div className="adminTaskFilterBar">
         <label className="adminTaskFilter">
@@ -479,7 +493,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
             value={filters.status}
             placeholder={text.allStatuses}
             options={[
-              { value: 'all', label: 'All statuses' },
+              { value: 'all', label: text.allStatuses },
               ...Object.entries(taskStatusLabels).map(([value, label]) => ({
                 value,
                 label,
@@ -502,7 +516,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
             value={filters.priority}
             placeholder={text.allPriorities}
             options={[
-              { value: 'all', label: 'All priorities' },
+              { value: 'all', label: text.allPriorities },
               ...taskPriorityOrder.map((value) => ({
                 value,
                 label: taskPriorityLabels[value],
@@ -527,7 +541,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
             value={filters.categoryId}
             placeholder={text.allCategories}
             options={[
-              { value: 'all', label: 'All categories' },
+              { value: 'all', label: text.allCategories },
               ...categoryOptions,
             ]}
             onChange={(nextValue) =>
@@ -541,14 +555,14 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
 
         <label className="adminTaskFilter">
           <span>
-            <FiClock /> Sort by
+            <FiClock /> {no ? 'Sorter etter' : 'Sort by'}
           </span>
           <AdminDropdown
             value={filters.sortBy}
             placeholder={text.newestFirst}
             options={[
-              { value: 'newest', label: 'Newest first' },
-              { value: 'oldest', label: 'Oldest first' },
+              { value: 'newest', label: text.newestFirst },
+              { value: 'oldest', label: no ? 'Eldste først' : 'Oldest first' },
             ]}
             onChange={(nextValue) =>
               setFilters((prev) => ({
@@ -604,7 +618,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
                 value={creatorDraft.priority}
                 options={taskPriorityOrder.map((value) => ({
                   value,
-                  label: `${taskPriorityLabels[value]} priority`,
+                  label: `${taskPriorityLabels[value]} ${no ? 'prioritet' : 'priority'}`,
                   accent: taskPriorityAccents[value].color,
                   accentSoft: taskPriorityAccents[value].soft,
                 }))}
@@ -706,13 +720,13 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
       <div className={`adminTasksWorkspace ${selectedTask ? 'adminTasksWorkspaceOpen' : 'adminTasksWorkspaceListOnly'}`}>
         {!selectedTask ? (
           <section className="adminTaskList">
-            {filteredTasks.length === 0 ? (
+            {filteredTasks.length === 0 ? (loadError ? null : (
               <p>
                 {humanSupportEnabled
                   ? text.emptyFiltered
                   : text.humanSupportOff}
               </p>
-            ) : (
+            )) : (
               filteredTasks.map((task) => {
                 const isSelected = task.id === selectedTaskId
 
@@ -733,7 +747,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
                       </div>
                       <div className="adminTaskMeta">
                         <span className={`taskPriority taskPriority-${task.priority}`}>
-                          {taskPriorityLabels[task.priority]} priority
+                          {taskPriorityLabels[task.priority]} {no ? 'prioritet' : 'priority'}
                         </span>
                       </div>
                     </div>
@@ -786,7 +800,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
                 <div className="adminTaskDetailMeta adminTaskDetailMetaSidebar">
                   <div>
                     <span>
-                      <FiClock /> Created
+                      <FiClock /> {no ? 'Opprettet' : 'Created'}
                     </span>
                     <strong>{formatDate(selectedTask.createdAt)}</strong>
                   </div>
@@ -806,7 +820,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
 
                 <div className="adminTaskDetailBadges adminTaskDetailBadgesSidebar">
                   <span className={`taskPriority taskPriority-${selectedTask.priority}`}>
-                    {taskPriorityLabels[selectedTask.priority]} priority
+                    {taskPriorityLabels[selectedTask.priority]} {no ? 'prioritet' : 'priority'}
                   </span>
                   <span className={`taskStatus taskStatus-${selectedTask.status}`}>
                     {taskStatusLabels[selectedTask.status]}
@@ -878,7 +892,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
                       onClick={() => void removeTask()}
                       disabled={taskDeleteBusy}
                     >
-                      {taskDeleteBusy ? 'Deleting...' : 'Delete task'}
+                      {taskDeleteBusy ? (no ? 'Sletter …' : 'Deleting …') : (no ? 'Slett oppgave' : 'Delete task')}
                     </button>
                   </div>
                 </div>
@@ -954,12 +968,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '' }: { selectedWi
               </div>
             </div>
           </section>
-        ) : (
-          <section className="adminTaskDetail adminTaskDetailEmpty">
-            <h2>{text.noTaskSelected}</h2>
-            <p>{text.noTaskSelectedBody}</p>
-          </section>
-        )}
+        ) : null}
       </div>
     </div>
   )

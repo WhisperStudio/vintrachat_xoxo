@@ -610,7 +610,7 @@ export default function GlobeSwitcher({
           padding: 0,
           margin: 0,
           background: "transparent",
-          color: lang === "no" ? "#3B82F6" : "#888780",
+          color: lang === "no" ? "var(--admin-accent, #3B82F6)" : "var(--admin-muted, #888780)",
           cursor: lang === "no" || spinning ? "default" : "pointer",
           font: "inherit",
           lineHeight: 1,
@@ -624,7 +624,7 @@ export default function GlobeSwitcher({
       <span
         aria-hidden="true"
         style={{
-          color: "#888780",
+          color: "var(--admin-muted, #888780)",
         }}
       >
         /
@@ -643,7 +643,7 @@ export default function GlobeSwitcher({
           padding: 0,
           margin: 0,
           background: "transparent",
-          color: lang === "en" ? "#3B82F6" : "#888780",
+          color: lang === "en" ? "var(--admin-accent, #3B82F6)" : "var(--admin-muted, #888780)",
           cursor: lang === "en" || spinning ? "default" : "pointer",
           font: "inherit",
           lineHeight: 1,

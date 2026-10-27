@@ -2012,7 +2012,7 @@
   gap: 0.45rem;
 }
 
-.adminTaskField span {
+.adminTaskField > span {
   font-size: 0.9rem;
   font-weight: 700;
   color: #475569;
@@ -2211,9 +2211,11 @@
 .adminCategoryAddRow input {
   flex: 1;
   padding: 0.85rem 1rem;
-  border: 1px solid rgba(148, 163, 184, 0.24);
+  border: 1px solid var(--admin-input-border, #8293ab);
   border-radius: 14px;
-  background: #fff;
+  background: var(--admin-surface, #fff);
+  color: var(--admin-text, #13233d);
+  min-width: 0;
 }
 
 .adminCategoryAddRow input:focus {
@@ -2236,18 +2238,18 @@
   padding: 0.85rem 1rem;
   min-width: 220px;
   border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: linear-gradient(180deg, #ffffff, #f8fafc);
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.04);
+  border: 1px solid var(--admin-border, #dbe4ef);
+  background: var(--admin-surface, #fff);
+  box-shadow: none;
 }
 
 .adminCategoryPill strong {
   display: block;
-  color: #0f172a;
+  color: var(--admin-text, #13233d);
 }
 
 .adminCategoryPill span {
-  color: #64748b;
+  color: var(--admin-muted, #536780);
   font-size: 0.85rem;
 }
 
@@ -2440,7 +2442,7 @@
   gap: 0.45rem;
 }
 
-.adminTaskFilter span {
+.adminTaskFilter > span {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -3548,13 +3550,14 @@
   gap: 12px;
   padding: 13px 14px;
   border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 1px solid var(--admin-border, #dbe4ef);
+  background: var(--admin-surface-soft, #f5f8fc);
+  color: var(--admin-text, #13233d);
 }
 
 .adminAnalyticsCountryRow strong,
 .adminAnalyticsEventItem strong {
-  color: #0f172a;
+  color: var(--admin-text, #13233d);
 }
 
 .adminAnalyticsCountryRow strong {
@@ -3583,13 +3586,13 @@
 .adminAnalyticsCountryFlagFallback {
   width: 1.05rem;
   height: 1.05rem;
-  color: #64748b;
+  color: var(--admin-muted, #536780);
   flex: 0 0 auto;
 }
 
 .adminAnalyticsCountryRow span,
 .adminAnalyticsEventItem span {
-  color: #64748b;
+  color: var(--admin-muted, #536780);
   font-size: 0.88rem;
 }
 
@@ -3608,7 +3611,7 @@
 
 .adminAnalyticsEventItem p {
   margin: 0;
-  color: #94a3b8;
+  color: var(--admin-muted, #536780);
   font-size: 0.84rem;
 }
 
@@ -3739,19 +3742,13 @@
     background 0.18s ease;
 }
 
-.adminAnalyticsCountryRow:hover {
-  transform: translateY(-1px);
-  border-color: rgba(139, 92, 246, 0.22);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
-}
-
+/* Keep the row itself themed, including when styles load in a different order. */
+.adminAnalyticsCountryRow:hover,
 .adminAnalyticsCountryRow.is-active {
-  border-color: rgba(249, 115, 22, 0.24);
-  background:
-    linear-gradient(135deg, rgba(255, 247, 237, 0.98), rgba(245, 243, 255, 0.92));
-  box-shadow:
-    0 16px 28px rgba(15, 23, 42, 0.06),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.82);
+  border-color: var(--admin-accent, #245bca);
+  background: var(--admin-accent-soft, #e9f1ff);
+  color: var(--admin-text, #13233d);
+  box-shadow: none;
 }
 
 .adminAnalyticsMessageFeed {
@@ -4779,9 +4776,9 @@
 .adminPage[data-admin-theme='dark'] .adminDropdownButton,
 .adminPage[data-admin-theme='dark'] .adminDropdownMenu,
 .adminPage[data-admin-theme='dark'] .adminDropdownOption {
-  background: rgba(15, 23, 42, 0.86) !important;
-  border-color: rgba(148, 163, 184, 0.18) !important;
-  box-shadow: 0 18px 40px rgba(2, 6, 23, 0.32) !important;
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  box-shadow: none;
 }
 
 .adminPage[data-admin-theme='dark'] .adminFeedbackSummary,
@@ -4791,7 +4788,7 @@
 .adminPage[data-admin-theme='dark'] .adminDropdownOption.active,
 .adminPage[data-admin-theme='dark'] .secondaryBtn,
 .adminPage[data-admin-theme='dark'] .dangerBtn {
-  background: linear-gradient(180deg, rgba(30, 41, 59, 0.94), rgba(15, 23, 42, 0.88)) !important;
+  background: var(--admin-surface-soft);
 }
 
 .adminPage[data-admin-theme='dark'] .adminDataCard h1,
@@ -4814,25 +4811,7 @@
 .adminPage[data-admin-theme='dark'] .adminUsersPendingCard strong,
 .adminPage[data-admin-theme='dark'] .adminUsersPanel strong,
 .adminPage[data-admin-theme='dark'] .adminDropdownButtonLabel {
-  color: #e5eefb !important;
-}
-
-.adminPage[data-admin-theme='dark'] .adminDataCard p,
-.adminPage[data-admin-theme='dark'] .adminDataCard span,
-.adminPage[data-admin-theme='dark'] .adminDataCard small,
-.adminPage[data-admin-theme='dark'] .adminChatsPanel p,
-.adminPage[data-admin-theme='dark'] .adminChatsPanel span,
-.adminPage[data-admin-theme='dark'] .adminChatsPanel small,
-.adminPage[data-admin-theme='dark'] .adminTasksPanel p,
-.adminPage[data-admin-theme='dark'] .adminTasksPanel span,
-.adminPage[data-admin-theme='dark'] .adminTasksPanel small,
-.adminPage[data-admin-theme='dark'] .adminUsersPanel p,
-.adminPage[data-admin-theme='dark'] .adminUsersPanel span,
-.adminPage[data-admin-theme='dark'] .adminUsersPanel small,
-.adminPage[data-admin-theme='dark'] .adminUsersOrgPersonCopy small,
-.adminPage[data-admin-theme='dark'] .adminDropdownOption small,
-.adminPage[data-admin-theme='dark'] .adminDropdownChevron {
-  color: #94a3b8 !important;
+  color: var(--admin-text);
 }
 
 .adminPage[data-admin-theme='dark'] .adminChatReplyBox textarea,
@@ -4842,7 +4821,7 @@
 .adminPage[data-admin-theme='dark'] .adminTaskField select,
 .adminPage[data-admin-theme='dark'] .adminUsersInviteCard input,
 .adminPage[data-admin-theme='dark'] .adminUsersInviteCard select {
-  background: rgba(2, 6, 23, 0.26) !important;
-  color: #e5eefb !important;
-  border-color: rgba(148, 163, 184, 0.18) !important;
+  background: var(--admin-surface-soft);
+  color: var(--admin-text);
+  border-color: var(--admin-border);
 }

@@ -46,6 +46,8 @@ import AdminDropdown from './AdminDropdown'
 import './admin-components.css'
 
 type AdminChatsPanelProps = {
+  hideWidgetPicker?: boolean
+  initialChatId?: string
   selectedWidgetKey?: string
   onWidgetSelected?: (widgetKey: string) => void
 }
@@ -154,6 +156,8 @@ function formatFileSize(bytes?: number) {
 
 export default function AdminChatsPanel({
   selectedWidgetKey = '',
+  hideWidgetPicker = false,
+  initialChatId,
   onWidgetSelected,
 }: AdminChatsPanelProps) {
   const { dbUser, business, refreshBusiness } = useAuth()
@@ -161,7 +165,7 @@ export default function AdminChatsPanel({
   const text = adminChatsI18n[language]
   const humanSupportEnabled = business?.chatAssistantConfig?.humanSupportEnabled !== false
   const [chats, setChats] = useState<SupportChatSession[]>([])
-  const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(initialChatId || null)
   const [loading, setLoading] = useState(true)
   const [replyText, setReplyText] = useState('')
   const [replyAttachments, setReplyAttachments] = useState<PendingAttachment[]>([])
@@ -350,6 +354,7 @@ export default function AdminChatsPanel({
   }
 
   useEffect(() => {
+    if (loading) return
     if (!filteredChats.length) {
       setSelectedChatId(null)
       return
@@ -359,7 +364,7 @@ export default function AdminChatsPanel({
       if (!prev) return null
       return filteredChats.some((chat) => chat.id === prev) ? prev : null
     })
-  }, [visibleChatIdsKey])
+  }, [visibleChatIdsKey, loading])
 
   useEffect(() => {
     setChatListPage((prev) => {
@@ -846,12 +851,12 @@ export default function AdminChatsPanel({
               </span>
             </span>
 
-            <AdminDropdown
+            {!hideWidgetPicker && <AdminDropdown
               value={selectedWidgetKey}
               options={widgetOptions}
               onChange={handleWidgetChange}
               placeholder={text.allWidgets}
-            />
+            />}
           </div>
           <div className="middleinbox">
             {selectedChat ? (

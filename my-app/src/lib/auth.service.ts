@@ -652,15 +652,6 @@ export async function signInWithEmail(email: string, password: string) {
     }
 
     if (!cred.user.emailVerified) return { success: false, message: 'Verifiser emailen din først.' };
-    const signedInEmail = normalizeEmail(cred.user.email || normalizedEmail)
-    if (isVintraAdminEmail(signedInEmail)) {
-      return {
-        success: true,
-        message: 'Vintra admin innlogging OK',
-        redirectTo: '/admin',
-      }
-    }
-
     const userExists = await getCurrentUser(cred.user);
 
     if (!userExists) {

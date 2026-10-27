@@ -5,17 +5,24 @@ const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
 const privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
 function requireAdminApp() {
-  if (!projectId || !clientEmail || !privateKey) {
-    throw new Error("Missing Firebase environment variables");
-  }
-
   if (!admin.apps.length) {
+    // Local development can use the developer's explicit ADC file. Hosted
+    // environments still require the existing service-account configuration.
+    const localCredentials = process.env.NODE_ENV === 'development'
+      && !process.env.VERCEL
+      && process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    if (!projectId || (!(clientEmail && privateKey) && !localCredentials)) {
+      throw Object.assign(new Error('Server authentication is not configured. Please contact support.'), {
+        code: 'server/misconfigured',
+      });
+    }
     admin.initializeApp({
-      credential: admin.credential.cert({
+      projectId,
+      credential: clientEmail && privateKey ? admin.credential.cert({
         projectId,
         clientEmail,
         privateKey: privateKey.replace(/\\n/g, "\n"),
-      }),
+      }) : admin.credential.applicationDefault(),
     });
   }
 

@@ -51,7 +51,9 @@ export function createNotificationHandler({
       let token;
       try {
         token = await verifyToken(bearer);
-      } catch {
+      } catch (error) {
+        if (error?.code === 'server/misconfigured')
+          throw new NotificationError('unavailable', 'Server authentication is not configured. Please contact support.');
         throw new NotificationError(
           'unauthenticated',
           'Your session expired. Sign in again.',
