@@ -4,7 +4,7 @@
 
 .heroShell {
   position: relative;
-  overflow: hidden;
+  overflow: clip;
   isolation: isolate;
   margin-top: -120px;
   padding: 156px 0 0;
@@ -187,6 +187,110 @@
   animation: floatMid 5s ease-in-out infinite 1s;
 }
 
+.scrollDroid {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: clamp(112px, 12vw, 172px);
+  aspect-ratio: 1;
+  z-index: 8;
+  pointer-events: none;
+  will-change: transform, opacity;
+  transition: opacity 0.45s ease;
+  filter: drop-shadow(0 22px 24px rgba(23, 57, 102, 0.24));
+}
+
+.scrollDroidFloat {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  animation: droidHover 3.4s ease-in-out infinite;
+}
+
+.droidOrb {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.droidShadowRing {
+  fill: rgba(13, 39, 80, 0.2);
+  transform: translateY(7px);
+}
+
+.droidShell { stroke: rgba(255, 255, 255, 0.76); stroke-width: 3; }
+.droidShellPanel { fill: rgba(225, 245, 255, 0.36); }
+.droidVisor { stroke: rgba(126, 211, 255, 0.65); stroke-width: 2; }
+.droidEyes { fill: #c9f7ff; filter: drop-shadow(0 0 7px #55d9ff); transform-origin: center; animation: droidBlink 5.2s ease-in-out infinite; }
+.droidSmile { fill: none; stroke: #82e9ff; stroke-width: 4; stroke-linecap: round; filter: drop-shadow(0 0 4px #55d9ff); }
+.droidGlint { fill: none; stroke: rgba(255, 255, 255, 0.85); stroke-width: 6; stroke-linecap: round; }
+.droidSeam { fill: none; stroke: rgba(4, 42, 104, 0.45); stroke-width: 3; }
+.droidSideLight { fill: #73f5e2; filter: drop-shadow(0 0 5px #45efd4); }
+
+.droidAntenna {
+  position: absolute;
+  z-index: -1;
+  width: 7px;
+  height: 40%;
+  left: 51%;
+  top: -22%;
+  border-radius: 99px;
+  background: #174a91;
+  transform: rotate(-13deg);
+  transform-origin: bottom;
+}
+
+.droidAntenna span {
+  position: absolute;
+  width: 17px;
+  height: 17px;
+  left: 50%;
+  top: -8px;
+  border-radius: 50%;
+  background: #56ddff;
+  box-shadow: 0 0 12px #56ddff;
+  transform: translateX(-50%);
+}
+
+.droidHand {
+  position: absolute;
+  z-index: 3;
+  left: -19%;
+  top: 32%;
+  width: 34%;
+  height: 45%;
+  transform-origin: 88% 78%;
+  animation: droidWave 0.82s ease-in-out infinite alternate;
+  transition: opacity 0.35s ease;
+}
+
+.scrollDroid[data-scrolled="true"] .droidHand { opacity: 0; animation-play-state: paused; }
+.droidPalm { position: absolute; width: 58%; height: 45%; right: 0; bottom: 0; border-radius: 45% 45% 50% 50%; background: #69baf0; border: 2px solid #e3f7ff; }
+.droidFinger { position: absolute; width: 18%; height: 48%; border-radius: 99px; background: #79c9f5; border: 2px solid #e3f7ff; transform-origin: bottom; }
+.droidFinger--one { left: 40%; top: 36%; transform: rotate(-87deg); z-index: -1;}
+.droidFinger--two { left: 44%; top: 22%; transform: rotate(-50deg); z-index: -1; }
+.droidFinger--three { left: 62%; top: 14%; transform: rotate(-20deg); z-index: -1; }
+
+@keyframes droidHover { 0%, 100% { transform: translateY(-5px) rotate(-1deg); } 50% { transform: translateY(7px) rotate(1.5deg); } }
+@keyframes droidWave { from { transform: rotate(-24deg); } to { transform: rotate(24deg); } }
+@keyframes droidBlink { 0%, 43%, 47%, 78%, 82%, 100% { transform: scaleY(1); } 45%, 80% { transform: scaleY(0.08); } }
+
+@media (max-width: 700px) {
+  .scrollDroid {
+    width: clamp(92px, 25vw, 124px);
+    filter: drop-shadow(0 14px 18px rgba(23, 57, 102, 0.2));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrollDroidFloat,
+  .droidHand,
+  .droidEyes {
+    animation: none;
+  }
+}
+
 .cta-primary,
 .cta-secondary {
   display: inline-flex;
@@ -247,14 +351,29 @@
 .solutionsSection .solutionsIntroArc {
   position: relative;
   top: auto;
-  min-height: clamp(560px, 78vh, 820px);
-  padding: 160px 24px 80px;
+  min-height: clamp(900px, 124vh, 1220px);
+  padding: 120px 24px 72px;
   transform: none;
+}
+
+.droidMorphCover {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  border-radius: 50%;
+  background: #f8fafc;
+  box-shadow: 0 20px 60px rgba(2, 8, 23, 0.28);
+  opacity: clamp(0, calc((var(--droid-morph-progress, 0) - 0.43) * 22), 1);
+  border-radius: calc(50% - (clamp(0, calc((var(--droid-morph-progress, 0) - 0.46) * 8), 1) * 44%));
+  transform:
+    scaleX(calc(1 + (clamp(0, calc((var(--droid-morph-progress, 0) - 0.46) * 8), 1) * 5.1)))
+    scaleY(calc(1 + (clamp(0, calc((var(--droid-morph-progress, 0) - 0.46) * 8), 1) * 3.15)));
+  pointer-events: none;
 }
 
 .solutionsSection .mountainLayer {
   display: block;
-  transform: translate3d(0, calc(var(--mountain-progress, 0) * -72px), 0);
+  transform: none;
   height: 100%;
 }
 
@@ -265,11 +384,440 @@
   background: linear-gradient(180deg, var(--solutions-base), var(--solutions-floor));
 }
 
+.solutionsProducts::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 0;
+  right: 0;
+  top: -150px;
+  height: 152px;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--solutions-base) 42%, transparent) 38%, var(--solutions-base) 100%);
+}
+
+.droidMorphStage {
+  --morph-progress: 0;
+  --browser-reveal: clamp(0, calc((var(--morph-progress) - 0.52) * 6.5), 1);
+  --copy-reveal: clamp(0, calc((var(--morph-progress) - 0.64) * 6), 1);
+  --droid-travel: clamp(0, calc((var(--morph-progress) - 0.72) * 5), 1);
+  --bubble-reveal: clamp(0, calc((var(--morph-progress) - 0.88) * 12), 1);
+  --chat-reveal: clamp(0, calc((var(--morph-progress) - 0.92) * 12), 1);
+  position: relative;
+  width: 100%;
+  height: 220vh;
+  margin: 0 auto clamp(90px, 12vw, 160px);
+}
+
+.droidMorphSticky {
+  position: sticky;
+  top: 72px;
+  width: 100%;
+  height: calc(100vh - 72px);
+  height: calc(100svh - 72px);
+  display: grid;
+  place-items: center;
+  perspective: 1400px;
+  overflow: clip;
+}
+
+.morphWhiteCover {
+  position: absolute;
+  z-index: 12;
+  left: 50%;
+  top: 50%;
+  width: clamp(110px, 12vw, 170px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #f8fafc;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.75), 0 26px 70px rgba(2, 8, 23, 0.3);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.15);
+  pointer-events: none;
+}
+
+.morphSeed {
+  position: absolute;
+  z-index: 5;
+  width: clamp(96px, 12vw, 150px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 25%, #eaf9ff 0 6%, #71ccf7 32%, #2468dc 72%, #16449f 100%);
+  border: 3px solid rgba(255, 255, 255, 0.82);
+  box-shadow: 0 24px 50px rgba(9, 35, 78, 0.35), inset 0 -12px 20px rgba(10, 45, 130, 0.28);
+  opacity: 0;
+}
+
+/* Den opprinnelige, globale droiden utfører transformasjonen. */
+.droidMorphStage .morphSeed {
+  display: none;
+}
+
+.morphSeedAntenna {
+  position: absolute;
+  left: 50%;
+  top: -28%;
+  width: 6px;
+  height: 32%;
+  border-radius: 9px;
+  background: #2463ac;
+  transform: rotate(-9deg);
+}
+
+.morphSeedAntenna::before {
+  content: "";
+  position: absolute;
+  width: 14px;
+  aspect-ratio: 1;
+  left: 50%;
+  top: -6px;
+  border-radius: 50%;
+  background: #56ddff;
+  box-shadow: 0 0 14px #56ddff;
+  transform: translateX(-50%);
+}
+
+.morphSeedFace,
+.siteDroidVisor {
+  position: absolute;
+  left: 13%;
+  right: 13%;
+  top: 32%;
+  height: 35%;
+  border-radius: 46% 46% 40% 40%;
+  background: linear-gradient(135deg, #061a39, #124d83);
+  border: 2px solid rgba(145, 225, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20%;
+}
+
+.morphSeedFace i,
+.siteDroidVisor i {
+  width: 10%;
+  height: 43%;
+  border-radius: 99px;
+  background: #c9f9ff;
+  box-shadow: 0 0 8px #5ce4ff;
+}
+
+.nordicBrowser {
+  position: relative;
+  width: min(940px, 64vw);
+  height: min(650px, 58vw);
+  min-height: 520px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 34px;
+  background: #f8fafc;
+  box-shadow: 0 44px 100px rgba(2, 8, 23, 0.42), 0 0 0 10px rgba(255, 255, 255, 0.025);
+  opacity: 0;
+  transform: rotate(18deg) scale(0.08);
+  transform-origin: center;
+}
+
+.nordicBrowserBar {
+  height: 54px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 20px;
+  color: #64748b;
+  font-size: 12px;
+  background: #eef3f8;
+  border-bottom: 1px solid #dce5ee;
+}
+
+.nordicTraffic { display: flex; gap: 7px; }
+.nordicTraffic i { width: 9px; height: 9px; border-radius: 50%; background: #cbd5e1; }
+.nordicTraffic i:first-child { background: #ff8b7b; }
+.nordicTraffic i:nth-child(2) { background: #f6c85f; }
+.nordicTraffic i:nth-child(3) { background: #63d49b; }
+.nordicBrowserMenu { justify-self: end; letter-spacing: 2px; }
+.nordicSite { height: calc(100% - 54px); color: #10243a; background: #f7faf9; }
+
+.nordicNav {
+  height: 74px;
+  padding: 0 clamp(24px, 5vw, 68px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e4ece9;
+}
+
+.nordicNav strong { font-size: 14px; letter-spacing: 0.12em; }
+.nordicNav strong span { display: inline-grid; place-items: center; width: 29px; height: 29px; margin-right: 8px; border-radius: 9px; color: white; background: #126b62; }
+.nordicNav > div { display: flex; align-items: center; gap: 26px; font-size: 12px; }
+.nordicNav button, .nordicHeroCopy button { border: 0; border-radius: 999px; color: white; background: #126b62; padding: 11px 18px; font-weight: 700; }
+
+.nordicHero {
+  min-height: 390px;
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  align-items: center;
+  padding: 24px clamp(28px, 6vw, 76px);
+  background: linear-gradient(135deg, #f8fbf9, #e7f1ed);
+}
+
+.nordicHeroCopy { position: relative; z-index: 2; }
+.nordicHeroCopy small { color: #14796e; font-size: 10px; font-weight: 800; letter-spacing: 0.18em; }
+.nordicHeroCopy h3 { max-width: 560px; margin: 14px 0; font-size: clamp(30px, 4vw, 55px); line-height: 0.98; letter-spacing: -0.055em; }
+.nordicHeroCopy p { max-width: 470px; color: #536779; line-height: 1.65; }
+.nordicHeroCopy button { margin-top: 14px; padding: 13px 20px; }
+.nordicHeroCopy button span { margin-left: 12px; }
+.nordicHeroArt { position: relative; height: 100%; overflow: hidden; }
+.nordicSun { position: absolute; width: 180px; height: 180px; right: 7%; top: 8%; border-radius: 50%; background: #f4b968; opacity: 0.78; }
+.nordicPeak { position: absolute; bottom: 0; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.nordicPeak--back { width: 100%; height: 72%; left: 3%; background: #90afa7; }
+.nordicPeak--front { width: 82%; height: 88%; right: -5%; background: linear-gradient(105deg, #dceae5 0 39%, #47766e 40% 100%); }
+.nordicStats { display: flex; gap: clamp(30px, 7vw, 90px); padding: 17px clamp(28px, 6vw, 76px); background: white; }
+.nordicStats span { display: grid; color: #718096; font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
+.nordicStats strong { color: #143d39; font-size: 22px; letter-spacing: 0; }
+
+.siteDroid {
+  position: absolute;
+  z-index: 8;
+  left: 45%;
+  top: 38%;
+  width: 88px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  opacity: 0;
+}
+
+.siteDroid > svg { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 14px 18px rgba(13, 52, 105, 0.35)); }
+.siteDroidAntenna { position: absolute; z-index: -1; left: 50%; top: -18%; width: 5px; height: 28%; border-radius: 9px; background: #2364a8; transform: rotate(-9deg); }
+.siteDroidAntenna i { position: absolute; width: 12px; height: 12px; left: 50%; top: -5px; border-radius: 50%; background: #56ddff; box-shadow: 0 0 10px #56ddff; transform: translateX(-50%); }
+.siteDroidShell { fill: url(#droidShell); stroke: white; stroke-width: 3; }
+.siteDroidPanel { fill: rgba(225, 245, 255, 0.36); }
+.siteDroidGlass { fill: url(#droidVisor); stroke: rgba(126, 211, 255, 0.72); stroke-width: 2; }
+.siteDroidEyes { fill: #c9f7ff; filter: drop-shadow(0 0 7px #55d9ff); }
+.siteDroidSmile { fill: none; stroke: #82e9ff; stroke-width: 4; stroke-linecap: round; }
+.siteDroidGlint { fill: none; stroke: rgba(255,255,255,.85); stroke-width: 6; stroke-linecap: round; }
+.siteDroidSeam { fill: none; stroke: rgba(4,42,104,.45); stroke-width: 3; }
+.siteDroidLight { fill: #73f5e2; filter: drop-shadow(0 0 5px #45efd4); }
+
+.siteChatBubble {
+  position: absolute;
+  z-index: 9;
+  right: 24px;
+  bottom: 24px;
+  width: 64px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: linear-gradient(145deg, #1b8b80, #0c5b54);
+  border: 3px solid rgba(255,255,255,.9);
+  box-shadow: 0 14px 32px rgba(8, 65, 61, 0.35);
+  opacity: 0;
+  transform: rotate(-140deg) scale(0.2);
+  transform-origin: center;
+}
+
+.siteChatBubble::after {
+  content: "";
+  position: absolute;
+  right: 5px;
+  bottom: 2px;
+  width: 15px;
+  height: 15px;
+  background: #0c5b54;
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+
+.siteChatBubble span { width: 5px; height: 5px; border-radius: 50%; background: white; }
+
+.siteChat {
+  position: absolute;
+  z-index: 7;
+  right: 24px;
+  bottom: 24px;
+  width: min(330px, 42%);
+  border-radius: 20px;
+  overflow: hidden;
+  color: #173047;
+  background: white;
+  border: 1px solid #dce6ee;
+  box-shadow: 0 24px 60px rgba(10, 35, 65, 0.28);
+  opacity: 0;
+  transform: translateY(28px) scale(0.82);
+  transform-origin: bottom right;
+}
+
+.siteChatHead { display: flex; align-items: center; gap: 9px; padding: 13px; color: white; background: #126b62; }
+.siteChatHead > i { width: 7px; height: 7px; margin-left: auto; border-radius: 50%; background: #72efd0; }
+.siteChatAvatar { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; color: #c7f9ee; background: #0b514b; }
+.siteChatMessages { display: flex; flex-direction: column; gap: 9px; padding: 14px; font-size: 11px; }
+.siteChatMessages p { max-width: 82%; margin: 0; padding: 9px 10px; border-radius: 11px 11px 11px 3px; background: #edf2f6; }
+.siteChatMessages .siteChatReply { align-self: flex-end; color: white; border-radius: 11px 11px 3px 11px; background: #14796e; }
+.siteChatInput { margin: 0 12px 12px; padding: 10px 12px; border: 1px solid #dce5ec; border-radius: 999px; color: #94a3b8; font-size: 10px; }
+.siteChatInput span { float: right; color: #14796e; }
+
+.droidMorphStage.isActive .morphSeed { animation: morphSeedSpin 1.5s cubic-bezier(.6, 0, .35, 1) both; }
+.droidMorphStage.isActive .nordicBrowser { animation: browserBecome 1.35s 1.05s cubic-bezier(.16, 1, .3, 1) forwards; }
+.droidMorphStage.isActive .nordicSite { animation: siteWake 0.8s 2.15s ease both; }
+.droidMorphStage.isActive .siteDroid { animation: droidToCorner 1.8s 2.65s cubic-bezier(.35, .05, .2, 1) forwards; }
+.droidMorphStage.isActive .siteChat { animation: chatOpen 0.72s 4.45s cubic-bezier(.16, 1, .3, 1) forwards; }
+
+@keyframes morphSeedSpin {
+  0% { opacity: 1; transform: rotate(0) scale(1); }
+  65% { opacity: 1; transform: rotate(620deg) scale(1.25); border-radius: 38%; }
+  100% { opacity: 0; transform: rotate(760deg) scale(4.5); border-radius: 18%; }
+}
+
+@keyframes browserBecome {
+  0% { opacity: 0; transform: rotate(18deg) scale(0.08); border-radius: 50%; }
+  35% { opacity: 1; }
+  100% { opacity: 1; transform: rotate(0) scale(1); border-radius: 34px; }
+}
+
+@keyframes siteWake { from { opacity: 0; filter: blur(10px); } to { opacity: 1; filter: none; } }
+@keyframes droidToCorner {
+  0% { opacity: 0; left: 45%; top: 38%; transform: rotate(-120deg) scale(1.25); }
+  18% { opacity: 1; }
+  72% { opacity: 1; left: calc(100% - 100px); top: calc(100% - 112px); transform: rotate(390deg) scale(0.72); }
+  100% { opacity: 0; left: calc(100% - 75px); top: calc(100% - 80px); transform: rotate(420deg) scale(0.42); }
+}
+
+@keyframes chatOpen { to { opacity: 1; transform: translateY(0) scale(1); } }
+
+/* Scrollstyrt transformasjon med fjærutjevnet --morph-progress. */
+.droidMorphStage .morphSeed {
+  opacity: clamp(0, calc(1 - ((var(--morph-progress) - 0.04) * 6)), 1);
+  transform:
+    rotate(calc(var(--morph-progress) * 1520deg))
+    scale(calc(1 + (var(--morph-progress) * 7)));
+  border-radius: calc(50% - (var(--browser-reveal) * 30%));
+}
+
+.droidMorphStage .nordicBrowser {
+  opacity: var(--browser-reveal);
+  transform:
+    scale(calc(0.16 + (var(--browser-reveal) * 0.84)));
+  border-radius: calc(48% - (var(--browser-reveal) * 44%));
+}
+
+.droidMorphStage .morphWhiteCover {
+  opacity: min(
+    clamp(0, calc((var(--morph-progress) - 0.075) * 15), 1),
+    clamp(0, calc((0.3 - var(--morph-progress)) * 12), 1)
+  );
+  transform:
+    translate(-50%, -50%)
+    rotate(calc(var(--morph-progress) * 520deg))
+    scale(calc(0.15 + (var(--morph-progress) * 31)));
+  border-radius: calc(50% - (var(--browser-reveal) * 30%));
+}
+
+.droidMorphStage .nordicSite {
+  opacity: clamp(0, calc((var(--morph-progress) - 0.22) * 8), 1);
+  filter: blur(calc((1 - clamp(0, calc((var(--morph-progress) - 0.22) * 8), 1)) * 10px));
+}
+
+.droidMorphStage .siteDroid {
+  opacity: clamp(0, calc((var(--droid-travel) * 4) - (var(--bubble-reveal) * 1.5)), 1);
+  left: calc(45% + (var(--droid-travel) * 45%));
+  top: calc(38% + (var(--droid-travel) * 47%));
+  transform:
+    rotate(calc(var(--droid-travel) * 480deg))
+    scale(calc(1.12 - (var(--droid-travel) * 0.62)));
+}
+
+.droidMorphStage .siteChatBubble {
+  opacity: var(--bubble-reveal);
+  transform:
+    rotate(calc((1 - var(--bubble-reveal)) * -140deg))
+    scale(calc(0.2 + (var(--bubble-reveal) * 0.8)));
+}
+
+.droidMorphStage .siteChat {
+  opacity: var(--chat-reveal);
+  transform:
+    translateY(calc((1 - var(--chat-reveal)) * 32px))
+    scale(calc(0.78 + (var(--chat-reveal) * 0.22)));
+}
+
+.morphSideCopy {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  width: min(250px, 16vw);
+  color: var(--solutions-text);
+  opacity: var(--copy-reveal);
+  filter: blur(calc((1 - var(--copy-reveal)) * 8px));
+}
+
+.morphSideCopy--left {
+  left: 2.5vw;
+  text-align: right;
+  transform: translate3d(calc((1 - var(--copy-reveal)) * -55px), -50%, 0);
+}
+
+.morphSideCopy--right {
+  right: 2.5vw;
+  transform: translate3d(calc((1 - var(--copy-reveal)) * 55px), -50%, 0);
+}
+
+.morphSideCopy small {
+  color: #62cfc3;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.morphSideCopy h3 {
+  margin: 12px 0;
+  font-size: clamp(20px, 2vw, 30px);
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+
+.morphSideCopy p {
+  margin: 0;
+  color: var(--solutions-text);
+  opacity: 0.7;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+@media (max-width: 700px) {
+  .droidMorphStage { height: 190vh; }
+  .droidMorphSticky { height: 100svh; }
+  .nordicBrowser { height: 560px; min-height: 0; }
+  .nordicNav > div span { display: none; }
+  .nordicHero { grid-template-columns: 1fr; padding: 26px; }
+  .nordicHeroArt { position: absolute; inset: 120px 0 0 42%; opacity: 0.45; }
+  .nordicHeroCopy h3 { font-size: 34px; }
+  .nordicStats { gap: 22px; padding: 15px 24px; }
+  .siteChat { width: min(290px, 82%); }
+  .morphSideCopy { top: auto; bottom: 3vh; width: 43vw; }
+  .morphSideCopy--left { left: 4vw; text-align: left; transform: translateX(calc((1 - var(--copy-reveal)) * -35px)); }
+  .morphSideCopy--right { right: 4vw; transform: translateX(calc((1 - var(--copy-reveal)) * 35px)); }
+  .morphSideCopy h3 { font-size: 17px; }
+  .morphSideCopy p { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .droidMorphStage .morphSeed { display: none; }
+  .droidMorphStage .nordicBrowser,
+  .droidMorphStage .nordicSite,
+  .droidMorphStage .siteChat { opacity: 1; transform: none; animation: none; }
+  .droidMorphStage .siteDroid { display: none; }
+  .droidMorphStage .siteChatBubble { opacity: 0; }
+}
+
 .solutionsSection .solutionsIntroArcContent {
   filter: none;
   visibility: visible;
   opacity: clamp(0, calc((var(--mountain-progress, 0) - 0.16) * 4), 1);
-  transform: translate3d(0, calc((1 - var(--mountain-progress, 0)) * 48px), 0);
+  transform: translate3d(0, calc(255px + ((1 - var(--mountain-progress, 0)) * 42px)), 0);
   transition: opacity 100ms linear, transform 100ms linear;
 }
 
@@ -341,7 +889,7 @@
   min-height: 250px;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 16px;
   background: radial-gradient(ellipse at top right, #447be855, transparent 75%), #e9f0fd;
 }
@@ -453,7 +1001,8 @@
 
 .solutionsSection {
   position: relative;
-  overflow: clip;
+  overflow-x: clip;
+  overflow-y: visible;
   margin-top: clamp(28px, 6vw, 72px);
   color: var(--solutions-text);
   font-family: "Inter", system-ui, sans-serif;
@@ -527,9 +1076,9 @@
   position: absolute;
   inset: 0;
   height: 100%;
-  overflow: hidden;
+  overflow: visible;
   pointer-events: none;
-  transform: translate3d(0, calc(var(--mountain-progress, 0) * -72px), 0);
+  transform: none;
   will-change: transform;
 }
 
@@ -540,35 +1089,121 @@
 }
 
 .solutionsSection .mountainSide {
-  width: 76%;
-  height: clamp(270px, 42vh, 450px);
+  width: min(43%, 650px);
+  height: clamp(340px, 53vh, 570px);
 }
 
 .solutionsSection .mountainSide--left {
-  left: 0;
+  left: -2%;
 }
 
 .solutionsSection .mountainSide--right {
-  right: 0;
+  right: -2%;
   transform: scaleX(-1);
   transform-origin: center;
+}
+
+.solutionsSection .mountainSide > path {
+  display: none;
+}
+
+.solutionsSection .mountainMiniBase {
+  fill: var(--mountain-side-base);
+  opacity: 0.84;
+}
+
+.solutionsSection .mountainMiniLight {
+  fill: color-mix(in srgb, var(--mountain-side-base) 58%, white);
+  opacity: 0.78;
+}
+
+.solutionsSection .mountainMiniShade {
+  fill: var(--mountain-side-shade);
+  opacity: 0.52;
+}
+
+.solutionsSection .mountainMiniSnow {
+  fill: color-mix(in srgb, var(--solutions-sky) 28%, white);
+  opacity: 0.96;
+}
+
+.solutionsSection .mountainMiniSnow--soft {
+  opacity: 0.58;
+}
+
+.solutionsSection .mountainMiniRidge {
+  fill: none;
+  stroke: color-mix(in srgb, var(--mountain-side-shade) 78%, transparent);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.58;
+}
+
+.solutionsSection .mountainMiniRidge--fine {
+  stroke-width: 1.35;
+  opacity: 0.42;
 }
 
 .solutionsSection .mountainSideBase {
   fill: var(--mountain-side-base);
 }
 
+.solutionsSection .mountainSideFar {
+  fill: color-mix(in srgb, var(--mountain-side-base) 72%, var(--solutions-sky));
+  opacity: 0.72;
+}
+
 .solutionsSection .mountainSideShade {
   fill: var(--mountain-side-shade);
-  opacity: 0.52;
+  opacity: 0.42;
+}
+
+.solutionsSection .mountainSideFacet {
+  stroke: none;
+}
+
+.solutionsSection .mountainSideFacet--light {
+  fill: color-mix(in srgb, var(--mountain-side-base) 72%, white);
+  opacity: 0.32;
+}
+
+.solutionsSection .mountainSideFacet--dark {
+  fill: var(--mountain-side-shade);
+  opacity: 0.24;
+}
+
+.solutionsSection .mountainSideContour {
+  fill: none;
+  stroke: color-mix(in srgb, var(--mountain-side-shade) 62%, transparent);
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.38;
+}
+
+.solutionsSection .mountainSideContour--inner {
+  stroke-width: 1.35;
+  opacity: 0.25;
+}
+
+.solutionsSection .mountainSideContour--terrain {
+  stroke: color-mix(in srgb, var(--mountain-side-shade) 72%, var(--mountain-side-base));
+  stroke-width: 1.6;
+  opacity: 0.46;
 }
 
 .solutionsSection .mountainCenter {
   left: 50%;
-  width: min(100%, 1450px);
-  height: clamp(530px, 78vh, 850px);
-  transform: translateX(-50%);
+  width: 164vw;
+  max-width: none;
+  height: clamp(880px, 126vh, 1280px);
+  transform: translateX(-50%) scaleX(calc(0.536 + (var(--mountain-progress, 0) * 0.464)));
+  transform-origin: center bottom;
   filter: drop-shadow(0 12px 28px rgba(25, 48, 65, 0.12));
+  will-change: transform;
 }
 
 .solutionsSection .mountainCenterBack {
@@ -580,19 +1215,71 @@
   fill: var(--mountain-center-foot);
 }
 
+.solutionsSection .mountainFootContour {
+  fill: none;
+  stroke: color-mix(in srgb, var(--mountain-center-foot) 48%, var(--mountain-side-shade));
+  stroke-width: 2;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.48;
+}
+
+.solutionsSection .mountainFootContour--lower {
+  stroke-width: 1.35;
+  opacity: 0.3;
+}
+
+.solutionsSection--night .solutionsIntroArcContent h2 {
+  text-shadow: 0 3px 18px rgba(2, 8, 23, 0.72), 0 1px 2px rgba(2, 8, 23, 0.9);
+}
+
+.solutionsSection--night .solutionsIntroArcContent p {
+  width: fit-content;
+  padding: 7px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(4, 14, 31, 0.42);
+  box-shadow: 0 8px 30px rgba(2, 8, 23, 0.18);
+  backdrop-filter: blur(7px);
+}
+
 .solutionsIntroArcContent {
   position: relative;
   z-index: 3;
   max-width: 540px;
   margin: 0 auto;
+  text-align: center;
   padding: 0 24px;
   padding-bottom: clamp(104px, 14vh, 148px);
   opacity: clamp(0, calc((var(--mountain-progress, 0) - 0.16) * 4), 1);
-  transform: translateY(calc(166px - (var(--mountain-progress, 0) * 18px)));
+  transform: translateY(calc(310px - (var(--mountain-progress, 0) * 34px)));
   filter: blur(
     calc((1 - clamp(0, calc((var(--mountain-progress, 0) - 0.16) * 4), 1)) * 8px)
   );
   transition: opacity 0.08s linear, filter 0.08s linear;
+}
+
+.mountainCopyStep {
+  display: block;
+  will-change: opacity, transform, filter;
+}
+
+.mountainCopyStep--one {
+  opacity: clamp(0, calc((var(--mountain-progress, 0) - 0.14) * 7), 1);
+  transform: translateY(calc((1 - clamp(0, calc((var(--mountain-progress, 0) - 0.14) * 7), 1)) * 30px));
+  filter: blur(calc((1 - clamp(0, calc((var(--mountain-progress, 0) - 0.14) * 7), 1)) * 7px));
+}
+
+.mountainCopyStep--two {
+  opacity: clamp(0, calc((var(--mountain-progress, 0) - 0.3) * 7), 1);
+  transform: translateY(calc((1 - clamp(0, calc((var(--mountain-progress, 0) - 0.3) * 7), 1)) * 34px));
+  filter: blur(calc((1 - clamp(0, calc((var(--mountain-progress, 0) - 0.3) * 7), 1)) * 7px));
+}
+
+.mountainCopyStep--three {
+  opacity: clamp(0, calc((var(--mountain-progress, 0) - 0.46) * 7), 1);
+  transform: translateY(calc((1 - clamp(0, calc((var(--mountain-progress, 0) - 0.46) * 7), 1)) * 26px));
+  filter: blur(calc((1 - clamp(0, calc((var(--mountain-progress, 0) - 0.46) * 7), 1)) * 6px));
 }
 
 .solutionsIntroArcContent.visible {
