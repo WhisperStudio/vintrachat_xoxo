@@ -1709,21 +1709,6 @@
   color: #10243f;
 }
 
-.mainFlow.mainFlow--day .contactBand {
-  background: linear-gradient(180deg, rgba(245, 249, 255, 0.96), rgba(238, 245, 252, 0.96));
-  color: #10243f;
-}
-
-.mainFlow.mainFlow--day .contactPanel {
-  background: rgba(255, 255, 255, 0.96);
-  border-color: rgba(148, 163, 184, 0.18);
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
-}
-
-.mainFlow.mainFlow--day .contactIntro {
-  color: #10243f;
-}
-
 .showcaseBand {
   position: relative;
   z-index: 1;
@@ -1995,92 +1980,119 @@
 }
 
 .contactBand {
+  --contact-bg: #0c1826;
+  --contact-panel: #122335;
+  --contact-text: #eaf3fc;
+  --contact-muted: #abc0d3;
+  --contact-accent: #a4d4f5;
+  --contact-line: #2c4358;
+  --contact-soft: #193248;
+  --contact-highlight: #162c40;
   position: relative;
   z-index: 1;
-  padding: clamp(84px, 9vw, 128px) 24px;
-  color: #0f172a;
+  padding: clamp(64px, 8vw, 112px) 24px;
+  background: var(--contact-bg);
+  color: var(--contact-text);
 }
-
+.mainFlow--day .contactBand {
+  --contact-bg: #edf3f6;
+  --contact-panel: #ffffff;
+  --contact-text: #172e44;
+  --contact-muted: #526b7e;
+  --contact-accent: #285f85;
+  --contact-line: #dbe6ed;
+  --contact-soft: #e9f2f7;
+  --contact-highlight: #f3f8fb;
+}
 .contactPanel {
   display: grid;
-  grid-template-columns: minmax(260px, 0.86fr) minmax(0, 1.14fr);
-  gap: clamp(24px, 4vw, 48px);
-  align-items: stretch;
-  padding: clamp(26px, 4vw, 44px);
-  border-radius: 30px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(203, 213, 225, 0.9);
-  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.1);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  column-gap: clamp(32px, 6vw, 80px);
+  row-gap: 36px;
+  align-items: center;
+  padding: clamp(28px, 4.5vw, 64px);
+  border-radius: 24px;
+  background: var(--contact-panel);
+  border: 1px solid var(--contact-line);
+  box-shadow: 0 20px 60px #06172908;
 }
-
-.contactIntro {
-  align-self: center;
-}
-
-.contactIntro .sectionKicker {
-  color: #1d4ed8;
-  background: #e8f0ff;
-  border-color: #dbeafe;
-}
-
-.contactIntro h2 {
-  color: #0f172a;
-  font-size: clamp(30px, 3.5vw, 48px);
-}
-
-.contactIntro p {
-  margin-left: 0;
-  color: #5b6472;
-}
-
-.contactGrid {
-  display: grid;
-  gap: 14px;
-}
-
-.contactCard {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-  padding: 20px;
-  border-radius: 18px;
-  background: #ffffff;
-  border: 1px solid #e6eaf0;
-  color: #111827;
-  text-decoration: none;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.055);
-}
-
-.contactCardLabel {
-  color: #7c3aed;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
+.contactIntro { min-width: 0; }
+.mainFlow .contactIntro .sectionKicker {
+  display: inline-flex;
+  padding: 0;
+  margin: 0 0 24px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--contact-accent);
+  letter-spacing: .16em;
+  font-size: 11px;
+  font-weight: 650;
   text-transform: uppercase;
 }
-
-.contactCardLabel--green {
-  color: #0c9e6a;
+.contactIntro .sectionKicker::before {
+  content: '';
+  width: 20px;
+  height: 1px;
+  background: currentColor;
+  margin-right: 10px;
 }
-
-.contactCardLabel--blue {
-  color: #1a6bff;
+.contactIntro h2 {
+  color: var(--contact-text);
+  font-size: clamp(32px, 3.5vw, 48px);
+  font-weight: 600;
+  line-height: 1.14;
+  letter-spacing: -.045em;
+  max-width: 420px;
+  text-wrap: balance;
 }
-
-.contactCard strong {
+.contactIntro p {
+  margin: 22px 0 0;
+  max-width: 420px;
+  color: var(--contact-muted);
+  font-size: 15px;
+  line-height: 1.85;
+  text-wrap: pretty;
+}
+.contactSignature { display: grid; gap: 8px; margin-top: 36px; }
+.contactSignature > span:first-child { color: var(--contact-text); letter-spacing: .18em; font-size: 10px; font-weight: 700; }
+.contactSignature > span:last-child { color: var(--contact-muted); font-size: 12px; }
+.contactGrid { display: grid; gap: 12px; min-width: 0; }
+.contactCard {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 20px;
+  gap: 16px;
+  align-items: center;
   min-width: 0;
-  color: #0f172a;
-  font-size: clamp(17px, 2vw, 22px);
-  font-weight: 900;
-  overflow-wrap: anywhere;
+  padding: 23px 20px;
+  border-radius: 14px;
+  background: var(--contact-panel);
+  border: 1px solid var(--contact-line);
+  color: var(--contact-text);
+  text-decoration: none;
+  transition: border-color .2s ease, background .2s ease;
 }
-
-.contactCard p {
-  margin: 0;
-  color: #5b6472;
-  font-size: 14px;
-  line-height: 1.6;
+.contactCard--primary { background: var(--contact-highlight); }
+.contactCard:hover { border-color: var(--contact-accent); background: var(--contact-highlight); }
+.contactBand :is(a):focus-visible { outline: 3px solid var(--contact-accent); outline-offset: 5px; }
+.contactIcon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: var(--contact-soft); color: var(--contact-accent); font-size: 19px; }
+.contactCardCopy { display: grid; gap: 7px; min-width: 0; }
+.contactCardLabel { color: var(--contact-muted); font-size: 10px; font-weight: 650; letter-spacing: .12em; text-transform: uppercase; }
+.contactCard strong { min-width: 0; color: var(--contact-text); font-size: clamp(16px, 1.7vw, 21px); line-height: 1.35; font-weight: 600; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.contactCard p { margin: 0; color: var(--contact-muted); font-size: 12px; line-height: 1.65; }
+.contactArrow { width: 19px; height: 19px; color: var(--contact-accent); }
+.contactDetails { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; padding-top: 24px; border-top: 1px solid var(--contact-line); color: var(--contact-muted); font-size: 12px; }
+.contactDetails nav { display: flex; gap: 24px; }
+.contactDetails a { color: var(--contact-muted); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--contact-line); padding-block: 6px; }
+.contactDetails a:hover { color: var(--contact-accent); text-decoration-color: currentColor; }
+@media (max-width: 520px) {
+  .contactPanel { padding: 26px 20px; }
+  .contactCard { padding: 18px 14px; gap: 12px; grid-template-columns: minmax(0, 1fr) 16px; }
+  .contactIcon { display: none; }
+  .contactCard strong { font-size: 16px; }
+  .contactSignature { margin-top: 26px; }
 }
+@media (prefers-reduced-motion: reduce) { .contactCard { transition: none; } }
 
 .chatbotPreviewShell {
   position: relative;

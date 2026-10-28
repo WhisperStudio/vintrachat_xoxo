@@ -1,5 +1,5 @@
-const DEFAULT_SITE_URL = 'https://chat.vintrastudio.com'
-const DEFAULT_CONTACT_EMAIL = 'vintrastudio@gmail.com'
+const DEFAULT_SITE_URL = 'https://vintranordic.com'
+const DEFAULT_CONTACT_EMAIL = 'support@vintrastudio.com'
 const DEFAULT_CONTACT_PHONE = '41761252'
 
 function normalizeSiteUrl(value?: string | null) {
@@ -23,9 +23,11 @@ export const siteConfig = {
     'Vintra is the official site for business websites and AI chatbots. See pricing, support, phone, and email in one place.',
   tagline: 'Websites and AI chatbots for businesses',
   url: normalizeSiteUrl(process.env.NEXT_PUBLIC_APP_URL),
+  // Public company address must not inherit a preview or application host.
+  publicUrl: DEFAULT_SITE_URL,
   locale: 'nb_NO',
   contact: {
-    email: process.env.NEXT_PUBLIC_CONTACT_EMAIL || DEFAULT_CONTACT_EMAIL,
+    email: DEFAULT_CONTACT_EMAIL,
     phone: normalizePhone(process.env.NEXT_PUBLIC_CONTACT_PHONE || DEFAULT_CONTACT_PHONE),
     phoneDisplay: formatPhoneDisplay(process.env.NEXT_PUBLIC_CONTACT_PHONE || DEFAULT_CONTACT_PHONE),
     contactType: 'customer support',

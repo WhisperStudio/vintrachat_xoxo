@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
+import { FiArrowUpRight, FiGlobe, FiMail, FiPhone } from 'react-icons/fi'
 import { useVintraLanguage } from '@/lib/i18n'
 import { mainLandingCopy } from './i18n'
 import {
@@ -29,7 +30,7 @@ const organizationId = `${siteConfig.url}/#organization`
 const websiteId = `${siteConfig.url}/#website`
 const emailHref = `mailto:${siteConfig.contact.email}`
 const phoneHref = siteConfig.contact.phone ? `tel:${siteConfig.contact.phone.replace(/\s+/g, '')}` : ''
-const siteHost = new URL(siteConfig.url).host
+const siteHost = new URL(siteConfig.publicUrl).host
 const contactStructuredData = {
   '@context': 'https://schema.org',
   '@graph': [
@@ -524,34 +525,51 @@ export default function MainLanding() {
             </div>
           </section>
 
-          <section id="contact" className="contactBand">
+          <section id="contact" className="contactBand" aria-labelledby="contact-title">
             <div className="page">
               <Reveal>
                 <div className="contactPanel">
                   <div className="contactIntro">
                     <span className="sectionKicker">{text.contactEyebrow}</span>
-                    <h2>{text.contactTitle}</h2>
+                    <h2 id="contact-title">{text.contactTitle}</h2>
                     <p>{text.contactBody}</p>
+                    <div className="contactSignature"><span>VINTRA NORDIC</span><span>{text.contactServices}</span></div>
                   </div>
 
                   <div className="contactGrid">
-                    <a href={emailHref} className="contactCard">
-                      <span className="contactCardLabel">{text.email}</span>
-                      <strong>{siteConfig.contact.email}</strong>
-                      <p>{text.emailDescription}</p>
+                    <a href={emailHref} className="contactCard contactCard--primary">
+                      <span className="contactIcon"><FiMail aria-hidden="true" /></span>
+                      <div className="contactCardCopy">
+                        <span className="contactCardLabel">{text.email}</span>
+                        <strong>{siteConfig.contact.email.split('@')[0]}@<wbr />{siteConfig.contact.email.split('@')[1]}</strong>
+                        <p>{text.emailDescription}</p>
+                      </div>
+                      <FiArrowUpRight className="contactArrow" aria-hidden="true" />
                     </a>
                     {phoneHref ? (
                       <a href={phoneHref} className="contactCard">
-                        <span className="contactCardLabel contactCardLabel--green">{text.phone}</span>
-                        <strong>{siteConfig.contact.phoneDisplay}</strong>
-                        <p>{text.phoneDescription}</p>
+                        <span className="contactIcon"><FiPhone aria-hidden="true" /></span>
+                        <div className="contactCardCopy">
+                          <span className="contactCardLabel">{text.phone}</span>
+                          <strong>{siteConfig.contact.phoneDisplay}</strong>
+                          <p>{text.phoneDescription}</p>
+                        </div>
+                        <FiArrowUpRight className="contactArrow" aria-hidden="true" />
                       </a>
                     ) : null}
-                    <a href={siteConfig.url} className="contactCard">
-                      <span className="contactCardLabel contactCardLabel--blue">{text.websiteCardTitle}</span>
-                      <strong>{siteHost}</strong>
-                      <p>{text.websiteDescription}</p>
+                    <a href={siteConfig.publicUrl} className="contactCard">
+                      <span className="contactIcon"><FiGlobe aria-hidden="true" /></span>
+                      <div className="contactCardCopy">
+                        <span className="contactCardLabel">{text.websiteCardTitle}</span>
+                        <strong>{siteHost}</strong>
+                        <p>{text.websiteDescription}</p>
+                      </div>
+                      <FiArrowUpRight className="contactArrow" aria-hidden="true" />
                     </a>
+                  </div>
+                  <div className="contactDetails">
+                    <span>{text.contactDetailsNote}</span>
+                    <nav aria-label={text.contactLegalLabel}><Link href="/policy">{text.contactPrivacy}</Link><Link href="/terms">{text.contactTerms}</Link></nav>
                   </div>
                 </div>
               </Reveal>
