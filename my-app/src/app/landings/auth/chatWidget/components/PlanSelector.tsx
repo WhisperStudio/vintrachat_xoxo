@@ -1,8 +1,7 @@
 'use client'
 
 import { FiCheck, FiChevronDown, FiX } from 'react-icons/fi'
-import { FaInfinity, FaMoneyBillWave, FaRegCreditCard } from 'react-icons/fa'
-import { MdMoneyOff, MdAttachMoney } from "react-icons/md";
+import { FaInfinity, FaRegCreditCard } from 'react-icons/fa'
 import { chatWidgetBuilderExtraI18n, chatWidgetPlanI18n, useVintraLanguage } from '@/lib/i18n'
 import { normalizeSubscriptionPlan } from '@/lib/subscription'
 import './PlanSelector.css'
@@ -127,10 +126,6 @@ export default function PlanSelector({
             <div className="option-main">
                <span className="option-price">
                 <span className="option-title">{title}</span>
-                {value === 'free' && <MdMoneyOff className="money-icon" />}
-                {value === 'pro' && <><MdAttachMoney className="money-icon" /><MdAttachMoney className="money-icon" /></>}
-                {value === 'business' && <><MdAttachMoney className="money-icon" /><MdAttachMoney className="money-icon" /><MdAttachMoney className="money-icon" /></>}
-              
              </span>
                 <span className="price-text">{price}</span>
               
@@ -155,8 +150,8 @@ export default function PlanSelector({
         {effectiveLockedPlan ? (
           <p className="plan-locked-note">
             {language === 'no'
-              ? 'Planen styres fra bedriftens database. Oppgraderinger eller nedgraderinger gjores fra Vintra-admin.'
-              : 'The plan is controlled by the business record in the database. Upgrades or downgrades are handled from Vintra admin.'}
+              ? 'Dette er bedriftens gjeldende abonnement. Kontakt Vintra hvis du ønsker å endre det.'
+              : 'This is your workspace’s current plan. Contact Vintra if you would like to change it.'}
           </p>
         ) : null}
 

@@ -8,7 +8,7 @@ import { resolveAppThemePreference, writeAppThemePreference } from '@/lib/theme-
 import MountainBackground from '@/svgs/MountainBackground'
 import './auth-design.css'
 
-export default function AuthFrame({ children, signup = false }: { children: ReactNode; signup?: boolean }) {
+export default function AuthFrame({ children, signup = false, recovery = false }: { children: ReactNode; signup?: boolean; recovery?: boolean }) {
   const { language, setLanguage } = useVintraLanguage()
   const no = language === 'no'
 
@@ -37,8 +37,8 @@ export default function AuthFrame({ children, signup = false }: { children: Reac
         <aside className="nordicAuthStory" aria-label={no ? 'Velkommen til Vintra' : 'Welcome to Vintra'}>
           <div className="nordicAuthStoryCopy">
             <span className="nordicAuthEyebrow"><span />{no ? 'NÆRMERE KUNDENE DINE' : 'CLOSER TO YOUR CUSTOMERS'}</span>
-            <h2>{no ? 'God dialog.' : 'Great conversations.'}<br /><em>{no ? 'Starter her.' : 'Start here.'}</em></h2>
-            <p>{no ? 'Et roligere sted å samle samtaler, følge opp kunder og få oversikt. Laget for deg og teamet ditt.' : 'A calmer place to bring conversations together, support your customers and see the bigger picture. Built for you and your team.'}</p>
+            <h2>{recovery ? (no ? 'Tilbake til' : 'Back to') : (no ? 'God dialog.' : 'Great conversations.')}<br /><em>{recovery ? (no ? 'det som teller.' : 'what matters.') : (no ? 'Starter her.' : 'Start here.')}</em></h2>
+            <p>{recovery ? (no ? 'Glemt passordet? Vi hjelper deg tilbake til samtalene, kundene og teamet ditt.' : 'Forgot your password? Let’s get you back to your conversations, customers and team.') : (no ? 'Et roligere sted å samle samtaler, følge opp kunder og få oversikt. Laget for deg og teamet ditt.' : 'A calmer place to bring conversations together, support your customers and see the bigger picture. Built for you and your team.')}</p>
             <div className="nordicAuthStoryTags"><span>{no ? 'Samtaler' : 'Conversations'}</span><i /><span>{no ? 'Samarbeid' : 'Collaboration'}</span><i /><span>{no ? 'Oversikt' : 'Insights'}</span></div>
           </div>
           <div className="nordicAuthLandscape" aria-hidden="true"><div className="nordicAuthSunDisc" /><MountainBackground className="nordicAuthMountains" /></div>
@@ -46,7 +46,7 @@ export default function AuthFrame({ children, signup = false }: { children: Reac
         </aside>
 
         <section className="nordicAuthFormPanel" aria-labelledby="auth-title">
-          <div className="nordicAuthFormTop"><Link href="/"><FiArrowLeft aria-hidden="true" />{no ? 'Til forsiden' : 'Back to home'}</Link><span>{signup ? (no ? 'KOM I GANG' : 'GET STARTED') : (no ? 'DITT ARBEIDSOMRÅDE' : 'YOUR WORKSPACE')}</span></div>
+          <div className="nordicAuthFormTop"><Link href="/"><FiArrowLeft aria-hidden="true" />{no ? 'Til forsiden' : 'Back to home'}</Link><span>{recovery ? (no ? 'KONTOHJELP' : 'ACCOUNT RECOVERY') : signup ? (no ? 'KOM I GANG' : 'GET STARTED') : (no ? 'DITT ARBEIDSOMRÅDE' : 'YOUR WORKSPACE')}</span></div>
           <div className="nordicAuthFormContent">{children}</div>
           <div className="nordicAuthFormFooter"><span>Vintra Nordic</span><Link href="/">{no ? 'Bli kjent med Vintra' : 'Discover Vintra'}<FiArrowUpRight aria-hidden="true" /></Link></div>
         </section>

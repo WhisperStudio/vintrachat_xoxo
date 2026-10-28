@@ -20,6 +20,9 @@ import {
   FiSmartphone,
 } from 'react-icons/fi'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { FiArrowLeft, FiArrowRight, FiMoon, FiSun } from 'react-icons/fi'
+import { resolveAppThemePreference, writeAppThemePreference } from '@/lib/theme-preference'
 import { useAuth } from '@/context/AuthContext'
 import { createChatWidget, setActiveChatWidget, updateChatAssistantConfig, updateChatWidgetConfig } from '@/lib/auth.service'
 import { defaultConversationCards, normalizeConversationCards } from '@/lib/conversation-cards'
@@ -62,8 +65,8 @@ type PreviewHighlightTarget = 'bubble' | 'header' | 'body' | 'footer'
 type BuilderSectionKey = keyof typeof defaultOpenSections
 
 const defaultOpenSections = {
-  plan: true,
-  bubble: false,
+  plan: false,
+  bubble: true,
   header: false,
   body: false,
   footer: false,
@@ -355,7 +358,8 @@ const defaultInputs: InputsState = {
 export default function ChatWidgetBuilderPage() {
   const router = useRouter()
   const { isAuthenticated, dbUser, business, loading, refreshBusiness } = useAuth()
-  const { language } = useVintraLanguage()
+  const { language, setLanguage } = useVintraLanguage()
+  const no = language === 'no'
   const t = chatWidgetBuilderI18n[language]
   const builderExtraText = chatWidgetBuilderExtraI18n[language]
 
@@ -389,10 +393,6 @@ export default function ChatWidgetBuilderPage() {
   const databasePlan = useMemo(
     () => getEffectiveBusinessPlan(business, selectedWidget?.config),
     [business, selectedWidget?.config]
-  )
-  const total = useMemo(
-    () => builderExtraText.prices[databasePlan][inputs.billingCycle],
-    [builderExtraText.prices, databasePlan, inputs.billingCycle]
   )
   const widgetLimit = getPlanLimits(databasePlan).maxWidgets
   const canCreateWidget = widgetLimit === null || widgetList.length < widgetLimit
@@ -504,30 +504,6 @@ export default function ChatWidgetBuilderPage() {
     }))
   }, [databasePlan, hasLoadedDbConfig])
 
-  useEffect(() => {
-    const syncHeaderCollapse = () => {
-      const headerHeight = document.querySelector<HTMLElement>('header')?.offsetHeight ?? 96
-      const panelTop = builderPanelRef.current?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY
-      const shouldReleaseHeader = panelTop <= headerHeight + 8
-
-      if (shouldReleaseHeader) {
-        document.body.dataset.chatbuilderHeaderReleased = 'true'
-      } else {
-        delete document.body.dataset.chatbuilderHeaderReleased
-      }
-    }
-
-    syncHeaderCollapse()
-    window.addEventListener('scroll', syncHeaderCollapse, { passive: true })
-    window.addEventListener('resize', syncHeaderCollapse)
-
-    return () => {
-      window.removeEventListener('scroll', syncHeaderCollapse)
-      window.removeEventListener('resize', syncHeaderCollapse)
-      delete document.body.dataset.chatbuilderHeaderReleased
-    }
-  }, [])
-
   const updateInput = <K extends keyof InputsState>(key: K, value: InputsState[K]) => {
     setInputs((prev) => ({ ...prev, [key]: value }))
   }
@@ -573,13 +549,13 @@ export default function ChatWidgetBuilderPage() {
   }
 
   const builderSections = [
-    { key: 'plan', label: builderExtraText.sidebar.subscription, eyebrow: builderExtraText.sidebar.plan, icon: FiCreditCard },
     { key: 'bubble', label: builderExtraText.sidebar.chatButton, eyebrow: builderExtraText.sidebar.launcher, icon: FiMessageCircle },
     { key: 'header', label: builderExtraText.sidebar.chatTopBar, eyebrow: builderExtraText.sidebar.header, icon: FiLayout },
     { key: 'body', label: builderExtraText.sidebar.chatMessages, eyebrow: builderExtraText.sidebar.messages, icon: FiMessageSquare },
     { key: 'footer', label: builderExtraText.sidebar.messageBox, eyebrow: builderExtraText.sidebar.input, icon: FiSend },
     { key: 'colorTheme', label: builderExtraText.sidebar.colors, eyebrow: builderExtraText.sidebar.theme, icon: FiDroplet },
     { key: 'advanced', label: builderExtraText.sidebar.behavior, eyebrow: builderExtraText.sidebar.rules, icon: FiSliders },
+    { key: 'plan', label: builderExtraText.sidebar.subscription, eyebrow: builderExtraText.sidebar.plan, icon: FiCreditCard },
   ] as const
 
   const resetBuilder = () => {
@@ -727,22 +703,38 @@ export default function ChatWidgetBuilderPage() {
     }
   }
 
-  if (loading) return null
+  const activeSection = builderSections.find((section) => openSections[section.key]) || builderSections[0]
+  const sectionDescriptions = {
+    bubble: no ? 'Velg hvordan kundene åpner chatten på nettsiden din.' : 'Choose how customers open the chat on your website.',
+    header: no ? 'Gi samtalen en tydelig avsender og et personlig uttrykk.' : 'Give every conversation a clear identity and a personal touch.',
+    body: no ? 'Tilpass meldinger og snarveier som hjelper kundene videre.' : 'Customize messages and shortcuts that help customers find their way.',
+    footer: no ? 'Gjør det enkelt og behagelig å skrive en melding.' : 'Make sending a message feel simple and natural.',
+    colorTheme: no ? 'Finn fargene som passer bedriften din.' : 'Find the colors that feel right for your business.',
+    advanced: no ? 'Bestem hvor og når chatten skal vises.' : 'Choose where and when your chat appears.',
+    plan: no ? 'Se hva som er inkludert i de ulike abonnementene.' : 'Explore what’s included in each plan.',
+  }
+
+  if (loading) return <main className="chatbuilder-page builder-loading" role="status">{no ? 'Laster arbeidsområdet…' : 'Loading your workspace…'}</main>
 
   return (
     <div className="chatbuilder-page">
+      <header className="studioHeader">
+        <Link href="/" className="studioBrand"><img src="/image/logo.png" width="32" height="32" alt="" /><strong>Vintra</strong><span>Widget studio</span></Link>
+        <div className="studioHeaderTools">
+          <select aria-label={no ? 'Språk' : 'Language'} value={language} onChange={(event) => setLanguage(event.target.value as 'no' | 'en')}><option value="no">Norsk</option><option value="en">English</option></select>
+          <button type="button" className="studioTheme" aria-label={no ? 'Bytt lys og mørk modus' : 'Switch light and dark mode'} onClick={() => writeAppThemePreference(resolveAppThemePreference() === 'dark' ? 'light' : 'dark')}><FiMoon className="studioMoon" aria-hidden="true" /><FiSun className="studioSun" aria-hidden="true" /></button>
+          <Link href={isAuthenticated ? '/admin' : '/auth/login'} className="studioAccountLink">{isAuthenticated ? (no ? 'Til oversikten' : 'Dashboard') : (no ? 'Logg inn' : 'Sign in')}<FiArrowRight aria-hidden="true" /></Link>
+        </div>
+      </header>
       <main className="chatbuilder-content">
         <section className="chatbuilder-hero">
-          <h1>{t.heroTitle}</h1>
-          <p>
-            {t.heroBody}{' '}
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#16a34a' }}>
-              <FiCreditCard aria-hidden="true" />
-              <span>{t.subscription}</span>
-            </span>{' '}
-            {t.heroBodyEnd}
-          </p>
+          <div className="studioIntro">
+            <Link className="studioBackLink" href={isAuthenticated ? '/admin' : '/'}><FiArrowLeft aria-hidden="true" />{isAuthenticated ? (no ? 'Arbeidsområdet ditt' : 'Your workspace') : (no ? 'Til forsiden' : 'Back to home')}</Link>
+            <h1>{no ? 'Din merkevare. Din chat.' : 'Your brand. Your chat.'}</h1>
+            <p>{no ? 'Skap en chatopplevelse som føles som en del av bedriften din. Tilpass detaljene og se resultatet underveis.' : 'Create a chat experience that feels like part of your business. Refine the details and see your changes as you go.'}</p>
+          </div>
 
+          {isAuthenticated ? (
           <div className="chatbuilder-widget-switcher">
             <label htmlFor="builder-widget-select">{t.activeWidget}</label>
             <div className="chatbuilder-widget-switcher-row">
@@ -784,7 +776,9 @@ export default function ChatWidgetBuilderPage() {
                   : t.paidMultipleWidgets}
             </span>
           </div>
-
+          ) : (
+            <div className="studioGuestNote"><span className="studioEyebrow">{no ? 'PRØV DEG FREM' : 'MAKE IT YOURS'}</span><strong>{no ? 'Finn uttrykket som passer deg.' : 'Find the look that feels like you.'}</strong><p>{no ? 'Du kan utforske editoren uten konto. Logg inn for å lagre chatwidgeten til bedriften din.' : 'Explore the editor without an account. Sign in to save your widget to your workspace.'}</p><Link href="/auth/login">{no ? 'Logg inn for å lagre' : 'Sign in to save'}<FiArrowRight aria-hidden="true" /></Link></div>
+          )}
         </section>
 
         <div className="chatbuilder-grid">
@@ -795,26 +789,7 @@ export default function ChatWidgetBuilderPage() {
               </h2>
 
               <div className="panel-actions">
-                <div className="previewModeSwitcher" role="tablist" aria-label={t.previewDevice}>
-                  <button
-                    type="button"
-                    className={previewMode === 'desktop' ? 'active' : ''}
-                    onClick={() => setPreviewMode('desktop')}
-                    aria-pressed={previewMode === 'desktop'}
-                  >
-                    <FiMonitor />
-                    <span>{t.desktop}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={previewMode === 'mobile' ? 'active' : ''}
-                    onClick={() => setPreviewMode('mobile')}
-                    aria-pressed={previewMode === 'mobile'}
-                  >
-                    <FiSmartphone />
-                    <span>{t.mobile}</span>
-                  </button>
-                </div>
+
 
                 {isAuthenticated ? (
                   <button
@@ -834,7 +809,7 @@ export default function ChatWidgetBuilderPage() {
                     </span>
                     <span>{isSaving ? t.saving : saveStatus === 'success' ? t.savedButton : saveStatus === 'error' ? t.saveFailed : t.saveConfiguration}</span>
                   </button>
-                ) : null}
+                ) : <Link href="/auth/login" className="save-btn">{no ? 'Logg inn for å lagre' : 'Sign in to save'}<FiArrowRight aria-hidden="true" /></Link>}
 
                 <button className="reset-btn" onClick={handleReset} type="button">
                   <span
@@ -849,7 +824,7 @@ export default function ChatWidgetBuilderPage() {
             </div>
 
             <div className="builder-layout">
-              <nav className="builder-sidebar" aria-label="Widget builder sections">
+              <nav className="builder-sidebar" aria-label={no ? 'Widgetinnstillinger' : 'Widget settings'}>
                 {builderSections.map((section) => {
                   const SectionIcon = section.icon
                   const active = openSections[section.key]
@@ -866,7 +841,8 @@ export default function ChatWidgetBuilderPage() {
                         }
                       }}
                       onMouseLeave={() => setPreviewHighlightTarget(null)}
-                      aria-current={active ? 'page' : undefined}
+                      aria-pressed={active}
+                      aria-controls="studio-settings"
                     >
                       <span className="builder-sidebar-button__icon" aria-hidden="true">
                         <SectionIcon />
@@ -880,7 +856,8 @@ export default function ChatWidgetBuilderPage() {
                 })}
               </nav>
 
-              <div className="builder-content-panel">
+              <section className="builder-content-panel" id="studio-settings" aria-labelledby="studio-section-title">
+                <div className="studioSectionIntro"><span className="studioEyebrow">{activeSection.eyebrow}</span><h2 id="studio-section-title">{activeSection.label}</h2><p>{sectionDescriptions[activeSection.key]}</p></div>
                 <PlanSelector
                   plan={inputs.plan}
                   billingCycle={inputs.billingCycle}
@@ -923,13 +900,36 @@ export default function ChatWidgetBuilderPage() {
                   openSections={openSections}
                   onToggleSection={toggleSection}
                 />
-              </div>
+              </section>
             </div>
+            <div className="studioEditorNote" role="status">{saveStatus === 'error' ? t.saveFailed : saveStatus === 'success' ? t.savedButton : (no ? 'Forhåndsvisningen oppdateres mens du jobber. Lagre når du er fornøyd.' : 'Your preview updates as you work. Save when you’re happy with it.')}</div>
           </div>
 
-          <div className="preview-panel">
+          <section className="preview-panel" id="studio-preview" aria-label={no ? 'Forhåndsvisning av chatwidget' : 'Chat widget preview'}>
+            <div className="studioPreviewHeader"><span className="studioEyebrow">{no ? 'FORHÅNDSVISNING' : 'PREVIEW'}</span>
+            <div className="previewModeSwitcher" role="group" aria-label={t.previewDevice}>
+                  <button
+                    type="button"
+                    className={previewMode === 'desktop' ? 'active' : ''}
+                    onClick={() => setPreviewMode('desktop')}
+                    aria-pressed={previewMode === 'desktop'}
+                  >
+                    <FiMonitor />
+                    <span>{t.desktop}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={previewMode === 'mobile' ? 'active' : ''}
+                    onClick={() => setPreviewMode('mobile')}
+                    aria-pressed={previewMode === 'mobile'}
+                  >
+                    <FiSmartphone />
+                    <span>{t.mobile}</span>
+                  </button>
+                </div>
+            </div>
+            <p className="studioPreviewNote">{no ? 'Prøv en eksempelsamtale med designet ditt.' : 'Try a sample conversation with your design.'}</p>
             <WidgetPreview
-              total={total}
               billingCycle={inputs.billingCycle}
               plan={databasePlan}
               bubbleStyle={inputs.bubbleStyle}
@@ -952,18 +952,9 @@ export default function ChatWidgetBuilderPage() {
               highlightedSection={previewHighlightTarget}
               flashSection={previewFlashTarget}
             />
-          </div>
+          </section>
         </div>
       </main>
-      <div className="chatbuilder-screen-guard" aria-hidden="true">
-        <div className="chatbuilder-screen-guard__card">
-          <div className="chatbuilder-screen-guard__emoji" aria-hidden="true">
-            🙂
-          </div>
-          <h2>{t.desktopOnlyTitle}</h2>
-          <p>{t.desktopOnlyBody}</p>
-        </div>
-      </div>
     </div>
   )
 }

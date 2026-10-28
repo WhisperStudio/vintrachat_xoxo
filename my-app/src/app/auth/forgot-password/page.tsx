@@ -1,167 +1,61 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
-import { useState } from 'react'
-import { FiArrowRight, FiCheckCircle, FiKey, FiMail, FiShield } from 'react-icons/fi'
+import { useEffect, useRef, useState } from 'react'
+import { FiArrowLeft, FiArrowRight, FiCheckCircle, FiMail } from 'react-icons/fi'
 import { requestPasswordReset } from '@/lib/auth.service'
+import { useVintraLanguage } from '@/lib/i18n'
+import { siteConfig } from '@/lib/site-config'
+import AuthFrame from '../AuthFrame'
 
 export default function ForgotPasswordPage() {
+  const { language } = useVintraLanguage()
+  const no = language === 'no'
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const title = useRef<HTMLHeadingElement>(null)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  useEffect(() => { if (submitted) title.current?.focus() }, [submitted])
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
     setLoading(true)
     setError('')
-
     try {
-      const result = await requestPasswordReset(email)
-
-      if (result.success) {
-        setSubmitted(true)
-      } else {
-        setError(result.message || 'We could not send a reset email right now.')
-      }
-    } catch (err: any) {
-      setError(err.message || 'We could not send a reset email right now.')
-    } finally {
-      setLoading(false)
-    }
+      const result = await requestPasswordReset(email.trim())
+      if (result.success) setSubmitted(true)
+      else setError(result.message || (no ? 'Kunne ikke sende lenken. Prøv igjen.' : 'Could not send the link. Please try again.'))
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : (no ? 'Noe gikk galt. Prøv igjen.' : 'Something went wrong. Please try again.'))
+    } finally { setLoading(false) }
   }
 
   return (
-    <main className="authPage authExperience">
-      <div className="authShowcase">
-        <section className="authBrandPanel">
-          <div className="authBrandHeader">
-            <div className="authBrandLogo">
-              <Image src="/image/logo.png" alt="Vintra logo" width={40} height={40} />
-            </div>
-            <div className="authBrandName">
-              <strong>Vintra</strong>
-              <span>Secure account recovery</span>
-            </div>
-          </div>
-
-          <div>
-            <div className="authBrandEyebrow">Password recovery</div>
-            <h1>Get back into your account safely.</h1>
-          </div>
-
-          <p className="authBrandLead">
-            We send a secure reset link to the inbox tied to your Vintra account, so you can create a new password without exposing your workspace.
-          </p>
-
-          <div className="authFeatureList">
-            <div className="authFeatureItem">
-              <div className="authFeatureIcon">
-                <FiKey size={18} />
-              </div>
-              <div>
-                <strong>One secure link</strong>
-                <span>Each reset request generates a fresh password link that only the account owner can use.</span>
-              </div>
-            </div>
-            <div className="authFeatureItem">
-              <div className="authFeatureIcon">
-                <FiShield size={18} />
-              </div>
-              <div>
-                <strong>Short expiry window</strong>
-                <span>Reset links expire after one hour so old emails cannot be reused later.</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="authCard authCardElevated">
-          {!submitted ? (
-            <>
-              <div className="authCardHeader">
-                <div className="authIconBadge">
-                  <FiMail size={24} />
-                </div>
-                <div>
-                  <p className="authKicker">Reset password</p>
-                  <h2 className="authHeadline">Send recovery email</h2>
-                </div>
-              </div>
-
-              <p className="authBody">
-                Enter the email tied to your account and we will send you a branded reset link.
-              </p>
-
-              <form onSubmit={handleSubmit}>
-                <label>
-                  <span>Email</span>
-                  <input
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </label>
-
-                {error && <div className="errorBox">{error}</div>}
-
-                <button className="primaryBtn fullWidth" type="submit" disabled={loading}>
-                  {loading ? 'Sending...' : 'Send reset link'}
-                </button>
-              </form>
-
-              <div className="authInlineLinks">
-                <span className="authTinyNote">Remembered it after all?</span>
-                <Link href="/auth/login" className="authTextLink">
-                  Back to login
-                </Link>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="authCardHeader">
-                <div className="authIconBadge">
-                  <FiCheckCircle size={24} />
-                </div>
-                <div>
-                  <p className="authKicker">Email sent</p>
-                  <h2 className="authHeadline">Check your inbox</h2>
-                </div>
-              </div>
-
-              <p className="authBody">
-                If an account exists for this address, a password reset email is now on its way.
-              </p>
-
-              <div className="authEmailChip">
-                <FiMail size={16} />
-                <span>{email}</span>
-              </div>
-
-              <div className="authCallout success">
-                <strong>Next step</strong>
-                <span>Open the email from Vintra and use the button inside it within 1 hour.</span>
-              </div>
-
-              <div className="authButtonStack">
-                <Link href="/auth/login" className="primaryBtn buttonLink fullWidth">
-                  Return to login
-                </Link>
-                <button className="secondaryBtn fullWidth" type="button" onClick={() => setSubmitted(false)}>
-                  Use a different email
-                </button>
-              </div>
-            </>
-          )}
-
-          <Link href="/auth/login" className="authTextLink" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            Continue to login <FiArrowRight size={16} />
-          </Link>
-        </section>
+    <AuthFrame recovery>
+      <div className="nordicAuthIntro">
+        <span className="nordicAuthFormIcon">{submitted ? <FiCheckCircle aria-hidden="true" /> : <FiMail aria-hidden="true" />}</span>
+        <h1 id="auth-title" ref={title} tabIndex={-1}>{submitted ? (no ? 'Sjekk innboksen din.' : 'Check your inbox.') : (no ? 'Glemt passordet?' : 'Forgot your password?')}</h1>
+        <p>{submitted ? (no ? 'Hvis e-postadressen er knyttet til en konto, sender vi deg en lenke for å velge et nytt passord.' : 'If this email address is linked to an account, we’ll send you a link to choose a new password.') : (no ? 'Skriv inn e-postadressen du bruker hos Vintra, så hjelper vi deg videre.' : 'Enter the email address you use with Vintra and we’ll help you get back in.')}</p>
       </div>
-    </main>
+      {submitted ? (
+        <div className="nordicAuthForm">
+          <div className="nordicAuthRecoveryEmail"><FiMail aria-hidden="true" /><strong>{email.trim()}</strong></div>
+          <ol className="nordicAuthRecoverySteps"><li>{no ? 'Åpne e-posten fra Vintra.' : 'Open the email from Vintra.'}</li><li>{no ? 'Følg lenken og velg et nytt passord.' : 'Follow the link and choose a new password.'}</li></ol>
+          <p className="nordicAuthHint">{no ? 'Finner du ikke e-posten? Se i søppelpost, og kontroller at adressen er riktig.' : 'Can’t find the email? Check your spam folder and make sure the address is correct.'}</p>
+          <Link href="/auth/login" className="nordicAuthSubmit">{no ? 'Til innlogging' : 'Back to sign in'}<FiArrowRight aria-hidden="true" /></Link>
+          <button className="nordicAuthBack" type="button" onClick={() => { setSubmitted(false); setError('') }}>{no ? 'Bruk en annen e-postadresse' : 'Use a different email address'}</button>
+        </div>
+      ) : (
+        <form className="nordicAuthForm" onSubmit={handleSubmit} aria-busy={loading}>
+          <div className="nordicAuthField"><label htmlFor="recovery-email">{no ? 'E-postadresse' : 'Email address'}</label><input id="recovery-email" name="email" type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} placeholder={no ? 'deg@bedrift.no' : 'you@company.com'} value={email} onChange={(event) => setEmail(event.target.value)} required /></div>
+          {error && <div className="nordicAuthError" role="alert">{error}</div>}
+          <button className="nordicAuthSubmit" type="submit" disabled={loading}>{loading ? <><span className="nordicAuthSpinner" />{no ? 'Sender lenke…' : 'Sending link…'}</> : <>{no ? 'Send tilbakestillingslenke' : 'Send reset link'}<FiArrowRight aria-hidden="true" /></>}</button>
+          <Link href="/auth/login" className="nordicAuthBack"><FiArrowLeft aria-hidden="true" />{no ? 'Tilbake til innlogging' : 'Back to sign in'}</Link>
+        </form>
+      )}
+      <p className="nordicAuthSwitch">{no ? 'Trenger du hjelp?' : 'Need a hand?'} <a href={`mailto:${siteConfig.contact.email}`}>{no ? 'Kontakt oss' : 'Contact support'}</a></p>
+    </AuthFrame>
   )
 }

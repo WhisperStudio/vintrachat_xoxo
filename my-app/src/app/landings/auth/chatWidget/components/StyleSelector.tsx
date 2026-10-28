@@ -265,73 +265,13 @@ function GlassRadioRow<T extends string>({
   options: Array<GlassRadioOption<T>>
   onChange: (value: T) => void
 }) {
-  const rowRef = useRef<HTMLDivElement | null>(null)
-  const buttonRefs = useRef<Partial<Record<T, HTMLButtonElement | null>>>({})
-  const [indicator, setIndicator] = useState<{ left: number; top: number; width: number; height: number; opacity: number } | null>(null)
-
-  useLayoutEffect(() => {
-    const cleanup: Array<() => void> = []
-
-    const updateIndicator = () => {
-      const container = rowRef.current
-      const activeButton = buttonRefs.current[value]
-
-      if (!container || !activeButton) {
-        setIndicator(null)
-        return
-      }
-
-      setIndicator({
-        left: activeButton.offsetLeft,
-        top: activeButton.offsetTop,
-        width: activeButton.offsetWidth,
-        height: activeButton.offsetHeight,
-        opacity: 1,
-      })
-    }
-
-    const raf1 = window.requestAnimationFrame(() => {
-      const raf2 = window.requestAnimationFrame(updateIndicator)
-      cleanup.push(() => window.cancelAnimationFrame(raf2))
-    })
-
-    cleanup.push(() => window.cancelAnimationFrame(raf1))
-    const resizeObserver = new ResizeObserver(updateIndicator)
-
-    if (rowRef.current) resizeObserver.observe(rowRef.current)
-    const activeButton = buttonRefs.current[value]
-    if (activeButton) resizeObserver.observe(activeButton)
-
-    window.addEventListener('resize', updateIndicator)
-    return () => {
-      resizeObserver.disconnect()
-      window.removeEventListener('resize', updateIndicator)
-      cleanup.forEach((fn) => fn())
-    }
-  }, [value, options.length])
-
   return (
-    <div className="glassRadioRow" ref={rowRef} role="radiogroup" aria-label={name}>
-      {indicator ? (
-        <span
-          className="glassRadioIndicator"
-          style={{
-            transform: `translate(${indicator.left}px, 0)`,
-            top: `${indicator.top}px`,
-            height: `${indicator.height}px`,
-            width: `${indicator.width}px`,
-            opacity: indicator.opacity,
-          }}
-        />
-      ) : null}
+    <div className="glassRadioRow" role="radiogroup" aria-label={name}>
       {options.map((option) => {
         const active = option.value === value
         return (
           <button
             key={option.value}
-            ref={(node) => {
-              buttonRefs.current[option.value] = node
-            }}
             type="button"
             className={`glassRadioButton ${active ? 'active' : ''}`}
             role="radio"
@@ -475,7 +415,7 @@ function LogoUploadEditor({
 
   return (
     <div className="logoEditor">
-      <input ref={fileInputRef} type="file" accept="image/png" onChange={handleFileChange} className="logoEditorInput" />
+      <input ref={fileInputRef} type="file" accept="image/png" onChange={handleFileChange} className="logoEditorInput" aria-label="Last opp logo (PNG)" />
 
       <div
         className={`logoEditorDropzone ${isDragOver ? 'is-dragging' : ''} ${branding.logo ? 'has-image' : 'empty'}`}
@@ -591,6 +531,7 @@ function StarterCardEditor({
   onChange: (nextCard: AssistantConversationCard) => void
   onRemove: () => void
 }) {
+  const { language } = useVintraLanguage()
   const [activeField, setActiveField] = useState<'icon' | 'title' | 'description' | 'image' | null>(null)
 
   const updateOption = (optionIndex: number, patch: Partial<AssistantConversationCard['options'][number]>) => {
@@ -618,7 +559,7 @@ function StarterCardEditor({
     <article className={`starterCardEditor ${disabled ? 'is-disabled' : ''}`}>
       <div className="starterCardEditor__header">
         <div>
-          <span className="starterCardEditor__eyebrow">Card {index + 1}</span>
+          <span className="starterCardEditor__eyebrow">{language === 'no' ? 'Kort' : 'Card'} {index + 1}</span>
           <strong>{card.title || `Card ${index + 1}`}</strong>
         </div>
         <button type="button" className="starterCardEditor__remove" onClick={onRemove} disabled={disabled}>
@@ -1024,19 +965,19 @@ export default function StyleSelector({
             <div className="starterCardsPanel">
               <div className="starterCardsPanel__header">
                 <div>
-                  <strong>Starter cards</strong>
-                  <p>Edit the actual cards shown in the widget preview and export.</p>
+                  <strong>{language === 'no' ? 'Startkort' : 'Starter cards'}</strong>
+                  <p>{language === 'no' ? 'Hjelp kundene videre med nyttige snarveier.' : 'Help customers find their way with useful shortcuts.'}</p>
                 </div>
                 <label className="starterCardsPanel__toggle">
                   <input type="checkbox" checked={conversationCardsEnabled} onChange={(event) => onConversationCardsEnabledChange(event.target.checked)} />
-                  <span>Enabled</span>
+                  <span>{language === 'no' ? 'Aktivert' : 'Enabled'}</span>
                 </label>
               </div>
 
               {selectedStarterCardId && conversationCards.some((card) => card.id === selectedStarterCardId) ? (
                 <div className="starterCardsPanel__detail">
                   <button type="button" className="starterCardsPanel__back" onClick={() => setSelectedStarterCardId(null)}>
-                    <FiArrowLeft aria-hidden="true" /> Back to cards
+                    <FiArrowLeft aria-hidden="true" /> {language === 'no' ? 'Tilbake til kortene' : 'Back to cards'}
                   </button>
                   {conversationCards.map((card, index) => card.id === selectedStarterCardId ? (
                     <StarterCardEditor
@@ -1057,30 +998,30 @@ export default function StyleSelector({
                 <>
                   <div className="starterCardsPanel__controls">
                     <label className="branding-field">
-                      <span>Cards shown</span>
+                      <span>{language === 'no' ? 'Antall synlige kort' : 'Cards shown'}</span>
                       <input type="number" min="1" max="12" value={conversationCardsLimit} disabled={!conversationCardsEnabled} onChange={(event) => onConversationCardsLimitChange(Math.max(1, Math.min(12, Number(event.target.value) || 1)))} />
                     </label>
                     <div className="starterCardsPanel__actions">
-                      <button type="button" className="starterCardsPanel__action" onClick={addConversationCard} disabled={!conversationCardsEnabled}><FiPlus aria-hidden="true" /> Add card</button>
-                      <button type="button" className="starterCardsPanel__action secondary" onClick={() => { onConversationCardsChange(defaultConversationCards); setSelectedStarterCardId(null) }} disabled={!conversationCardsEnabled}>Reset</button>
+                      <button type="button" className="starterCardsPanel__action" onClick={addConversationCard} disabled={!conversationCardsEnabled}><FiPlus aria-hidden="true" /> {language === 'no' ? 'Legg til kort' : 'Add card'}</button>
+                      <button type="button" className="starterCardsPanel__action secondary" onClick={() => { onConversationCardsChange(defaultConversationCards); setSelectedStarterCardId(null) }} disabled={!conversationCardsEnabled}>{language === 'no' ? 'Nullstill' : 'Reset'}</button>
                     </div>
                   </div>
 
-                  <div className="starterCardsTree" role="tree" aria-label="Starter cards">
+                  <div className="starterCardsTree" role="group" aria-label={language === 'no' ? 'Startkort' : 'Starter cards'}>
                     {conversationCards.map((card, index) => (
-                      <button key={card.id} type="button" role="treeitem" className="starterCardsTree__card" onClick={() => setSelectedStarterCardId(card.id)} disabled={!conversationCardsEnabled}>
+                      <button key={card.id} type="button" className="starterCardsTree__card" onClick={() => setSelectedStarterCardId(card.id)} disabled={!conversationCardsEnabled}>
                         <span className="starterCardsTree__line" aria-hidden="true" />
                         <span className="starterCardsTree__icon">{renderWidgetIcon(card.icon, { 'aria-hidden': true }) || <FiMessageCircle aria-hidden="true" />}</span>
                         <span className="starterCardsTree__copy">
-                          <span className="starterCardsTree__eyebrow">Card {index + 1}</span>
+                          <span className="starterCardsTree__eyebrow">{language === 'no' ? 'Kort' : 'Card'} {index + 1}</span>
                           <strong>{card.title || `Untitled card ${index + 1}`}</strong>
                           <span>{card.description || 'No description yet'}</span>
                         </span>
-                        <span className="starterCardsTree__meta">{card.options.length} options</span>
+                        <span className="starterCardsTree__meta">{card.options.length} {language === 'no' ? 'valg' : 'options'}</span>
                         <FiChevronRight className="starterCardsTree__chevron" aria-hidden="true" />
                       </button>
                     ))}
-                    <button type="button" className="starterCardsTree__add" onClick={addConversationCard} disabled={!conversationCardsEnabled}><FiPlus aria-hidden="true" /> Add another card</button>
+                    <button type="button" className="starterCardsTree__add" onClick={addConversationCard} disabled={!conversationCardsEnabled}><FiPlus aria-hidden="true" /> {language === 'no' ? 'Legg til et kort' : 'Add another card'}</button>
                   </div>
                 </>
               )}
@@ -1162,8 +1103,8 @@ export default function StyleSelector({
           </div>
 
           <div className="advanced-field">
-            <label>{text.labels.autoOpenDelay}</label>
-            <input type="number" value={settings.delayMs || 3000} onChange={(event) => onSettingsChange({ ...settings, delayMs: parseInt(event.target.value || '0', 10) })} min="0" max="10000" step="500" />
+            <label htmlFor="studio-auto-open-delay">{text.labels.autoOpenDelay}</label>
+            <input id="studio-auto-open-delay" type="number" value={settings.delayMs || 3000} onChange={(event) => onSettingsChange({ ...settings, delayMs: parseInt(event.target.value || '0', 10) })} min="0" max="10000" step="500" />
           </div>
         </div>
       </div>

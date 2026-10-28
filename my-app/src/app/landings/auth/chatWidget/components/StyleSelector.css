@@ -1066,7 +1066,7 @@
   display: grid;
 }
 
-select,
+.chatbuilder-page select,
 .branding-field input,
 .advanced-field input,
 .advanced-field textarea {
