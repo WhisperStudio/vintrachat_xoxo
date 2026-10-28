@@ -8,7 +8,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   return (
     <>
-      {pathname !== '/admin' && <Header />}
+      {!['/admin', '/auth/login', '/auth/signup'].includes(pathname) && <Header />}
       {children}
     </>
   )

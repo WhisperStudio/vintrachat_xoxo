@@ -3,13 +3,15 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { FiArrowRight, FiLock } from 'react-icons/fi'
+import AuthFrame, { PasswordField } from '../AuthFrame'
 import { signInWithEmail } from '@/lib/auth.service'
 import { useAuth } from '@/context/AuthContext'
 import { authPagesI18n, useVintraLanguage } from '@/lib/i18n'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { firebaseUser, isAuthenticated, loading, error: accountError, refreshCurrentUser } = useAuth()
+  const { firebaseUser, isAuthenticated, loading, error: accountError, refreshCurrentUser, logout } = useAuth()
   const { language } = useVintraLanguage()
   const text = authPagesI18n[language]
   const [email, setEmail] = useState('')
@@ -51,73 +53,56 @@ export default function LoginPage() {
       } else {
         setError(result.message)
       }
-    } catch (err: any) {
-      setError(err.message || text.login.failed)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : text.login.failed)
     } finally {
       setLoginLoading(false)
     }
   }
 
   return (
-    <main className="authPage">
+    <AuthFrame>
+      <div className="nordicAuthIntro">
+        <span className="nordicAuthFormIcon"><FiLock aria-hidden="true" /></span>
+        <h1 id="auth-title">{language === 'no' ? 'Velkommen tilbake.' : 'Welcome back.'}</h1>
+        <p>{language === 'no' ? 'Logg inn og fortsett der du slapp.' : 'Sign in and pick up where you left off.'}</p>
+      </div>
       {loading ? (
-        <div className="authCard">
-          <div style={{ textAlign: 'center', padding: '40px' }}>
-            <div className="loading-spinner" />
-            <p>{text.loading}</p>
-          </div>
-        </div>
+        <div className="nordicAuthLoading" role="status"><span className="nordicAuthSpinner" />{text.loading}</div>
       ) : (
-        <div className="authCard">
-          <h1>{text.login.title}</h1>
-          <p>{text.login.body}</p>
-
-          <form onSubmit={handleSubmit}>
-            <label>
-              <span>Email</span>
-              <input
-                type="email"
-                placeholder="din@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </label>
-
-            <label>
-              <span>{text.login.password}</span>
-              <input
-                type="password"
-                placeholder={text.login.passwordPlaceholder}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </label>
-
-            {(error || accountError) && <div className="errorBox" role="alert">{error || accountError}</div>}
-
-            <button className="primaryBtn fullWidth" type="submit" disabled={loginLoading}>
-              {loginLoading ? text.login.submitting : text.login.submit}
+        <>
+          <form className="nordicAuthForm" onSubmit={handleSubmit} aria-busy={loginLoading}>
+            <div className="nordicAuthField">
+              <label htmlFor="email">{language === 'no' ? 'E-postadresse' : 'Email address'}</label>
+              <input id="email" name="email" type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} placeholder={language === 'no' ? 'deg@bedrift.no' : 'you@company.com'} value={email} onChange={(event) => setEmail(event.target.value)} required />
+            </div>
+            <PasswordField id="password" label={text.login.password} placeholder={text.login.passwordPlaceholder} value={password} onChange={setPassword} autoComplete="current-password" />
+            <div className="nordicAuthForgot"><Link href="/auth/forgot-password">{text.login.forgotPassword}</Link></div>
+            {(error || accountError) && <div className="nordicAuthError" role="alert">{error || accountError}</div>}
+            <button className="nordicAuthSubmit" type="submit" disabled={loginLoading}>
+              {loginLoading ? <><span className="nordicAuthSpinner" />{text.login.submitting}</> : <>{text.login.submit}<FiArrowRight aria-hidden="true" /></>}
             </button>
           </form>
-
-          {firebaseUser && accountError && (
-            <button type="button" className="secondaryBtn fullWidth"
-              onClick={() => { setError(''); void refreshCurrentUser() }}>
+          {accountError && (
+            <button type="button" className="nordicAuthBack" onClick={() => {
+              setError('')
+              if (firebaseUser) void refreshCurrentUser()
+              else window.location.reload()
+            }}>
               {language === 'no' ? 'Prøv å hente kontoen igjen' : 'Try loading your account again'}
             </button>
           )}
-
-          <p className="authSwitch">
-            <Link href="/auth/forgot-password">{text.login.forgotPassword}</Link>
-          </p>
-
-          <p className="authSwitch" style={{ marginTop: '20px' }}>
-            {text.login.noAccount} <Link href="/auth/signup">{text.login.createAccount}</Link>
-          </p>
-        </div>
+          {firebaseUser && accountError && (
+            <button type="button" className="nordicAuthBack" onClick={async () => {
+              try { await logout(); setError('') }
+              catch { setError(language === 'no' ? 'Kunne ikke logge ut. Prøv igjen.' : 'Could not sign out. Please try again.') }
+            }}>
+              {language === 'no' ? 'Logg ut og bruk en annen konto' : 'Sign out and use another account'}
+            </button>
+          )}
+          <p className="nordicAuthSwitch">{text.login.noAccount} <Link href="/auth/signup">{text.login.createAccount}<FiArrowRight aria-hidden="true" /></Link></p>
+        </>
       )}
-    </main>
+    </AuthFrame>
   )
 }

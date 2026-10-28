@@ -1,0 +1,173 @@
+.nordicAuth {
+  --auth-bg: #f5f7f9;
+  --auth-surface: #ffffff;
+  --auth-soft: #f2f6f9;
+  --auth-text: #182d43;
+  --auth-muted: #5e7082;
+  --auth-line: #dbe4eb;
+  --auth-accent: #225b85;
+  --auth-selected: #eef6fc;
+  --auth-button: #173e5d;
+  --auth-button-text: #ffffff;
+  --auth-story: #e6eff3;
+  --auth-ridge: #d3e2e9;
+  --auth-back: #b9cfdc;
+  --auth-front: #8faec1;
+  min-height: 100svh;
+  padding: 0 clamp(20px, 4vw, 64px) 32px;
+  background: var(--auth-bg);
+  color: var(--auth-text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+html[data-theme='dark'] .nordicAuth {
+  --auth-bg: #09121e;
+  --auth-surface: #101e2d;
+  --auth-soft: #162738;
+  --auth-text: #e9f2fa;
+  --auth-muted: #a4b7c9;
+  --auth-line: #30465b;
+  --auth-accent: #a5d4fa;
+  --auth-selected: #193249;
+  --auth-button: #a5d4fa;
+  --auth-button-text: #102b43;
+  --auth-story: #11283b;
+  --auth-ridge: #1d3a4c;
+  --auth-back: #234557;
+  --auth-front: #142f43;
+}
+.nordicAuth a { color: inherit; text-decoration: none; }
+.nordicAuth button, .nordicAuth input, .nordicAuth select { font: inherit; }
+.nordicAuth button, .nordicAuth select { cursor: pointer; }
+.nordicAuth button { transition: background .18s ease, border-color .18s ease, transform .18s ease; }
+.nordicAuth button:disabled { cursor: wait; opacity: .65; }
+.nordicAuth :is(a, button, input, select):focus-visible { outline: 3px solid var(--auth-accent); outline-offset: 4px; }
+.nordicAuthHeader { max-width: 1440px; height: 100px; margin: auto; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.nordicAuthBrand { display: inline-flex; align-items: center; gap: 9px; }
+.nordicAuthBrand > svg { width: 39px; height: 39px; color: var(--auth-accent); }
+.nordicAuthBrand > span { font-size: 28px; font-weight: 750; letter-spacing: -1.5px; line-height: .95; }
+.nordicAuthBrandCaption { display: block; font-size: 8px; letter-spacing: 4.6px; font-weight: 600; margin: 8px 0 0 3px; color: var(--auth-muted); }
+.nordicAuthTools { display: flex; gap: 18px; align-items: center; }
+.nordicAuthLanguage { display: flex; align-items: center; gap: 8px; color: var(--auth-muted); }
+.nordicAuthLanguage select { border: 0; background: var(--auth-bg); color: var(--auth-text); padding: 10px 2px; font-size: 13px; }
+.nordicAuthTheme { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--auth-line); background: var(--auth-surface); color: var(--auth-text); font-size: 17px; }
+.nordicAuthTheme:hover { background: var(--auth-soft); }
+.nordicAuthSun, html[data-theme='dark'] .nordicAuthMoon { display: none; }
+html[data-theme='dark'] .nordicAuthSun { display: block; }
+.nordicAuthMain { max-width: 1440px; min-height: calc(100svh - 132px); margin: auto; display: grid; grid-template-columns: 1fr 1fr; background: var(--auth-surface); border: 1px solid var(--auth-line); border-radius: 24px; overflow: clip; }
+.nordicAuthStory { position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; min-height: 700px; padding: clamp(32px, 4.3vw, 68px); background: radial-gradient(ellipse at 85% 10%, #a2ccca40, transparent 60%), var(--auth-story); }
+.nordicAuthStoryCopy { position: relative; z-index: 1; }
+.nordicAuthEyebrow { display: flex; align-items: center; gap: 9px; font-size: 10px; font-weight: 700; letter-spacing: 2px; color: var(--auth-accent); }
+.nordicAuthEyebrow > span { width: 6px; height: 6px; background: currentColor; border-radius: 50%; }
+.nordicAuthStory h2 { margin: 43px 0 24px; font-size: clamp(40px, 4.3vw, 66px); font-weight: 550; line-height: 1.08; letter-spacing: -.055em; }
+.nordicAuthStory h2 em { color: var(--auth-accent); font-style: normal; }
+.nordicAuthStoryCopy > p { max-width: 350px; margin: 0; color: var(--auth-muted); font-size: 16px; line-height: 1.85; text-wrap: pretty; }
+.nordicAuthStoryTags { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-top: 30px; color: var(--auth-muted); font-size: 12px; }
+.nordicAuthStoryTags i { width: 3px; height: 3px; background: currentColor; border-radius: 50%; }
+.nordicAuthLandscape { position: absolute; z-index: -1; inset: 0; pointer-events: none; }
+.nordicAuthSunDisc { position: absolute; width: 125px; height: 125px; border-radius: 50%; background: #ffffff50; right: 16%; bottom: 26%; box-shadow: 0 0 80px #d9e9f560; }
+html[data-theme='dark'] .nordicAuthSunDisc { background: #c5e5f316; box-shadow: 0 0 80px #7bc9d51a; }
+.nordicAuthMountains { position: absolute; bottom: 0; left: -32%; width: 164%; height: 62%; }
+.nordicAuthMountains .mb-ridge { fill: var(--auth-ridge); }
+.nordicAuthMountains .mb-peaks-back { fill: var(--auth-back); }
+.nordicAuthMountains .mb-peaks-front { fill: var(--auth-front); }
+.nordicAuthStoryFooter { display: flex; align-items: center; justify-content: space-between; gap: 16px; position: relative; margin-top: 210px; font-size: 11px; color: #173a50; }
+.nordicAuthStoryFooter > span:last-child { font-size: 9px; letter-spacing: 2px; }
+html[data-theme='dark'] .nordicAuthStoryFooter { color: #bad0e0; }
+.nordicAuthFormPanel { padding: 32px clamp(28px, 4.5vw, 76px) 24px; display: flex; flex-direction: column; min-width: 0; }
+.nordicAuthFormTop, .nordicAuthFormFooter { display: flex; align-items: center; justify-content: space-between; gap: 16px; color: var(--auth-muted); font-size: 11px; }
+.nordicAuthFormTop a, .nordicAuthFormFooter a { display: inline-flex; gap: 7px; align-items: center; }
+.nordicAuthFormTop > span { letter-spacing: 1.3px; font-size: 9px; }
+.nordicAuthFormTop a:hover, .nordicAuthFormFooter a:hover { color: var(--auth-accent); text-decoration: underline; text-underline-offset: 4px; }
+.nordicAuthFormContent { width: 100%; max-width: 410px; margin: auto; padding: 48px 0; }
+.nordicAuthIntro { margin-bottom: 30px; }
+.nordicAuthFormIcon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; border: 1px solid var(--auth-line); background: var(--auth-soft); color: var(--auth-accent); font-size: 20px; margin-bottom: 24px; }
+.nordicAuthIntro h1 { margin: 0 0 12px; font-size: clamp(28px, 2.55vw, 38px); line-height: 1.2; font-weight: 600; letter-spacing: -1.25px; outline-offset: 6px; }
+.nordicAuthIntro p { margin: 0; color: var(--auth-muted); line-height: 1.75; text-wrap: pretty; }
+.nordicAuthForm { display: flex; flex-direction: column; gap: 20px; width: 100%; }
+.nordicAuthField { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+.nordicAuthField label { font-size: 12px; font-weight: 650; }
+.nordicAuthField input { width: 100%; min-width: 0; margin: 0; padding: 0 15px; height: 51px; border: 1px solid var(--auth-line); border-radius: 9px; background: var(--auth-surface); color: var(--auth-text); font-size: 14px; transition: border-color .18s, box-shadow .18s; }
+.nordicAuthField input::placeholder { color: var(--auth-muted); opacity: .85; }
+.nordicAuthField input:hover { border-color: var(--auth-muted); }
+.nordicAuthField input:focus { outline: none; border-color: var(--auth-accent); box-shadow: 0 0 0 3px var(--auth-selected); }
+.nordicAuthField input:autofill { -webkit-text-fill-color: var(--auth-text); box-shadow: 0 0 0 1000px var(--auth-soft) inset; }
+.nordicAuthPassword { position: relative; }
+.nordicAuthPassword input { padding-right: 49px; }
+.nordicAuthPassword button { position: absolute; right: 5px; top: 5px; display: grid; place-items: center; width: 41px; height: 41px; border: 0; border-radius: 6px; background: transparent; color: var(--auth-muted); font-size: 17px; }
+.nordicAuthPassword button:hover { color: var(--auth-text); background: var(--auth-soft); }
+.nordicAuthForgot { text-align: right; margin-top: -7px; font-size: 12px; color: var(--auth-accent); }
+.nordicAuthForgot a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.nordicAuthSubmit { display: flex; align-items: center; justify-content: center; gap: 13px; width: 100%; min-height: 51px; padding: 13px 20px; border: 1px solid transparent; border-radius: 9px; background: var(--auth-button); color: var(--auth-button-text); font-weight: 600 !important; }
+.nordicAuthSubmit:not(:disabled):hover { transform: translateY(-1px); background: var(--auth-accent); }
+.nordicAuthSubmit svg { width: 17px; height: 17px; }
+.nordicAuthSwitch { border-top: 1px solid var(--auth-line); padding-top: 25px; margin: 28px 0 0; font-size: 12px; text-align: center; color: var(--auth-muted); }
+.nordicAuthSwitch a { display: inline-flex; align-items: center; gap: 6px; color: var(--auth-accent); font-weight: 650; margin-left: 4px; padding: 5px 0; }
+.nordicAuthSwitch a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.nordicAuthError { padding: 12px 14px; border: 1px solid #f4b8b0; border-radius: 8px; background: #fff3f0; color: #a32f26; overflow-wrap: anywhere; font-size: 13px; }
+html[data-theme='dark'] .nordicAuthError { border-color: #78403c; background: #342326; color: #ffbbb1; }
+.nordicAuthBack { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; border: 0; border-radius: 8px; background: transparent; color: var(--auth-muted); }
+.nordicAuthBack:hover { background: var(--auth-soft); color: var(--auth-text); }
+.nordicAuthSteps { display: flex; align-items: center; gap: 20px; list-style: none; padding: 0; margin: 0 0 30px; }
+.nordicAuthSteps li { display: flex; align-items: center; gap: 9px; color: var(--auth-muted); font-size: 11px; }
+.nordicAuthSteps li + li::before { content: ''; width: 24px; height: 1px; background: var(--auth-line); margin-right: 4px; }
+.nordicAuthSteps li > span { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 50%; border: 1px solid var(--auth-line); font-size: 11px; }
+.nordicAuthSteps li[aria-current], .nordicAuthSteps .is-complete { color: var(--auth-accent); font-weight: 650; }
+.nordicAuthSteps li[aria-current] > span, .nordicAuthSteps .is-complete > span { background: var(--auth-button); color: var(--auth-button-text); border-color: transparent; }
+.nordicAuthAccountOptions { margin: 0; padding: 0; border: 0; min-width: 0; display: grid; gap: 12px; }
+.nordicAuthAccount { position: relative; cursor: pointer; }
+.nordicAuthAccount > input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.nordicAuthAccountBody { display: flex; align-items: center; gap: 13px; padding: 19px 16px; border: 1px solid var(--auth-line); border-radius: 12px; background: var(--auth-surface); transition: border-color .18s, background .18s; }
+.nordicAuthAccount:hover .nordicAuthAccountBody { border-color: var(--auth-muted); }
+.nordicAuthAccount input:checked + .nordicAuthAccountBody { border-color: var(--auth-accent); background: var(--auth-selected); box-shadow: 0 0 0 1px var(--auth-accent); }
+.nordicAuthAccount input:focus-visible + .nordicAuthAccountBody { outline: 3px solid var(--auth-accent); outline-offset: 4px; }
+.nordicAuthAccountIcon { color: var(--auth-accent); font-size: 21px; display: flex; flex-shrink: 0; }
+.nordicAuthAccountCopy { display: grid; gap: 5px; flex: 1; min-width: 0; }
+.nordicAuthAccountCopy strong { font-size: 13px; font-weight: 650; }
+.nordicAuthAccountCopy > span { color: var(--auth-muted); font-size: 12px; line-height: 1.55; }
+.nordicAuthRadio { display: grid; place-items: center; width: 19px; height: 19px; border: 1px solid var(--auth-line); border-radius: 50%; flex-shrink: 0; }
+.nordicAuthRadio svg { opacity: 0; width: 12px; }
+.nordicAuthAccount input:checked + span .nordicAuthRadio { background: var(--auth-button); color: var(--auth-button-text); border-color: transparent; }
+.nordicAuthAccount input:checked + span .nordicAuthRadio svg { opacity: 1; }
+.nordicAuthHint, .nordicAuthField small { margin: 0; font-size: 12px; color: var(--auth-muted); line-height: 1.7; }
+.nordicAuthSelection { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 13px; background: var(--auth-soft); border-radius: 8px; font-size: 12px; }
+.nordicAuthSelection > span { display: flex; align-items: center; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+.nordicAuthSelection svg { flex-shrink: 0; color: var(--auth-accent); }
+.nordicAuthSelection button { border: 0; background: transparent; color: var(--auth-accent); text-decoration: underline; text-underline-offset: 3px; padding: 5px; }
+.nordicAuthPasswordGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.nordicAuthLoading { min-height: 230px; display: flex; align-items: center; justify-content: center; gap: 12px; color: var(--auth-muted); }
+.nordicAuthSpinner { display: inline-block; width: 17px; height: 17px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: nordicAuthSpin .7s linear infinite; }
+@keyframes nordicAuthSpin { to { transform: rotate(360deg); } }
+.nordicAuthSrOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+@media (min-width: 1600px) { .nordicAuthMain { min-height: 800px; } }
+@media (max-width: 1100px) {
+  .nordicAuth { padding-inline: 24px; }
+  .nordicAuthStory { padding: 40px 32px; }
+  .nordicAuthFormPanel { padding-inline: 30px; }
+  .nordicAuthFormTop > span { display: none; }
+  .nordicAuthStory h2 { font-size: 47px; }
+  .nordicAuthPasswordGrid { grid-template-columns: 1fr; gap: 20px; }
+}
+@media (max-width: 760px) {
+  .nordicAuth { padding: 0 20px 24px; }
+  .nordicAuthHeader { height: 82px; max-width: 480px; }
+  .nordicAuthMain { grid-template-columns: 1fr; max-width: 480px; border-radius: 18px; min-height: calc(100svh - 106px); }
+  .nordicAuthStory { display: none; }
+  .nordicAuthFormPanel { padding: 25px; }
+  .nordicAuthFormContent { padding: 35px 0; }
+  .nordicAuthIntro h1 { font-size: 30px; }
+  .nordicAuthField input { font-size: 16px; }
+  .nordicAuthPasswordGrid { grid-template-columns: 1fr; }
+  .nordicAuthFormTop > span { display: block; font-size: 8px; }
+  .nordicAuthTools { gap: 12px; }
+}
+@media (max-width: 360px) {
+  .nordicAuth { padding-inline: 12px; }
+  .nordicAuthFormPanel { padding: 22px 18px; }
+  .nordicAuthSteps { gap: 10px; }
+  .nordicAuthSteps li + li::before { width: 12px; }
+  .nordicAuthFormTop > span { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nordicAuth *, .nordicAuth *::before, .nordicAuth *::after { transition: none !important; animation: none !important; }
+}

@@ -11,6 +11,10 @@ import {
 } from "@/lib/auth.service";
 
 import { BusinessUser, Business } from "@/types/database";
+import { withTimeout } from '@/lib/with-timeout';
+
+const ACCOUNT_LOAD_TIMEOUT_MS = 20_000;
+const ACCOUNT_TIMEOUT_MESSAGE = 'Det tok for lang tid å hente kontoen. Kontroller nettforbindelsen og prøv igjen.';
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
@@ -45,8 +49,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       if (!authUser) return;
-      const user = await getCurrentUser(authUser);
-      const biz = user?.businessId ? await getBusinessInfo(user.businessId) : null;
+      const { user, biz } = await withTimeout((async () => {
+        const user = await getCurrentUser(authUser);
+        const biz = user?.businessId ? await getBusinessInfo(user.businessId) : null;
+        return { user, biz };
+      })(), ACCOUNT_LOAD_TIMEOUT_MS, ACCOUNT_TIMEOUT_MESSAGE);
       if (request !== accountRequest.current) return;
       setDbUser(user);
       setBusiness(biz);
@@ -75,8 +82,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [firebaseUser, loadAccount]);
 
   useEffect(() => {
-    const unsub = setupAuthListener(loadAccount);
-    return () => { accountRequest.current += 1; unsub(); };
+    let active = true;
+    const failInitialization = () => {
+      if (!active) return;
+      accountRequest.current += 1;
+      setError(ACCOUNT_TIMEOUT_MESSAGE);
+      setLoading(false);
+    };
+    const timer = setTimeout(failInitialization, ACCOUNT_LOAD_TIMEOUT_MS);
+    const unsub = setupAuthListener((user) => {
+      clearTimeout(timer);
+      if (active) void loadAccount(user);
+    });
+    return () => { active = false; clearTimeout(timer); accountRequest.current += 1; unsub(); };
   }, [loadAccount]);
 
   const logout = async () => {

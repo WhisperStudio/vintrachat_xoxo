@@ -10,7 +10,7 @@
     "test:rules": "firebase emulators:exec --project demo-vintra-notifications --only firestore \"node --test tests/firestore.test.mjs\"",
     "typecheck": "tsc --noEmit",
     "setup:local": "node scripts/setup-local-firebase.mjs",
-    "test:auth": "node --test tests/auth-records.test.mjs tests/local-auth.test.mjs"
+    "test:auth": "node --test tests/auth-records.test.mjs tests/local-auth.test.mjs tests/auth-loading.test.mjs"
   },
   "dependencies": {
     "@types/styled-components": "^5.1.36",
