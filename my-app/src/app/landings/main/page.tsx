@@ -67,6 +67,58 @@ const contactStructuredData = {
   ],
 }
 
+function ScrollHint({ language }: { language: 'no' | 'en' }) {
+  const hintRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const update = () => {
+      const remaining = document.documentElement.scrollHeight - window.innerHeight - window.scrollY
+      if (hintRef.current) hintRef.current.dataset.visible = String(remaining > 80)
+    }
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [])
+  return (
+    <div ref={hintRef} className="landingScrollHint" role="img" aria-label={language === 'no' ? 'Scroll videre nedover' : 'Scroll down to explore'}>
+      <span /><span /><span />
+    </div>
+  )
+}
+
+function DroidArm() {
+  return (
+    <svg className="droidArm" viewBox="0 0 100 110" aria-hidden="true">
+      <path className="droidArmCable" d="M86 91 Q48 98 36 60" />
+      <path className="droidArmLink" d="M83 86 53 76 37 52" />
+      <path className="droidArmPiston" d="M79 80 56 65" />
+      <circle className="droidArmJoint" cx="83" cy="86" r="11" />
+      <circle className="droidArmJoint" cx="51" cy="73" r="9" />
+      <circle className="droidArmBolt" cx="51" cy="73" r="3" />
+      <path className="droidArmPalm" d="M24 38 Q24 32 30 32 H48 Q54 32 54 38 V51 Q54 57 48 57 H30 Q24 57 24 51Z" />
+      <path className="droidArmClaw" d="M28 37 18 25 18 11 25 8 29 21 36 29 M49 37 59 25 59 11 52 8 48 21 41 29" />
+      <path className="droidArmGrip" d="m20 18 7-2m25 0 7 2M31 43h16M31 48h16" />
+      <circle className="droidArmBolt" cx="39" cy="35" r="3" />
+    </svg>
+  )
+}
+
+function DroidDetails() {
+  return (
+    <g className="droidDetails">
+      <path className="droidBrow" d="M58 63q10-5 19-2m26 0q9-3 18 2" />
+      <path className="droidCheeks" d="m51 96 7 2m66 0 7-2" />
+      <path className="droidVents" d="M77 143h5m6 0h5m6 0h5" />
+      <path className="droidBadge" d="m86 126 5 7 5-7" />
+      <circle className="droidShellBolt" cx="35" cy="118" r="2" />
+      <circle className="droidShellBolt" cx="145" cy="118" r="2" />
+    </g>
+  )
+}
+
 function ScrollDroid() {
   const droidRef = useRef<HTMLDivElement>(null)
 
@@ -77,103 +129,158 @@ function ScrollDroid() {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     let frame = 0
     let lastTime = performance.now()
-    let x = window.innerWidth * 0.78
-    let y = window.innerHeight * 0.32
-    let velocityX = 0
-    let velocityY = 0
-    let morphVisual = 0
-
+    let scrollPosition = window.scrollY
+    let scrollVelocity = 0
+    let chatPhase: 'idle' | 'press' | 'transition' = 'idle'
+    let phaseStarted = 0
+    let chatOpen = false
+    let chatTarget = false
+    let chatReveal = 0
+    let viewerProgress = 0.70
+    let viewerVelocity = 0
+    const resetScroll = () => {
+      scrollPosition = window.scrollY
+      scrollVelocity = 0
+      lastTime = performance.now()
+    }
+    const clamp = (value: number) => Math.min(Math.max(value, 0), 1)
+    const smooth = (value: number) => value * value * (3 - 2 * value)
     const animate = (time: number) => {
       const section = document.getElementById('solutions')
-      const viewportWidth = window.innerWidth
-      const viewportHeight = window.innerHeight
+      const vw = window.innerWidth
+      const vh = window.innerHeight
       const scrollTop = window.scrollY
-      const sectionTop = section?.offsetTop ?? viewportHeight
-      const travel = Math.max(sectionTop + viewportHeight * 0.72, viewportHeight)
-      const progress = Math.min(Math.max(scrollTop / travel, 0), 1)
-      const arc = Math.sin(progress * Math.PI)
-      const compact = viewportWidth < 700
-      let targetX = viewportWidth * ((compact ? 0.76 : 0.79) - (compact ? 0.48 : 0.53) * arc)
-      let targetY = viewportHeight * (0.3 + progress * 0.34 - Math.sin(progress * Math.PI * 2) * 0.055)
-      const morphStage = document.getElementById('droid-morph-showcase')
-      const morphRect = morphStage?.getBoundingClientRect()
-      const morphDistance = morphRect ? Math.max(morphRect.height - viewportHeight * 0.72, viewportHeight) : viewportHeight
-      const calculatedMorphProgress = morphRect
-        ? Math.min(Math.max((viewportHeight * 0.82 - morphRect.top) / morphDistance, 0), 1)
-        : 0
-      const sharedMorphProgress = morphStage
-        ? Number.parseFloat(morphStage.dataset.morphProgress ?? morphStage.style.getPropertyValue('--morph-progress'))
-        : Number.NaN
-      const morphProgress = Number.isFinite(sharedMorphProgress) ? sharedMorphProgress : calculatedMorphProgress
-      const pathRaw = Math.min(Math.max(morphProgress / 0.43, 0), 1)
-      const pathProgress = pathRaw * pathRaw * (3 - 2 * pathRaw)
-      morphVisual = reducedMotion ? morphProgress : morphVisual + (morphProgress - morphVisual) * 0.14
-      const morphArrival = Math.min(Math.max((pathProgress - 0.46) / 0.54, 0), 1)
-
-      if (pathProgress > 0) {
-        if (pathProgress < 0.62) {
-          const u = pathProgress / 0.62
-          const inv = 1 - u
-          targetX = viewportWidth * (
-            inv * inv * inv * 0.16
-            + 3 * inv * inv * u * 0.155
-            + 3 * inv * u * u * 0.19
-            + u * u * u * 0.3
-          )
-          targetY = viewportHeight * (
-            inv * inv * inv * 0.18
-            + 3 * inv * inv * u * 0.48
-            + 3 * inv * u * u * 0.73
-            + u * u * u * 0.79
-          )
-        } else if (pathProgress < 0.82) {
-          const u = (pathProgress - 0.62) / 0.2
-          const angle = u * Math.PI * 2
-          targetX = viewportWidth * (0.32 + u * 0.06 + Math.sin(angle) * 0.055)
-          targetY = viewportHeight * (0.8 + Math.sin(angle - Math.PI / 2) * 0.045)
-        } else {
-          const u = (pathProgress - 0.82) / 0.18
-          const eased = u * u * (3 - 2 * u)
-          targetX = viewportWidth * (0.38 + eased * 0.12)
-          targetY = viewportHeight * (0.8 - eased * 0.12)
+      const dt = Math.min(Math.max((time - lastTime) / 1000, 0), 0.064)
+      lastTime = time
+      if (reducedMotion) {
+        scrollPosition = scrollTop
+        scrollVelocity = 0
+      } else {
+        // Exact critically damped spring: gentle acceleration and braking without overshoot.
+        // Smooth scroll distance once so every part of the morph stays synchronized.
+        const frequency = 9
+        const displacement = scrollPosition - scrollTop
+        const momentum = scrollVelocity + frequency * displacement
+        const decay = Math.exp(-frequency * dt)
+        scrollPosition = scrollTop + (displacement + momentum * dt) * decay
+        scrollVelocity = (scrollVelocity - frequency * momentum * dt) * decay
+      }
+      const progress = clamp(scrollPosition / Math.max((section?.offsetTop ?? vh) + vh * 0.72, vh))
+      const compact = vw < 700
+      const baseX = vw * ((compact ? 0.76 : 0.79) - (compact ? 0.48 : 0.53) * Math.sin(progress * Math.PI))
+      const baseY = vh * (0.3 + progress * 0.34 - Math.sin(progress * Math.PI * 2) * 0.055)
+      const stage = document.getElementById('droid-morph-showcase')
+      const rect = stage?.getBoundingClientRect()
+      const stageTop = rect ? rect.top + scrollTop - scrollPosition : 0
+      const morph = rect ? clamp((vh * 0.82 - stageTop) / Math.max(rect.height - vh * 0.72, vh)) : 0
+      // A single scroll timeline also initializes correctly after scroll restoration.
+      stage?.style.setProperty('--morph-progress', String(morph))
+      // Scroll requests a change; a full click always plays before opening OR closing.
+      // Finish each sequence before handling a reversal, avoiding half-clicks and flicker.
+      const wantsChat = chatOpen
+        ? morph >= 0.925
+        : morph >= 0.955 && (reducedMotion || viewerProgress >= 0.95)
+      let press = 0
+      if (reducedMotion) {
+        chatOpen = wantsChat
+        chatReveal = wantsChat ? 1 : 0
+        chatPhase = 'idle'
+      } else {
+        if (chatPhase === 'idle' && wantsChat !== chatOpen) {
+          chatTarget = wantsChat
+          chatPhase = 'press'
+          phaseStarted = time
+        }
+        if (chatPhase === 'press') {
+          const clickProgress = clamp((time - phaseStarted) / 520)
+          press = Math.sin(clickProgress * Math.PI)
+          if (clickProgress === 1) {
+            chatPhase = 'transition'
+            phaseStarted = time
+          }
+        }
+        if (chatPhase === 'transition') {
+          const revealProgress = clamp((time - phaseStarted) / 460)
+          chatReveal = chatTarget ? smooth(revealProgress) : 1 - smooth(revealProgress)
+          if (revealProgress === 1) {
+            chatOpen = chatTarget
+            chatPhase = 'idle'
+          }
         }
       }
-
+      const holdBubble = chatPhase !== 'idle' || chatOpen
+      // Keep the droid at the launcher while the click/close sequence plays.
+      // Then rewind its own continuous timeline from that same point, never from
+      // the scroll position it would otherwise have reached while hidden.
       if (reducedMotion) {
-        x = targetX
-        y = targetY
+        viewerProgress = Math.max(0.70, morph)
+        viewerVelocity = 0
+      } else if (holdBubble) {
+        viewerVelocity = 0
       } else {
-        const dt = Math.min((time - lastTime) / 1000, 0.032)
-        const stiffness = 42
-        const damping = 8.4
-        velocityX += ((targetX - x) * stiffness - velocityX * damping) * dt
-        velocityY += ((targetY - y) * stiffness - velocityY * damping) * dt
-        x += velocityX * dt
-        y += velocityY * dt
+        const target = Math.max(0.70, morph)
+        const displacement = viewerProgress - target
+        const momentum = viewerVelocity + 11 * displacement
+        const decay = Math.exp(-11 * dt)
+        const next = target + (displacement + momentum * dt) * decay
+        const step = Math.max(-0.24 * dt, Math.min(0.24 * dt, next - viewerProgress))
+        viewerProgress = Math.max(0.70, Math.min(1, viewerProgress + step))
+        viewerVelocity = Math.max(-0.24, Math.min(0.24, (viewerVelocity - 11 * momentum * dt) * decay))
       }
-
-      if (pathProgress > 0.9) {
-        const centerLock = Math.min((pathProgress - 0.9) * 2.2, 0.18)
-        x += (viewportWidth * 0.5 - x) * centerLock
-        y += (viewportHeight * 0.68 - y) * centerLock
+      const pop = clamp((viewerProgress - 0.72) / 0.045)
+      const popScale = reducedMotion ? 1 : 1 + 2.70158 * (pop - 1) ** 3 + 1.70158 * (pop - 1) ** 2
+      const droidTravel = smooth(clamp((viewerProgress - 0.80) / 0.085))
+      stage?.style.setProperty('--droid-pop', String(smooth(clamp(pop * 2))))
+      stage?.style.setProperty('--droid-pop-scale', String(popScale))
+      stage?.style.setProperty('--droid-travel', String(droidTravel))
+      stage?.style.setProperty('--droid-arc', `${Math.sin(droidTravel * Math.PI) * 22}%`)
+      stage?.style.setProperty('--bubble-reveal', String(holdBubble ? 1 : smooth(clamp((viewerProgress - 0.885) / 0.03))))
+      stage?.style.setProperty('--bubble-press', String(press))
+      stage?.style.setProperty('--chat-reveal', String(chatReveal))
+      const sticky = stage?.querySelector<HTMLElement>('.droidMorphSticky')?.getBoundingClientRect()
+      const browser = stage?.querySelector<HTMLElement>('.nordicBrowser')
+      const centerX = sticky ? sticky.left + sticky.width / 2 : vw / 2
+      const centerY = sticky ? sticky.top + sticky.height / 2 : vh / 2
+      const path = smooth(clamp(morph / 0.43))
+      const inv = 1 - path
+      // Join the existing path continuously, then arrive at the viewer's actual center.
+      const x = inv ** 3 * baseX + 3 * inv ** 2 * path * vw * 0.155 + 3 * inv * path ** 2 * vw * 0.3 + path ** 3 * centerX
+      const y = inv ** 3 * baseY + 3 * inv ** 2 * path * vh * 0.48 + 3 * inv * path ** 2 * vh * 0.79 + path ** 3 * centerY
+      const whiten = clamp((morph - 0.27) / 0.09)
+      const expand = smooth(clamp((morph - 0.43) / 0.22))
+      const spin = reducedMotion ? 0 : smooth(clamp((morph - 0.22) / 0.43)) * 1080
+      const size = element.offsetWidth
+      const width = size + ((browser?.offsetWidth ?? size) - size) * expand
+      const height = size + ((browser?.offsetHeight ?? size) - size) * expand
+      const radius = size / 2 * (1 - expand) + 34 * expand
+      const contentReveal = smooth(clamp((morph - 0.44) / 0.14))
+      if (browser) {
+        // Reveal the real viewer inside the same spinning silhouette as the white cover.
+        browser.style.transform = `rotate(${spin}deg) scale(${width / browser.offsetWidth}, ${height / browser.offsetHeight})`
+        browser.style.borderRadius = `${radius * browser.offsetWidth / width}px / ${radius * browser.offsetHeight / height}px`
       }
+      const cover = element.querySelector<HTMLElement>('.droidMorphCover')
+      if (cover) {
+        cover.style.width = `${width}px`
+        cover.style.height = `${height}px`
+        cover.style.borderRadius = `${radius}px`
+        cover.style.opacity = String(whiten * (1 - contentReveal))
+      }
+      element.style.setProperty('--droid-whiten', String(whiten))
+      element.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) translate(-50%, -50%) rotate(' + spin + 'deg)'
+      element.style.opacity = String(1 - clamp((morph - 0.65) / 0.06))
+      element.style.visibility = morph >= 0.71 ? 'hidden' : 'visible'
+      element.dataset.scrolled = scrollTop > 12 ? 'true' : 'false'
 
-      const tilt = Math.max(-9, Math.min(9, velocityX * 0.025))
-      const morphSpin = morphArrival * 720
-      const morphScale = 1
-      const sectionBottom = section?.getBoundingClientRect().bottom ?? viewportHeight
-      const morphFade = Math.min(Math.max((morphVisual - 0.56) / 0.07, 0), 1)
-      element.style.setProperty('--droid-morph-progress', String(morphVisual))
-      element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) rotate(${tilt + morphSpin}deg) scale(${morphScale})`
-      element.style.opacity = sectionBottom < viewportHeight * -0.15 ? '0' : String(1 - morphFade)
-      element.style.visibility = morphVisual >= 0.65 ? 'hidden' : 'visible'
-      element.dataset.scrolled = scrollTop > 90 ? 'true' : 'false'
-      lastTime = time
       frame = window.requestAnimationFrame(animate)
     }
 
-    frame = window.requestAnimationFrame(animate)
-    return () => window.cancelAnimationFrame(frame)
+    window.addEventListener('pageshow', resetScroll)
+    animate(lastTime)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('pageshow', resetScroll)
+    }
   }, [])
 
   return (
@@ -181,10 +288,7 @@ function ScrollDroid() {
       <div className="scrollDroidFloat">
         <div className="droidAntenna"><span /></div>
         <div className="droidHand">
-          <span className="droidPalm" />
-          <span className="droidFinger droidFinger--one" />
-          <span className="droidFinger droidFinger--two" />
-          <span className="droidFinger droidFinger--three" />
+          <DroidArm />
         </div>
         <svg className="droidOrb" viewBox="0 0 180 180">
           <defs>
@@ -209,7 +313,7 @@ function ScrollDroid() {
           <path className="droidSmile" d="M75 101 Q91 112 108 101" />
           <path className="droidGlint" d="M43 41 Q62 21 84 20" />
           <path className="droidSeam" d="M22 111 Q90 140 158 109" />
-          <circle className="droidSideLight" cx="152" cy="111" r="7" />
+          <DroidDetails />
         </svg>
       </div>
       <div className="droidMorphCover" />
@@ -218,45 +322,14 @@ function ScrollDroid() {
 }
 
 function DroidMorphShowcase({ language }: { language: 'no' | 'en' }) {
-  const stageRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const stage = stageRef.current
-    if (!stage) return
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    let frame = 0
-    let lastTime = performance.now()
-    let progress = 0
-    let velocity = 0
-
-    const animate = (time: number) => {
-      const rect = stage.getBoundingClientRect()
-      const viewportHeight = window.innerHeight
-      const distance = Math.max(rect.height - viewportHeight * 0.72, viewportHeight)
-      const target = Math.min(Math.max((viewportHeight * 0.82 - rect.top) / distance, 0), 1)
-      const dt = Math.min((time - lastTime) / 1000, 0.032)
-      if (reducedMotion) {
-        progress = target
-      } else {
-        velocity += ((target - progress) * 30 - velocity * 8.5) * dt
-        progress += velocity * dt
-      }
-      stage.style.setProperty('--morph-progress', String(Math.min(Math.max(progress, 0), 1)))
-      stage.dataset.morphProgress = String(Math.min(Math.max(progress, 0), 1))
-      lastTime = time
-      frame = window.requestAnimationFrame(animate)
-    }
-    frame = window.requestAnimationFrame(animate)
-    return () => window.cancelAnimationFrame(frame)
-  }, [])
 
   return (
-    <div id="droid-morph-showcase" ref={stageRef} className="droidMorphStage">
+    <div id="droid-morph-showcase" className="droidMorphStage">
       <div className="droidMorphSticky">
       <aside className="morphSideCopy morphSideCopy--left">
         <small>{language === 'no' ? 'DESIGN SOM VIRKER' : 'DESIGN THAT WORKS'}</small>
         <h3>{language === 'no' ? 'En tydelig nettside, bygget rundt bedriften din.' : 'A clear website, built around your business.'}</h3>
-        <p>{language === 'no' ? 'Vi samler struktur, tekst og visuelt uttrykk i én profesjonell løsning.' : 'We unite structure, copy and visual identity in one professional solution.'}</p>
+        <p>{language === 'no' ? 'Vi bygger en rask, mobilvennlig nettside som viser hvem dere er og hva dere tilbyr. Design, tekst og struktur tilpasses bedriften, slik at kundene enkelt finner frem og tar kontakt.' : 'We build a fast, mobile-friendly website that shows who you are and what you offer. Design, copy and structure are tailored to your business, making it easy for customers to find what they need and get in touch.'}</p>
       </aside>
       <div className="nordicBrowser">
         <div className="nordicBrowserBar">
@@ -292,6 +365,16 @@ function DroidMorphShowcase({ language }: { language: 'no' | 'en' }) {
         <div className="siteDroid" aria-hidden="true">
           <span className="siteDroidAntenna"><i /></span>
           <svg viewBox="0 0 180 180">
+            <defs>
+              <radialGradient id="siteDroidShellGradient" cx="32%" cy="24%" r="78%">
+                <stop offset="0%" stopColor="#e8f7ff" />
+                <stop offset="42%" stopColor="#7cc7f3" />
+                <stop offset="100%" stopColor="#1859d1" />
+              </radialGradient>
+              <linearGradient id="siteDroidVisorGradient" x1="0" y1="0" x2="1" y2="1">
+                <stop stopColor="#07152f" /><stop offset="100%" stopColor="#123b70" />
+              </linearGradient>
+            </defs>
             <circle className="siteDroidShell" cx="90" cy="88" r="73" />
             <path className="siteDroidPanel" d="M30 71 C54 44 126 40 151 70 L153 102 C126 119 52 119 27 101 Z" />
             <path className="siteDroidGlass" d="M38 68 C61 50 121 49 143 68 L145 99 C121 112 60 112 35 98 Z" />
@@ -299,24 +382,32 @@ function DroidMorphShowcase({ language }: { language: 'no' | 'en' }) {
             <path className="siteDroidSmile" d="M75 101 Q91 112 108 101" />
             <path className="siteDroidGlint" d="M43 41 Q62 21 84 20" />
             <path className="siteDroidSeam" d="M22 111 Q90 140 158 109" />
-            <circle className="siteDroidLight" cx="152" cy="111" r="7" />
+            <DroidDetails />
           </svg>
         </div>
-        <div className="siteChatBubble" aria-hidden="true"><span /><span /><span /></div>
+        <div className="siteChatBubble" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20 11.5a8 8 0 0 1-11.6 7.1L4 20l1.4-4.4A8 8 0 1 1 20 11.5Z" /></svg>
+          <svg className="siteChatClickRays" viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round"><path d="M50 6v12M19 19l9 9M6 50h12M81 19l-9 9M19 81l9-9" /></svg>
+        </div>
         <div className="siteChat">
-          <div className="siteChatHead"><span className="siteChatAvatar">••</span><strong>Vintra-assistenten</strong><i /></div>
-          <div className="siteChatMessages">
-            <p>{language === 'no' ? 'Hei! Hva kan jeg hjelpe deg med?' : 'Hi! How can I help you?'}</p>
-            <p className="siteChatReply">{language === 'no' ? 'Jeg vil vite mer om tjenestene.' : 'I want to learn about your services.'}</p>
-            <p>{language === 'no' ? 'Klart! Jeg kan vise deg riktig løsning.' : 'Of course! I can show you the right solution.'}</p>
+          <div className="siteChatHead"><img src="/image/logo.png" alt="" /><div><strong>VintraChat</strong><small>{language === 'no' ? 'Vi er her for å hjelpe deg!' : 'We are here to help you!'}</small></div><span className="siteChatClose" aria-hidden="true">×</span></div>
+          <div className="siteChatWelcome">
+            <span className="siteChatWelcomeIcon" aria-hidden="true"><BotIcon /></span>
+            <strong>{language === 'no' ? 'Hei! 👋' : 'Hi! 👋'}</strong>
+            <p>{language === 'no' ? 'Hva kan jeg hjelpe deg med?' : 'How can I help you?'}</p>
+            <div className="siteChatOptions">
+              <div><span>◎</span><strong>{language === 'no' ? 'Kom i gang' : 'Get started'}</strong><i>›</i></div>
+              <div><span>◈</span><strong>{language === 'no' ? 'Produkter og tjenester' : 'Products and services'}</strong><i>›</i></div>
+              <div><span>♧</span><strong>{language === 'no' ? 'Kundeservice' : 'Customer support'}</strong><i>›</i></div>
+            </div>
           </div>
-          <div className="siteChatInput">{language === 'no' ? 'Skriv en melding…' : 'Write a message…'}<span>➤</span></div>
+          <div className="siteChatComposer"><span>{language === 'no' ? 'Skriv en melding…' : 'Write a message…'}</span><span className="siteChatSend" aria-hidden="true">➤</span></div>
         </div>
       </div>
       <aside className="morphSideCopy morphSideCopy--right">
         <small>{language === 'no' ? 'HJELP HELE DØGNET' : 'HELP AROUND THE CLOCK'}</small>
         <h3>{language === 'no' ? 'En chatbot som kjenner virksomheten din.' : 'A chatbot that knows your business.'}</h3>
-        <p>{language === 'no' ? 'Den finner svar, guider besøkende og gjør nettsiden mer nyttig.' : 'It finds answers, guides visitors and makes your website more useful.'}</p>
+        <p>{language === 'no' ? 'Gi kundene hjelp også utenfor åpningstid. Chatbotten kan svare på vanlige spørsmål, forklare tjenester og guide besøkende til riktig produkt eller kontaktperson. Det gir raskere svar og færre gjentakende henvendelser.' : 'Help customers outside business hours, too. Your chatbot can answer common questions, explain services and guide visitors to the right product or contact person. That means faster answers and fewer repetitive enquiries.'}</p>
       </aside>
       </div>
     </div>
@@ -326,7 +417,7 @@ function DroidMorphShowcase({ language }: { language: 'no' | 'en' }) {
 export default function MainLanding() {
   const [heroMounted, setHeroMounted] = useState(false)
   const [heroSceneMode, setHeroSceneMode] = useState<MainLandingThemeMode>('night')
-  const [nightStars] = useState(() => createHeroParticles(34, 'star'))
+  const [nightStars] = useState(() => createHeroParticles(86, 'star'))
   const [solutionsProgress, setSolutionsProgress] = useState(0)
   const { language } = useVintraLanguage()
   const text = mainLandingCopy[language]
@@ -422,6 +513,7 @@ export default function MainLanding() {
 
       <main lang={language} data-header-tone={heroSceneMode === 'night' ? 'light' : 'dark'}>
         <ScrollDroid />
+        <ScrollHint language={language} />
         {/* -- HERO ----------------------------------------- */}
         <section className={`heroShell heroShell--${heroSceneMode}`}>
           <div className="heroBackdrop" aria-hidden="true">
@@ -435,17 +527,41 @@ export default function MainLanding() {
                     style={{
                       left: star.left,
                       top: star.top,
-                      width: star.size,
-                      height: star.size,
-                      opacity: star.opacity,
-                      animationDelay: star.delay,
+                      width: `${Number.parseFloat(star.size) * 0.48}px`,
+                      height: `${Number.parseFloat(star.size) * 0.48}px`,
+                      ['--star-opacity' as '--star-opacity']: star.opacity,
+                      animationDelay: `-${star.delay}`,
                       ['--twinkle-duration' as '--twinkle-duration']: star.duration,
                     } as CSSProperties}
                   />
                 ))}
-                <span className="heroAuroraBand heroAuroraBand--one" />
-                <span className="heroAuroraBand heroAuroraBand--two" />
-                <span className="heroAuroraBand heroAuroraBand--three" />
+                <svg className="heroAurora" viewBox="0 0 1440 640" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="hero-aurora-green" x1="0" y1="0" x2="0.1" y2="1">
+                      <stop stopColor="#50dfc0" stopOpacity="0" />
+                      <stop offset="0.5" stopColor="#36bda5" stopOpacity="0.03" />
+                      <stop offset="0.86" stopColor="#52e4ac" stopOpacity="0.2" />
+                      <stop offset="1" stopColor="#9af5c6" stopOpacity="0.55" />
+                    </linearGradient>
+                    <linearGradient id="hero-aurora-blue" x1="0" y1="0" x2="0" y2="1">
+                      <stop stopColor="#8578d4" stopOpacity="0" />
+                      <stop offset="0.65" stopColor="#68a3d9" stopOpacity="0.05" />
+                      <stop offset="1" stopColor="#57cdbf" stopOpacity="0.28" />
+                    </linearGradient>
+                    <linearGradient id="hero-aurora-fade">
+                      <stop stopColor="white" stopOpacity="0" />
+                      <stop offset="0.18" stopColor="white" />
+                      <stop offset="0.8" stopColor="white" />
+                      <stop offset="1" stopColor="white" stopOpacity="0" />
+                    </linearGradient>
+                    <mask id="hero-aurora-mask"><rect width="1440" height="640" fill="url(#hero-aurora-fade)" /></mask>
+                  </defs>
+                  <g mask="url(#hero-aurora-mask)">
+                    <path className="heroAuroraRibbon heroAuroraRibbon--back" fill="url(#hero-aurora-blue)" d="M-100 30 C220 -100 330 30 600 -30 S1090 -40 1540 40 L1540 245 C1220 130 1110 160 905 240 S550 360 365 255 S90 155 -100 260Z" />
+                    <path className="heroAuroraRibbon heroAuroraRibbon--main" fill="url(#hero-aurora-green)" d="M-100 -80 C180 -40 400 -100 640 -40 S1100 -80 1540 -30 L1540 230 C1260 90 1120 210 970 310 S735 350 580 225 S270 280 -100 370Z" />
+                    <path className="heroAuroraRibbon heroAuroraRibbon--front" fill="url(#hero-aurora-green)" d="M100 -80 C400 -20 720 -60 1000 -50 L1540 -20 L1540 300 C1230 190 1160 370 960 365 S740 220 550 290 S260 410 100 350Z" />
+                  </g>
+                </svg>
               </>
             ) : (
               <></>
@@ -525,70 +641,6 @@ export default function MainLanding() {
 
     <div className="solutionsIntroArc">
       <div className="mountainLayer" aria-hidden="true">
-        {/* Bakre fjellkjede – myk og fjern */}
-        <svg className="mountainSide mountainSide--left" viewBox="0 0 1000 440" preserveAspectRatio="none">
-          <path
-            className="mountainSideFar"
-            d="M0 440 L0 326 C72 298 124 291 177 304 C238 267 291 258 346 275 C405 229 462 218 518 246 C568 202 625 196 678 230 C734 211 785 220 836 254 C892 243 944 261 1000 292 L1000 440 Z"
-          />
-          <path
-            className="mountainSideBase"
-            d="M0 440 L0 357 C71 338 121 335 173 348 C229 319 275 311 322 327 C371 287 420 278 467 302 C518 267 567 260 616 289 C666 273 711 282 754 313 C806 293 852 300 897 329 C936 318 968 321 1000 334 L1000 440 Z"
-          />
-          <path
-            className="mountainSideShade"
-            d="M0 440 L0 382 C83 363 129 352 190 367 C253 330 306 318 365 339 C423 306 478 297 535 329 C594 300 652 313 707 345 C770 322 826 327 882 357 C928 343 965 348 1000 361 L1000 440 Z"
-          />
-          <path className="mountainSideFacet mountainSideFacet--light" d="M194 281 L312 238 L362 266 L329 285 L287 326 L245 294 Z" />
-          <path className="mountainSideFacet mountainSideFacet--dark" d="M420 246 L541 221 L596 258 L558 278 L515 326 L478 282 Z" />
-          <path className="mountainSideFacet mountainSideFacet--light" d="M651 247 L772 257 L710 289 L674 330 L626 304 Z" />
-          <path className="mountainSideContour" d="M73 317 L132 326 L194 281 L245 294 L312 238 L362 266 L420 246 L478 282 L541 221 L596 258 L651 247 L710 289 L772 257 L829 282 L891 248 L946 278" />
-          <path className="mountainSideContour mountainSideContour--inner" d="M194 281 L229 317 L287 326 L312 238 M420 246 L458 311 L515 326 L541 221 M651 247 L674 330 L710 289 M772 257 L801 323 L829 282" />
-          <path className="mountainSideContour mountainSideContour--terrain" d="M18 377 C112 354 171 371 245 348 C320 325 374 350 447 327 C525 302 582 335 654 318 C735 298 796 337 872 316 C921 303 960 312 992 325" />
-          <path className="mountainSideContour mountainSideContour--terrain" d="M42 405 C139 384 211 400 282 379 C356 357 421 382 493 361 C568 339 636 370 711 350 C785 331 855 368 956 345" />
-          <g className="mountainMini">
-            <path className="mountainMiniBase" d="M0 440 L72 420 L144 382 L205 330 L257 255 L302 170 L341 96 L374 42 L405 89 L442 156 L486 218 L535 276 L594 326 L660 368 L735 401 L820 421 L910 430 L1000 440 Z" />
-            <path className="mountainMiniLight" d="M72 420 L144 382 L205 330 L257 255 L302 170 L341 96 L374 42 L359 126 L327 190 L298 264 L260 326 L214 374 L162 408 Z" />
-            <path className="mountainMiniShade" d="M374 42 L405 89 L442 156 L486 218 L535 276 L594 326 L660 368 L735 401 L820 421 L1000 440 L162 440 L214 374 L260 326 L298 264 L327 190 L359 126 Z" />
-            <path className="mountainMiniSnow" d="M302 170 L341 96 L374 42 L405 89 L422 122 L394 108 L378 146 L359 126 L339 178 L327 190 Z" />
-            <path className="mountainMiniSnow mountainMiniSnow--soft" d="M257 255 L302 170 L327 190 L300 222 L284 270 Z" />
-            <path className="mountainMiniRidge" d="M374 42 L359 126 L327 190 L298 264 L260 326 L214 374" />
-            <path className="mountainMiniRidge mountainMiniRidge--fine" d="M405 89 L394 159 L423 214 L442 156 M486 218 L444 255 L467 313 M535 276 L506 332 L557 361 M302 170 L284 229 L257 255" />
-          </g>
-        </svg>
-
-        {/* Speilvendt fjellkjede på høyre side */}
-        <svg className="mountainSide mountainSide--right" viewBox="0 0 1000 440" preserveAspectRatio="none">
-          <path
-            className="mountainSideFar"
-            d="M0 440 L0 331 C71 305 124 297 177 310 C237 274 290 265 345 282 C405 237 461 225 518 253 C568 210 624 204 678 237 C733 218 785 228 836 261 C892 250 944 268 1000 298 L1000 440 Z"
-          />
-          <path
-            className="mountainSideBase"
-            d="M0 440 L0 361 C70 342 121 340 173 353 C228 325 275 317 322 333 C370 294 419 285 467 308 C517 274 566 267 616 296 C665 280 710 289 754 320 C805 300 851 307 897 336 C935 325 968 328 1000 341 L1000 440 Z"
-          />
-          <path
-            className="mountainSideShade"
-            d="M0 440 L0 384 C81 366 129 356 190 371 C252 336 306 324 364 344 C422 312 477 303 535 334 C593 306 651 319 708 350 C769 328 826 333 882 362 C929 349 967 354 1000 366 L1000 440 Z"
-          />
-          <path className="mountainSideFacet mountainSideFacet--light" d="M188 289 L307 246 L359 273 L325 294 L285 333 L241 301 Z" />
-          <path className="mountainSideFacet mountainSideFacet--dark" d="M417 254 L538 230 L594 266 L555 286 L512 334 L475 289 Z" />
-          <path className="mountainSideFacet mountainSideFacet--light" d="M650 255 L771 265 L709 296 L673 336 L625 312 Z" />
-          <path className="mountainSideContour" d="M68 321 L127 331 L188 289 L241 301 L307 246 L359 273 L417 254 L475 289 L538 230 L594 266 L650 255 L709 296 L771 265 L831 290 L892 257 L948 286" />
-          <path className="mountainSideContour mountainSideContour--inner" d="M188 289 L226 323 L285 333 L307 246 M417 254 L455 316 L512 334 L538 230 M650 255 L673 336 L709 296 M771 265 L802 329 L831 290" />
-          <path className="mountainSideContour mountainSideContour--terrain" d="M18 381 C111 359 171 376 244 353 C319 331 374 356 447 333 C524 309 581 341 654 324 C734 305 796 343 872 322 C921 309 960 318 992 331" />
-          <path className="mountainSideContour mountainSideContour--terrain" d="M42 408 C138 389 210 405 282 384 C355 363 420 388 493 367 C567 345 635 376 710 356 C784 337 854 374 956 351" />
-          <g className="mountainMini">
-            <path className="mountainMiniBase" d="M0 440 L66 424 L132 391 L190 343 L240 277 L286 202 L329 112 L368 51 L398 96 L435 164 L477 225 L526 281 L584 330 L650 371 L725 402 L808 421 L900 431 L1000 440 Z" />
-            <path className="mountainMiniLight" d="M66 424 L132 391 L190 343 L240 277 L286 202 L329 112 L368 51 L351 134 L321 202 L291 270 L255 329 L210 380 L158 412 Z" />
-            <path className="mountainMiniShade" d="M368 51 L398 96 L435 164 L477 225 L526 281 L584 330 L650 371 L725 402 L808 421 L1000 440 L158 440 L210 380 L255 329 L291 270 L321 202 L351 134 Z" />
-            <path className="mountainMiniSnow" d="M286 202 L329 112 L368 51 L398 96 L416 130 L388 115 L373 151 L351 134 L333 187 L321 202 Z" />
-            <path className="mountainMiniSnow mountainMiniSnow--soft" d="M240 277 L286 202 L321 202 L293 239 L273 285 Z" />
-            <path className="mountainMiniRidge" d="M368 51 L351 134 L321 202 L291 270 L255 329 L210 380" />
-            <path className="mountainMiniRidge mountainMiniRidge--fine" d="M398 96 L388 166 L417 219 L435 164 M477 225 L438 263 L462 318 M526 281 L498 336 L549 365 M286 202 L270 252 L240 277" />
-          </g>
-        </svg>
-
         {/* Hovedfjellet */}
         <svg className="mountainCenter" viewBox="0 0 1000 700" preserveAspectRatio="none">
           <defs>
