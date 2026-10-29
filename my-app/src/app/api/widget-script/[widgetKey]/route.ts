@@ -2686,6 +2686,7 @@ export async function GET(
       '</div>';
 
     patchMarkup(mount, markup);
+    if (mobileViewportController) mobileViewportController.setOpen(state.open);
     applyThemeVars(mount.querySelector('.vintra-stack'), theme);
     syncComposerMode();
 

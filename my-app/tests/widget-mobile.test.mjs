@@ -10,13 +10,14 @@ function environment() {
     removeEventListener(type, callback) { listeners.delete(callback); },
   });
   const body = { style: { position: '', top: '', left: '', width: '', overflow: 'auto' } };
-  const document = { body, documentElement: { style: { overflow: '', overscrollBehavior: '', scrollBehavior: 'smooth' } } };
+  const document = { ...events(), body, documentElement: { style: { overflow: '', overscrollBehavior: '', scrollBehavior: 'smooth' } } };
   const media = { matches: true, ...events() };
   let restored;
   const window = {
     ...events(), scrollX: 0, scrollY: 620, innerHeight: 844,
     visualViewport: { height: 844, offsetTop: 0, ...events() },
     matchMedia: () => media,
+    getComputedStyle: node => ({ overflowY: node.overflowY || 'auto' }),
     requestAnimationFrame: () => 1, cancelAnimationFrame() {},
     scrollTo(x, y) { restored = [x, y]; },
   };
@@ -89,4 +90,29 @@ test('launcher attention covers arrival, waiting and unread replies without dist
   assert.equal(shouldAnimateWidgetLauncher(false, true, true, false), true);
   assert.equal(shouldAnimateWidgetLauncher(false, true, false, false), false);
   assert.equal(shouldAnimateWidgetLauncher(true, true, false, false), false);
+});
+
+test('touch gestures scroll the conversation but cannot chain to the host at its boundaries', () => {
+  const env = environment();
+  const root = env.root();
+  root.classList.contains = name => root.classes.has(name);
+  const controller = env.install(root);
+  controller.setOpen(true);
+  const start = [...env.listeners].find(([, type]) => type === 'touchstart')[0];
+  const move = [...env.listeners].find(([, type]) => type === 'touchmove')[0];
+  const scroller = { classList: { contains: () => false }, scrollHeight: 1000, clientHeight: 300, scrollTop: 100, overflowY: 'auto' };
+  let prevented = false;
+  const gesture = (path, nextY) => {
+    prevented = false;
+    start({ touches: [{ clientY: 100 }] });
+    move({ touches: [{ clientY: nextY }], composedPath: () => path, cancelable: true, preventDefault() { prevented = true; } });
+    return prevented;
+  };
+  assert.equal(gesture([scroller, root], 50), false, 'chat can scroll down');
+  scroller.scrollTop = 700;
+  assert.equal(gesture([scroller, root], 50), true, 'bottom boundary cannot move the host');
+  scroller.scrollTop = 0;
+  assert.equal(gesture([scroller, root], 150), true, 'top boundary cannot move the host');
+  assert.equal(gesture([], 50), true, 'host-page touches are blocked');
+  controller.destroy();
 });

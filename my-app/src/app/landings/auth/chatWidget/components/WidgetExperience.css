@@ -101,3 +101,36 @@
 .vintra-widget .widget-starter-card--bubble { border-radius: 22px; background: var(--chat-bot-bg); }
 .vintra-widget .message-meta { opacity: 1; }
 .vintra-widget .message-meta :is(.timestamp, .read-receipt) { color: inherit; opacity: .85; }
+
+/* One desktop geometry for export, live frame and the uniformly scaled preview. */
+.vintra-widget .chat-widget.open .chat-content,
+.vintra-widget .chat-widget.open.chat-widget--starter .chat-content {
+  height: var(--widget-content-height, min(632px, calc(100dvh - 128px)));
+  min-height: 0;
+  max-height: none;
+}
+.widget-preview-fit { position: relative; width: 100%; }
+.widget-preview-canvas { position: absolute; top: 0; left: 0; transform-origin: top left; --widget-content-height: 632px; }
+.chatbuilder-page .widget-preview-canvas .widget-viewport { width: 100%; height: 100%; min-height: 0; overflow: hidden; }
+.chatbuilder-page .widget-preview-canvas .floating-chat-preview {
+  position: absolute; inset: 24px auto auto 24px; width: 480px; max-width: none; height: 712px; transform: none;
+}
+.widget-preview-canvas .widgetcontainer { height: 100%; width: 100%; }
+.chatbuilder-page .widget-preview-canvas .chat-widget.open { width: 480px; min-width: 0; max-width: none; transform: none; }
+.widget-preview-canvas .widget-icon { position: absolute; top: auto; bottom: 0; right: 0; }
+.widget-preview-canvas .position-bottom-left .widget-icon { right: auto; left: 0; }
+.chatbuilder-page .widget-preview-canvas .preview-mobile .floating-chat-preview { inset: 0; width: 390px; height: 760px; }
+.chatbuilder-page .widget-preview-canvas .preview-mobile .chat-widget.open { position: absolute; inset: 0; width: 390px; height: 760px; }
+.widget-preview-canvas .preview-mobile .chat-widget.open .chat-content { height: 100% !important; }
+
+/* Draw inside each surface, so the preview's clipping cannot hide the highlight. */
+.vintra-widget :is(.preview-section-highlight, .preview-section-flash) {
+  outline: 3px solid #38bdf8;
+  outline-offset: -3px;
+  box-shadow: inset 0 0 0 3px #38bdf8, inset 0 0 22px #38bdf830;
+}
+.vintra-widget .chat-body:is(.preview-section-highlight, .preview-section-flash) { overflow-y: auto !important; overflow-x: hidden !important; }
+.vintra-widget :is(.preview-section-highlight, .preview-section-flash)::after { display: none; }
+.vintra-widget.widget-mobile-fullscreen .chat-widget.open .chat-content { height: 100% !important; min-height: 0 !important; }
+
+.vintra-widget .widget-icon { --border-strong: var(--chat-border, #dce6ed); }

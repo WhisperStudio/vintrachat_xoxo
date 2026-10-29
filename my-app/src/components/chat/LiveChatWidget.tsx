@@ -385,7 +385,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     if (!configResponse) return
 
     const position = configResponse.widgetConfig.position
-    const openWidth = 460
+    const openWidth = 504
     const openHeight = 760
     const closedWidth = 84
     const closedHeight = 84

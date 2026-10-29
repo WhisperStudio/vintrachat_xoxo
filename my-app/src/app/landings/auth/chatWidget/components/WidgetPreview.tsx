@@ -262,11 +262,22 @@ export default function WidgetPreview({
   const [activePortalPanel, setActivePortalPanel] = useState<'chats' | 'tasks'>('chats')
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const viewportRef = useRef<HTMLDivElement | null>(null)
+  const previewFitRef = useRef<HTMLDivElement | null>(null)
+  const [previewScale, setPreviewScale] = useState(0.7)
   const stickToBottomRef = useRef(true)
   const [mobileViewport, setMobileViewport] = useState(false)
   const [hasOpened, setHasOpened] = useState(initialOpen)
   const [unread, setUnread] = useState(false)
   const lastMessageRef = useRef('')
+  const isChatOpen = openOverride ?? internalIsChatOpen
+  useEffect(() => {
+    const fit = previewFitRef.current
+    if (!fit || variant === 'embedded') return
+    const width = previewMode === 'mobile' ? 390 : 528
+    const observer = new ResizeObserver(() => setPreviewScale(Math.min(1, fit.clientWidth / width)))
+    observer.observe(fit)
+    return () => observer.disconnect()
+  }, [variant, previewMode, mobileViewport, isChatOpen])
 
   const effectiveAssistantIcons = {
     launcherIcon: assistantIcons?.launcherIcon ?? '',
@@ -280,7 +291,6 @@ export default function WidgetPreview({
     userIcon: assistantIcons?.userIcon ?? 'FiUser',
   }
 
-  const isChatOpen = openOverride ?? internalIsChatOpen
   const messages = useMemo(() => messagesOverride ?? internalMessages.map((message) => {
     const sampleCopy: Record<string, string> = {
       'preview-welcome': no ? 'Hei! Hva kan vi hjelpe deg med?' : 'Hi! How can we help you?',
@@ -1317,13 +1327,11 @@ export default function WidgetPreview({
 
   return (
     <div className={`widget-preview-shell preview-shell-${previewMode}`}>
-      {previewMode === 'mobile' ? (
-        <div className="widget-preview-device-frame">
-          <div className="widget-preview-device-shell">{previewContent}</div>
+      <div ref={previewFitRef} className="widget-preview-fit" style={{ height: 760 * previewScale }}>
+        <div className="widget-preview-canvas" style={{ width: previewMode === 'mobile' ? 390 : 528, height: 760, transform: `scale(${previewScale})` }}>
+          {previewContent}
         </div>
-      ) : (
-        previewContent
-      )}
+      </div>
       {typeof total === 'number' ? (
         <div className="widget-preview-total">
           <p className="widget-preview-total-label">{pricingText.subscriptionTotal}</p>

@@ -1,13 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 500" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 500" preserveAspectRatio="none" fill="none">
   <defs>
-    <linearGradient id="slope" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#d0eafb"/><stop offset=".5" stop-color="#99c6e3"/><stop offset="1" stop-color="#628da9" stop-opacity=".3"/>
+    <linearGradient id="ridge" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#c1e0f4"/><stop offset=".55" stop-color="#83acc7"/><stop offset="1" stop-color="#628da9" stop-opacity=".12"/>
     </linearGradient>
-    <linearGradient id="snow" x1="0" y1="0" x2=".8" y2="1">
-      <stop stop-color="#fff"/><stop offset="1" stop-color="#dceffa"/>
+    <linearGradient id="shade" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#466e8c" stop-opacity=".5"/><stop offset="1" stop-color="#466e8c" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="snow" x1="0" y1="0" x2=".5" y2="1">
+      <stop stop-color="#f3faff"/><stop offset="1" stop-color="#d4eafa" stop-opacity=".1"/>
     </linearGradient>
   </defs>
-  <!-- One uninterrupted mountainside, with a single broad snowfield. -->
-  <path fill="url(#slope)" d="M-120 500 65 210 190 15 266 75 345 204 470 294 655 380 900 500Z"/>
-  <path fill="url(#snow)" opacity=".88" d="m190 15 76 60 79 129 125 90 185 86-219-65-110-92-66-120Z"/>
+  <!-- A low, continuous ridge with a few widely spaced summits. -->
+  <path fill="url(#ridge)" d="M0 282 C60 279 105 255 155 226 L270 145 309 177 C355 223 420 263 466 271 C510 277 548 239 590 210 L633 238 C690 275 744 286 801 269 C874 248 923 204 966 169 L1035 105 1081 141 C1120 176 1149 216 1200 239 C1245 260 1290 269 1330 246 L1440 170 1480 195 C1522 225 1563 244 1600 250 V500 H0Z"/>
+  <path fill="url(#shade)" d="m270 145 39 32c46 46 111 86 157 94l125 142-202-101-56-82Zm765-40 46 36c39 35 68 75 119 98l130 136-188-70-75-111Zm405 65 40 25c42 30 83 49 120 55v110l-113-90Z"/>
+  <path fill="url(#snow)" opacity=".7" d="m270 145 39 32c30 30 67 58 104 76l-72-26-41-38-22-7-36 17Zm765-40 46 36c29 26 53 55 83 77l-65-30-39-41-22-8-44 32Z"/>
+  <path fill="url(#snow)" opacity=".4" d="m590 210 43 28 45 23-53-12-32-19-35 10Zm850-40 40 25 47 30-61-23-24-15-33 13Z"/>
 </svg>

@@ -7,7 +7,36 @@ export function installWidgetMobileViewport(root) {
   const media = window.matchMedia('(max-width: 640px)');
   const documentRoot = document.documentElement;
   const lockKey = '__vintraMobileScrollLock';
+  let touchY = 0;
+  function touchStart(event) { touchY = event.touches[0]?.clientY || 0; }
+  function touchMove(event) {
+    if (!locked || event.touches.length !== 1) return;
+    const nextY = event.touches[0].clientY;
+    const delta = touchY - nextY;
+    touchY = nextY;
+    const path = event.composedPath();
+    const widgetIndex = path.findIndex(node => node?.classList?.contains('widget-mobile-fullscreen'));
+    // iOS can chain a gesture to the host page even when body overflow is hidden.
+    // Allow only scrollable surfaces inside the open widget, in their scroll range.
+    const canScroll = widgetIndex >= 0 && path.slice(0, widgetIndex).some(node => {
+      if (!node?.classList || node.scrollHeight <= node.clientHeight + 1) return false;
+      if (!/(auto|scroll)/.test(window.getComputedStyle(node).overflowY)) return false;
+      return delta > 0 ? node.scrollTop + node.clientHeight < node.scrollHeight - 1 : node.scrollTop > 0;
+    });
+    if (!canScroll && event.cancelable) event.preventDefault();
+  }
+  function keepPageStill() {
+    if (locked && (window.scrollY || window.scrollX)) window.scrollTo(0, 0);
+  }
+  function setStyle(style, property, value, priority = '') {
+    if (style.setProperty) style.setProperty(property, value, priority);
+    else style[property] = value;
+  }
+  document.addEventListener('touchstart', touchStart, { passive: true });
+  document.addEventListener('touchmove', touchMove, { passive: false });
+  window.addEventListener('scroll', keepPageStill, { passive: true });
   let pinned = true;
+  let observedBody = null;
   function onScroll(event) {
     const body = event.target;
     if (body?.classList?.contains('chat-body')) pinned = body.scrollHeight - body.clientHeight - body.scrollTop < 64;
@@ -24,9 +53,9 @@ export function installWidgetMobileViewport(root) {
     locked = false;
     const lock = document[lockKey];
     if (!lock || --lock.count > 0) return;
-    for (const [property, value] of Object.entries(lock.body)) document.body.style[property] = value;
-    documentRoot.style.overflow = lock.overflow;
-    documentRoot.style.overscrollBehavior = lock.overscroll;
+    for (const [property, value] of Object.entries(lock.body)) setStyle(document.body.style, property, value, lock.priorities[property]);
+    setStyle(documentRoot.style, 'overflow', lock.overflow, lock.overflowPriority);
+    setStyle(documentRoot.style, 'overscroll-behavior', lock.overscroll, lock.overscrollPriority);
     delete document[lockKey];
     const behavior = documentRoot.style.scrollBehavior;
     documentRoot.style.scrollBehavior = 'auto';
@@ -36,6 +65,12 @@ export function installWidgetMobileViewport(root) {
 
   function sync() {
     frame = 0;
+    const body = root.querySelector('.chat-body');
+    if (body && body !== observedBody) {
+      if (observedBody) observer.unobserve(observedBody);
+      observedBody = body;
+      observer.observe(body);
+    }
     const fullscreen = open && media.matches;
     root.classList.toggle('widget-mobile-fullscreen', fullscreen);
     if (!fullscreen) { release(); return; }
@@ -43,15 +78,20 @@ export function installWidgetMobileViewport(root) {
       let lock = document[lockKey];
       if (!lock) {
         const body = {};
+        const priorities = {};
         for (const property of ['position', 'top', 'left', 'width', 'overflow']) body[property] = document.body.style[property];
-        lock = document[lockKey] = { count: 0, body, x: window.scrollX, y: window.scrollY,
-          overflow: documentRoot.style.overflow, overscroll: documentRoot.style.overscrollBehavior };
-        Object.assign(document.body.style, { position: 'fixed', top: -lock.y + 'px', left: -lock.x + 'px', width: '100%', overflow: 'hidden' });
-        documentRoot.style.overflow = 'hidden';
-        documentRoot.style.overscrollBehavior = 'none';
+        for (const property of Object.keys(body)) priorities[property] = document.body.style.getPropertyPriority?.(property) || '';
+        lock = document[lockKey] = { count: 0, body, priorities, x: window.scrollX, y: window.scrollY,
+          overflow: documentRoot.style.overflow, overscroll: documentRoot.style.overscrollBehavior,
+          overflowPriority: documentRoot.style.getPropertyPriority?.('overflow') || '',
+          overscrollPriority: documentRoot.style.getPropertyPriority?.('overscroll-behavior') || '' };
+        for (const [property, value] of Object.entries({ position: 'fixed', top: -lock.y + 'px', left: -lock.x + 'px', width: '100%', overflow: 'hidden' })) setStyle(document.body.style, property, value, 'important');
+        setStyle(documentRoot.style, 'overflow', 'hidden', 'important');
+        setStyle(documentRoot.style, 'overscroll-behavior', 'none', 'important');
       }
       lock.count++;
       locked = true;
+      keepPageStill();
     }
     // Use the visible height exactly once: no extra keyboard bottom offset.
     root.style.setProperty('--widget-visual-height', (viewport?.height || window.innerHeight) + 'px');
@@ -67,6 +107,9 @@ export function installWidgetMobileViewport(root) {
   return {
     setOpen(value) { open = value; sync(); },
     destroy() {
+      document.removeEventListener('touchstart', touchStart);
+      document.removeEventListener('touchmove', touchMove);
+      window.removeEventListener('scroll', keepPageStill);
       observer.disconnect();
       root.removeEventListener('scroll', onScroll, true);
       window.cancelAnimationFrame(frame);

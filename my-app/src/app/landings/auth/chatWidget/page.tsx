@@ -881,6 +881,10 @@ export default function ChatWidgetBuilderPage() {
                         }
                       }}
                       onMouseLeave={() => setPreviewHighlightTarget(null)}
+                      onFocus={() => {
+                        if (section.key === 'bubble' || section.key === 'header' || section.key === 'body' || section.key === 'footer') setPreviewHighlightTarget(section.key)
+                      }}
+                      onBlur={() => setPreviewHighlightTarget(null)}
                       aria-pressed={active}
                       aria-controls="studio-settings"
                     >
