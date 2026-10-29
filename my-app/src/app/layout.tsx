@@ -85,9 +85,6 @@ export default function RootLayout({
             </LanguageProvider>
           </AuthProvider>
         </StyledComponentsRegistry>
-        {/* VintraSolutions Chat Widget */}
-        <script src="https://chat.vintrastudio.com/widget/GIN6CPbnBnbTOoEPU3wctBqr.js"></script>
-        {/* End VintraSolutions Chat Widget */}
       </body>
     </html>
   )

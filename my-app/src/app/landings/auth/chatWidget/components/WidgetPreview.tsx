@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type SVGProps } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type ComponentType, type CSSProperties, type SVGProps } from 'react'
 import { FiArrowLeft, FiCheckCircle, FiChevronRight, FiCpu, FiLifeBuoy, FiMessageCircle, FiMessageSquare, FiPhone, FiSend } from 'react-icons/fi'
 import GlassOrbAvatar from '../../../../../svgs/GlassOrbAvatar'
 import { getWidgetThemeClass, getWidgetThemeStyle, joinWidgetClasses } from '@/components/chat/widgetDesign'
@@ -10,6 +10,7 @@ import { chatWidgetPricingI18n, useVintraLanguage } from '@/lib/i18n'
 import FeedbackFormOverlay from '@/components/chat/FeedbackFormOverlay'
 import WebGLLiquidGlassSendButton from './glass/WebGLLiquidGlassSendButton'
 import './WidgetPreview.css'
+import './WidgetExperience.css'
 import type { AssistantConversationCard, AssistantWidgetIcons, ChatWidgetInterfaceIcons, BubbleIconChoice, OrbStyleConfig } from '@/types/database'
 
 const OrbAvatar = GlassOrbAvatar as ComponentType<
@@ -92,6 +93,7 @@ interface WidgetPreviewProps {
   enablePreviewChat?: boolean
   showConditionalFeaturePreview?: boolean
   previewReply?: string
+  previewScenario?: 'welcome' | 'conversation'
   keyboardOffset?: number
   faqSuggestionsEnabled?: boolean
   faqSuggestions?: string[]
@@ -193,7 +195,8 @@ export default function WidgetPreview({
   previewMode = 'desktop',
   enablePreviewChat = false,
   showConditionalFeaturePreview = false,
-  previewReply = 'hi, this is only a test',
+  previewReply = 'This is a sample reply. Your customers will receive answers based on your business information.',
+  previewScenario = 'welcome',
   keyboardOffset = 0,
   faqSuggestionsEnabled = false,
   faqSuggestions = [],
@@ -217,6 +220,10 @@ export default function WidgetPreview({
   flashSection = null,
 }: WidgetPreviewProps) {
   const { language } = useVintraLanguage()
+  const no = language === 'no'
+  const widgetId = useId()
+  const launcherRef = useRef<HTMLDivElement | null>(null)
+  const replyTimerRef = useRef<number | null>(null)
   const pricingText = chatWidgetPricingI18n[language]
   const safeTotal = typeof total === 'number' ? total : 0
   const formattedTotal =
@@ -233,14 +240,14 @@ export default function WidgetPreview({
   const orbInactiveHoldTimerRef = useRef<number | null>(null)
   const chatBodyRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
-  const [internalMessages, setInternalMessages] = useState<Message[]>([
-    {
-      id: crypto.randomUUID(),
-      text: 'Hey! Welcome to our website. How can we help you today?',
-      isBot: true,
-      role: 'assistant',
-    },
+  const [internalMessages, setInternalMessages] = useState<Message[]>(() => [
+    { id: 'preview-welcome', text: no ? 'Hei! Hva kan vi hjelpe deg med?' : 'Hi! How can we help you?', isBot: true, role: 'assistant' },
+    ...(enablePreviewChat && previewScenario === 'conversation' ? [
+      { id: 'preview-question', text: no ? 'Jeg vil gjerne vite mer om tjenestene deres.' : 'I’d like to learn more about your services.', isBot: false, role: 'user' as const },
+      { id: 'preview-answer', text: no ? 'Det hjelper vi deg gjerne med. Fortell litt om hva du trenger, så finner vi riktig løsning sammen.' : 'We’d be happy to help. Tell us a little about what you need, and we’ll find the right solution together.', isBot: true, role: 'assistant' as const },
+    ] : []),
   ])
+  useEffect(() => () => { if (replyTimerRef.current) window.clearTimeout(replyTimerRef.current) }, [])
   const [internalInputValue, setInternalInputValue] = useState('')
   const [internalFeedbackOpen, setInternalFeedbackOpen] = useState(false)
   const [internalFeedbackRating, setInternalFeedbackRating] = useState(5)
@@ -267,7 +274,14 @@ export default function WidgetPreview({
   }
 
   const isChatOpen = openOverride ?? internalIsChatOpen
-  const messages = messagesOverride ?? internalMessages
+  const messages = useMemo(() => messagesOverride ?? internalMessages.map((message) => {
+    const sampleCopy: Record<string, string> = {
+      'preview-welcome': no ? 'Hei! Hva kan vi hjelpe deg med?' : 'Hi! How can we help you?',
+      'preview-question': no ? 'Jeg vil gjerne vite mer om tjenestene deres.' : 'I’d like to learn more about your services.',
+      'preview-answer': no ? 'Det hjelper vi deg gjerne med. Fortell litt om hva du trenger, så finner vi riktig løsning sammen.' : 'We’d be happy to help. Tell us a little about what you need, and we’ll find the right solution together.',
+    }
+    return sampleCopy[message.id] ? { ...message, text: sampleCopy[message.id] } : message
+  }), [messagesOverride, internalMessages, no])
   const inputValue = inputValueOverride ?? internalInputValue
   const isReplying = bubbleActivityState === 'replying' || internalIsReplying
   const showTypingIndicator = isReplying
@@ -331,12 +345,6 @@ export default function WidgetPreview({
   const showFaqSuggestions =
     isChatOpen && faqSuggestionsEnabled && !faqSuggestionsDismissed && messages.length <= 1 && activeFaqSuggestions.length > 0
   const hasUserMessage = messages.some((message) => !message.isBot)
-  const showStarterCards =
-    bodyStyle.showConversationCards &&
-    isChatOpen &&
-    !hasUserMessage &&
-    countChars(String(inputValue ?? '').trim()) === 0
-  const showComposerSuggestions = showFaqSuggestions && countChars(String(inputValue ?? '').trim()) === 0 && !showStarterCards
   const visibleErrorMessage = errorMessage || internalErrorMessage
   const hasTypedMessage = countChars(String(inputValue ?? '').trim()) > 0
   const starterCards = useMemo<AssistantConversationCard[]>(() => {
@@ -346,20 +354,14 @@ export default function WidgetPreview({
 
     const normalized = normalizeConversationCards(conversationCards)
     const limited = normalized.slice(0, Math.max(1, Number(conversationCardsLimit || 4)))
-    if (limited.length > 0) return limited
-
-    return [
-      {
-        id: 'preview-only',
-        title: 'This is only a preview',
-        description: 'Set starter cards in Chat Messages to show real cards here.',
-        options: [
-          { label: 'Edit cards', prompt: 'Edit starter cards' },
-          { label: 'Add options', prompt: 'Add more starter card options' },
-        ],
-      },
-    ]
+    return limited
   }, [conversationCardsLimit, bodyStyle.showConversationCards, conversationCards, conversationCardsEnabled])
+  const showStarterCards =
+    starterCards.length > 0 &&
+    isChatOpen &&
+    !hasUserMessage &&
+    countChars(String(inputValue ?? '').trim()) === 0
+  const showComposerSuggestions = showFaqSuggestions && countChars(String(inputValue ?? '').trim()) === 0 && !showStarterCards
   const starterCardsPerPage =
     bodyStyle.conversationCardsStyle === 'minimal' && starterCards.length > 4
       ? 8
@@ -480,7 +482,8 @@ export default function WidgetPreview({
   useEffect(() => {
     if (!isChatOpen || activePortalPanel !== 'chats') return
     window.requestAnimationFrame(() => {
-      messagesEndRef.current?.scrollIntoView({ block: 'end' })
+      const body = chatBodyRef.current
+      if (body) body.scrollTop = body.scrollHeight
     })
   }, [activePortalPanel, isChatOpen, messages, showComposerSuggestions, showSupportTypingIndicator, showTypingIndicator])
 
@@ -495,15 +498,15 @@ export default function WidgetPreview({
     }
 
     node.style.height = 'auto'
-    node.style.height = `${Math.max(baseHeight, node.scrollHeight)}px`
+    node.style.height = `${Math.min(128, Math.max(baseHeight, node.scrollHeight))}px`
   }, [inputValue, isComposerFocused])
 
   const handleSend = (messageOverride?: string) => {
     const nextText = String(messageOverride ?? inputValue ?? '').trim()
-    if (!nextText) return
+    if (!nextText || disableInput || internalIsReplying) return
 
     if (countChars(nextText) > 300) {
-      setInternalErrorMessage('Message is too long. Max 300 characters.')
+      setInternalErrorMessage(no ? 'Meldingen er for lang. Maks 300 tegn.' : 'Message is too long. Max 300 characters.')
       return
     }
 
@@ -561,33 +564,18 @@ export default function WidgetPreview({
       return
     }
 
+    if (!enablePreviewChat) return
+    setInternalMessages((prev) => [...prev, { id: crypto.randomUUID(), text: nextText, isBot: false, role: 'user' }])
+    setInputValue('')
+    setInternalErrorMessage(null)
     setInternalIsReplying(true)
     setOrbInactiveActive(false)
     setOrbActivityNonce((current) => current + 1)
-
-    window.setTimeout(() => {
-      if (enablePreviewChat) {
-          setInternalMessages((prev) => [
-            ...prev,
-            {
-              id: crypto.randomUUID(),
-              text: nextText,
-              isBot: false,
-              role: 'user',
-            },
-            {
-              id: crypto.randomUUID(),
-              text: previewReply,
-              isBot: true,
-              role: 'assistant',
-            },
-          ])
-      }
-
-      setInputValue('')
-      setInternalErrorMessage(null)
+    replyTimerRef.current = window.setTimeout(() => {
+      setInternalMessages((prev) => [...prev, { id: crypto.randomUUID(), text: previewReply, isBot: true, role: 'assistant' }])
       setInternalIsReplying(false)
-    }, enablePreviewChat ? 850 : 180)
+      replyTimerRef.current = null
+    }, 850)
   }
 
   const themeClass = joinWidgetClasses(
@@ -633,7 +621,7 @@ export default function WidgetPreview({
     highlightedSection === 'footer' ? 'preview-section-highlight' : ''
   )
   const title = customBranding.title || 'Support Chat'
-  const description = customBranding.description || 'Usually replies in a few minutes'
+  const description = customBranding.description || (no ? 'Hva kan vi hjelpe deg med?' : 'How can we help you?')
   const logoStyle = normalizeLogoStyle(customBranding.logoStyle)
   const orbSettings = bubbleStyle.orbStyle || {
     hoverEnabled: true,
@@ -737,7 +725,7 @@ export default function WidgetPreview({
 
   const previewContent = (
     <div
-      className={`widget-viewport ${variant === 'embedded' ? 'widget-viewport-embedded' : ''} position-${position} preview-${previewMode}`}
+      className={`vintra-widget widget-viewport ${variant === 'embedded' ? 'widget-viewport-embedded' : ''} position-${position} preview-${previewMode}`}
       style={
         {
           '--widget-keyboard-offset': `${Math.max(0, keyboardOffset)}px`,
@@ -746,7 +734,9 @@ export default function WidgetPreview({
     >
       <div className={`floating-chat-preview ${themeClass}`} style={themeVars as CSSProperties}>
         <div className="widgetcontainer">
-          <div className={`chat-widget ${isChatOpen ? 'open' : ''} ${showStarterCards ? 'chat-widget--starter' : ''}`} hidden={!isChatOpen} aria-hidden={!isChatOpen}>
+          <div id={`${widgetId}-chat`} role="region" aria-label={title}
+            onKeyDown={(event) => { if (event.key === 'Escape' && headerStyle.showCloseButton && !activeHumanHandoffOverlay.open && !activeFeedbackOverlay.open) { setIsChatOpen(false); launcherRef.current?.focus() } }}
+            className={`chat-widget ${isChatOpen ? 'open' : ''} ${showStarterCards ? 'chat-widget--starter' : ''}`} hidden={!isChatOpen} aria-hidden={!isChatOpen}>
             <div
               className="chat-content chat-widget-interaction-surface"
               onPointerDownCapture={(event) => {
@@ -768,7 +758,7 @@ export default function WidgetPreview({
             <div className={headerClasses}>
               <div className="chat-header-left">
                 {showStarterCardList ? (
-                  <button type="button" className="chat-header-back" onClick={() => setActiveConversationCardId(null)} aria-label="Go back">
+                  <button type="button" className="chat-header-back" onClick={() => setActiveConversationCardId(null)} aria-label={no ? 'Tilbake' : 'Go back'}>
                     {renderWidgetIcon(effectiveAssistantIcons.backIcon, { 'aria-hidden': true }) || <FiArrowLeft aria-hidden="true" />}
                   </button>
                 ) : null}
@@ -849,13 +839,13 @@ export default function WidgetPreview({
                       radius="50%"
                       width={40}
                       height={40}
-                      onClick={() => setIsChatOpen(false)}
-                      aria-label="Close chat"
+                      onClick={() => { setIsChatOpen(false); launcherRef.current?.focus() }}
+                      aria-label={no ? 'Lukk chatten' : 'Close chat'}
                     >
                       {renderWidgetIcon(effectiveAssistantIcons.closeIcon, { 'aria-hidden': true }) || 'x'}
                     </WebGLLiquidGlassSendButton>
                   ) : (
-                    <button type="button" className="close-btn" onClick={() => setIsChatOpen(false)} aria-label="Close chat">
+                    <button type="button" className="close-btn" onClick={() => { setIsChatOpen(false); launcherRef.current?.focus() }} aria-label={no ? 'Lukk chatten' : 'Close chat'}>
                       {renderWidgetIcon(effectiveAssistantIcons.closeIcon, { 'aria-hidden': true }) || 'x'}
                     </button>
                   )
@@ -931,8 +921,8 @@ export default function WidgetPreview({
                       </div>
                     ) : null}
                     <div className="widget-starter-cards__hero-copy">
-                      <strong>Hei! 👋</strong>
-                      <p>{isMinimalCards ? 'Hva kan jeg hjelpe deg med?' : 'Hva kan jeg hjelpe deg med i dag?'}</p>
+                      <strong>{no ? 'Hei, og velkommen.' : 'Hello, and welcome.'}</strong>
+                      <p>{no ? 'Velg et tema, eller skriv til oss.' : 'Choose a topic, or send us a message.'}</p>
                     </div>
                   </div>
 
@@ -1166,22 +1156,17 @@ export default function WidgetPreview({
               <div className={`${footerClasses} ${flashSection === 'footer' ? 'preview-section-flash' : ''}`.trim()}>
               <div className="chat-footer-row">
                 <textarea
-                  id="widget-message-input"
+                  id={`${widgetId}-message`}
+                  aria-label={no ? 'Meldingen din' : 'Your message'}
                   name="widget-message-input"
                   ref={inputRef}
-                  placeholder={
-                    footerStyle.showPlaceholder
-                      ? showStarterCards
-                        ? 'Write a message...'
-                        : 'Write a message...'
-                      : ''
-                  }
+                  placeholder={footerStyle.showPlaceholder ? (no ? 'Skriv en melding…' : 'Write a message…') : ''}
                   value={inputValue}
                   onFocus={() => setIsComposerFocused(true)}
                   onBlur={() => setIsComposerFocused(false)}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
+                    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                       e.preventDefault()
                       handleSend()
                     }
@@ -1198,13 +1183,13 @@ export default function WidgetPreview({
                       width={52}
                       height={52}
                       onClick={() => handleSend()}
-                      disabled={disableInput}
-                      aria-label="Send message"
+                      disabled={disableInput || internalIsReplying || !inputValue.trim()}
+                      aria-label={no ? 'Send melding' : 'Send message'}
                     >
                       {renderWidgetIcon(effectiveAssistantIcons.sendIcon, { 'aria-hidden': true }) || <FiSend />}
                     </WebGLLiquidGlassSendButton>
                   ) : (
-                    <button type="button" onClick={() => handleSend()} disabled={disableInput} aria-label="Send message">
+                    <button type="button" onClick={() => handleSend()} disabled={disableInput || internalIsReplying || !inputValue.trim()} aria-label={no ? 'Send melding' : 'Send message'}>
                       {renderWidgetIcon(effectiveAssistantIcons.sendIcon, { 'aria-hidden': true }) || <FiSend />}
                     </button>
                   )
@@ -1213,7 +1198,7 @@ export default function WidgetPreview({
               </div>
             )}
 
-            {visibleErrorMessage && <div className="widget-inline-error">{visibleErrorMessage}</div>}
+            {visibleErrorMessage && <div className="widget-inline-error" role="alert">{visibleErrorMessage}</div>}
             <FeedbackFormOverlay
               open={Boolean(activeFeedbackOverlay.open)}
               title={feedbackOverlay?.title}
@@ -1242,7 +1227,12 @@ export default function WidgetPreview({
               }
             }}
             onClick={() => setIsChatOpen((prev) => !prev)}
+            ref={launcherRef}
             role="button"
+            aria-label={isChatOpen ? (no ? 'Lukk chatten' : 'Close chat') : (no ? 'Åpne chatten' : 'Open chat')}
+            aria-expanded={isChatOpen}
+            aria-controls={`${widgetId}-chat`}
+            onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setIsChatOpen((prev) => !prev); if (!isChatOpen) window.requestAnimationFrame(() => inputRef.current?.focus()) } }}
             tabIndex={0}
           >
             <span className="widget-icon-inner" aria-hidden="true">

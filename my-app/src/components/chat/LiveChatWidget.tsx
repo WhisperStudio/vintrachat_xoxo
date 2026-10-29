@@ -1028,7 +1028,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
           logo: config.customBranding?.logo,
           logoStyle: config.customBranding?.logoStyle,
         }}
-        assistantIcons={configResponse?.assistantConfig?.widgetIcons}
+        assistantIcons={{ ...configResponse?.assistantConfig?.widgetIcons, ...config.widgetIcons }}
         variant="embedded"
         keyboardOffset={keyboardOffset}
         messagesOverride={widgetMessages}
