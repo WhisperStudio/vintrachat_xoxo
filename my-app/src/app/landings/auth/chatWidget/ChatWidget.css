@@ -1,21 +1,41 @@
 /* Editor theme is scoped so the chosen customer-facing widget keeps its own colors. */
 .chatbuilder-page {
-  --bg: #f3f6f8; --bg-2: #edf2f6; --panel: #ffffff;
-  --text: #182e43; --text-soft: #536b80; --muted: #52687b;
-  --border: #dce5ec; --border-strong: #bdceda;
-  --brand: #285f86; --brand-2: #366f96; --brand-grad: linear-gradient(135deg, #285f86, #367a9a);
-  --studio-selected: #eaf3fa; --studio-button: #1d4868; --studio-button-text: #ffffff;
+  --bg: #edf3f8; --bg-2: #e6eff6; --panel: #fbfdff;
+  --text: #152f48; --text-soft: #36546d; --muted: #49637b;
+  --border: #ccdae6; --border-strong: #819fb9;
+  --brand: #155a96; --brand-2: #2379b4; --brand-grad: linear-gradient(115deg, #14568f, #2379b4);
+  --studio-selected: #dcecf9; --studio-button: #175f9e; --studio-button-text: #ffffff;
+  --studio-hover: #d2e7f8;
+  --studio-sweep: linear-gradient(100deg, #a8d4f4 0%, #dcecf9 65%, #dcecf900 100%);
+  --studio-glow: #287fba24;
+  --studio-sunlight: #f0c79538;
+  --studio-skyglow: #91cbea42;
+  --studio-mountain-far: #cfdeea;
+  --studio-mountain-near: #b6cddd;
+  --studio-warm-accent: #a65b25;
+  --studio-ease: cubic-bezier(.22, 1, .36, 1);
   --shadow-sm: 0 4px 14px #112a4005; --shadow-md: 0 12px 32px #112a4008; --shadow-lg: 0 20px 50px #112a400a;
   --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 20px;
   --transition: .18s ease;
-  background: var(--bg); color: var(--text); min-height: 100svh; line-height: 1.5;
+  position: relative;
+  isolation: isolate;
+  background: radial-gradient(ellipse 700px 380px at 8% 80px, var(--studio-sunlight), transparent), radial-gradient(ellipse 900px 460px at 90% 160px, var(--studio-skyglow), transparent), var(--bg);
+  color: var(--text); min-height: 100svh; line-height: 1.5;
 }
 html[data-theme='dark'] .chatbuilder-page {
-  --bg: #0b1521; --bg-2: #162738; --panel: #112030;
-  --text: #e7f0fa; --text-soft: #a8bdcf; --muted: #a1b6c8;
-  --border: #2d4357; --border-strong: #49647c;
-  --brand: #a4d3f8; --brand-2: #c4e3fc;
-  --studio-selected: #20394e; --studio-button: #a4d3f8; --studio-button-text: #102b43;
+  --bg: #0b1b2d; --bg-2: #172f46; --panel: #10263b;
+  --text: #edf6ff; --text-soft: #caddec; --muted: #a8c0d5;
+  --border: #2f4e68; --border-strong: #668eaf;
+  --brand: #9ed5ff; --brand-2: #c2e8ff;
+  --studio-selected: #1d4262; --studio-button: #9ed5ff; --studio-button-text: #09243b;
+  --studio-hover: #285271;
+  --studio-sweep: linear-gradient(100deg, #285d85 0%, #1d4262 65%, #1d426200 100%);
+  --studio-glow: #7dc8ff26;
+  --studio-sunlight: #e5af7420;
+  --studio-skyglow: #429cce24;
+  --studio-mountain-far: #18364f;
+  --studio-mountain-near: #20435e;
+  --studio-warm-accent: #e9bb87;
 }
 .chatbuilder-page button, .chatbuilder-page select, .chatbuilder-page input { font: inherit; }
 .chatbuilder-page :is(button, a, select, input, textarea):focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
@@ -197,3 +217,194 @@ html[data-theme='dark'] .studioSun { display: block; }
 
 .chatbuilder-page .builder-content-panel .iconChoiceIndicator { display: none; }
 .chatbuilder-page .builder-content-panel :is(.glassRadioButton.active, .iconChoiceButton.active) { background: var(--panel); box-shadow: 0 0 0 1px var(--border-strong); color: var(--brand); }
+
+/* Keep editor controls readable in both themes without recoloring the widget. */
+.chatbuilder-page { font-family: Arial, Helvetica, sans-serif; }
+html[data-theme='dark'] .chatbuilder-page {
+  color-scheme: dark;
+}
+.studioAccountNotice { padding: 18px 20px; margin-bottom: 24px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--panel); color: var(--text); }
+.studioAccountNotice p { color: var(--text-soft); overflow-wrap: anywhere; }
+.studioAccountNotice button { border: 1px solid var(--border-strong); border-radius: 8px; background: var(--studio-button); color: var(--studio-button-text); padding: 10px 16px; cursor: pointer; }
+.chatbuilder-page .builder-content-panel .option-card.locked { opacity: 1; }
+.chatbuilder-page .builder-content-panel .option-card.locked :is(.option-desc, .option-price, .option-feature-list) { color: var(--text-soft); }
+.chatbuilder-page .builder-content-panel .option-card--locked { opacity: 1; }
+.chatbuilder-page .builder-content-panel .option-feature-list { font-size: 13px; line-height: 1.7; }
+.chatbuilder-page .studioPreviewNote, .chatbuilder-page .studioEditorNote { font-size: 13px; }
+.chatbuilder-page .preview-mobile { min-height: 0; height: min(760px, 85svh); }
+@media (max-width: 640px) {
+  .studioHeader { flex-wrap: wrap; }
+  .studioHeaderTools { flex-wrap: wrap; }
+  .chatbuilder-page .panel-header { flex-wrap: wrap; gap: 16px; }
+  .chatbuilder-page .panel-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chatbuilder-page .panel-actions > :is(button, a) { min-height: 44px; }
+  .chatbuilder-page .builder-content-panel .option-grid-3 { grid-template-columns: minmax(0, 1fr); }
+  .chatbuilder-page .builder-content-panel .sectionIconGrid { grid-template-columns: minmax(0, 1fr); }
+  .chatbuilder-page .builder-content-panel .iconChoiceGroup { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .chatbuilder-page .builder-sidebar { overscroll-behavior-x: contain; }
+  .chatbuilder-page .preview-panel { padding: 14px; }
+}
+@media (max-width: 640px) {
+  .chatbuilder-page .widget-preview-shell .widget-viewport { min-height: 200px; height: 200px; }
+  .chatbuilder-page .widget-preview-device-frame,
+  .chatbuilder-page .widget-preview-device-shell { min-height: 0; height: auto; }
+}
+
+/* Editor interactions keep customer-selected preview themes independent. */
+.chatbuilder-page :is(.studioHeader, .studioIntro, .studioGuestNote, .chatbuilder-widget-switcher, .builder-panel, .studioAccountNotice) :is(button, a, [role='button']),
+.chatbuilder-page .previewModeSwitcher button {
+  transition: translate .25s var(--studio-ease), scale .18s var(--studio-ease),
+    background-color .25s ease, border-color .25s ease, color .2s ease, box-shadow .25s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.chatbuilder-page :is(.studioHeader, .studioIntro, .studioGuestNote, .chatbuilder-widget-switcher, .builder-panel, .studioAccountNotice) :is(button, a, [role='button']):not(:disabled, [aria-disabled='true']):active,
+.chatbuilder-page .previewModeSwitcher button:active {
+  translate: 0 0;
+  scale: .97;
+}
+.chatbuilder-page .builder-sidebar-button {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.chatbuilder-page .builder-sidebar-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--studio-sweep);
+  transform: scaleX(0);
+  transform-origin: left center;
+  opacity: 0;
+  transition: transform .42s var(--studio-ease), opacity .3s ease;
+  pointer-events: none;
+}
+.chatbuilder-page .builder-sidebar-button:focus-visible::before { transform: scaleX(1); opacity: 1; }
+.chatbuilder-page .builder-sidebar-button__icon { transition: translate .3s var(--studio-ease), color .25s ease; }
+.chatbuilder-page .builder-content-panel .option-card[role='button'] {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  cursor: pointer;
+}
+.chatbuilder-page .builder-content-panel .option-card[role='button'].checked {
+  background: var(--studio-selected) !important;
+  border-color: var(--border-strong) !important;
+}
+.chatbuilder-page .builder-content-panel .option-desc-icon { color: var(--brand); opacity: 1; }
+.chatbuilder-page .builder-content-panel :is(.glassRadioRow, .iconChoiceGroup) { background: var(--bg-2); border: 1px solid var(--border); }
+.chatbuilder-page .builder-content-panel :is(.glassRadioButton.active, .iconChoiceButton.active) {
+  color: var(--brand);
+  background: var(--panel);
+  box-shadow: 0 1px 5px #0000000d, 0 0 0 1px var(--border-strong);
+}
+.chatbuilder-page .save-btn { position: relative; isolation: isolate; overflow: hidden; }
+.chatbuilder-page .save-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(110deg, transparent 20%, #ffffff38 50%, transparent 80%);
+  transform: translateX(-110%);
+  transition: transform .65s var(--studio-ease);
+  pointer-events: none;
+}
+.chatbuilder-page .studioTheme svg { transition: rotate .45s var(--studio-ease); }
+.chatbuilder-page :is(.studioAccountLink, .studioGuestNote a, .studioBackLink) svg { transition: translate .25s var(--studio-ease); }
+
+@media (hover: hover) and (pointer: fine) {
+  .chatbuilder-page :is(.studioHeader, .studioIntro, .studioGuestNote, .chatbuilder-widget-switcher, .builder-panel, .studioAccountNotice) :is(button, a, [role='button']):not(:disabled, [aria-disabled='true']):hover,
+  .chatbuilder-page .previewModeSwitcher button:hover {
+    translate: 0 -2px;
+  }
+  .chatbuilder-page .builder-sidebar-button:hover {
+    background: transparent;
+    color: var(--text);
+    translate: 0 0 !important;
+    border-color: var(--border-strong);
+  }
+  .chatbuilder-page .builder-sidebar-button.active:hover { background: var(--studio-selected); }
+  .chatbuilder-page .builder-sidebar-button:hover::before { transform: scaleX(1); opacity: 1; }
+  .chatbuilder-page .builder-sidebar-button:hover .builder-sidebar-button__icon { translate: 3px 0; color: var(--brand); }
+  .chatbuilder-page .builder-content-panel .option-card[role='button']:not([aria-disabled='true']):hover {
+    border-color: var(--border-strong);
+    box-shadow: 0 4px 16px var(--studio-glow);
+  }
+  .chatbuilder-page .builder-content-panel :is(.glassRadioButton, .iconChoiceButton, .widget-icon-picker__trigger, .widget-icon-picker__option, .widget-icon-gallery-option, .logoEditorAction):not(:disabled):hover,
+  .chatbuilder-page .previewModeSwitcher button:hover { background: var(--studio-hover); color: var(--text); }
+  .chatbuilder-page :is(.reset-btn, .studioTheme, .chatbuilder-widget-create-btn):not(:disabled):hover { background: var(--studio-hover); border-color: var(--border-strong); box-shadow: 0 4px 14px var(--studio-glow); }
+  .chatbuilder-page .save-btn:not(:disabled):hover { filter: none; box-shadow: 0 5px 20px var(--studio-glow); }
+  .chatbuilder-page .save-btn:not(:disabled):hover::after { transform: translateX(110%); }
+  .chatbuilder-page .studioTheme:hover svg { rotate: 30deg; }
+  .chatbuilder-page :is(.studioAccountLink, .studioGuestNote a):hover svg { translate: 3px 0; }
+  .chatbuilder-page .studioBackLink:hover svg { translate: -3px 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chatbuilder-page .builder-sidebar-button::before { transform: none; }
+  .chatbuilder-page :is(button, a, [role='button']):is(:hover, :active) { translate: none !important; scale: none !important; }
+  .chatbuilder-page .save-btn::after { display: none; }
+}
+
+/* Static Nordic ridgelines frame the workspace without scroll animation. */
+.chatbuilder-page::before, .chatbuilder-page::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.chatbuilder-page::before {
+  top: 76px;
+  height: 440px;
+  background: url('/images/studio-mountains.svg?v=single-slope-1') left top / cover no-repeat;
+  opacity: .42;
+}
+.chatbuilder-page::after {
+  top: 76px;
+  height: 440px;
+  background: linear-gradient(180deg, transparent 28%, var(--bg) 100%);
+  opacity: .7;
+}
+.chatbuilder-page .builder-panel { box-shadow: 0 12px 40px #041b3010; }
+.chatbuilder-page .panel-header { background: linear-gradient(105deg, var(--panel), var(--bg-2)); }
+.chatbuilder-page .preview-panel { background: linear-gradient(155deg, var(--panel), var(--bg-2)); }
+.chatbuilder-page .builder-sidebar { background: var(--bg-2); }
+.chatbuilder-page .builder-sidebar-button { min-height: 48px; padding-left: 16px; }
+.chatbuilder-page .builder-sidebar-button.active {
+  background: var(--studio-selected);
+  color: var(--brand);
+  border-color: var(--border-strong);
+  box-shadow: 0 2px 10px var(--studio-glow);
+}
+.chatbuilder-page .builder-sidebar-button::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 11px;
+  bottom: 11px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, var(--brand), var(--studio-warm-accent));
+  opacity: 0;
+  transform: scaleY(.4);
+  transition: opacity .25s ease, transform .3s var(--studio-ease);
+}
+.chatbuilder-page .builder-sidebar-button.active::after { opacity: 1; transform: scaleY(1); }
+.chatbuilder-page .builder-sidebar-button.active .builder-sidebar-button__copy strong { font-weight: 700; }
+.chatbuilder-page .builder-content-panel :is(.glassRadioButton.active, .iconChoiceButton.active) {
+  background: var(--studio-selected);
+  color: var(--brand);
+  box-shadow: inset 0 -2px 0 var(--brand), 0 0 0 1px var(--border-strong);
+}
+.chatbuilder-page .builder-content-panel .option-card[role='button'].checked { box-shadow: inset 3px 0 0 var(--brand); }
+.chatbuilder-page .save-btn { box-shadow: 0 3px 12px var(--studio-glow); }
+.chatbuilder-page .studioSectionIntro h2 { text-wrap: balance; }
+.chatbuilder-page .studioSectionIntro .studioEyebrow { color: var(--studio-warm-accent); }
+@media (max-width: 640px) {
+  .chatbuilder-page::before { height: 300px; top: 110px; }
+  .chatbuilder-page::after { height: 300px; top: 110px; }
+  .chatbuilder-page .builder-sidebar-button { min-height: 44px; }
+}

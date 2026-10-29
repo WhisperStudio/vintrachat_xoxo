@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type SVGProps } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
+import { installWidgetMobileViewport, shouldAnimateWidgetLauncher } from '@/lib/widget-mobile.mjs'
+import { OrbIcon } from '@/components/chat/OrbIcon'
 import { FiArrowLeft, FiCheckCircle, FiChevronRight, FiCpu, FiLifeBuoy, FiMessageCircle, FiMessageSquare, FiPhone, FiSend } from 'react-icons/fi'
-import GlassOrbAvatar from '../../../../../svgs/GlassOrbAvatar'
 import { getWidgetThemeClass, getWidgetThemeStyle, joinWidgetClasses } from '@/components/chat/widgetDesign'
 import { normalizeConversationCards } from '@/lib/conversation-cards'
 import { renderWidgetIcon } from '@/lib/widget-icons'
@@ -12,9 +14,6 @@ import WebGLLiquidGlassSendButton from './glass/WebGLLiquidGlassSendButton'
 import './WidgetPreview.css'
 import type { AssistantConversationCard, AssistantWidgetIcons, ChatWidgetInterfaceIcons, BubbleIconChoice, OrbStyleConfig } from '@/types/database'
 
-const OrbAvatar = GlassOrbAvatar as ComponentType<
-  SVGProps<SVGSVGElement> & { glyph?: string; orbMode?: 'spin' | 'hover' | 'reply' | 'inactive' }
->
 
 interface WidgetPreviewProps {
   total?: number
@@ -92,7 +91,6 @@ interface WidgetPreviewProps {
   enablePreviewChat?: boolean
   showConditionalFeaturePreview?: boolean
   previewReply?: string
-  keyboardOffset?: number
   faqSuggestionsEnabled?: boolean
   faqSuggestions?: string[]
   conversationCardsEnabled?: boolean
@@ -107,7 +105,9 @@ interface WidgetPreviewProps {
   errorMessage?: string | null
   statusText?: string
   disableInput?: boolean
+  disableSend?: boolean
   bubbleActivityState?: 'idle' | 'replying'
+  bubbleAttentionPending?: boolean
   supportTypingIndicator?: boolean
   humanHandoffOverlay?: {
     open: boolean
@@ -194,7 +194,6 @@ export default function WidgetPreview({
   enablePreviewChat = false,
   showConditionalFeaturePreview = false,
   previewReply = 'hi, this is only a test',
-  keyboardOffset = 0,
   faqSuggestionsEnabled = false,
   faqSuggestions = [],
   messagesOverride,
@@ -206,7 +205,9 @@ export default function WidgetPreview({
   errorMessage = null,
   statusText = 'Online',
   disableInput = false,
+  disableSend = false,
   bubbleActivityState = 'idle',
+  bubbleAttentionPending = false,
   supportTypingIndicator = false,
   humanHandoffOverlay,
   feedbackOverlay,
@@ -253,6 +254,12 @@ export default function WidgetPreview({
   const [activeConversationCardId, setActiveConversationCardId] = useState<string | null>(null)
   const [activePortalPanel, setActivePortalPanel] = useState<'chats' | 'tasks'>('chats')
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
+  const viewportRef = useRef<HTMLDivElement | null>(null)
+  const stickToBottomRef = useRef(true)
+  const [mobileViewport, setMobileViewport] = useState(false)
+  const [hasOpened, setHasOpened] = useState(initialOpen)
+  const [unread, setUnread] = useState(false)
+  const lastMessageRef = useRef('')
 
   const effectiveAssistantIcons = {
     launcherIcon: assistantIcons?.launcherIcon ?? '',
@@ -272,6 +279,29 @@ export default function WidgetPreview({
   const isReplying = bubbleActivityState === 'replying' || internalIsReplying
   const showTypingIndicator = isReplying
   const showSupportTypingIndicator = supportTypingIndicator
+  const waitingForReply = isReplying || supportTypingIndicator || bubbleAttentionPending
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 640px)')
+    const sync = () => setMobileViewport(media.matches)
+    sync()
+    // Opening the builder on a phone should leave its controls reachable.
+    if (media.matches && variant !== 'embedded') setInternalIsChatOpen(false)
+    media.addEventListener('change', sync)
+    return () => media.removeEventListener('change', sync)
+  }, [variant])
+  useEffect(() => {
+    const root = viewportRef.current
+    if (!root) return
+    const controller = installWidgetMobileViewport(root)
+    controller.setOpen(isChatOpen)
+    return () => controller.destroy()
+  }, [isChatOpen, mobileViewport])
+  useEffect(() => {
+    const last = messages[messages.length - 1]
+    if (isChatOpen) { setHasOpened(true); setUnread(false) }
+    else if (hasOpened && (last?.isBot || last?.role === 'support') && last.id !== lastMessageRef.current) setUnread(true)
+    lastMessageRef.current = last?.id || ''
+  }, [messages, isChatOpen, hasOpened])
   const feedbackKeywords = ['feedback', 'review', 'rating', 'star', 'stars', 'vurdering', 'anmeldelse', 'tilbakemelding']
   const taskKeywords = ['task', 'ticket', 'issue', 'case', 'problem', 'lag oppgave', 'opprett ticket', 'opprett sak']
   const internalRequestedFeedback = (text: string) =>
@@ -469,20 +499,20 @@ export default function WidgetPreview({
   }, [activePortalPanel, showPortalTabs, showTasksTab])
 
   useEffect(() => {
-    if (!isChatOpen) return
+    if (!isChatOpen || activePortalPanel !== 'chats') return
     const node = chatBodyRef.current
     if (!node) return
-    window.requestAnimationFrame(() => {
-      node.scrollTop = node.scrollHeight
+    const last = messages[messages.length - 1]
+    const frame = window.requestAnimationFrame(() => {
+      if (showStarterCards) node.scrollTop = 0
+      else if (stickToBottomRef.current || last?.role === 'user' || (!last?.role && last?.isBot === false)) node.scrollTop = node.scrollHeight
     })
-  }, [messages, isChatOpen, showComposerSuggestions, keyboardOffset])
-
-  useEffect(() => {
-    if (!isChatOpen || activePortalPanel !== 'chats') return
-    window.requestAnimationFrame(() => {
-      messagesEndRef.current?.scrollIntoView({ block: 'end' })
+    const observer = new ResizeObserver(() => {
+      if (stickToBottomRef.current && !showStarterCards) node.scrollTop = node.scrollHeight
     })
-  }, [activePortalPanel, isChatOpen, messages, showComposerSuggestions, showSupportTypingIndicator, showTypingIndicator])
+    observer.observe(node)
+    return () => { window.cancelAnimationFrame(frame); observer.disconnect() }
+  }, [activePortalPanel, isChatOpen, messages, showStarterCards, showComposerSuggestions, showSupportTypingIndicator, showTypingIndicator])
 
   useEffect(() => {
     const node = inputRef.current
@@ -495,11 +525,12 @@ export default function WidgetPreview({
     }
 
     node.style.height = 'auto'
-    node.style.height = `${Math.max(baseHeight, node.scrollHeight)}px`
+    node.style.height = `${Math.min(128, Math.max(baseHeight, node.scrollHeight))}px`
   }, [inputValue, isComposerFocused])
 
   const handleSend = (messageOverride?: string) => {
     const nextText = String(messageOverride ?? inputValue ?? '').trim()
+    if (disableInput || disableSend || internalIsReplying) return
     if (!nextText) return
 
     if (countChars(nextText) > 300) {
@@ -562,6 +593,10 @@ export default function WidgetPreview({
     }
 
     setInternalIsReplying(true)
+    if (enablePreviewChat) {
+      setInternalMessages((previous) => [...previous, { id: crypto.randomUUID(), text: nextText, isBot: false, role: 'user' }])
+    }
+    setInputValue('')
     setOrbInactiveActive(false)
     setOrbActivityNonce((current) => current + 1)
 
@@ -571,12 +606,6 @@ export default function WidgetPreview({
             ...prev,
             {
               id: crypto.randomUUID(),
-              text: nextText,
-              isBot: false,
-              role: 'user',
-            },
-            {
-              id: crypto.randomUUID(),
               text: previewReply,
               isBot: true,
               role: 'assistant',
@@ -584,7 +613,6 @@ export default function WidgetPreview({
           ])
       }
 
-      setInputValue('')
       setInternalErrorMessage(null)
       setInternalIsReplying(false)
     }, enablePreviewChat ? 850 : 180)
@@ -603,7 +631,7 @@ export default function WidgetPreview({
   const bubbleClasses = joinWidgetClasses(
     `border-${bubbleStyle.borderType}`,
     `shadow-${bubbleStyle.shadowType}`,
-    `animation-${bubbleStyle.animationType}`,
+    `animation-${shouldAnimateWidgetLauncher(isChatOpen, hasOpened, unread, waitingForReply) ? bubbleStyle.animationType : 'none'}`,
     `size-${bubbleStyle.sizeType}`
   )
 
@@ -656,13 +684,22 @@ export default function WidgetPreview({
   const orbPhase =
     bubbleStyle.iconChoice !== 'orb'
       ? 'none'
-      : isReplying && orbSettings.replyEnabled
+      : (waitingForReply || unread) && orbSettings.replyEnabled
           ? 'reply'
           : orbInactiveActive && orbSettings.inactiveEnabled
             ? 'inactive'
             : internalIsOrbHovered && orbSettings.hoverEnabled
               ? 'hover'
             : 'spin'
+  const glyphs = Array.from(orbPhase === 'reply' ? orbSettings.replyGlyphs : orbPhase === 'inactive' ? orbSettings.inactiveGlyphs : orbPhase === 'hover' ? orbSettings.hoverGlyph : '').slice(0, orbPhase === 'hover' ? 1 : orbPhase === 'reply' ? 3 : 5)
+  const [glyphIndex, setGlyphIndex] = useState(0)
+  const glyphKey = glyphs.join('')
+  useEffect(() => {
+    setGlyphIndex(0)
+    if (Array.from(glyphKey).length < 2) return
+    const timer = window.setInterval(() => setGlyphIndex((value) => value + 1), 650)
+    return () => window.clearInterval(timer)
+  }, [glyphKey, orbPhase])
 
   useEffect(() => {
     if (bubbleStyle.iconChoice !== 'orb' || !orbSettings.hoverEnabled) {
@@ -737,12 +774,8 @@ export default function WidgetPreview({
 
   const previewContent = (
     <div
+      ref={viewportRef}
       className={`widget-viewport ${variant === 'embedded' ? 'widget-viewport-embedded' : ''} position-${position} preview-${previewMode}`}
-      style={
-        {
-          '--widget-keyboard-offset': `${Math.max(0, keyboardOffset)}px`,
-        } as CSSProperties
-      }
     >
       <div className={`floating-chat-preview ${themeClass}`} style={themeVars as CSSProperties}>
         <div className="widgetcontainer">
@@ -776,7 +809,7 @@ export default function WidgetPreview({
                 {showStarterCardList ? (
                   <>
                     {headerStyle.showAvatar && (customBranding.logo || effectiveAssistantIcons.avatarIcon) ? (
-                      <div className={`avatar ${customBranding.logo ? 'avatar--image' : ''}`}>
+                      <div className={`avatar ${customBranding.logo ? 'avatar--image' : ''} ${waitingForReply ? `animation-${bubbleStyle.animationType}` : ''}`}>
                         {customBranding.logo ? (
                           <img
                             className="avatar-image avatar-image--img"
@@ -804,7 +837,7 @@ export default function WidgetPreview({
                 ) : (
                   <>
                     {headerStyle.showAvatar && (customBranding.logo || effectiveAssistantIcons.avatarIcon) ? (
-                      <div className={`avatar ${customBranding.logo ? 'avatar--image' : ''}`}>
+                      <div className={`avatar ${customBranding.logo ? 'avatar--image' : ''} ${waitingForReply ? `animation-${bubbleStyle.animationType}` : ''}`}>
                         {customBranding.logo ? (
                           <img
                             className="avatar-image avatar-image--img"
@@ -841,7 +874,7 @@ export default function WidgetPreview({
                   </span>
                 )}
 
-                {headerStyle.showCloseButton && isChatOpen && (
+                {(headerStyle.showCloseButton || mobileViewport || previewMode === 'mobile') && isChatOpen && (
                   useLiquidGlassControls ? (
                     <WebGLLiquidGlassSendButton
                       type="button"
@@ -863,7 +896,10 @@ export default function WidgetPreview({
               </div>
             </div>
 
-              <div className={`${bodyClasses} ${highlightedSection === 'body' ? 'preview-section-highlight' : ''} ${flashSection === 'body' ? 'preview-section-flash' : ''}`.trim()} ref={chatBodyRef}>
+              <div className={`${bodyClasses} ${highlightedSection === 'body' ? 'preview-section-highlight' : ''} ${flashSection === 'body' ? 'preview-section-flash' : ''}`.trim()} ref={chatBodyRef} onScroll={(event) => {
+                const node = event.currentTarget
+                stickToBottomRef.current = node.scrollHeight - node.clientHeight - node.scrollTop < 64
+              }}>
               {showPortalTabs ? (
                 <div className={`widget-panel-tabs ${showConditionalFeaturePreview ? 'widget-panel-tabs--preview-only' : ''}`} role="tablist" aria-label="Widget pages">
                   <button
@@ -1025,7 +1061,7 @@ export default function WidgetPreview({
                   ))}
                 </div>
               ) : (
-                <>
+                <div className="widget-message-thread" role="log" aria-live="polite">
                   {messages.map((msg) => (
                     <div
                       key={msg.id}
@@ -1101,7 +1137,7 @@ export default function WidgetPreview({
                     </div>
                   ) : null}
                   <div ref={messagesEndRef} aria-hidden="true" />
-                </>
+                </div>
               )}
               </div>
               </div>
@@ -1181,7 +1217,7 @@ export default function WidgetPreview({
                   onBlur={() => setIsComposerFocused(false)}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
+                    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                       e.preventDefault()
                       handleSend()
                     }
@@ -1198,13 +1234,13 @@ export default function WidgetPreview({
                       width={52}
                       height={52}
                       onClick={() => handleSend()}
-                      disabled={disableInput}
+                      disabled={disableInput || disableSend || internalIsReplying}
                       aria-label="Send message"
                     >
                       {renderWidgetIcon(effectiveAssistantIcons.sendIcon, { 'aria-hidden': true }) || <FiSend />}
                     </WebGLLiquidGlassSendButton>
                   ) : (
-                    <button type="button" onClick={() => handleSend()} disabled={disableInput} aria-label="Send message">
+                    <button type="button" onPointerDown={(event) => event.preventDefault()} onClick={() => handleSend()} disabled={disableInput || disableSend || internalIsReplying} aria-label="Send message">
                       {renderWidgetIcon(effectiveAssistantIcons.sendIcon, { 'aria-hidden': true }) || <FiSend />}
                     </button>
                   )
@@ -1242,6 +1278,13 @@ export default function WidgetPreview({
               }
             }}
             onClick={() => setIsChatOpen((prev) => !prev)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                setIsChatOpen((prev) => !prev)
+              }
+            }}
+            aria-label={isChatOpen ? 'Close chat' : 'Open chat'}
             role="button"
             tabIndex={0}
           >
@@ -1255,12 +1298,10 @@ export default function WidgetPreview({
               {!effectiveAssistantIcons.launcherIcon && bubbleStyle.iconChoice === 'message' && <FiMessageSquare />}
               {!effectiveAssistantIcons.launcherIcon && bubbleStyle.iconChoice === 'support' && <FiLifeBuoy />}
               {bubbleStyle.iconChoice === 'orb' && (
-                <OrbAvatar
-                  className="widget-orb-avatar"
-                  aria-hidden="true"
-                  glyph={orbSettings.hoverEnabled ? orbSettings.hoverGlyph || '' : ''}
-                  orbMode={orbPhase === 'spin' || orbPhase === 'none' ? 'spin' : orbPhase}
-                />
+                <>
+                  <span className={`widget-orb-avatar widget-icon--orb-mode-${orbPhase === 'hover' ? 'color-shift' : orbPhase === 'reply' ? 'pulse' : 'spin'}`}><OrbIcon /></span>
+                  {glyphs.length > 0 && <span className={`widget-orb-overlay widget-orb-overlay--glyph widget-orb-overlay--${orbPhase}`}>{glyphs[glyphIndex % glyphs.length]}</span>}
+                </>
               )}
               {bubbleStyle.showStatus && <span className="status-dot" />}
             </span>
@@ -1269,6 +1310,8 @@ export default function WidgetPreview({
       </div>
     </div>
   )
+
+  if (mobileViewport && isChatOpen) return createPortal(previewContent, document.body)
 
   if (variant === 'embedded') {
     return previewContent

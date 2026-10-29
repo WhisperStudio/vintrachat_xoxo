@@ -154,7 +154,6 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   const [captchaToken, setCaptchaToken] = useState('')
   const [embedToken, setEmbedToken] = useState('')
   const [embedTokenExpiresAt, setEmbedTokenExpiresAt] = useState(0)
-  const [keyboardOffset, setKeyboardOffset] = useState(0)
   const sendLockRef = useRef(false)
   const visitorTypingTimerRef = useRef<number | null>(null)
   const supportSnapshotRef = useRef('')
@@ -321,33 +320,6 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       // Ignore storage failures.
     }
   }, [handoffEmail, handoffFormOpen, handoffName, handoffPhone, pendingHumanSupportText, widgetKey])
-
-  useEffect(() => {
-    const viewport = window.visualViewport
-
-    const updateKeyboardOffset = () => {
-      if (!viewport) {
-        setKeyboardOffset(0)
-        return
-      }
-
-      const overlap = Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop))
-      setKeyboardOffset(overlap)
-    }
-
-    updateKeyboardOffset()
-    window.addEventListener('resize', updateKeyboardOffset)
-    window.addEventListener('orientationchange', updateKeyboardOffset)
-    viewport?.addEventListener('resize', updateKeyboardOffset)
-    viewport?.addEventListener('scroll', updateKeyboardOffset)
-
-    return () => {
-      window.removeEventListener('resize', updateKeyboardOffset)
-      window.removeEventListener('orientationchange', updateKeyboardOffset)
-      viewport?.removeEventListener('resize', updateKeyboardOffset)
-      viewport?.removeEventListener('scroll', updateKeyboardOffset)
-    }
-  }, [])
 
   useEffect(() => {
     if (!sessionId) return
@@ -767,7 +739,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       } else {
         setMessages((prev) => prev.filter((message) => message.id !== userMessage.id))
       }
-      setInputValue(text)
+      setInputValue((draft) => draft.trim() ? draft : text)
       window.localStorage.setItem(draftStorageKey(widgetKey), text)
     } finally {
       void updateVisitorTyping(false)
@@ -1019,6 +991,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         headerStyle={config.headerStyle}
         bodyStyle={config.bodyStyle}
         footerStyle={config.footerStyle}
+        settings={config.settings}
         position={config.position}
         colorTheme={config.colorTheme}
         appearance={config.appearance}
@@ -1028,9 +1001,8 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
           logo: config.customBranding?.logo,
           logoStyle: config.customBranding?.logoStyle,
         }}
-        assistantIcons={configResponse?.assistantConfig?.widgetIcons}
+        assistantIcons={{ ...configResponse?.assistantConfig?.widgetIcons, ...config.widgetIcons }}
         variant="embedded"
-        keyboardOffset={keyboardOffset}
         messagesOverride={widgetMessages}
         inputValueOverride={inputValue}
         onInputValueChange={setInputValue}
@@ -1043,8 +1015,10 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         openOverride={isOpen}
         onToggleOpen={handleToggle}
         statusText={configResponse?.assistantEnabled ? 'AI live' : 'AI off'}
-        disableInput={isSending || feedbackOpen || isRateLimited || handoffFormOpen}
+        disableInput={feedbackOpen || isRateLimited || handoffFormOpen}
+        disableSend={isSending}
         bubbleActivityState={isSending && !(isHumanSupportOpen || isHumanSupportPending) ? 'replying' : 'idle'}
+        bubbleAttentionPending={isSending || isHumanSupportPending || (isHumanSupportOpen && messages[messages.length - 1]?.role === 'user')}
         supportTypingIndicator={isSupportTyping}
         humanHandoffOverlay={{
           open: handoffFormOpen,

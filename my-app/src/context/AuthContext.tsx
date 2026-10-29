@@ -49,17 +49,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       if (!authUser) return;
-      const { user, biz } = await withTimeout((async () => {
+      await withTimeout((async () => {
         const user = await getCurrentUser(authUser);
+        if (request !== accountRequest.current) return;
+        // A business-data failure must not discard the authenticated profile.
+        setDbUser(user);
         const biz = user?.businessId ? await getBusinessInfo(user.businessId) : null;
-        return { user, biz };
+        if (request !== accountRequest.current) return;
+        setBusiness(biz);
       })(), ACCOUNT_LOAD_TIMEOUT_MS, ACCOUNT_TIMEOUT_MESSAGE);
-      if (request !== accountRequest.current) return;
-      setDbUser(user);
-      setBusiness(biz);
     } catch (err) {
       if (request !== accountRequest.current) return;
+      accountRequest.current += 1;
       setError(err instanceof Error ? err.message : 'Kunne ikke hente kontoen. Prøv igjen.');
+      setLoading(false);
     } finally {
       if (request === accountRequest.current) setLoading(false);
     }

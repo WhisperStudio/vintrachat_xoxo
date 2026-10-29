@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { FiArrowUpRight, FiGlobe, FiMail, FiPhone } from 'react-icons/fi'
 import { useVintraLanguage } from '@/lib/i18n'
@@ -119,12 +120,35 @@ function DroidDetails() {
   )
 }
 
+// Small/touch screens and reduced-motion users get the same content without
+// the fixed, scroll-driven morph or its continuous layout work.
+function useSimplifiedMotion() {
+  const [simplified, setSimplified] = useState(true)
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 900px), (pointer: coarse), (prefers-reduced-motion: reduce)')
+    const sync = () => setSimplified(media.matches)
+    sync()
+    media.addEventListener('change', sync)
+    return () => media.removeEventListener('change', sync)
+  }, [])
+  return simplified
+}
+
 function ScrollDroid() {
   const droidRef = useRef<HTMLDivElement>(null)
+  const simplified = useSimplifiedMotion()
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  useEffect(() => { setAnchor(document.getElementById('hero-droid-space')) }, [])
 
   useEffect(() => {
     const element = droidRef.current
-    if (!element) return
+    if (!element || simplified) return
+
+    const section = document.getElementById('solutions')
+    const stage = document.getElementById('droid-morph-showcase')
+    const stickyElement = stage?.querySelector<HTMLElement>('.droidMorphSticky')
+    const browser = stage?.querySelector<HTMLElement>('.nordicBrowser')
+    const cover = element.querySelector<HTMLElement>('.droidMorphCover')
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     let frame = 0
@@ -146,7 +170,7 @@ function ScrollDroid() {
     const clamp = (value: number) => Math.min(Math.max(value, 0), 1)
     const smooth = (value: number) => value * value * (3 - 2 * value)
     const animate = (time: number) => {
-      const section = document.getElementById('solutions')
+      frame = 0
       const vw = window.innerWidth
       const vh = window.innerHeight
       const scrollTop = window.scrollY
@@ -169,8 +193,12 @@ function ScrollDroid() {
       const compact = vw < 700
       const baseX = vw * ((compact ? 0.76 : 0.79) - (compact ? 0.48 : 0.53) * Math.sin(progress * Math.PI))
       const baseY = vh * (0.3 + progress * 0.34 - Math.sin(progress * Math.PI * 2) * 0.055)
-      const stage = document.getElementById('droid-morph-showcase')
       const rect = stage?.getBoundingClientRect()
+      // Read geometry before writing styles to avoid forcing a second layout.
+      const sticky = stickyElement?.getBoundingClientRect()
+      const size = element.offsetWidth
+      const browserWidth = browser?.offsetWidth || size
+      const browserHeight = browser?.offsetHeight || size
       const stageTop = rect ? rect.top + scrollTop - scrollPosition : 0
       const morph = rect ? clamp((vh * 0.82 - stageTop) / Math.max(rect.height - vh * 0.72, vh)) : 0
       // A single scroll timeline also initializes correctly after scroll restoration.
@@ -237,8 +265,6 @@ function ScrollDroid() {
       stage?.style.setProperty('--bubble-reveal', String(holdBubble ? 1 : smooth(clamp((viewerProgress - 0.885) / 0.03))))
       stage?.style.setProperty('--bubble-press', String(press))
       stage?.style.setProperty('--chat-reveal', String(chatReveal))
-      const sticky = stage?.querySelector<HTMLElement>('.droidMorphSticky')?.getBoundingClientRect()
-      const browser = stage?.querySelector<HTMLElement>('.nordicBrowser')
       const centerX = sticky ? sticky.left + sticky.width / 2 : vw / 2
       const centerY = sticky ? sticky.top + sticky.height / 2 : vh / 2
       const path = smooth(clamp(morph / 0.43))
@@ -249,17 +275,15 @@ function ScrollDroid() {
       const whiten = clamp((morph - 0.27) / 0.09)
       const expand = smooth(clamp((morph - 0.43) / 0.22))
       const spin = reducedMotion ? 0 : smooth(clamp((morph - 0.22) / 0.43)) * 1080
-      const size = element.offsetWidth
-      const width = size + ((browser?.offsetWidth ?? size) - size) * expand
-      const height = size + ((browser?.offsetHeight ?? size) - size) * expand
+      const width = size + (browserWidth - size) * expand
+      const height = size + (browserHeight - size) * expand
       const radius = size / 2 * (1 - expand) + 34 * expand
       const contentReveal = smooth(clamp((morph - 0.44) / 0.14))
       if (browser) {
         // Reveal the real viewer inside the same spinning silhouette as the white cover.
-        browser.style.transform = `rotate(${spin}deg) scale(${width / browser.offsetWidth}, ${height / browser.offsetHeight})`
-        browser.style.borderRadius = `${radius * browser.offsetWidth / width}px / ${radius * browser.offsetHeight / height}px`
+        browser.style.transform = `rotate(${spin}deg) scale(${width / browserWidth}, ${height / browserHeight})`
+        browser.style.borderRadius = `${radius * browserWidth / width}px / ${radius * browserHeight / height}px`
       }
-      const cover = element.querySelector<HTMLElement>('.droidMorphCover')
       if (cover) {
         cover.style.width = `${width}px`
         cover.style.height = `${height}px`
@@ -272,18 +296,41 @@ function ScrollDroid() {
       element.style.visibility = morph >= 0.71 ? 'hidden' : 'visible'
       element.dataset.scrolled = scrollTop > 12 ? 'true' : 'false'
 
-      frame = window.requestAnimationFrame(animate)
+      const settling = Math.abs(scrollPosition - scrollTop) > 0.1 || Math.abs(scrollVelocity) > 0.1
+        || (!holdBubble && Math.abs(viewerProgress - Math.max(0.70, morph)) > 0.0001)
+        || chatPhase !== 'idle'
+      if (settling && !document.hidden) frame = window.requestAnimationFrame(animate)
     }
 
-    window.addEventListener('pageshow', resetScroll)
-    animate(lastTime)
+    const wake = () => {
+      if (!frame && !document.hidden) {
+        lastTime = performance.now()
+        frame = window.requestAnimationFrame(animate)
+      }
+    }
+    const restore = () => { resetScroll(); wake() }
+    const visibility = () => {
+      if (document.hidden) { window.cancelAnimationFrame(frame); frame = 0 }
+      else restore()
+    }
+    window.addEventListener('scroll', wake, { passive: true })
+    window.addEventListener('resize', wake)
+    window.addEventListener('pageshow', restore)
+    document.addEventListener('visibilitychange', visibility)
+    wake()
     return () => {
       window.cancelAnimationFrame(frame)
-      window.removeEventListener('pageshow', resetScroll)
+      window.removeEventListener('scroll', wake)
+      window.removeEventListener('resize', wake)
+      window.removeEventListener('pageshow', restore)
+      document.removeEventListener('visibilitychange', visibility)
+      element.removeAttribute('style')
+      browser?.removeAttribute('style')
+      cover?.removeAttribute('style')
     }
-  }, [])
+  }, [simplified])
 
-  return (
+  const droid = (
     <div ref={droidRef} className="scrollDroid" aria-hidden="true">
       <div className="scrollDroidFloat">
         <div className="droidAntenna"><span /></div>
@@ -319,6 +366,7 @@ function ScrollDroid() {
       <div className="droidMorphCover" />
     </div>
   )
+  return simplified && anchor ? createPortal(droid, anchor) : droid
 }
 
 function DroidMorphShowcase({ language }: { language: 'no' | 'en' }) {
@@ -418,7 +466,7 @@ export default function MainLanding() {
   const [heroMounted, setHeroMounted] = useState(false)
   const [heroSceneMode, setHeroSceneMode] = useState<MainLandingThemeMode>('night')
   const [nightStars] = useState(() => createHeroParticles(86, 'star'))
-  const [solutionsProgress, setSolutionsProgress] = useState(0)
+  const simplifiedMotion = useSimplifiedMotion()
   const { language } = useVintraLanguage()
   const text = mainLandingCopy[language]
   const footerPolicyLabel = language === 'no' ? 'Personvern' : 'Privacy'
@@ -471,6 +519,7 @@ export default function MainLanding() {
   let frame = 0
 
   const updateProgress = () => {
+    frame = 0
     const section = document.getElementById('solutions')
     if (!section) return
 
@@ -483,16 +532,15 @@ export default function MainLanding() {
     const rawProgress = (start - rect.top) / (start - end)
     const progress = Math.min(Math.max(rawProgress, 0), 1) * Math.min(window.scrollY / 180, 1)
 
-    setSolutionsProgress(progress)
+    section.style.setProperty('--mountain-progress', String(simplifiedMotion ? 1 : progress))
   }
 
   const onScroll = () => {
-    window.cancelAnimationFrame(frame)
-    frame = window.requestAnimationFrame(updateProgress)
+    if (!frame) frame = window.requestAnimationFrame(updateProgress)
   }
 
   updateProgress()
-  window.addEventListener('scroll', onScroll, { passive: true })
+  if (!simplifiedMotion) window.addEventListener('scroll', onScroll, { passive: true })
   window.addEventListener('resize', onScroll)
 
   return () => {
@@ -500,7 +548,7 @@ export default function MainLanding() {
     window.removeEventListener('scroll', onScroll)
     window.removeEventListener('resize', onScroll)
   }
-}, [])
+}, [simplifiedMotion])
 
   const currentYear = new Date().getFullYear()
 
@@ -619,7 +667,7 @@ export default function MainLanding() {
             </div>
 
             {/* right visuals */}
-            <div style={{
+            <div id="hero-droid-space" className="heroDroidSpace" style={{
               flex: '0 0 auto', position: 'relative', height: 'clamp(300px, 55vw, 380px)', width: 'min(100%, 360px)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateX(30px)',
@@ -632,9 +680,6 @@ export default function MainLanding() {
           <div
             id="solutions"
             className={`solutionsSection solutionsSection--${heroSceneMode === 'night' ? 'night' : 'day'}`}
-            style={{
-              ['--mountain-progress' as string]: solutionsProgress,
-            } as CSSProperties}
           >
 
   <div className="page solutionsShell" style={{ position: 'relative', zIndex: 1, maxWidth: '4240px', margin: '0 auto'}}>
@@ -674,7 +719,7 @@ export default function MainLanding() {
           <path className="mountainFootContour mountainFootContour--lower" d="M30 680 C108 662 171 674 235 680 C298 652 358 659 417 673 C478 649 537 653 596 674 C657 657 717 667 776 680 C842 663 910 675 976 670" />
         </svg>
       </div>
-      <div className="solutionsIntro solutionsIntroArcContent" aria-hidden={solutionsProgress <= 0.16}>
+      <div className="solutionsIntro solutionsIntroArcContent">
         <h2 style={{ 
           fontSize: 'clamp(42px, 6vw, 72px)', 
           fontWeight: 900, 

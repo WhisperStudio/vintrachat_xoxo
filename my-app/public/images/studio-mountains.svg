@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 500" fill="none">
+  <defs>
+    <linearGradient id="slope" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#d0eafb"/><stop offset=".5" stop-color="#99c6e3"/><stop offset="1" stop-color="#628da9" stop-opacity=".3"/>
+    </linearGradient>
+    <linearGradient id="snow" x1="0" y1="0" x2=".8" y2="1">
+      <stop stop-color="#fff"/><stop offset="1" stop-color="#dceffa"/>
+    </linearGradient>
+  </defs>
+  <!-- One uninterrupted mountainside, with a single broad snowfield. -->
+  <path fill="url(#slope)" d="M-120 500 65 210 190 15 266 75 345 204 470 294 655 380 900 500Z"/>
+  <path fill="url(#snow)" opacity=".88" d="m190 15 76 60 79 129 125 90 185 86-219-65-110-92-66-120Z"/>
+</svg>

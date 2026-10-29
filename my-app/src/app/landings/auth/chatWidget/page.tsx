@@ -274,6 +274,8 @@ type InputsState = {
   settings: {
     autoOpen: boolean
     delayMs: number
+    tasksEnabled?: boolean
+    reviewsEnabled?: boolean
   }
   conversationCardsEnabled: boolean
   conversationCardsLimit: number
@@ -357,7 +359,8 @@ const defaultInputs: InputsState = {
 
 export default function ChatWidgetBuilderPage() {
   const router = useRouter()
-  const { isAuthenticated, dbUser, business, loading, refreshBusiness } = useAuth()
+  const { isAuthenticated, firebaseUser, dbUser, business, loading, error: accountError, refreshBusiness, refreshCurrentUser } = useAuth()
+  const signedIn = Boolean(firebaseUser)
   const { language, setLanguage } = useVintraLanguage()
   const no = language === 'no'
   const t = chatWidgetBuilderI18n[language]
@@ -723,10 +726,17 @@ export default function ChatWidgetBuilderPage() {
         <div className="studioHeaderTools">
           <select aria-label={no ? 'Språk' : 'Language'} value={language} onChange={(event) => setLanguage(event.target.value as 'no' | 'en')}><option value="no">Norsk</option><option value="en">English</option></select>
           <button type="button" className="studioTheme" aria-label={no ? 'Bytt lys og mørk modus' : 'Switch light and dark mode'} onClick={() => writeAppThemePreference(resolveAppThemePreference() === 'dark' ? 'light' : 'dark')}><FiMoon className="studioMoon" aria-hidden="true" /><FiSun className="studioSun" aria-hidden="true" /></button>
-          <Link href={isAuthenticated ? '/admin' : '/auth/login'} className="studioAccountLink">{isAuthenticated ? (no ? 'Til oversikten' : 'Dashboard') : (no ? 'Logg inn' : 'Sign in')}<FiArrowRight aria-hidden="true" /></Link>
+          <Link href={signedIn ? '/admin' : '/auth/login'} className="studioAccountLink">{signedIn ? (no ? 'Til oversikten' : 'Dashboard') : (no ? 'Logg inn' : 'Sign in')}<FiArrowRight aria-hidden="true" /></Link>
         </div>
       </header>
       <main className="chatbuilder-content">
+        {signedIn && (accountError || !dbUser || !business) && (
+          <div className="studioAccountNotice" role="alert">
+            <strong>{no ? 'Du er logget inn, men arbeidsområdet kunne ikke lastes.' : 'You are signed in, but your workspace could not be loaded.'}</strong>
+            <p>{accountError || (no ? 'Kontoen mangler et tilgjengelig arbeidsområde. Kontroller tilgangen din.' : 'Your account has no available workspace. Check your access.')}</p>
+            <button type="button" onClick={() => void refreshCurrentUser()}>{no ? 'Prøv igjen' : 'Try again'}</button>
+          </div>
+        )}
         <section className="chatbuilder-hero">
           <div className="studioIntro">
             <Link className="studioBackLink" href={isAuthenticated ? '/admin' : '/'}><FiArrowLeft aria-hidden="true" />{isAuthenticated ? (no ? 'Arbeidsområdet ditt' : 'Your workspace') : (no ? 'Til forsiden' : 'Back to home')}</Link>
@@ -734,7 +744,7 @@ export default function ChatWidgetBuilderPage() {
             <p>{no ? 'Skap en chatopplevelse som føles som en del av bedriften din. Tilpass detaljene og se resultatet underveis.' : 'Create a chat experience that feels like part of your business. Refine the details and see your changes as you go.'}</p>
           </div>
 
-          {isAuthenticated ? (
+          {signedIn ? (
           <div className="chatbuilder-widget-switcher">
             <label htmlFor="builder-widget-select">{t.activeWidget}</label>
             <div className="chatbuilder-widget-switcher-row">
@@ -791,11 +801,11 @@ export default function ChatWidgetBuilderPage() {
               <div className="panel-actions">
 
 
-                {isAuthenticated ? (
+                {signedIn ? (
                   <button
                     className={`save-btn ${isSaving ? 'save-btn--saving' : ''} ${saveStatus === 'success' ? 'save-btn--success' : ''} ${saveStatus === 'error' ? 'save-btn--error' : ''}`}
                     onClick={saveConfig}
-                    disabled={isSaving}
+                    disabled={isSaving || !isAuthenticated || !business}
                     type="button"
                   >
                     <span className={`save-btn-icon ${isSaving ? 'is-saving' : ''} ${saveStatus === 'success' ? 'is-success' : ''}`}>
@@ -936,6 +946,7 @@ export default function ChatWidgetBuilderPage() {
               headerStyle={inputs.headerStyle}
               bodyStyle={inputs.bodyStyle}
               footerStyle={inputs.footerStyle}
+              settings={inputs.settings}
               position={inputs.position}
               colorTheme={inputs.colorTheme}
               appearance={inputs.appearance}
@@ -943,7 +954,6 @@ export default function ChatWidgetBuilderPage() {
               assistantIcons={inputs.widgetIcons}
               initialOpen={true}
               enablePreviewChat={true}
-              showConditionalFeaturePreview={true}
               previewReply={t.previewReply}
               previewMode={previewMode}
               conversationCardsEnabled={inputs.conversationCardsEnabled}

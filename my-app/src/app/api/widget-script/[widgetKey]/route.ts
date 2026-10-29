@@ -6,6 +6,8 @@ import { isValidElement, type ReactElement, type ReactNode } from 'react'
 import { WIDGET_ICON_ALIAS_MAP, WIDGET_ICON_OPTIONS, renderWidgetIcon } from '@/lib/widget-icons'
 import { getBusinessByWidgetKey } from '@/lib/widget.server'
 import { isWidgetOriginPermitted } from '@/lib/widget-security'
+import { installWidgetMobileViewport, shouldAnimateWidgetLauncher, patchWidgetMarkup } from '@/lib/widget-mobile.mjs'
+import { ORB_ICON_SVG } from '@/components/chat/OrbIcon'
 
 function serializeForJs(value: unknown) {
   return JSON.stringify(value)
@@ -513,6 +515,11 @@ export async function GET(
   var host = null;
   var shadowRoot = null;
   var mount = null;
+  var mobileViewportController = null;
+  var createMobileViewport = ${installWidgetMobileViewport.toString()};
+  var shouldAnimateLauncher = ${shouldAnimateWidgetLauncher.toString()};
+  var patchMarkup = ${patchWidgetMarkup.toString()};
+  var lastRenderedMessageId = '';
   var viewportListenersBound = false;
   var EMBED_TOKEN = '';
   var CAPTCHA_TOKEN = '';
@@ -557,6 +564,7 @@ export async function GET(
     mount = document.createElement('div');
     mount.className = 'vintra-root position-bottom-right';
     shadowRoot.appendChild(mount);
+    mobileViewportController = createMobileViewport(mount);
   }
 
   function showHost() {
@@ -567,6 +575,7 @@ export async function GET(
   }
 
   function hideHost() {
+    if (mobileViewportController) mobileViewportController.setOpen(false);
     if (!host) return;
     host.style.visibility = 'hidden';
     host.style.opacity = '0';
@@ -630,6 +639,7 @@ export async function GET(
     if (!mount) return;
     mount.classList.toggle('viewport-mobile', !!state.compactViewport);
     mount.classList.toggle('viewport-keyboard-open', state.keyboardOffset > 0);
+    if (mobileViewportController) mobileViewportController.setOpen(state.open);
   }
 
   function getViewportMetrics() {
@@ -666,7 +676,7 @@ export async function GET(
     if (!host) return;
 
     var metrics = getViewportMetrics();
-    state.compactViewport = metrics.width <= 640 || metrics.height <= 760;
+    state.compactViewport = window.matchMedia('(max-width: 640px)').matches;
     state.keyboardOffset = metrics.keyboardOffset;
 
   host.style.setProperty('--vintra-viewport-width', metrics.width + 'px');
@@ -973,10 +983,17 @@ export async function GET(
   }
 
   function getOrbPhase(orbStyle) {
-    if (state.hovered && orbStyle.hoverEnabled) return 'hover';
-    if (state.sending && orbStyle.replyEnabled) return 'reply';
+    if ((isWaitingForReply() || state.hasUnreadWhileClosed) && orbStyle.replyEnabled) return 'reply';
     if (state.orbInactiveActive && orbStyle.inactiveEnabled) return 'inactive';
+    if (state.hovered && orbStyle.hoverEnabled) return 'hover';
     return 'none';
+  }
+
+  function isWaitingForReply() {
+    var last = state.messages[state.messages.length - 1];
+    return !!(state.sending || state.supportStatus === 'needs-human' ||
+      (state.supportStatus === 'open' && last && last.role === 'user') ||
+      (state.supportTypingAt && Date.now() - new Date(state.supportTypingAt).getTime() < 4500));
   }
 
   function getOrbGlyphList(orbStyle, phase) {
@@ -1371,7 +1388,7 @@ export async function GET(
 
       input.style.height = 'auto';
       if (state.composerFocused) {
-        input.style.height = Math.max(52, input.scrollHeight) + 'px';
+        input.style.height = Math.min(128, Math.max(52, input.scrollHeight)) + 'px';
       }
     }
   }
@@ -2254,6 +2271,7 @@ export async function GET(
 
       if (target.closest('.chat-footer')) {
         state.composerFocused = true;
+        if (target.closest('button')) event.preventDefault();
       } else {
         state.composerFocused = false;
       }
@@ -2564,14 +2582,15 @@ export async function GET(
     var shouldAnimateBubble =
       bubbleStyle.animationType &&
       bubbleStyle.animationType !== 'none' &&
-      (!state.hasOpenedOnce || (!state.open && state.hasUnreadWhileClosed));
+      shouldAnimateLauncher(state.open, state.hasOpenedOnce, state.hasUnreadWhileClosed, isWaitingForReply());
     var logoStyle = getLogoStyle(config);
     if (state.open && assistantConfig.faqSuggestionsEnabled && !state.faqSuggestionsDismissed && state.messages.length <= 1 && !state.faqSuggestions.length) {
       refreshFaqSuggestions();
     }
     var headerIconMarkup = renderConfiguredWidgetIconSlot(getInterfaceIcon('avatarIcon', ''));
+    var avatarClass = 'avatar' + (isWaitingForReply() ? ' animation-' + (bubbleStyle.animationType || 'none') : '');
     var headerAvatar = getLogo(config)
-      ? '<div class="avatar avatar--image">' +
+      ? '<div class="' + avatarClass + ' avatar--image">' +
           '<img' +
             ' class="avatar-image avatar-image--img"' +
             ' alt=""' +
@@ -2580,7 +2599,7 @@ export async function GET(
             ' style="object-fit: contain; object-position: ' + logoStyle.focusX + '% ' + logoStyle.focusY + '%; transform: scale(' + (logoStyle.zoom / 100) + '); transform-origin: ' + logoStyle.focusX + '% ' + logoStyle.focusY + '%;"' +
           ' />' +
         '</div>'
-      : (headerIconMarkup ? '<div class="avatar">' + headerIconMarkup + '</div>' : '');
+      : (headerIconMarkup ? '<div class="' + avatarClass + '">' + headerIconMarkup + '</div>' : '');
     var orbPhase = iconChoice === 'orb' ? getOrbPhase(orbStyle) : 'none';
     var orbGlyphList = iconChoice === 'orb' ? getOrbGlyphList(orbStyle, orbPhase) : [];
     var orbGlyph = orbGlyphList.length ? orbGlyphList[state.orbCycleTick % orbGlyphList.length] : '';
@@ -2595,16 +2614,23 @@ export async function GET(
     var showPortalTabs = shouldShowPortalTabs();
     var panelMarkup = state.activePanel === 'tasks'
       ? getTaskPanelMarkup()
-      : (showStarterCards ? starterCardsMarkup : getMessagesMarkup(config) + getFaqSuggestionsMarkup());
+      : (showStarterCards ? starterCardsMarkup : '<div class="widget-message-thread" role="log" aria-live="polite">' + getMessagesMarkup(config) + '</div>' + getFaqSuggestionsMarkup());
 
     mount.className = 'vintra-root position-' + position;
     applyViewportStateToMount();
     var shouldShowWidget = state.open;
-    mount.innerHTML =
+    var previousBody = mount.querySelector('.chat-body');
+    var previousScroll = previousBody ? previousBody.scrollTop : 0;
+    var pinned = !previousBody || previousBody.scrollHeight - previousBody.clientHeight - previousScroll < 64;
+    var lastMessage = state.messages[state.messages.length - 1];
+    var sentNow = lastMessage && lastMessage.role === 'user' && lastMessage.id !== lastRenderedMessageId;
+    lastRenderedMessageId = lastMessage ? lastMessage.id : '';
+    var markup =
       '<div class="vintra-stack ' + themeClass + '">' +
         '<div class="' + classes([
           'chat-widget',
           shouldShowWidget ? 'open' : '',
+          showStarterCards ? 'chat-widget--starter' : '',
           shouldShowSupportGate() ? 'chat-widget-locked' : '',
           'messages-' + (bodyStyle.messageStyle || 'bubble')
         ]) + '"' + (shouldShowWidget ? '' : ' hidden aria-hidden="true"') + '>' +
@@ -2626,7 +2652,7 @@ export async function GET(
             '</div>' +
             '<div class="chat-header-actions">' +
               (headerStyle.showStatus ? '<span class="status-pill">' + renderIconSlot(icons.check) + ' ' + escapeHtml(getStatusLabel()) + '</span><span class="header-status-dot" aria-hidden="true"></span>' : '') +
-              (headerStyle.showCloseButton && state.open ? '<button type="button" class="close-btn" aria-label="Close chat">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('closeIcon', 'FiX')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">×</span>') + '</button>' : '') +
+              (state.open ? '<button type="button" class="close-btn' + (headerStyle.showCloseButton ? '' : ' widget-mobile-close-only') + '" aria-label="Close chat">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('closeIcon', 'FiX')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">×</span>') + '</button>' : '') +
             '</div>' +
           '</div>' +
           '<div class="' + classes(['chat-body', 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '" style="position:relative;' + (showPortalTabs ? 'padding-top:1.2rem;' : '') + '">' +
@@ -2644,7 +2670,7 @@ export async function GET(
             ]) + '">' +
               '<div class="chat-footer-row">' +
                 '<textarea rows="1" ' +
-                  ((state.sending || state.feedbackOpen) ? 'disabled ' : '') +
+                  (state.feedbackOpen ? 'disabled ' : '') +
                   'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : ((state.supportStatus === 'needs-human' || state.supportStatus === 'open') ? 'Write a message for human support...' : 'Write a message...')) + '">' +
                   escapeHtml(truncateTextByCharacters(String(state.inputValue || ''), MAX_WIDGET_MESSAGE_CHARS)) +
                 '</textarea>' +
@@ -2679,8 +2705,7 @@ export async function GET(
               'widget-orb-avatar',
               'widget-icon--orb-mode-' + (orbPhase === 'hover' ? 'color-shift' : orbPhase === 'reply' ? 'pulse' : 'spin')
             ]) + '">' +
-              '<span class="widget-orb-avatar-base"></span>' +
-              '<canvas class="widget-orb-avatar-canvas" aria-hidden="true"></canvas>' +
+              ${serializeForJs(ORB_ICON_SVG)} +
             '</span>' : '') +
             (iconChoice === 'orb' && orbGlyph ? '<span class="widget-orb-overlay widget-orb-overlay--glyph widget-orb-overlay--' + orbPhase + '">' + escapeHtml(orbGlyph) + '</span>' : (iconChoice === 'orb' ? '' : bubbleIcon)) +
             (bubbleStyle.showStatus ? '<span class="status-dot"></span>' : '') +
@@ -2688,23 +2713,22 @@ export async function GET(
         '</button>' +
       '</div>';
 
+    patchMarkup(mount, markup);
     applyThemeVars(mount.querySelector('.vintra-stack'), theme);
     syncComposerMode();
 
     var bubbleButton = mount.querySelector('.widget-icon');
-    var input = mount.querySelector('textarea');
+    var input = mount.querySelector('.chat-footer textarea');
     var body = mount.querySelector('.chat-body');
 
     if (body && state.activePanel === 'chats') {
       window.requestAnimationFrame(function () {
-        body.scrollTop = showStarterCards ? 0 : body.scrollHeight;
-        window.requestAnimationFrame(function () {
-          body.scrollTop = showStarterCards ? 0 : body.scrollHeight;
-        });
+        body.scrollTop = showStarterCards ? 0 : (pinned || sentNow ? body.scrollHeight : previousScroll);
       });
     }
 
-    if (bubbleButton && iconChoice === 'orb' && orbStyle.hoverEnabled) {
+    if (bubbleButton && iconChoice === 'orb' && orbStyle.hoverEnabled && !bubbleButton.vintraHoverBound) {
+      bubbleButton.vintraHoverBound = true;
       bubbleButton.addEventListener('mouseenter', function () {
         bubbleButton.classList.add('widget-icon--orb-hover', 'widget-icon--orb-mode-color-shift');
       });
@@ -2714,7 +2738,8 @@ export async function GET(
       });
     }
 
-    if (input) {
+    if (input && !input.vintraInputBound) {
+      input.vintraInputBound = true;
       input.addEventListener('focus', function () {
         state.composerFocused = true;
         syncComposerMode();
@@ -2740,7 +2765,7 @@ export async function GET(
       });
 
       input.addEventListener('keydown', function (event) {
-        if (event.key === 'Enter') {
+        if (event.key === 'Enter' && !event.isComposing) {
           if (!event.shiftKey) {
             event.preventDefault();
             sendMessage();

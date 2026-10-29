@@ -1355,7 +1355,7 @@
 
 .mountainCopyStep {
   display: block;
-  will-change: opacity, transform, filter;
+  will-change: opacity, transform;
 }
 
 .mountainCopyStep--one {
@@ -3505,4 +3505,78 @@
     width: 43px;
     height: 43px;
   }
+}
+
+/* Compact layout avoids the fixed scroll follower and large animated surfaces. */
+@media (max-width: 900px), (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .hero-grid { flex-direction: column; gap: 24px !important; align-items: stretch !important; }
+  .heroDroidSpace { width: 100% !important; height: 180px !important; }
+  .heroDroidSpace > .scrollDroid { position: absolute; top: 50%; left: 50%; bottom: auto; width: 112px; transform: translate(-50%, -50%); opacity: 1; visibility: visible; filter: none; will-change: auto; }
+  .scrollDroidFloat, .scrollDroid .droidHand, .siteDroid > svg, .siteDroidAntenna, .heroStar, .heroAuroraRibbon { animation: none; }
+  .heroStar:nth-of-type(n + 25) { display: none; }
+  .heroAuroraRibbon { filter: none; }
+  .heroAuroraRibbon--back, .heroAuroraRibbon--front { display: none; }
+  .landingScrollHint { mix-blend-mode: normal; }
+  .landingScrollHint span { background: #7c8fa8; animation: none; }
+  .solutionsSection { min-height: 0; padding: 0; overflow: clip; }
+  .solutionsSection .solutionsShell { min-height: 0; }
+  .solutionsSection .solutionsIntroArc { position: relative; top: auto; min-height: 540px; padding: 210px 20px 64px; transform: none; will-change: auto; align-items: flex-end; }
+  .solutionsSection .mountainLayer { height: 100%; will-change: auto; }
+  .solutionsSection .mountainCenter { width: 160%; height: 520px; max-width: 1100px; transform: translateX(-50%); filter: none; will-change: auto; }
+  .solutionsSection .solutionsIntroArcContent { max-width: 540px; padding: 0; opacity: 1; transform: none; filter: none; transition: none; }
+  .solutionsSection .mountainCopyStep { opacity: 1; transform: none; filter: none; will-change: auto; }
+  .solutionsSection .solutionsIntroArcContent h2 { font-size: clamp(34px, 6vw, 52px) !important; }
+  .solutionsSection .solutionsIntroArcContent p { border-radius: 16px; backdrop-filter: none; }
+  .solutionsProducts { padding: 48px 20px 64px; }
+  .solutionsProducts::before { display: none; }
+  .droidMorphStage { height: auto; margin-bottom: 56px; }
+  .droidMorphSticky { position: relative; top: auto; height: auto; display: flex; flex-direction: column; gap: 24px; overflow: visible; perspective: none; }
+  .droidMorphStage .morphSideCopy { position: static; width: 100%; max-width: 600px; opacity: 1; transform: none; filter: none; text-align: left; }
+  .morphSideCopy h3 { font-size: clamp(23px, 4vw, 30px); }
+  .morphSideCopy p { display: block; }
+  .droidMorphStage .nordicBrowser { width: 100%; max-width: 680px; height: auto; min-height: 0; opacity: 1; transform: none !important; border-radius: 22px !important; box-shadow: 0 12px 32px #02081720; }
+  .droidMorphStage .nordicSite { height: auto; opacity: 1; filter: none; }
+  .nordicBrowserBar { height: 42px; padding: 0 12px; font-size: 10px; }
+  .nordicNav { height: auto; min-height: 64px; gap: 12px; padding: 12px 16px; flex-wrap: wrap; }
+  .nordicNav > div span { display: none; }
+  .nordicNav strong { font-size: 11px; }
+  .nordicHero { position: relative; min-height: 330px; grid-template-columns: 1fr; padding: 28px 20px; overflow: hidden; }
+  .nordicHeroCopy h3 { font-size: clamp(30px, 5vw, 42px); max-width: 13ch; }
+  .nordicHeroCopy p { max-width: 32ch; font-size: 14px; }
+  .nordicHeroArt { position: absolute; inset: 100px -45px 0 48%; opacity: .22; }
+  .nordicStats { justify-content: space-between; gap: 10px; padding: 16px; }
+  .nordicStats span { font-size: 9px; }
+  .droidMorphStage .siteDroid, .droidMorphStage .siteChatBubble { display: none; }
+  .droidMorphStage .siteChat { position: relative; inset: auto; width: calc(100% - 24px); max-width: 400px; height: auto; margin: 20px auto; opacity: 1; transform: none; box-shadow: 0 8px 24px #17203815; }
+  .siteChatWelcome { overflow: visible; }
+  .solutionFeature, .solutionFeature--chatbot, .solutionWebsiteCanvas, .solutionChatCanvas { min-width: 0; }
+}
+
+@media (max-width: 520px) {
+  .heroShell { padding-bottom: 32px; }
+  .heroDroidSpace {
+    position: absolute !important;
+    top: 24px;
+    right: 20px;
+    width: 60px !important;
+    height: 76px !important;
+  }
+  .heroDroidSpace > .scrollDroid { width: 56px; }
+  .heroInner { padding-inline: 20px; }
+  .hero-grid h1 { padding-right: 72px; font-size: clamp(32px, 9.5vw, 46px) !important; overflow-wrap: anywhere; }
+  .hero-grid p { font-size: 16px !important; }
+  .hero-grid .cta-primary, .hero-grid .cta-secondary { justify-content: center; width: 100%; min-height: 48px; padding-inline: 16px; }
+  .heroBenefit { font-size: 12px; }
+  .heroMountain { height: 220px; }
+  .solutionsSection .solutionsIntroArc { min-height: 470px; padding: 180px 20px 40px; }
+  .solutionsSection .mountainCenter { width: 190%; height: 460px; }
+  .solutionsProducts { padding-inline: 16px; }
+  .solutionFeature { padding: 20px 16px; }
+  .bottomCtaActions { width: 100%; }
+  .bottomCtaActions > a { justify-content: center; width: 100%; }
+  .contactDetails nav { flex-wrap: wrap; gap: 8px 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroShell *, .solutionsSection *, .mainFlow * { animation: none !important; transition: none !important; }
 }
