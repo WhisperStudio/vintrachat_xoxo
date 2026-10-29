@@ -2,6 +2,39 @@
   --bg: #fafafa;
 }
 
+.landingScrollHint {
+  position: fixed;
+  z-index: 30;
+  left: 50%;
+  bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  pointer-events: none;
+  mix-blend-mode: difference;
+  transition: opacity 0.3s ease;
+}
+.landingScrollHint[data-visible="false"] { opacity: 0; }
+.landingScrollHint span {
+  display: block;
+  width: 25px;
+  height: 3px;
+  border-radius: 99px;
+  background: #fff;
+  animation: landingScrollPulse 2s ease-in-out infinite;
+}
+.landingScrollHint span:nth-child(2) { width: 19px; animation-delay: 0.16s; }
+.landingScrollHint span:nth-child(3) { width: 13px; animation-delay: 0.32s; }
+@keyframes landingScrollPulse {
+  0%, 70%, 100% { opacity: 0.3; transform: translateY(0); }
+  35% { opacity: 0.9; transform: translateY(3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landingScrollHint span { animation: none; opacity: 0.65; }
+}
+
 .heroShell {
   position: relative;
   overflow: clip;
@@ -32,8 +65,6 @@
   --hero-panel-border: rgba(148, 163, 184, 0.18);
   --hero-outline: rgba(255, 255, 255, 0.92);
   background:
-    radial-gradient(circle at 20% 10%, rgba(123, 185, 173, 0.18), transparent 34%),
-    radial-gradient(circle at 82% 14%, rgba(162, 157, 214, 0.18), transparent 30%),
     linear-gradient(180deg, #f1f6fb 0%, #e5eef4 26%, #dfe9ef 52%, #e6eef2 76%, #edf3f8 100%);
 }
 
@@ -147,40 +178,33 @@
 
 .heroStar {
   position: absolute;
-  border-radius: 999px;
-  background: #fff;
-  animation: heroStarBlink var(--twinkle-duration, 5s) ease-in-out infinite;
-  box-shadow: 0 0 14px rgba(255, 255, 255, 0.8);
+  z-index: 1;
+  border-radius: 50%;
+  background: #e1ecff;
+  opacity: var(--star-opacity, 0.5);
+  animation: heroStarBlink var(--twinkle-duration, 7s) ease-in-out infinite;
+  box-shadow: 0 0 4px #b7d6ff45;
 }
-
-.heroAuroraBand {
+.heroStar:nth-of-type(3n) { animation: none; opacity: calc(var(--star-opacity, 0.5) * 0.6); }
+.heroStar:nth-of-type(7n) { background: #fff0dd; box-shadow: 0 0 6px #fff0dd50; }
+.heroAurora {
   position: absolute;
-  left: -14%;
-  right: -14%;
-  border-radius: 999px;
-  filter: blur(34px);
-  opacity: 0.58;
+  inset: -6% -12% auto;
+  width: 124%;
+  height: 85%;
+  overflow: visible;
+  opacity: 0.75;
+  pointer-events: none;
 }
-
-.heroAuroraBand--one {
-  top: 2%;
-  height: 210px;
-  background: linear-gradient(90deg, rgba(34, 197, 94, 0), rgba(34, 197, 94, 0.1), rgba(45, 212, 191, 0.18), rgba(147, 197, 253, 0.12), rgba(34, 197, 94, 0));
-  animation: auroraWave 24s ease-in-out infinite alternate;
+.heroAuroraRibbon { transform-box: fill-box; transform-origin: center; }
+.heroAuroraRibbon--main { filter: blur(6px); animation: auroraWave 28s ease-in-out infinite alternate; }
+.heroAuroraRibbon--back { filter: blur(15px); animation: auroraWaveReverse 36s ease-in-out infinite alternate; }
+.heroAuroraRibbon--front { opacity: 0.45; filter: blur(4px); animation: auroraWaveSoft 32s ease-in-out infinite alternate; }
+@media (max-width: 700px) {
+  .heroAurora { width: 160%; left: -30%; height: 72%; opacity: 0.6; }
 }
-
-.heroAuroraBand--two {
-  top: 16%;
-  height: 250px;
-  background: linear-gradient(90deg, rgba(6, 182, 212, 0), rgba(6, 182, 212, 0.08), rgba(52, 211, 153, 0.15), rgba(148, 163, 184, 0.12), rgba(6, 182, 212, 0));
-  animation: auroraWaveReverse 28s ease-in-out infinite alternate;
-}
-
-.heroAuroraBand--three {
-  top: 32%;
-  height: 190px;
-  background: linear-gradient(90deg, rgba(16, 185, 129, 0), rgba(16, 185, 129, 0.06), rgba(125, 211, 252, 0.12), rgba(226, 232, 240, 0.08), rgba(16, 185, 129, 0));
-  animation: auroraWaveSoft 30s ease-in-out infinite alternate;
+@media (prefers-reduced-motion: reduce) {
+  .heroStar, .heroAuroraRibbon { animation: none; }
 }
 
 .float-b {
@@ -196,7 +220,7 @@
   z-index: 8;
   pointer-events: none;
   will-change: transform, opacity;
-  transition: opacity 0.45s ease;
+  opacity: 0;
   filter: drop-shadow(0 22px 24px rgba(23, 57, 102, 0.24));
 }
 
@@ -204,7 +228,13 @@
   position: relative;
   width: 100%;
   height: 100%;
-  animation: droidHover 3.4s ease-in-out infinite;
+  opacity: calc(1 - var(--droid-whiten, 0));
+  animation: droidIdleFloat 3.8s ease-in-out infinite;
+}
+
+@keyframes droidIdleFloat {
+  0%, 100% { translate: 0 -5px; }
+  50% { translate: 0 5px; }
 }
 
 .droidOrb {
@@ -226,18 +256,18 @@
 .droidSmile { fill: none; stroke: #82e9ff; stroke-width: 4; stroke-linecap: round; filter: drop-shadow(0 0 4px #55d9ff); }
 .droidGlint { fill: none; stroke: rgba(255, 255, 255, 0.85); stroke-width: 6; stroke-linecap: round; }
 .droidSeam { fill: none; stroke: rgba(4, 42, 104, 0.45); stroke-width: 3; }
-.droidSideLight { fill: #73f5e2; filter: drop-shadow(0 0 5px #45efd4); }
+
 
 .droidAntenna {
   position: absolute;
   z-index: -1;
   width: 7px;
-  height: 40%;
-  left: 51%;
-  top: -22%;
+  height: 20%;
+  left: 48%;
+  top: -8%;
   border-radius: 99px;
   background: #174a91;
-  transform: rotate(-13deg);
+  transform: rotate(0deg);
   transform-origin: bottom;
 }
 
@@ -256,24 +286,34 @@
 .droidHand {
   position: absolute;
   z-index: 3;
-  left: -19%;
-  top: 32%;
-  width: 34%;
-  height: 45%;
+  left: -28%;
+  top: 23%;
+  width: 48%;
+  height: 55%;
   transform-origin: 88% 78%;
-  animation: droidWave 0.82s ease-in-out infinite alternate;
+  animation: droidWave 3.6s ease-in-out infinite;
   transition: opacity 0.35s ease;
 }
 
 .scrollDroid[data-scrolled="true"] .droidHand { opacity: 0; animation-play-state: paused; }
-.droidPalm { position: absolute; width: 58%; height: 45%; right: 0; bottom: 0; border-radius: 45% 45% 50% 50%; background: #69baf0; border: 2px solid #e3f7ff; }
-.droidFinger { position: absolute; width: 18%; height: 48%; border-radius: 99px; background: #79c9f5; border: 2px solid #e3f7ff; transform-origin: bottom; }
-.droidFinger--one { left: 40%; top: 36%; transform: rotate(-87deg); z-index: -1;}
-.droidFinger--two { left: 44%; top: 22%; transform: rotate(-50deg); z-index: -1; }
-.droidFinger--three { left: 62%; top: 14%; transform: rotate(-20deg); z-index: -1; }
+.droidArm { width: 100%; height: 100%; overflow: visible; stroke-linecap: round; stroke-linejoin: round; }
+.droidArmCable { fill: none; stroke: #153d6d; stroke-width: 5; }
+.droidArmLink { fill: none; stroke: #b7d9e9; stroke-width: 12; }
+.droidArmPiston { fill: none; stroke: #ecfaff; stroke-width: 4; }
+.droidArmJoint { fill: #2865a2; stroke: #d7f0ff; stroke-width: 3; }
+.droidArmBolt { fill: #b8edff; stroke: #2d6090; stroke-width: 1.5; }
+.droidArmPalm { fill: #7fb9dc; stroke: #e1f5ff; stroke-width: 3; }
+.droidArmClaw { fill: #b9dce9; stroke: #ecfaff; stroke-width: 3; }
+.droidArmGrip { fill: none; stroke: #3a6b91; stroke-width: 2; }
+.droidBrow { fill: none; stroke: #92e4ff; stroke-width: 2; opacity: 0.6; stroke-linecap: round; }
+.droidCheeks { fill: none; stroke: #85d8ff; stroke-width: 4; stroke-linecap: round; opacity: 0.65; }
+.droidVents { fill: none; stroke: #123f87; stroke-width: 2; stroke-linecap: round; opacity: 0.65; }
+.droidBadge { fill: none; stroke: #c6efff; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.droidShellBolt { fill: #ccecff; stroke: #407eb9; stroke-width: 1; }
+.siteDroid .droidHand { animation: none; transform: rotate(-12deg); }
 
 @keyframes droidHover { 0%, 100% { transform: translateY(-5px) rotate(-1deg); } 50% { transform: translateY(7px) rotate(1.5deg); } }
-@keyframes droidWave { from { transform: rotate(-24deg); } to { transform: rotate(24deg); } }
+@keyframes droidWave { 0%, 65%, 100% { transform: rotate(-8deg); } 20% { transform: rotate(10deg); } 40% { transform: rotate(-14deg); } }
 @keyframes droidBlink { 0%, 43%, 47%, 78%, 82%, 100% { transform: scaleY(1); } 45%, 80% { transform: scaleY(0.08); } }
 
 @media (max-width: 700px) {
@@ -359,16 +399,29 @@
 .droidMorphCover {
   position: absolute;
   z-index: 20;
-  inset: 0;
-  border-radius: 50%;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 100%;
   background: #f8fafc;
-  box-shadow: 0 20px 60px rgba(2, 8, 23, 0.28);
-  opacity: clamp(0, calc((var(--droid-morph-progress, 0) - 0.43) * 22), 1);
-  border-radius: calc(50% - (clamp(0, calc((var(--droid-morph-progress, 0) - 0.46) * 8), 1) * 44%));
-  transform:
-    scaleX(calc(1 + (clamp(0, calc((var(--droid-morph-progress, 0) - 0.46) * 8), 1) * 5.1)))
-    scaleY(calc(1 + (clamp(0, calc((var(--droid-morph-progress, 0) - 0.46) * 8), 1) * 3.15)));
+  opacity: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  transform: translate(-50%, -50%);
   pointer-events: none;
+}
+
+.droidMorphCover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0 22px,
+    rgba(100, 116, 139, 0.14) 22px 28px,
+    transparent 28px 46px
+  );
+  mask-image: radial-gradient(ellipse at center, #000 28%, transparent 76%);
 }
 
 .solutionsSection .mountainLayer {
@@ -398,14 +451,14 @@
 
 .droidMorphStage {
   --morph-progress: 0;
-  --browser-reveal: clamp(0, calc((var(--morph-progress) - 0.52) * 6.5), 1);
+  --browser-reveal: clamp(0, calc((var(--morph-progress) - 0.43) / 0.05), 1);
   --copy-reveal: clamp(0, calc((var(--morph-progress) - 0.64) * 6), 1);
   --droid-travel: clamp(0, calc((var(--morph-progress) - 0.72) * 5), 1);
   --bubble-reveal: clamp(0, calc((var(--morph-progress) - 0.88) * 12), 1);
   --chat-reveal: clamp(0, calc((var(--morph-progress) - 0.92) * 12), 1);
   position: relative;
   width: 100%;
-  height: 220vh;
+  height: 340vh;
   margin: 0 auto clamp(90px, 12vw, 160px);
 }
 
@@ -592,14 +645,14 @@
 .siteDroid > svg { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 14px 18px rgba(13, 52, 105, 0.35)); }
 .siteDroidAntenna { position: absolute; z-index: -1; left: 50%; top: -18%; width: 5px; height: 28%; border-radius: 9px; background: #2364a8; transform: rotate(-9deg); }
 .siteDroidAntenna i { position: absolute; width: 12px; height: 12px; left: 50%; top: -5px; border-radius: 50%; background: #56ddff; box-shadow: 0 0 10px #56ddff; transform: translateX(-50%); }
-.siteDroidShell { fill: url(#droidShell); stroke: white; stroke-width: 3; }
+.siteDroidShell { fill: url(#siteDroidShellGradient); stroke: white; stroke-width: 3; }
 .siteDroidPanel { fill: rgba(225, 245, 255, 0.36); }
-.siteDroidGlass { fill: url(#droidVisor); stroke: rgba(126, 211, 255, 0.72); stroke-width: 2; }
+.siteDroidGlass { fill: url(#siteDroidVisorGradient); stroke: rgba(126, 211, 255, 0.72); stroke-width: 2; }
 .siteDroidEyes { fill: #c9f7ff; filter: drop-shadow(0 0 7px #55d9ff); }
 .siteDroidSmile { fill: none; stroke: #82e9ff; stroke-width: 4; stroke-linecap: round; }
 .siteDroidGlint { fill: none; stroke: rgba(255,255,255,.85); stroke-width: 6; stroke-linecap: round; }
 .siteDroidSeam { fill: none; stroke: rgba(4,42,104,.45); stroke-width: 3; }
-.siteDroidLight { fill: #73f5e2; filter: drop-shadow(0 0 5px #45efd4); }
+
 
 .siteChatBubble {
   position: absolute;
@@ -609,56 +662,71 @@
   width: 64px;
   aspect-ratio: 1;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  background: linear-gradient(145deg, #1b8b80, #0c5b54);
-  border: 3px solid rgba(255,255,255,.9);
-  box-shadow: 0 14px 32px rgba(8, 65, 61, 0.35);
+  display: grid;
+  place-items: center;
+  color: white;
+  background: #28766b;
+  box-shadow: 0 10px 30px #174b4038;
   opacity: 0;
-  transform: rotate(-140deg) scale(0.2);
-  transform-origin: center;
 }
-
-.siteChatBubble::after {
-  content: "";
+.siteChatBubble svg { width: 30px; height: 30px; }
+.siteChatBubble .siteChatClickRays {
   position: absolute;
-  right: 5px;
-  bottom: 2px;
-  width: 15px;
-  height: 15px;
-  background: #0c5b54;
-  clip-path: polygon(0 0, 100% 0, 100% 100%);
+  width: 116px;
+  height: 116px;
+  left: 50%;
+  top: 50%;
+  color: #88d8bd;
+  opacity: var(--bubble-press, 0);
+  transform: translate(-50%, -50%) scale(calc(0.85 + var(--bubble-press, 0) * 0.2));
+  filter: drop-shadow(0 0 5px #28766b);
 }
-
-.siteChatBubble span { width: 5px; height: 5px; border-radius: 50%; background: white; }
-
+.siteChatBubble::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border: 2px solid #28766b;
+  border-radius: inherit;
+  opacity: calc(var(--bubble-press, 0) * 0.65);
+  transform: scale(calc(1 + var(--bubble-press, 0) * 0.25));
+}
 .siteChat {
   position: absolute;
-  z-index: 7;
+  z-index: 10;
   right: 24px;
-  bottom: 24px;
-  width: min(330px, 42%);
-  border-radius: 20px;
+  bottom: 100px;
+  width: min(400px, calc(100% - 48px));
+  height: min(480px, calc(100% - 120px));
+  display: flex;
+  flex-direction: column;
+  border-radius: 24px;
   overflow: hidden;
-  color: #173047;
-  background: white;
-  border: 1px solid #dce6ee;
-  box-shadow: 0 24px 60px rgba(10, 35, 65, 0.28);
+  color: #173d37;
+  background: #f1f8f4;
+  border: 1px solid #c8dfd4;
+  box-shadow: 0 24px 60px #17203830;
   opacity: 0;
-  transform: translateY(28px) scale(0.82);
   transform-origin: bottom right;
+  pointer-events: none;
 }
-
-.siteChatHead { display: flex; align-items: center; gap: 9px; padding: 13px; color: white; background: #126b62; }
-.siteChatHead > i { width: 7px; height: 7px; margin-left: auto; border-radius: 50%; background: #72efd0; }
-.siteChatAvatar { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; color: #c7f9ee; background: #0b514b; }
-.siteChatMessages { display: flex; flex-direction: column; gap: 9px; padding: 14px; font-size: 11px; }
-.siteChatMessages p { max-width: 82%; margin: 0; padding: 9px 10px; border-radius: 11px 11px 11px 3px; background: #edf2f6; }
-.siteChatMessages .siteChatReply { align-self: flex-end; color: white; border-radius: 11px 11px 3px 11px; background: #14796e; }
-.siteChatInput { margin: 0 12px 12px; padding: 10px 12px; border: 1px solid #dce5ec; border-radius: 999px; color: #94a3b8; font-size: 10px; }
-.siteChatInput span { float: right; color: #14796e; }
+.siteChatHead { display: flex; align-items: center; gap: 10px; padding: 16px; color: white; background: #28766b; flex-shrink: 0; }
+.siteChatHead img { width: 34px; height: 34px; object-fit: contain; }
+.siteChatHead > div { display: grid; gap: 3px; }
+.siteChatHead strong { font-size: 15px; }
+.siteChatHead small { font-size: 11px; }
+.siteChatClose { margin-left: auto; width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid #ffffff50; border-radius: 50%; font-size: 24px; background: #ffffff18; }
+.siteChatWelcome { padding: 18px 20px; text-align: center; flex: 1; min-height: 0; overflow: hidden; }
+.siteChatWelcomeIcon { display: grid; place-items: center; width: 48px; height: 48px; margin: 0 auto 7px; border-radius: 17px; color: #28766b; background: #dceee5; }
+.siteChatWelcomeIcon svg { width: 30px; height: 30px; }
+.siteChatWelcome > strong { font-size: 20px; }
+.siteChatWelcome > p { color: #64748b; font-size: 12px; margin: 3px 0 14px; }
+.siteChatOptions { display: grid; gap: 9px; }
+.siteChatOptions > div { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #dce7df; border-radius: 14px; background: white; box-shadow: 0 8px 20px #214f3c08; text-align: left; }
+.siteChatOptions > div > span { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 9px; background: #e5f2eb; color: #28766b; }
+.siteChatOptions strong { font-size: 13px; }
+.siteChatOptions i { margin-left: auto; color: #94a3b8; font-style: normal; font-size: 22px; }
+.siteChatComposer { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; box-shadow: 0 -10px 26px #214f3c08; color: #6d8279; font-size: 11px; flex-shrink: 0; }
+.siteChatSend { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 13px; background: #28766b; color: white; font-size: 23px; }
 
 .droidMorphStage.isActive .morphSeed { animation: morphSeedSpin 1.5s cubic-bezier(.6, 0, .35, 1) both; }
 .droidMorphStage.isActive .nordicBrowser { animation: browserBecome 1.35s 1.05s cubic-bezier(.16, 1, .3, 1) forwards; }
@@ -700,8 +768,8 @@
 .droidMorphStage .nordicBrowser {
   opacity: var(--browser-reveal);
   transform:
-    scale(calc(0.16 + (var(--browser-reveal) * 0.84)));
-  border-radius: calc(48% - (var(--browser-reveal) * 44%));
+    scale(1);
+  border-radius: 34px;
 }
 
 .droidMorphStage .morphWhiteCover {
@@ -722,19 +790,29 @@
 }
 
 .droidMorphStage .siteDroid {
-  opacity: clamp(0, calc((var(--droid-travel) * 4) - (var(--bubble-reveal) * 1.5)), 1);
-  left: calc(45% + (var(--droid-travel) * 45%));
-  top: calc(38% + (var(--droid-travel) * 47%));
+  opacity: calc(var(--droid-pop, 0) * (1 - var(--bubble-reveal)));
+  left: calc(50% + var(--droid-travel) * (50% - 56px));
+  top: calc(45% + var(--droid-travel) * (55% - 56px) - var(--droid-arc, 0%));
   transform:
-    rotate(calc(var(--droid-travel) * 480deg))
-    scale(calc(1.12 - (var(--droid-travel) * 0.62)));
+    translate(-50%, -50%)
+    scale(calc(var(--droid-pop-scale, 0) * (1 - var(--droid-travel) * 0.27)));
+}
+
+.siteDroid > svg { animation: siteDroidHover 3.2s ease-in-out infinite; }
+.siteDroidAntenna { animation: siteDroidHover 3.2s ease-in-out infinite; }
+@keyframes siteDroidHover {
+  0%, 100% { translate: 0 -4px; }
+  50% { translate: 0 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .siteDroid > svg, .siteDroidAntenna { animation: none; }
 }
 
 .droidMorphStage .siteChatBubble {
   opacity: var(--bubble-reveal);
   transform:
-    rotate(calc((1 - var(--bubble-reveal)) * -140deg))
-    scale(calc(0.2 + (var(--bubble-reveal) * 0.8)));
+    rotate(calc((1 - var(--bubble-reveal)) * -35deg))
+    scale(calc((0.8 + var(--bubble-reveal) * 0.2) * (1 - var(--bubble-press, 0) * 0.18)));
 }
 
 .droidMorphStage .siteChat {
@@ -748,20 +826,22 @@
   position: absolute;
   z-index: 4;
   top: 50%;
-  width: min(250px, 16vw);
+  width: min(260px, 15vw);
   color: var(--solutions-text);
   opacity: var(--copy-reveal);
   filter: blur(calc((1 - var(--copy-reveal)) * 8px));
 }
 
 .morphSideCopy--left {
-  left: 2.5vw;
+  --copy-reveal: clamp(0, calc((var(--morph-progress) - 0.67) / 0.05), 1);
+  right: calc(50% + min(470px, 32vw) + clamp(16px, 2vw, 32px));
   text-align: right;
   transform: translate3d(calc((1 - var(--copy-reveal)) * -55px), -50%, 0);
 }
 
 .morphSideCopy--right {
-  right: 2.5vw;
+  --copy-reveal: clamp(0, calc((var(--morph-progress) - 0.89) / 0.06), 1);
+  left: calc(50% + min(470px, 32vw) + clamp(16px, 2vw, 32px));
   transform: translate3d(calc((1 - var(--copy-reveal)) * 55px), -50%, 0);
 }
 
@@ -788,7 +868,7 @@
 }
 
 @media (max-width: 700px) {
-  .droidMorphStage { height: 190vh; }
+  .droidMorphStage { height: 340vh; }
   .droidMorphSticky { height: 100svh; }
   .nordicBrowser { height: 560px; min-height: 0; }
   .nordicNav > div span { display: none; }
@@ -796,10 +876,10 @@
   .nordicHeroArt { position: absolute; inset: 120px 0 0 42%; opacity: 0.45; }
   .nordicHeroCopy h3 { font-size: 34px; }
   .nordicStats { gap: 22px; padding: 15px 24px; }
-  .siteChat { width: min(290px, 82%); }
+  .siteChat { right: 12px; width: calc(100% - 24px); bottom: 96px; }
   .morphSideCopy { top: auto; bottom: 3vh; width: 43vw; }
-  .morphSideCopy--left { left: 4vw; text-align: left; transform: translateX(calc((1 - var(--copy-reveal)) * -35px)); }
-  .morphSideCopy--right { right: 4vw; transform: translateX(calc((1 - var(--copy-reveal)) * 35px)); }
+  .morphSideCopy--left { left: 4vw; right: auto; text-align: left; transform: translateX(calc((1 - var(--copy-reveal)) * -35px)); }
+  .morphSideCopy--right { right: 4vw; left: auto; transform: translateX(calc((1 - var(--copy-reveal)) * 35px)); }
   .morphSideCopy h3 { font-size: 17px; }
   .morphSideCopy p { display: none; }
 }
@@ -1026,7 +1106,7 @@
   --solutions-text: #24384c;
   --solutions-sky: #d8e9f1;
   --solutions-base: #dde7ea;
-  --solutions-floor: #d5ddd8;
+  --solutions-floor: #e3e7eb;
   --mountain-side-base: #b4cad5;
   --mountain-side-shade: #8faaba;
   --mountain-center-back: #c3d8e3;
@@ -1086,6 +1166,20 @@
   position: absolute;
   display: block;
   bottom: 0;
+}
+
+.solutionsSection--day .mountainLayer::before {
+  content: "";
+  position: absolute;
+  inset: -12% -15% 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at 50% 72%,
+    rgba(255, 186, 112, 0.28) 0%,
+    rgba(255, 205, 151, 0.16) 28%,
+    rgba(255, 223, 185, 0.06) 46%,
+    transparent 65%
+  );
 }
 
 .solutionsSection .mountainSide {
@@ -2261,7 +2355,6 @@
 .mainFlow.mainFlow--day {
   background:
     radial-gradient(circle at 12% 12%, rgba(37, 99, 235, 0.1), transparent 24%),
-    radial-gradient(circle at 88% 22%, rgba(16, 185, 129, 0.08), transparent 22%),
     linear-gradient(180deg, #f7fbff 0%, #eef4fb 38%, #edf4f9 72%, #ffffff 100%);
   color: #10243f;
 }
@@ -3015,8 +3108,8 @@
 }
 
 @keyframes heroStarBlink {
-  0%, 100% { opacity: 0.22; transform: scale(0.92); }
-  50% { opacity: 1; transform: scale(1.22); }
+  0%, 100% { opacity: calc(var(--star-opacity, 0.5) * 0.45); }
+  50% { opacity: var(--star-opacity, 0.5); }
 }
 
 @keyframes auroraWave {
