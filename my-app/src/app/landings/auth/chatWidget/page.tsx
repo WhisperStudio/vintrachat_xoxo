@@ -306,7 +306,7 @@ const defaultInputs: InputsState = {
     iconChoice: 'chat',
     borderType: 'rounded',
     shadowType: 'medium',
-    animationType: 'bounce',
+    animationType: 'none',
     sizeType: 'medium',
     orbStyle: defaultOrbStyle,
   },
@@ -369,6 +369,9 @@ export default function ChatWidgetBuilderPage() {
   const [inputs, setInputs] = useState<InputsState>(defaultInputs)
   const [assistantConfigDraft, setAssistantConfigDraft] = useState<ChatAssistantConfig>(createDefaultAssistantConfig())
   const [hasLoadedDbConfig, setHasLoadedDbConfig] = useState(false)
+  const [previewScenario, setPreviewScenario] = useState<'welcome' | 'conversation'>('welcome')
+  const [previewSession, setPreviewSession] = useState(0)
+  const [presetNotice, setPresetNotice] = useState('')
   const [previewMode, setPreviewMode] = useState<PreviewMode>('desktop')
   const [selectedWidgetKey, setSelectedWidgetKey] = useState('')
   const [previewHighlightTarget, setPreviewHighlightTarget] = useState<PreviewHighlightTarget | null>(null)
@@ -507,8 +510,23 @@ export default function ChatWidgetBuilderPage() {
     }))
   }, [databasePlan, hasLoadedDbConfig])
 
+  const applyDesignPreset = (preset: 'nordic' | 'minimal' | 'welcoming') => {
+    setInputs((prev) => ({
+      ...prev,
+      appearance: { ...prev.appearance, glassLookEnabled: false },
+      colorTheme: preset === 'minimal' ? 'corporate' : preset === 'welcoming' ? 'chilling' : 'modern',
+      bubbleStyle: { ...prev.bubbleStyle, borderType: 'rounded', shadowType: 'light', animationType: 'none', sizeType: 'medium' },
+      headerStyle: { ...prev.headerStyle, cornerStyle: 'rounded', borderType: 'none', showBorder: false, shadowType: 'none' },
+      bodyStyle: { ...prev.bodyStyle, borderType: 'none', shadowType: 'none', messageStyle: preset === 'minimal' ? 'flat' : 'bubble', conversationCardsLayout: preset === 'minimal' ? 'list' : 'grid', conversationCardsStyle: preset === 'minimal' ? 'minimal' : 'modern' },
+      footerStyle: { ...prev.footerStyle, cornerStyle: 'rounded', borderType: 'none', showBorder: false, shadowType: 'none', inputStyle: preset === 'minimal' ? 'flat' : 'rounded' },
+    }))
+    setSaveStatus('idle')
+    setPresetNotice(no ? 'Stilen er valgt. Tilpass detaljene og lagre når du er klar.' : 'Style applied. Adjust the details and save when you’re ready.')
+  }
+
   const updateInput = <K extends keyof InputsState>(key: K, value: InputsState[K]) => {
     setInputs((prev) => ({ ...prev, [key]: value }))
+    setSaveStatus('idle')
   }
 
   useEffect(() => {
@@ -791,6 +809,18 @@ export default function ChatWidgetBuilderPage() {
           )}
         </section>
 
+        <section className="studioPresets" aria-label={no ? 'Ferdige designstiler' : 'Design presets'}>
+          <div className="studioPresetIntro"><span className="studioEyebrow">{no ? 'ET GODT UTGANGSPUNKT' : 'A GOOD STARTING POINT'}</span><h2>{no ? 'Finn din stil.' : 'Find your style.'}</h2><p>{no ? 'Velg et samlet uttrykk. Behold navn, innhold og logo.' : 'Start with a coordinated look. Keep your name, content and logo.'}</p></div>
+          <div className="studioPresetChoices">
+            {([
+              { id: 'nordic', title: no ? 'Nordisk' : 'Nordic', description: no ? 'Rolig blå. Myke former.' : 'Calm blue. Soft edges.', color: '#285f86' },
+              { id: 'minimal', title: no ? 'Minimal' : 'Minimal', description: no ? 'Grafitt. Rent og diskret.' : 'Graphite. Clean and understated.', color: '#4b5563' },
+              { id: 'welcoming', title: no ? 'Varm & vennlig' : 'Warm & friendly', description: no ? 'Skoggrønn. Åpent og personlig.' : 'Forest green. Open and personal.', color: '#047857' },
+            ] as const).map((preset) => <button type="button" className="studioPreset" key={preset.id} onClick={() => applyDesignPreset(preset.id)}><span className="studioPresetSample" style={{ '--preset-color': preset.color } as React.CSSProperties} aria-hidden="true"><i /><i /><i /></span><span><strong>{preset.title}</strong><small>{preset.description}</small></span><FiArrowRight aria-hidden="true" /></button>)}
+          </div>
+          {presetNotice && <p className="studioPresetNotice" role="status">{presetNotice}</p>}
+        </section>
+
         <div className="chatbuilder-grid">
           <div className="builder-panel glass" ref={builderPanelRef}>
             <div className="panel-header">
@@ -938,8 +968,15 @@ export default function ChatWidgetBuilderPage() {
                   </button>
                 </div>
             </div>
-            <p className="studioPreviewNote">{no ? 'Prøv en eksempelsamtale med designet ditt.' : 'Try a sample conversation with your design.'}</p>
+            <p className="studioPreviewNote">{no ? 'Test designet her. Meldinger i forhåndsvisningen blir ikke sendt til bedriften.' : 'Try your design here. Preview messages are not sent to your business.'}</p>
+            <div className="studioPreviewScenes" role="group" aria-label={no ? 'Visning i chatten' : 'Chat scene'}>
+              <button type="button" aria-pressed={previewScenario === 'welcome'} onClick={() => { setPreviewScenario('welcome'); setPreviewSession((value) => value + 1) }}>{no ? 'Velkomst' : 'Welcome'}</button>
+              <button type="button" aria-pressed={previewScenario === 'conversation'} onClick={() => { setPreviewScenario('conversation'); setPreviewSession((value) => value + 1) }}>{no ? 'Samtale' : 'Conversation'}</button>
+              <button type="button" className="studioPreviewRestart" onClick={() => setPreviewSession((value) => value + 1)} aria-label={no ? 'Start forhåndsvisningen på nytt' : 'Restart preview'} title={no ? 'Start på nytt' : 'Restart'}><FiRefreshCw aria-hidden="true" /></button>
+            </div>
             <WidgetPreview
+              key={`${previewScenario}-${previewSession}`}
+              previewScenario={previewScenario}
               billingCycle={inputs.billingCycle}
               plan={databasePlan}
               bubbleStyle={inputs.bubbleStyle}
@@ -954,7 +991,8 @@ export default function ChatWidgetBuilderPage() {
               assistantIcons={inputs.widgetIcons}
               initialOpen={true}
               enablePreviewChat={true}
-              previewReply={t.previewReply}
+              showConditionalFeaturePreview={false}
+              previewReply={no ? 'Takk for meldingen! Dette er et eksempelsvar. I den publiserte chatten brukes informasjonen du har lagt inn om bedriften.' : 'Thanks for your message! This is a sample reply. The published chat uses the information you have added about your business.'}
               previewMode={previewMode}
               conversationCardsEnabled={inputs.conversationCardsEnabled}
               conversationCardsLimit={inputs.conversationCardsLimit}

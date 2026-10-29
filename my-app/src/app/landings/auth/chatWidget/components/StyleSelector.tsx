@@ -1,5 +1,7 @@
 'use client'
 
+import { WIDGET_THEME_VARS } from '@/components/chat/widgetDesign'
+
 import {
   useLayoutEffect,
   useMemo,
@@ -163,26 +165,15 @@ interface StyleSelectorProps {
   ) => void
 }
 
-const colorThemeInfo: Record<ColorTheme, { label: string; description: string }> = {
-  modern: { label: 'Modern', description: 'Clean and contemporary' },
-  chilling: { label: 'Chilling', description: 'Relaxed and friendly' },
-  corporate: { label: 'Corporate', description: 'Professional and serious' },
-  luxury: { label: 'Luxury', description: 'Exclusive and elegant' },
-  'pink-blast': { label: 'Pink Blast', description: 'Creamy rose and playful' },
-  'red-velvet': { label: 'Red Velvet', description: 'Calm red and soft' },
-  'deep-blue': { label: 'Deep Blue', description: 'Strong blue and focused' },
-  'banana-bonanza': { label: 'Banana Bonanza', description: 'Yellow-orange and bright' },
-}
-
-const colorThemeSwatches: Record<ColorTheme, string[]> = {
-  modern: ['#3b82f6', '#1e40af', '#ffffff', '#eef2ff'],
-  chilling: ['#10b981', '#047857', '#f0fdf4', '#c5ffe2'],
-  corporate: ['#6b7280', '#374151', '#f9fafb', '#efefef'],
-  luxury: ['#7c3aed', '#5b21b6', '#faf5ff', '#d8e4fb'],
-  'pink-blast': ['#f472b6', '#be185d', '#fff1f7', '#ffe0ef'],
-  'red-velvet': ['#b91c1c', '#7f1d1d', '#fff5f5', '#fee2e2'],
-  'deep-blue': ['#002fcf', '#001a75', '#eef4ff', '#dbe8ff'],
-  'banana-bonanza': ['#f59e0b', '#c2410c', '#fff8dc', '#fff0a8'],
+const colorThemeInfo: Record<ColorTheme, { label: string; description: string; noLabel: string; noDescription: string }> = {
+  modern: { label: 'Nordic blue', description: 'Calm blue, clear surfaces', noLabel: 'Nordisk blå', noDescription: 'Rolig blå med lyse flater' },
+  chilling: { label: 'Forest', description: 'Welcoming, natural greens', noLabel: 'Skog', noDescription: 'Vennlige, naturlige grønntoner' },
+  corporate: { label: 'Graphite', description: 'Quiet, neutral and precise', noLabel: 'Grafitt', noDescription: 'Diskret, nøytralt og tydelig' },
+  luxury: { label: 'Plum', description: 'Deep purple, soft accents', noLabel: 'Plomme', noDescription: 'Dyp lilla med myke nyanser' },
+  'pink-blast': { label: 'Rose', description: 'Warm rose with clear contrast', noLabel: 'Rose', noDescription: 'Varm rosa med tydelig kontrast' },
+  'red-velvet': { label: 'Ruby', description: 'Rich reds, light backgrounds', noLabel: 'Rubin', noDescription: 'Dype rødtoner på lys bakgrunn' },
+  'deep-blue': { label: 'Ocean', description: 'Distinctive, deep blue', noLabel: 'Hav', noDescription: 'Et tydelig uttrykk i dyp blå' },
+  'banana-bonanza': { label: 'Amber', description: 'Warm gold and dark lettering', noLabel: 'Rav', noDescription: 'Varm gyllen farge med mørk tekst' },
 }
 
 const iconChoices: Array<{
@@ -267,7 +258,7 @@ function GlassRadioRow<T extends string>({
 }) {
   return (
     <div className="glassRadioRow" role="radiogroup" aria-label={name}>
-      {options.map((option) => {
+      {options.map((option, index) => {
         const active = option.value === value
         return (
           <button
@@ -276,13 +267,22 @@ function GlassRadioRow<T extends string>({
             className={`glassRadioButton ${active ? 'active' : ''}`}
             role="radio"
             aria-checked={active}
+            tabIndex={active ? 0 : -1}
+            onKeyDown={(event) => {
+              const direction = ['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : ['ArrowLeft', 'ArrowUp'].includes(event.key) ? -1 : 0
+              if (!direction && event.key !== 'Home' && event.key !== 'End') return
+              event.preventDefault()
+              const next = event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 : (index + direction + options.length) % options.length
+              onChange(options[next].value)
+              ;(event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next])?.focus()
+            }}
             onClick={() => onChange(option.value)}
           >
             <span>{option.label}</span>
             {option.swatches ? (
               <span className="glassRadioSwatches" aria-hidden="true">
-                {option.swatches.map((swatch) => (
-                  <span key={`${option.value}-${swatch}`} className="glassRadioSwatch" style={{ backgroundColor: swatch }} />
+                {option.swatches.map((swatch, swatchIndex) => (
+                  <span key={`${option.value}-${swatchIndex}`} className="glassRadioSwatch" style={{ backgroundColor: swatch }} />
                 ))}
               </span>
             ) : null}
@@ -927,9 +927,9 @@ export default function StyleSelector({
             ))}
           </div>
 
-          <label className="branding-field"><span>Widget title</span><input type="text" value={customBranding.title || ''} onChange={(event) => onCustomBrandingChange({ ...customBranding, title: event.target.value })} placeholder="Support Chat" /></label>
-          <label className="branding-field"><span>Widget description</span><input type="text" value={customBranding.description || ''} onChange={(event) => onCustomBrandingChange({ ...customBranding, description: event.target.value })} placeholder="We are here to help you!" /></label>
-          <div className="branding-field branding-field--logo"><label>Logo upload</label><LogoUploadEditor branding={customBranding} onChange={onCustomBrandingChange} /></div>
+          <label className="branding-field"><span>{language === 'no' ? 'Navn i chatten' : 'Chat name'}</span><input type="text" value={customBranding.title || ''} onChange={(event) => onCustomBrandingChange({ ...customBranding, title: event.target.value })} placeholder="Support Chat" /></label>
+          <label className="branding-field"><span>{language === 'no' ? 'Kort velkomsttekst' : 'Short welcome message'}</span><input type="text" value={customBranding.description || ''} onChange={(event) => onCustomBrandingChange({ ...customBranding, description: event.target.value })} placeholder="We are here to help you!" /></label>
+          <div className="branding-field branding-field--logo"><span>{language === 'no' ? 'Bedriftens logo' : 'Company logo'}</span><LogoUploadEditor branding={customBranding} onChange={onCustomBrandingChange} /></div>
         </div>
       </div>
 
@@ -1071,7 +1071,7 @@ export default function StyleSelector({
             <GlassRadioRow
               name="color-theme"
               value={colorTheme}
-              options={Object.entries(colorThemeInfo).map(([theme, info]) => ({ value: theme as ColorTheme, label: info.label, description: info.description, swatches: colorThemeSwatches[theme as ColorTheme] }))}
+              options={Object.entries(colorThemeInfo).map(([theme, info]) => ({ value: theme as ColorTheme, label: language === 'no' ? info.noLabel : info.label, description: language === 'no' ? info.noDescription : info.description, swatches: ['--chat-primary', '--chat-secondary', '--chat-bg', '--chat-bot-bg'].map((key) => WIDGET_THEME_VARS[theme as ColorTheme][key]) }))}
               onChange={(nextValue) => onColorThemeChange(nextValue as ColorTheme)}
             />
           </div>

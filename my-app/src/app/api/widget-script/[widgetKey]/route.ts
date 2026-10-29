@@ -435,6 +435,7 @@ const widgetStyles = `
 }
 
 ${readFileSync(join(process.cwd(), 'src/app/landings/auth/chatWidget/components/WidgetPreview.css'), 'utf8')}
+${readFileSync(join(process.cwd(), 'src/app/landings/auth/chatWidget/components/WidgetExperience.css'), 'utf8')}
 
 .vintra-stack > .chat-widget,
 .vintra-root.viewport-mobile .chat-widget.open {
@@ -1313,23 +1314,7 @@ export async function GET(
       })
       .slice(0, limit);
 
-    if (cleaned.length) {
-      return cleaned;
-    }
-
-    return [
-      {
-        id: 'preview-only',
-        title: 'This is only a preview',
-        description: 'Set cards in AI settings to show real starter cards.',
-        icon: '🤖',
-        image: '',
-        options: [
-          { label: 'Open AI settings', prompt: 'Open AI settings', description: '' },
-          { label: 'Add cards', prompt: 'Add starter cards to the AI settings', description: '' },
-        ],
-      },
-    ];
+    return cleaned;
   }
 
   function refreshFaqSuggestions() {
@@ -1389,6 +1374,7 @@ export async function GET(
       input.style.height = 'auto';
       if (state.composerFocused) {
         input.style.height = Math.min(128, Math.max(52, input.scrollHeight)) + 'px';
+        input.style.height = Math.min(128, Math.max(52, input.scrollHeight)) + 'px';
       }
     }
   }
@@ -1431,13 +1417,6 @@ export async function GET(
 
   function shouldShowSupportGate() {
     return false;
-  }
-
-  function isTypingTarget(target) {
-    if (!target) return false;
-    var tagName = String(target.tagName || '').toLowerCase();
-    if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') return true;
-    return Boolean(target.isContentEditable || (typeof target.closest === 'function' && target.closest('[contenteditable="true"]')));
   }
 
   function focusComposerInput() {
@@ -1693,8 +1672,8 @@ export async function GET(
           '<div class="widget-starter-cards__hero widget-starter-cards__hero--' + cardsStyle + '">' +
             '<div class="widget-starter-cards__hero-icon" aria-hidden="true">' + renderConfiguredWidgetIconSlot(getInterfaceIcon('heroIcon', 'FiMessageCircle')) + '</div>' +
             '<div class="widget-starter-cards__hero-copy">' +
-              '<strong>Hei! 👋</strong>' +
-              '<p>' + escapeHtml(isMinimalCards ? 'Hva kan jeg hjelpe deg med?' : 'Hva kan jeg hjelpe deg med i dag?') + '</p>' +
+              '<strong>Hei, og velkommen.</strong>' +
+              '<p>' + escapeHtml('Velg et tema, eller skriv til oss.') + '</p>' +
             '</div>' +
           '</div>' +
           (starterCardPages.length > 1 ? (
@@ -2303,6 +2282,8 @@ export async function GET(
           state.starterCardPageIndex = 0;
         }
         render();
+        if (state.open && event.detail === 0) focusComposerInput();
+        else if (!state.open) mount.querySelector('.widget-icon')?.focus();
         return;
       }
 
@@ -2313,6 +2294,7 @@ export async function GET(
         state.starterCardPageIndex = 0;
         void updateVisitorTyping(false);
         render();
+        mount.querySelector('.widget-icon')?.focus();
         return;
       }
 
@@ -2522,27 +2504,17 @@ export async function GET(
       }
     });
 
-    document.addEventListener('keydown', function (event) {
-      if (state.open || state.awaitingVisitorName || state.feedbackSubmitting || state.taskSubmitting) return;
-      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
-      if (isTypingTarget(event.target)) return;
-
-      var key = String(event.key || '');
-      if (key !== 'Enter' && key.length !== 1) return;
-
-      state.open = true;
-      state.hasOpenedOnce = true;
-      state.hasUnreadWhileClosed = false;
-      state.composerFocused = true;
-
-      if (key.length === 1) {
-        state.inputValue = truncateTextByCharacters(String(state.inputValue || '') + key, MAX_WIDGET_MESSAGE_CHARS);
-        writeStoredDraftValue(state.inputValue);
-      }
-
+    mount.addEventListener('keydown', function (event) {
+      if (event.key !== 'Escape' || !state.open || state.awaitingVisitorName || state.feedbackOpen) return;
+      if (!state.config || !state.config.headerStyle || !state.config.headerStyle.showCloseButton) return;
+      state.open = false;
+      state.composerFocused = false;
+      state.activeConversationCardId = '';
+      state.starterCardPageIndex = 0;
+      void updateVisitorTyping(false);
       render();
-      focusComposerInput();
-      event.preventDefault();
+      var launcher = mount.querySelector('.widget-icon');
+      if (launcher) launcher.focus();
     });
   }
 
@@ -2616,7 +2588,7 @@ export async function GET(
       ? getTaskPanelMarkup()
       : (showStarterCards ? starterCardsMarkup : '<div class="widget-message-thread" role="log" aria-live="polite">' + getMessagesMarkup(config) + '</div>' + getFaqSuggestionsMarkup());
 
-    mount.className = 'vintra-root position-' + position;
+    mount.className = 'vintra-widget vintra-root position-' + position;
     applyViewportStateToMount();
     var shouldShowWidget = state.open;
     var previousBody = mount.querySelector('.chat-body');
@@ -2674,11 +2646,11 @@ export async function GET(
                   'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : ((state.supportStatus === 'needs-human' || state.supportStatus === 'open') ? 'Write a message for human support...' : 'Write a message...')) + '">' +
                   escapeHtml(truncateTextByCharacters(String(state.inputValue || ''), MAX_WIDGET_MESSAGE_CHARS)) +
                 '</textarea>' +
-                (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" ' + ((state.sending || state.feedbackOpen) ? 'disabled' : '') + '>' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('sendIcon', 'FiSend')) || renderIconSlot(icons.send)) + '</button>') +
+                (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" aria-label="Send message" ' + ((state.sending || state.feedbackOpen) ? 'disabled' : '') + '>' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('sendIcon', 'FiSend')) || renderIconSlot(icons.send)) + '</button>') +
               '</div>' +
             '</div>'
           )) +
-          (state.error ? '<div class="widget-inline-error">' + escapeHtml(state.error) + '</div>' : '') +
+          (state.error ? '<div class="widget-inline-error" role="alert">' + escapeHtml(state.error) + '</div>' : '') +
           getImageLightboxMarkup() +
           '</div>' +
           (shouldShowSupportGate() ? (
@@ -2699,7 +2671,7 @@ export async function GET(
           iconChoice === 'orb' && orbPhase === 'hover' ? 'widget-icon--orb-hover' : '',
           iconChoice === 'orb' && orbPhase === 'reply' ? 'widget-icon--orb-replying' : '',
           iconChoice === 'orb' && orbPhase === 'inactive' ? 'widget-icon--orb-idle' : ''
-        ]) + '" aria-label="Open chat">' +
+        ]) + '" aria-expanded="' + (state.open ? 'true' : 'false') + '" aria-label="' + (state.open ? 'Close chat' : 'Open chat') + '">' +
           '<span class="widget-icon-inner" aria-hidden="true">' +
             (iconChoice === 'orb' ? '<span class="' + classes([
               'widget-orb-avatar',
