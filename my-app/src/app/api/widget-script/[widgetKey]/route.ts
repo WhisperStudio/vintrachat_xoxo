@@ -1,3 +1,6 @@
+import { getWidgetMotionClasses } from '@/lib/widget-motion'
+import { getMessageSurfaceClasses, getSurfaceClasses } from '@/lib/surface-design'
+import { createLauncherArtwork } from '@/lib/launcher-design'
 ﻿import { NextRequest } from 'next/server'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -519,6 +522,10 @@ export async function GET(
   var mobileViewportController = null;
   var createMobileViewport = ${installWidgetMobileViewport.toString()};
   var shouldAnimateLauncher = ${shouldAnimateWidgetLauncher.toString()};
+  var createLauncherArtwork = ${createLauncherArtwork.toString()};
+  var getMessageSurfaceClasses = ${getMessageSurfaceClasses.toString()};
+  var getSurfaceClasses = ${getSurfaceClasses.toString()};
+  var getWidgetMotionClasses = ${getWidgetMotionClasses.toString()};
   var patchMarkup = ${patchWidgetMarkup.toString()};
   var lastRenderedMessageId = '';
   var viewportListenersBound = false;
@@ -1578,7 +1585,7 @@ export async function GET(
       var messageIconMarkup = renderConfiguredWidgetIconSlot(messageIconKey);
 
       return (
-        '<div class="' + classes(['message', roleClass, 'message--' + msg.role]) + '">' +
+        '<div class="' + classes(['message', getMessageSurfaceClasses(bodyStyle), roleClass, 'message--' + msg.role]) + '">' +
           '<div class="message-content">' + escapeHtml(msg.text) + '</div>' +
           getMessageAttachmentsMarkup(msg) +
           ((bodyStyle.showTimestamps || (bodyStyle.showReadReceipts && msg.role === 'user')) ? (
@@ -2601,6 +2608,7 @@ export async function GET(
       '<div class="vintra-stack ' + themeClass + '">' +
         '<div class="' + classes([
           'chat-widget',
+          getWidgetMotionClasses(appearance),
           shouldShowWidget ? 'open' : '',
           showStarterCards ? 'chat-widget--starter' : '',
           shouldShowSupportGate() ? 'chat-widget-locked' : '',
@@ -2609,6 +2617,7 @@ export async function GET(
           '<div class="chat-content">' +
           '<div class="' + classes([
             'chat-header',
+            getSurfaceClasses(headerStyle),
             'header-corners-' + headerCornerStyle,
             headerShowBorder ? 'header-border-on' : 'header-border-off',
             'header-shadow-' + (headerStyle.shadowType || 'none'),
@@ -2627,7 +2636,7 @@ export async function GET(
               (state.open ? '<button type="button" class="close-btn' + (headerStyle.showCloseButton ? '' : ' widget-mobile-close-only') + '" aria-label="Close chat">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('closeIcon', 'FiX')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">×</span>') + '</button>' : '') +
             '</div>' +
           '</div>' +
-          '<div class="' + classes(['chat-body', 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '" style="position:relative;' + (showPortalTabs ? 'padding-top:1.2rem;' : '') + '">' +
+          '<div class="' + classes(['chat-body', getSurfaceClasses(bodyStyle), 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '" style="position:relative;' + (showPortalTabs ? 'padding-top:1.2rem;' : '') + '">' +
             (showPortalTabs ? getPanelTabsMarkup() : '') +
             panelMarkup +
           '</div>' +
@@ -2636,6 +2645,7 @@ export async function GET(
             '<div class="' + classes([
               'chat-footer',
               'footer-corners-' + footerCornerStyle,
+              getSurfaceClasses(footerStyle),
               footerShowBorder ? 'footer-border-on' : 'footer-border-off',
               'footer-shadow-' + (footerStyle.shadowType || 'none'),
               'input-' + (footerStyle.inputStyle || 'flat')
@@ -2662,7 +2672,7 @@ export async function GET(
           ) : '') +
         '</div>' +
         '<button type="button" class="' + classes([
-          'widget-icon',
+          'widget-icon launcher-custom',
           'border-' + (bubbleStyle.borderType || 'none'),
           'shadow-' + (bubbleStyle.shadowType || 'none'),
           shouldAnimateBubble ? 'animation-' + bubbleStyle.animationType : 'animation-none',
@@ -2672,6 +2682,7 @@ export async function GET(
           iconChoice === 'orb' && orbPhase === 'reply' ? 'widget-icon--orb-replying' : '',
           iconChoice === 'orb' && orbPhase === 'inactive' ? 'widget-icon--orb-idle' : ''
         ]) + '" aria-expanded="' + (state.open ? 'true' : 'false') + '" aria-label="' + (state.open ? 'Close chat' : 'Open chat') + '">' +
+          createLauncherArtwork(bubbleStyle.borderType, bubbleStyle.shape) +
           '<span class="widget-icon-inner" aria-hidden="true">' +
             (iconChoice === 'orb' ? '<span class="' + classes([
               'widget-orb-avatar',

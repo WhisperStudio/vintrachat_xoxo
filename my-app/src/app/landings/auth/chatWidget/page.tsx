@@ -44,6 +44,8 @@ import type {
 } from '@/types/database'
 import './ChatWidget.css'
 
+import PersonalitySettings from '@/components/chat/PersonalitySettings'
+import { CHAT_PERSONALITIES } from '@/lib/chat-personality'
 import PlanSelector from './components/PlanSelector'
 import StyleSelector from './components/StyleSelector'
 import WidgetPreview from './components/WidgetPreview'
@@ -219,6 +221,9 @@ type InputsState = {
   billingCycle: BillingCycle
   colorTheme: ColorTheme
   appearance: {
+    openAnimation?: 'none' | 'fade' | 'slide' | 'pop' | 'bounce'
+    sentAnimation?: 'none' | 'fade' | 'slide' | 'pop' | 'bounce'
+    receivedAnimation?: 'none' | 'fade' | 'slide' | 'pop' | 'bounce'
     glassLookEnabled: boolean
   }
   position: Position
@@ -226,13 +231,15 @@ type InputsState = {
   bubbleStyle: {
     showStatus: boolean
     iconChoice: BubbleIconChoice
-    borderType: 'none' | 'solid' | 'rounded' | 'shadow'
+    borderType: 'none' | 'solid' | 'rounded' | 'shadow' | 'dashed' | 'double' | 'wavy'
+    shape?: 'circle' | 'rounded-square' | 'square' | 'triangle' | 'diamond'
     shadowType: 'none' | 'light' | 'medium' | 'heavy'
     animationType: 'none' | 'bounce' | 'fade' | 'slide'
     sizeType: 'small' | 'medium' | 'large'
     orbStyle?: OrbStyleConfig
   }
   headerStyle: {
+    borderLine?: 'none' | 'solid' | 'dashed' | 'double' | 'wavy'
     showStatus: boolean
     showCloseButton: boolean
     borderType: 'none' | 'solid' | 'rounded' | 'shadow'
@@ -243,6 +250,10 @@ type InputsState = {
     showTitle: boolean
   }
   bodyStyle: {
+    messageCornerStyle?: 'rounded' | 'square'
+    messageBorderLine?: 'none' | 'solid' | 'dashed' | 'double' | 'wavy'
+    borderLine?: 'none' | 'solid' | 'dashed' | 'double' | 'wavy'
+    cornerStyle?: 'rounded' | 'square'
     borderType: 'none' | 'solid' | 'rounded' | 'shadow'
     shadowType: 'none' | 'light' | 'medium' | 'heavy'
     messageStyle: 'bubble' | 'flat' | 'card'
@@ -253,6 +264,7 @@ type InputsState = {
     conversationCardsStyle: 'modern' | 'minimal' | 'bubble' | 'image' | 'chips'
   }
   footerStyle: {
+    borderLine?: 'none' | 'solid' | 'dashed' | 'double' | 'wavy'
     showSendButton: boolean
     borderType: 'none' | 'solid' | 'rounded' | 'shadow'
     cornerStyle?: 'rounded' | 'square'
@@ -510,14 +522,14 @@ export default function ChatWidgetBuilderPage() {
     }))
   }, [databasePlan, hasLoadedDbConfig])
 
-  const applyDesignPreset = (preset: 'nordic' | 'minimal' | 'welcoming') => {
+  const applyDesignPreset = (preset: 'nordic' | 'minimal' | 'welcoming' | 'boutique' | 'playful') => {
     setInputs((prev) => ({
       ...prev,
       appearance: { ...prev.appearance, glassLookEnabled: false },
-      colorTheme: preset === 'minimal' ? 'corporate' : preset === 'welcoming' ? 'chilling' : 'modern',
+      colorTheme: preset === 'minimal' ? 'corporate' : preset === 'welcoming' ? 'chilling' : preset === 'boutique' ? 'luxury' : preset === 'playful' ? 'pink-blast' : 'modern',
       bubbleStyle: { ...prev.bubbleStyle, borderType: 'rounded', shadowType: 'light', animationType: 'none', sizeType: 'medium' },
       headerStyle: { ...prev.headerStyle, cornerStyle: 'rounded', borderType: 'none', showBorder: false, shadowType: 'none' },
-      bodyStyle: { ...prev.bodyStyle, borderType: 'none', shadowType: 'none', messageStyle: preset === 'minimal' ? 'flat' : 'bubble', conversationCardsLayout: preset === 'minimal' ? 'list' : 'grid', conversationCardsStyle: preset === 'minimal' ? 'minimal' : 'modern' },
+      bodyStyle: { ...prev.bodyStyle, borderType: 'none', shadowType: 'none', messageStyle: preset === 'minimal' ? 'flat' : preset === 'boutique' ? 'card' : 'bubble', conversationCardsLayout: preset === 'minimal' ? 'list' : 'grid', conversationCardsStyle: preset === 'minimal' ? 'minimal' : preset === 'playful' ? 'bubble' : 'modern' },
       footerStyle: { ...prev.footerStyle, cornerStyle: 'rounded', borderType: 'none', showBorder: false, shadowType: 'none', inputStyle: preset === 'minimal' ? 'flat' : 'rounded' },
     }))
     setSaveStatus('idle')
@@ -816,11 +828,14 @@ export default function ChatWidgetBuilderPage() {
               { id: 'nordic', title: no ? 'Nordisk' : 'Nordic', description: no ? 'Rolig blå. Myke former.' : 'Calm blue. Soft edges.', color: '#285f86' },
               { id: 'minimal', title: no ? 'Minimal' : 'Minimal', description: no ? 'Grafitt. Rent og diskret.' : 'Graphite. Clean and understated.', color: '#4b5563' },
               { id: 'welcoming', title: no ? 'Varm & vennlig' : 'Warm & friendly', description: no ? 'Skoggrønn. Åpent og personlig.' : 'Forest green. Open and personal.', color: '#047857' },
+              { id: 'boutique', title: 'Boutique', description: no ? 'Lilla. Elegant med meldingskort.' : 'Violet. Elegant message cards.', color: '#6d28d9' },
+              { id: 'playful', title: no ? 'Leken' : 'Playful', description: no ? 'Rosa. Myke samtalebobler.' : 'Rose. Soft conversation bubbles.', color: '#a9296b' },
             ] as const).map((preset) => <button type="button" className="studioPreset" key={preset.id} onClick={() => applyDesignPreset(preset.id)}><span className="studioPresetSample" style={{ '--preset-color': preset.color } as React.CSSProperties} aria-hidden="true"><i /><i /><i /></span><span><strong>{preset.title}</strong><small>{preset.description}</small></span><FiArrowRight aria-hidden="true" /></button>)}
           </div>
           {presetNotice && <p className="studioPresetNotice" role="status">{presetNotice}</p>}
         </section>
 
+        <PersonalitySettings value={assistantConfigDraft} no={no} onChange={(value) => { setAssistantConfigDraft(value); setSaveStatus('idle') }} />
         <div className="chatbuilder-grid">
           <div className="builder-panel glass" ref={builderPanelRef}>
             <div className="panel-header">
@@ -979,7 +994,7 @@ export default function ChatWidgetBuilderPage() {
               <button type="button" className="studioPreviewRestart" onClick={() => setPreviewSession((value) => value + 1)} aria-label={no ? 'Start forhåndsvisningen på nytt' : 'Restart preview'} title={no ? 'Start på nytt' : 'Restart'}><FiRefreshCw aria-hidden="true" /></button>
             </div>
             <WidgetPreview
-              key={`${previewScenario}-${previewSession}`}
+              key={`${previewScenario}-${previewSession}-${CHAT_PERSONALITIES.find((item) => item.style === assistantConfigDraft.responseStyle)?.id || 'custom'}`}
               previewScenario={previewScenario}
               billingCycle={inputs.billingCycle}
               plan={databasePlan}
@@ -996,7 +1011,7 @@ export default function ChatWidgetBuilderPage() {
               initialOpen={true}
               enablePreviewChat={true}
               showConditionalFeaturePreview={false}
-              previewReply={no ? 'Takk for meldingen! Dette er et eksempelsvar. I den publiserte chatten brukes informasjonen du har lagt inn om bedriften.' : 'Thanks for your message! This is a sample reply. The published chat uses the information you have added about your business.'}
+              previewReply={(() => { const personality = CHAT_PERSONALITIES.find((item) => item.style === assistantConfigDraft.responseStyle); return personality ? (no ? personality.sampleNo : personality.sampleEn) : (no ? 'Dette er et eksempelsvar. Egen svarstil brukes av AI-en etter lagring.' : 'This is a sample reply. The AI uses your custom response style after saving.') })()}
               previewMode={previewMode}
               conversationCardsEnabled={inputs.conversationCardsEnabled}
               conversationCardsLimit={inputs.conversationCardsLimit}

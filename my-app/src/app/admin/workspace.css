@@ -1863,3 +1863,33 @@
   background: var(--admin-accent-soft);
   color: var(--admin-accent);
 }
+
+/* Nordic workspace controls, shared across admin screens. */
+.adminPage .personality-settings {
+  --personality-border: var(--admin-border-strong);
+  --personality-accent: var(--admin-accent);
+  --personality-selected: var(--admin-accent-soft);
+  --personality-panel: var(--admin-surface);
+  --personality-muted: var(--admin-muted);
+}
+.adminPage :is(.primaryBtn, .secondaryBtn, .adminToolBtn, .widget-admin-save-button, .widget-admin-action-button, .widget-admin-topnav__item, .adminSidebarGroup button) {
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease, translate .18s ease;
+  min-height: 42px;
+}
+.adminPage .adminSidebarGroup button.sideActive { box-shadow: inset 3px 0 0 var(--admin-accent); }
+.adminPage :is(button, a, input, select, textarea):focus-visible { outline: 3px solid var(--admin-focus-ring); outline-offset: 3px; }
+.adminPage :is(.widget-admin-topnav__item.active, .widget-admin-wizard-nav-item.active) { border-color: var(--admin-border-strong); background: var(--admin-accent-soft); color: var(--admin-text); }
+.adminPage .widget-admin-wizard-nav-item.active { box-shadow: inset 3px 0 0 var(--admin-accent); }
+.adminPage .widget-admin-wizard-panel .personality-settings { background: var(--admin-surface-soft); }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .adminPage :is(.primaryBtn, .secondaryBtn, .adminToolBtn, .widget-admin-save-button, .widget-admin-action-button):hover:not(:disabled) { translate: 0 -2px; box-shadow: var(--admin-shadow-soft); }
+  .adminPage .adminSidebarGroup button:hover { translate: 2px 0; }
+}
+.adminPage :is(.primaryBtn, .secondaryBtn, .adminToolBtn, .widget-admin-save-button, .widget-admin-action-button):active:not(:disabled) { translate: 0 0; box-shadow: none; }
+.adminPage button:disabled { cursor: not-allowed; }
+@media (max-width: 768px) {
+  .adminPage .widget-card-desc { display: block; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .adminPage :is(button, a, input, select, textarea) { transition: none !important; animation: none !important; translate: none !important; }
+}

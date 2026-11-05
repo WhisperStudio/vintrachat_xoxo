@@ -3572,3 +3572,10 @@ body.widget-admin-wizard-open {
     min-width: 0;
   }
 }
+
+/* Keep personality and response controls together across creation and editing. */
+.widget-ai-grid > .personality-settings { grid-column: 1 / -1; min-width: 0; }
+.widget-admin-wizard-panel .personality-settings { background: linear-gradient(135deg, #3983a908, transparent); }
+.widget-admin-wizard-nav-item { border-radius: 14px; }
+.widget-admin-wizard-nav-item.active { box-shadow: inset 3px 0 0 #3983a9; }
+.widget-admin-code .widget-code-block { border-radius: 16px; padding: 20px; line-height: 1.8; margin-bottom: 16px; }

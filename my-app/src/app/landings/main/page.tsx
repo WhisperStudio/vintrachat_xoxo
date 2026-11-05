@@ -25,6 +25,7 @@ import {
   createHeroParticles,
 } from './page-helpers'
 import MountainBackground from '@/svgs/MountainBackground'
+import ConversationDemo from './ConversationDemo'
 
 const organizationId = `${siteConfig.url}/#organization`
 const websiteId = `${siteConfig.url}/#website`
@@ -200,7 +201,14 @@ function ScrollDroid() {
       const browserWidth = browser?.offsetWidth || size
       const browserHeight = browser?.offsetHeight || size
       const stageTop = rect ? rect.top + scrollTop - scrollPosition : 0
-      const morph = rect ? clamp((vh * 0.82 - stageTop) / Math.max(rect.height - vh * 0.72, vh)) : 0
+      const timeline = rect ? clamp((vh * 0.82 - stageTop) / Math.max(rect.height - vh * 0.72, vh)) : 0
+      const morph = clamp(timeline / 0.42)
+      const returnProgress = clamp((timeline - 0.42) / 0.58)
+      stage?.style.setProperty('--return-progress', String(returnProgress))
+      if (stage) stage.dataset.botStoryReady = String(returnProgress > 0.98)
+      if (stage) {
+        stage.dataset.demoStep = String(returnProgress >= .84 ? 4 : returnProgress >= .73 ? 3 : returnProgress >= .61 ? 2 : returnProgress >= .5 ? 1 : 0)
+      }
       // A single scroll timeline also initializes correctly after scroll restoration.
       stage?.style.setProperty('--morph-progress', String(morph))
       // Scroll requests a change; a full click always plays before opening OR closing.
@@ -449,7 +457,8 @@ function DroidMorphShowcase({ language }: { language: 'no' | 'en' }) {
               <div><span>♧</span><strong>{language === 'no' ? 'Kundeservice' : 'Customer support'}</strong><i>›</i></div>
             </div>
           </div>
-          <div className="siteChatComposer"><span>{language === 'no' ? 'Skriv en melding…' : 'Write a message…'}</span><span className="siteChatSend" aria-hidden="true">➤</span></div>
+          <ConversationDemo language={language} />
+          <div className="siteChatComposer"><span>{language === 'no' ? 'Eksempel på en chatbot for bedriften din' : 'An example chatbot for your business'}</span><span className="siteChatSend" aria-hidden="true">➤</span></div>
         </div>
       </div>
       <aside className="morphSideCopy morphSideCopy--right">
@@ -457,6 +466,29 @@ function DroidMorphShowcase({ language }: { language: 'no' | 'en' }) {
         <h3>{language === 'no' ? 'En chatbot som kjenner virksomheten din.' : 'A chatbot that knows your business.'}</h3>
         <p>{language === 'no' ? 'Gi kundene hjelp også utenfor åpningstid. Chatbotten kan svare på vanlige spørsmål, forklare tjenester og guide besøkende til riktig produkt eller kontaktperson. Det gir raskere svar og færre gjentakende henvendelser.' : 'Help customers outside business hours, too. Your chatbot can answer common questions, explain services and guide visitors to the right product or contact person. That means faster answers and fewer repetitive enquiries.'}</p>
       </aside>
+      <div className="botStory" aria-label={language === 'no' ? 'Dette kan chatbotten hjelpe med' : 'How your chatbot helps'}>
+        <article className="botStoryCard botStoryCard--support">
+          <small>01 / {language === 'no' ? 'MER TID TIL MENNESKER' : 'MORE TIME FOR PEOPLE'}</small>
+          <h3>{language === 'no' ? 'La botten ta de vanlige spørsmålene.' : 'Let your bot handle everyday questions.'}</h3>
+          <p>{language === 'no' ? 'Åpningstider, levering og tjenester. Gi kundene raske svar, og la teamet bruke tiden på sakene som trenger et menneske.' : 'Opening hours, delivery and services. Give customers quick answers and let your team focus on the cases that need a person.'}</p>
+        </article>
+        <article className="botStoryCard botStoryCard--guidance">
+          <small>02 / {language === 'no' ? 'FRA TVIL TIL OVERSIKT' : 'FROM DOUBT TO CLARITY'}</small>
+          <h3>{language === 'no' ? 'Hjelp kunden et steg videre.' : 'Help customers take the next step.'}</h3>
+          <p>{language === 'no' ? 'En usikker besøkende kan spørre, sammenligne og finne frem. Botten forklarer tilbudet ditt og viser veien til riktig produkt eller kontaktperson.' : 'An unsure visitor can ask, compare and find their way. Your bot explains your offering and guides them to the right product or contact.'}</p>
+        </article>
+        <article className="botStoryCard botStoryCard--design">
+          <small>03 / {language === 'no' ? 'DITT UTTRYKK' : 'YOUR EXPRESSION'}</small>
+          <h3>{language === 'no' ? 'Din bedrift. Din chatbot.' : 'Your business. Your chatbot.'}</h3>
+          <p>{language === 'no' ? 'Velg farger, former, animasjoner og personlighet. Juster designet i forhåndsvisningen og finn uttrykket som passer kundene dine.' : 'Choose colors, shapes, animations and personality. Adjust the design in the preview and find the expression that suits your customers.'}</p>
+          <Link href="/landings/auth/chatWidget">{language === 'no' ? 'Lag din egen chatbot' : 'Create your chatbot'} <FiArrowUpRight aria-hidden="true" /></Link>
+        </article>
+        <article className="botStoryCard botStoryCard--handoff">
+          <small>{language === 'no' ? 'ET MENNESKE NÅR DET TRENGS' : 'A PERSON WHEN NEEDED'}</small>
+          <h3>{language === 'no' ? 'Botten hjelper. Teamet følger opp.' : 'The bot helps. Your team follows up.'}</h3>
+          <p>{language === 'no' ? 'La kunden be om menneskelig hjelp. Samtalen kan sendes videre til oppfølging, så teamet får med seg hva kunden trenger.' : 'Let customers ask for human help. Flag the conversation for follow-up so your team knows what the customer needs.'}</p>
+        </article>
+      </div>
       </div>
     </div>
   )
@@ -646,11 +678,11 @@ export default function MainLanding() {
                 opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateY(20px)',
                 transition: 'all 0.6s ease 0.3s',
               }}>
-                <Link href="/landings/guest/websites" className="cta-primary">
-                  {text.heroWebsiteCta} <ArrowRight />
+                <Link href="/landings/auth/chatWidget" className="cta-primary">
+                  {text.heroChatbotCta} <ArrowRight />
                 </Link>
-                <Link href="/landings/auth/chatWidget" className="cta-secondary">
-                  {text.heroChatbotCta}
+                <Link href="#chatbot" className="cta-secondary">
+                  {language === 'no' ? 'Se hva botten kan gjøre' : 'See what your bot can do'}
                 </Link>
               </div>
 
@@ -748,9 +780,9 @@ export default function MainLanding() {
           fontSize: 'clamp(15px, 1.5vw, 18px)',
           lineHeight: 1.75,
         }}>
-          {language === 'no' ? 'Nettside, chatbot og støtte — ' : 'Website, chatbot and support — '}
+          {language === 'no' ? 'En chatbot til nettsiden du har — ' : 'A chatbot for the website you have — '}
           <span style={{ color: solutionsStrongColor, fontWeight: 700 }}>
-            {language === 'no' ? 'samlet rundt bedriften din.' : 'built around your business.'}
+            {language === 'no' ? 'med ditt innhold og ditt uttrykk.' : 'with your content and your style.'}
           </span>
         </p>
       </div>
@@ -761,28 +793,6 @@ export default function MainLanding() {
     <DroidMorphShowcase language={language} />
     <div className="solutionsBasecamp solutionsBasecamp--refined">
       <Reveal delay={100}>
-        <article className="basecampChoice basecampChoice--website">
-          <div className="basecampVisual" aria-hidden="true">
-            <div className="basecampSiteFrame">
-              <span className="productPreviewAddress">vintra.studio / {language === 'no' ? 'din-bedrift' : 'your-business'}</span>
-              <strong>{language === 'no' ? 'Bygget for å bli lagt merke til.' : 'Designed to stand out.'}</strong>
-              <div className="productPreviewTiles"><span /><span /><span /></div>
-              <small>{language === 'no' ? 'DESIGN SOM GIR ET GODT FØRSTEINNTRYKK' : 'DESIGN THAT MAKES A FIRST IMPRESSION'}</small>
-            </div>
-          </div>
-
-          <div className="basecampCopy">
-            <span className="basecampKicker"><GlobeIcon size={17} />{text.websiteCardTitle}</span>
-            <h3>{language === 'no' ? 'Et bedre førsteinntrykk.' : 'A better first impression.'}</h3>
-            <p>{language === 'no' ? 'En profesjonell nettside med gjennomtenkt design, tydelig innhold og plass til bedriften din.' : 'A professional website with thoughtful design, clear content and room for your business.'}</p>
-            <Link href="/landings/guest/websites" className="basecampAction">
-              {text.websiteCardCta} <ArrowRight size={16} />
-            </Link>
-          </div>
-        </article>
-      </Reveal>
-
-      <Reveal delay={180}>
         <article className="basecampChoice basecampChoice--chatbot">
           <div className="basecampVisual" aria-hidden="true">
             <div className="basecampChatFrame">
@@ -806,23 +816,34 @@ export default function MainLanding() {
           </div>
         </article>
       </Reveal>
+
+      <Reveal delay={180}>
+        <article className="basecampChoice basecampChoice--website">
+          <div className="basecampVisual" aria-hidden="true">
+            <div className="basecampSiteFrame">
+              <span className="productPreviewAddress">vintra.studio / {language === 'no' ? 'din-bedrift' : 'your-business'}</span>
+              <strong>{language === 'no' ? 'Bygget for å bli lagt merke til.' : 'Designed to stand out.'}</strong>
+              <div className="productPreviewTiles"><span /><span /><span /></div>
+              <small>{language === 'no' ? 'DESIGN SOM GIR ET GODT FØRSTEINNTRYKK' : 'DESIGN THAT MAKES A FIRST IMPRESSION'}</small>
+            </div>
+          </div>
+
+          <div className="basecampCopy">
+            <span className="basecampKicker"><GlobeIcon size={17} />{text.websiteCardTitle}</span>
+            <h3>{language === 'no' ? 'Et bedre førsteinntrykk.' : 'A better first impression.'}</h3>
+            <p>{language === 'no' ? 'En profesjonell nettside med gjennomtenkt design, tydelig innhold og plass til bedriften din.' : 'A professional website with thoughtful design, clear content and room for your business.'}</p>
+            <Link href="/landings/guest/websites" className="basecampAction">
+              {text.websiteCardCta} <ArrowRight size={16} />
+            </Link>
+          </div>
+        </article>
+      </Reveal>
     </div>
   </section>
           </div>
         </section>
 
         <div className={`mainFlow mainFlow--${heroSceneMode === 'night' ? 'night' : 'day'}`}>
-          <section className="showcaseBand">
-            <Reveal>
-              <div className="page sectionHeader sectionHeader--light">
-                <span className="sectionKicker">{text.websiteCardTitle}</span>
-                <h2>{text.carouselTitle}</h2>
-                <p>{text.carouselBody}</p>
-              </div>
-            </Reveal>
-            <WebsiteCarousel language={language} />
-          </section>
-
           <section id="chatbot" className="chatbotShowcaseSection">
             <div className="page">
               <Reveal>
@@ -872,6 +893,17 @@ export default function MainLanding() {
             </div>
           </section>
 
+          <section className="showcaseBand">
+            <Reveal>
+              <div className="page sectionHeader sectionHeader--light">
+                <span className="sectionKicker">{text.websiteCardTitle}</span>
+                <h2>{text.carouselTitle}</h2>
+                <p>{text.carouselBody}</p>
+              </div>
+            </Reveal>
+            <WebsiteCarousel language={language} />
+          </section>
+
           <section id="priser" className="pricingBand">
             <div className="page">
               <Reveal>
@@ -907,11 +939,11 @@ export default function MainLanding() {
                     <h2>{text.bottomBody}</h2>
                   </div>
                   <div className="bottomCtaActions">
-                    <Link href="/landings/guest/websites" className="cta-primary cta-primary--light">
-                      {text.bottomWebsiteCta} <ArrowRight />
+                    <Link href="/landings/auth/chatWidget" className="cta-primary cta-primary--light">
+                      {text.bottomChatbotCta} <ArrowRight />
                     </Link>
-                    <Link href="/landings/auth/chatWidget" className="cta-secondary cta-secondary--dark">
-                      {text.bottomChatbotCta}
+                    <Link href="/landings/guest/websites" className="cta-secondary cta-secondary--dark">
+                      {text.bottomWebsiteCta}
                     </Link>
                   </div>
                 </div>

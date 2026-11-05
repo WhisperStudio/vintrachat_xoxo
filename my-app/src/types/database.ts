@@ -329,6 +329,9 @@ export interface ChatWidgetConfig {
 
   // Visual effects layered on top of the selected theme
   appearance?: {
+    openAnimation?: 'none' | 'fade' | 'slide' | 'pop' | 'bounce'
+    sentAnimation?: 'none' | 'fade' | 'slide' | 'pop' | 'bounce'
+    receivedAnimation?: 'none' | 'fade' | 'slide' | 'pop' | 'bounce'
     glassLookEnabled?: boolean;
   };
   
@@ -343,7 +346,8 @@ export interface ChatWidgetConfig {
   bubbleStyle: {
     showStatus: boolean;
     iconChoice: BubbleIconChoice;
-    borderType: 'none' | 'solid' | 'rounded' | 'shadow';
+    borderType: 'none' | 'solid' | 'rounded' | 'shadow' | 'dashed' | 'double' | 'wavy'
+    shape?: 'circle' | 'rounded-square' | 'square' | 'triangle' | 'diamond';
     shadowType: 'none' | 'light' | 'medium' | 'heavy';
     animationType: 'none' | 'bounce' | 'fade' | 'slide';
     sizeType: 'small' | 'medium' | 'large';
@@ -351,6 +355,7 @@ export interface ChatWidgetConfig {
   };
   
   headerStyle: {
+    borderLine?: 'none' | 'solid' | 'dashed' | 'double' | 'wavy'
     showStatus: boolean;
     showCloseButton: boolean;
     borderType: 'none' | 'solid' | 'rounded' | 'shadow';
@@ -362,6 +367,10 @@ export interface ChatWidgetConfig {
   };
   
   bodyStyle: {
+    messageCornerStyle?: 'rounded' | 'square'
+    messageBorderLine?: 'none' | 'solid' | 'dashed' | 'double' | 'wavy'
+    borderLine?: 'none' | 'solid' | 'dashed' | 'double' | 'wavy'
+    cornerStyle?: 'rounded' | 'square'
     borderType: 'none' | 'solid' | 'rounded' | 'shadow';
     shadowType: 'none' | 'light' | 'medium' | 'heavy';
     messageStyle: 'bubble' | 'flat' | 'card';
@@ -373,6 +382,7 @@ export interface ChatWidgetConfig {
   };
   
   footerStyle: {
+    borderLine?: 'none' | 'solid' | 'dashed' | 'double' | 'wavy'
     showSendButton: boolean;
     borderType: 'none' | 'solid' | 'rounded' | 'shadow';
     cornerStyle?: 'rounded' | 'square';

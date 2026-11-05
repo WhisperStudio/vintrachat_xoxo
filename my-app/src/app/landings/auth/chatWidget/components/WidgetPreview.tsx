@@ -7,6 +7,9 @@ import { OrbIcon } from '@/components/chat/OrbIcon'
 import { FiArrowLeft, FiCheckCircle, FiChevronRight, FiCpu, FiLifeBuoy, FiMessageCircle, FiMessageSquare, FiPhone, FiSend } from 'react-icons/fi'
 import { getWidgetThemeClass, getWidgetThemeStyle, joinWidgetClasses } from '@/components/chat/widgetDesign'
 import { normalizeConversationCards } from '@/lib/conversation-cards'
+import { getWidgetMotionClasses } from '@/lib/widget-motion'
+import { getMessageSurfaceClasses, getSurfaceClasses } from '@/lib/surface-design'
+import { createLauncherArtwork } from '@/lib/launcher-design'
 import { renderWidgetIcon } from '@/lib/widget-icons'
 import { chatWidgetPricingI18n, useVintraLanguage } from '@/lib/i18n'
 import FeedbackFormOverlay from '@/components/chat/FeedbackFormOverlay'
@@ -23,13 +26,15 @@ interface WidgetPreviewProps {
   bubbleStyle: {
     showStatus: boolean
     iconChoice: BubbleIconChoice
-    borderType: 'none' | 'solid' | 'rounded' | 'shadow'
+    borderType: 'none' | 'solid' | 'rounded' | 'shadow' | 'dashed' | 'double' | 'wavy'
+    shape?: 'circle' | 'rounded-square' | 'square' | 'triangle' | 'diamond'
     shadowType: 'none' | 'light' | 'medium' | 'heavy'
     animationType: 'none' | 'bounce' | 'fade' | 'slide'
     sizeType: 'small' | 'medium' | 'large'
     orbStyle?: OrbStyleConfig
   }
   headerStyle: {
+    borderLine?: 'none' | 'solid' | 'dashed' | 'double' | 'wavy'
     showStatus: boolean
     showCloseButton: boolean
     borderType: 'none' | 'solid' | 'rounded' | 'shadow'
@@ -40,6 +45,10 @@ interface WidgetPreviewProps {
     showTitle: boolean
   }
   bodyStyle: {
+    messageCornerStyle?: 'rounded' | 'square'
+    messageBorderLine?: 'none' | 'solid' | 'dashed' | 'double' | 'wavy'
+    borderLine?: 'none' | 'solid' | 'dashed' | 'double' | 'wavy'
+    cornerStyle?: 'rounded' | 'square'
     borderType: 'none' | 'solid' | 'rounded' | 'shadow'
     shadowType: 'none' | 'light' | 'medium' | 'heavy'
     messageStyle: 'bubble' | 'flat' | 'card'
@@ -50,6 +59,7 @@ interface WidgetPreviewProps {
     conversationCardsStyle: 'modern' | 'minimal' | 'bubble' | 'image' | 'chips'
   }
   footerStyle: {
+    borderLine?: 'none' | 'solid' | 'dashed' | 'double' | 'wavy'
     showSendButton: boolean
     borderType: 'none' | 'solid' | 'rounded' | 'shadow'
     cornerStyle?: 'rounded' | 'square'
@@ -73,6 +83,9 @@ interface WidgetPreviewProps {
     | 'deep-blue'
     | 'banana-bonanza'
   appearance?: {
+    openAnimation?: 'none' | 'fade' | 'slide' | 'pop' | 'bounce'
+    sentAnimation?: 'none' | 'fade' | 'slide' | 'pop' | 'bounce'
+    receivedAnimation?: 'none' | 'fade' | 'slide' | 'pop' | 'bounce'
     glassLookEnabled?: boolean
   }
   customBranding: {
@@ -245,7 +258,7 @@ export default function WidgetPreview({
     { id: 'preview-welcome', text: no ? 'Hei! Hva kan vi hjelpe deg med?' : 'Hi! How can we help you?', isBot: true, role: 'assistant' },
     ...(enablePreviewChat && previewScenario === 'conversation' ? [
       { id: 'preview-question', text: no ? 'Jeg vil gjerne vite mer om tjenestene deres.' : 'I’d like to learn more about your services.', isBot: false, role: 'user' as const },
-      { id: 'preview-answer', text: no ? 'Det hjelper vi deg gjerne med. Fortell litt om hva du trenger, så finner vi riktig løsning sammen.' : 'We’d be happy to help. Tell us a little about what you need, and we’ll find the right solution together.', isBot: true, role: 'assistant' as const },
+      { id: 'preview-answer', text: previewReply, isBot: true, role: 'assistant' as const },
     ] : []),
   ])
   useEffect(() => () => { if (replyTimerRef.current) window.clearTimeout(replyTimerRef.current) }, [])
@@ -649,6 +662,7 @@ export default function WidgetPreview({
   )
 
   const bodyClasses = joinWidgetClasses(
+    getSurfaceClasses(bodyStyle),
     'chat-body',
     `border-${bodyStyle.borderType}`,
     `shadow-${bodyStyle.shadowType}`,
@@ -656,6 +670,7 @@ export default function WidgetPreview({
   )
 
   const headerClasses = joinWidgetClasses(
+    getSurfaceClasses(headerStyle),
     'chat-header',
     `header-corners-${headerCornerStyle}`,
     headerShowBorder ? 'header-border-on' : 'header-border-off',
@@ -666,6 +681,7 @@ export default function WidgetPreview({
   )
 
   const footerClasses = joinWidgetClasses(
+    getSurfaceClasses(footerStyle),
     'chat-footer',
     `footer-corners-${footerCornerStyle}`,
     footerShowBorder ? 'footer-border-on' : 'footer-border-off',
@@ -794,7 +810,7 @@ export default function WidgetPreview({
         <div className="widgetcontainer">
           <div id={`${widgetId}-chat`} role="region" aria-label={title}
             onKeyDown={(event) => { if (event.key === 'Escape' && headerStyle.showCloseButton && !activeHumanHandoffOverlay.open && !activeFeedbackOverlay.open) { setIsChatOpen(false); launcherRef.current?.focus() } }}
-            className={`chat-widget ${isChatOpen ? 'open' : ''} ${showStarterCards ? 'chat-widget--starter' : ''}`} hidden={!isChatOpen} aria-hidden={!isChatOpen}>
+            className={`chat-widget ${getWidgetMotionClasses(appearance)} ${isChatOpen ? 'open' : ''} ${showStarterCards ? 'chat-widget--starter' : ''}`} hidden={!isChatOpen} aria-hidden={!isChatOpen}>
             <div
               className="chat-content chat-widget-interaction-surface"
               onPointerDownCapture={(event) => {
@@ -1080,7 +1096,7 @@ export default function WidgetPreview({
                   {messages.map((msg) => (
                     <div
                       key={msg.id}
-                      className={`message message-${getMessageRole(msg)} message--${getMessageRole(msg)} ${getMessageClassName(msg)}`}
+                      className={`message ${getMessageSurfaceClasses(bodyStyle)} message-${getMessageRole(msg)} message--${getMessageRole(msg)} ${getMessageClassName(msg)}`}
                     >
                       <div className="message-content">{msg.text}</div>
                       {(bodyStyle.showTimestamps || (bodyStyle.showReadReceipts && !msg.isBot)) && (
@@ -1277,7 +1293,7 @@ export default function WidgetPreview({
 
           <div
             ref={launcherRef}
-            className={`widget-icon ${bubbleClasses} ${bubbleStyle.iconChoice === 'orb' ? 'widget-icon--orb' : ''} ${bubbleStyle.iconChoice === 'orb' && orbPhase === 'reply' ? 'widget-icon--orb-replying' : ''} ${bubbleStyle.iconChoice === 'orb' && orbPhase === 'inactive' ? 'widget-icon--orb-idle' : ''} ${highlightedSection === 'bubble' ? 'preview-section-highlight' : ''} ${flashSection === 'bubble' ? 'preview-section-flash' : ''}`}
+            className={`widget-icon launcher-custom ${bubbleClasses} ${bubbleStyle.iconChoice === 'orb' ? 'widget-icon--orb' : ''} ${bubbleStyle.iconChoice === 'orb' && orbPhase === 'reply' ? 'widget-icon--orb-replying' : ''} ${bubbleStyle.iconChoice === 'orb' && orbPhase === 'inactive' ? 'widget-icon--orb-idle' : ''} ${highlightedSection === 'bubble' ? 'preview-section-highlight' : ''} ${flashSection === 'bubble' ? 'preview-section-flash' : ''}`}
             onPointerEnter={() => {
               if (bubbleStyle.iconChoice === 'orb' && orbSettings.hoverEnabled) {
                 setInternalIsOrbHovered(true)
@@ -1296,6 +1312,7 @@ export default function WidgetPreview({
             onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setIsChatOpen((prev) => !prev); if (!isChatOpen) window.requestAnimationFrame(() => inputRef.current?.focus()) } }}
             tabIndex={0}
           >
+            <span dangerouslySetInnerHTML={{ __html: createLauncherArtwork(bubbleStyle.borderType, bubbleStyle.shape) }} />
             <span className="widget-icon-inner" aria-hidden="true">
               {bubbleStyle.iconChoice !== 'orb' && effectiveAssistantIcons.launcherIcon ? (
                 renderWidgetIcon(effectiveAssistantIcons.launcherIcon, { 'aria-hidden': true })

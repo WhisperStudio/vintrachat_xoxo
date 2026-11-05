@@ -30,6 +30,7 @@ import {
   FiUpload,
 } from 'react-icons/fi'
 import './WidgetAdmin.css'
+import PersonalitySettings from '@/components/chat/PersonalitySettings'
 import IconPickerBubble from '@/components/IconPickerBubble'
 import { useAuth } from '@/context/AuthContext'
 import { createChatWidget, deleteChatWidget, setActiveChatWidget, updateChatAssistantConfig, updateChatWidgetConfig } from '@/lib/auth.service'
@@ -808,6 +809,7 @@ export default function WidgetAdminPanel({
   const [languageSearch, setLanguageSearch] = useState('')
   const [selectedWidgetKey, setSelectedWidgetKey] = useState('')
   const [copied, setCopied] = useState(false)
+  const [exportError, setExportError] = useState('')
   const [lastConfigUpdate, setLastConfigUpdate] = useState<string | null>(null)
   const [allowedDomainsText, setAllowedDomainsText] = useState('')
   const [showOnPathsText, setShowOnPathsText] = useState('')
@@ -1799,7 +1801,13 @@ export default function WidgetAdminPanel({
   const handleCopy = async () => {
     if (!activeWidgetKey) return
 
-    await navigator.clipboard.writeText(embedCode)
+    try {
+      await navigator.clipboard.writeText(embedCode)
+      setExportError('')
+    } catch {
+      setExportError('Could not copy automatically. Select the script below or download the HTML snippet.')
+      return
+    }
     setCopied(true)
     setTimeout(() => setCopied(false), 1800)
   }
@@ -2292,7 +2300,7 @@ export default function WidgetAdminPanel({
   const activeWidgetName =
     widgetList.find((widget) => widget.widgetKey === activeWidgetKey)?.name || 'Widget'
   const embedCode = `<!-- VintraSolutions Chat Widget -->
-<script src="https://chat.vintrastudio.com/widget/${activeWidgetKey}.js"></script>
+<script src="https://chat.vintrastudio.com/widget/${encodeURIComponent(activeWidgetKey)}.js" async></script>
 <!-- End VintraSolutions Chat Widget -->`
   const filteredLanguageOptions = getLanguageMatches(languageSearch)
   const businessContextGenerated =
@@ -2613,6 +2621,7 @@ export default function WidgetAdminPanel({
                 />
               </label>
 
+              <PersonalitySettings value={assistantConfig} onChange={setAssistantConfig} />
               <div className="widget-admin-tone-group widget-ai-field widget-ai-field-full">
                 <span><FieldIcon icon={FiCpu} accent="violet" /> Tone of voice</span>
                 <div className="widget-admin-tone-pills">
@@ -3584,13 +3593,22 @@ export default function WidgetAdminPanel({
           </div>
 
           <p className="widget-card-desc">
-            Copy the script for the currently selected widget. Use this on
-            https://chat.vintrastudio.com for production.
+            Install {activeWidgetName} by pasting this script before the closing &lt;/body&gt; tag on your website.
+            Saved design and AI settings follow this widget automatically. Allow your website domain in Security before publishing.
           </p>
 
           <div className="widget-code-block">
-            <code>{embedCode}</code>
+            <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', margin: 0 }}><code>{embedCode}</code></pre>
           </div>
+          {exportError && <p role="alert">{exportError}</p>}
+          <button type="button" className="widget-admin-action-button" disabled={!activeWidgetKey} onClick={() => {
+            const url = URL.createObjectURL(new Blob([embedCode], { type: 'text/html;charset=utf-8' }))
+            const link = document.createElement('a')
+            link.href = url
+            link.download = 'vintra-chat-widget.html'
+            link.click()
+            window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+          }}>Download installation snippet (.html)</button>
         </section>
 
       </div>
@@ -4329,33 +4347,7 @@ export default function WidgetAdminPanel({
                 })}
               </div>
 
-              <div className="widget-admin-tone-group widget-ai-field widget-ai-field-full">
-                <span><FieldIcon icon={FiCpu} accent="violet" /> Behavior</span>
-                <div className="widget-admin-tone-pills">
-                  {[
-                    { value: 'Friendly, clear, and concise', label: 'Jovial' },
-                    { value: 'Professional, clear, and concise', label: 'Professional' },
-                    { value: 'Warm, helpful, and concise', label: 'Warm' },
-                    { value: 'Short, direct, and practical', label: 'Short' },
-                    { value: 'Lively, playful, and helpful', label: 'Playful' },
-                  ].map((option) => (
-                    <button
-                      key={option.label}
-                      type="button"
-                      className={`widget-admin-tone-pill ${assistantConfig.responseStyle === option.value ? 'active' : ''}`}
-                      onClick={() =>
-                        setAssistantConfig((prev) => ({
-                          ...prev,
-                          responseStyle: option.value,
-                        }))
-                      }
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
+              <PersonalitySettings value={assistantConfig} onChange={setAssistantConfig} />
               <label className="widget-ai-field widget-ai-field-full">
                 <span><FieldIcon icon={FiShield} accent="amber" /> Restrictions</span>
                 <AutoGrowTextarea

@@ -1,0 +1,51 @@
+.conversationDemo { display: none; flex: 1; min-height: 0; flex-direction: column; color: #17364e; background: #f3f7fa; text-align: left; pointer-events: auto; }
+.conversationDemoNotice { padding: 10px 14px 6px; font-size: 9px; letter-spacing: .07em; font-weight: 650; color: #486379; }
+.conversationDemoTopics { display: flex; flex-wrap: wrap; gap: 5px; padding: 6px 12px 10px; }
+.conversationDemoTopics button { padding: 7px 9px; border: 1px solid #9eb5c7; background: transparent; color: #214b6b; border-radius: 20px; font: inherit; font-size: 11px; cursor: pointer; }
+.conversationDemoTopics button[aria-pressed=true] { border-color: #214b6b; box-shadow: inset 0 0 0 1px #214b6b; }
+.conversationDemoThread { padding: 8px 14px 14px; display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.conversationDemoMessage { display: none; width: 92%; padding: 12px; border-radius: 12px 12px 12px 3px; background: #e0eaf2; align-self: flex-start; animation: conversation-arrive .35s ease both; }
+.conversationDemoMessage--user { background: #214b6b; color: #fff; align-self: flex-end; border-radius: 12px 12px 3px 12px; }
+.conversationDemoMessage--handoff { background: #e1eee8; color: #214b3e; border: 1px solid #9abcae; }
+.conversationDemoMessage small { font-size: 10px; font-weight: 650; }
+.conversationDemoMessage p { margin: 5px 0 0; font-size: 13px; line-height: 1.65; }
+.conversationDemoActions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid #bfcedb; }
+.conversationDemoActions button, .conversationDemoActions a { font: inherit; font-size: 11px; line-height: 1.5; }
+.conversationDemoActions button { cursor: pointer; color: #214b6b; background: #fff; padding: 8px 10px; border: 1px solid #9eb5c7; border-radius: 8px; }
+.conversationDemoActions a { color: #214b6b; text-decoration: underline; text-underline-offset: 3px; }
+.conversationDemo :is(a, button):focus-visible { outline: 3px solid #286b96; outline-offset: 2px; }
+.conversationDemo button:hover { background: #dce8f1; }
+.droidMorphStage[data-demo-step]:not([data-demo-step='0']) .siteChatWelcome { display: none; }
+.droidMorphStage[data-demo-step]:not([data-demo-step='0']) .conversationDemo { display: flex; }
+@keyframes conversation-arrive { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.botStoryCard--handoff { --story-reveal: clamp(0, calc((var(--return-progress) - .77) / .10), 1); left: calc(50% + 270px); top: 67%; }
+.botStoryCard--design { --story-reveal: clamp(0, calc((var(--return-progress) - .89) / .10), 1); }
+@media (max-width: 1100px) and (min-width: 901px) { .botStoryCard--handoff { left: calc(50% + 235px); } }
+@media (max-width: 900px), (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .droidMorphStage .siteChatWelcome { display: none; }
+  .droidMorphStage .conversationDemo { display: flex; }
+  .droidMorphStage .conversationDemoMessage { display: block; }
+  .conversationDemoThread { max-height: 410px; }
+}
+@media (prefers-reduced-motion: reduce) { .conversationDemoMessage { animation: none; } }
+
+/* Scroll milestones reveal the example; explicit user choices override the scroll. */
+.droidMorphStage[data-demo-step='1'] .conversationDemo[data-manual-step='0'] [data-step='1'], .conversationDemo[data-manual-step='1'] [data-step='1'] { display: block; }
+.droidMorphStage[data-demo-step='2'] .conversationDemo[data-manual-step='0'] [data-step='1'], .conversationDemo[data-manual-step='2'] [data-step='1'] { display: block; }
+.droidMorphStage[data-demo-step='2'] .conversationDemo[data-manual-step='0'] [data-step='2'], .conversationDemo[data-manual-step='2'] [data-step='2'] { display: block; }
+.droidMorphStage[data-demo-step='3'] .conversationDemo[data-manual-step='0'] [data-step='1'], .conversationDemo[data-manual-step='3'] [data-step='1'] { display: block; }
+.droidMorphStage[data-demo-step='3'] .conversationDemo[data-manual-step='0'] [data-step='2'], .conversationDemo[data-manual-step='3'] [data-step='2'] { display: block; }
+.droidMorphStage[data-demo-step='3'] .conversationDemo[data-manual-step='0'] [data-step='3'], .conversationDemo[data-manual-step='3'] [data-step='3'] { display: block; }
+.droidMorphStage[data-demo-step='4'] .conversationDemo[data-manual-step='0'] [data-step='1'], .conversationDemo[data-manual-step='4'] [data-step='1'] { display: block; }
+.droidMorphStage[data-demo-step='4'] .conversationDemo[data-manual-step='0'] [data-step='2'], .conversationDemo[data-manual-step='4'] [data-step='2'] { display: block; }
+.droidMorphStage[data-demo-step='4'] .conversationDemo[data-manual-step='0'] [data-step='3'], .conversationDemo[data-manual-step='4'] [data-step='3'] { display: block; }
+.droidMorphStage[data-demo-step='4'] .conversationDemo[data-manual-step='0'] [data-step='4'], .conversationDemo[data-manual-step='4'] [data-step='4'] { display: block; }
+.droidMorphStage[data-demo-step='4'] .conversationDemo[data-manual-step='0'] :is([data-step='1'], [data-step='2']), .conversationDemo[data-manual-step='4'] :is([data-step='1'], [data-step='2']) { display: none; }
+
+.conversationDemoTyping { display: none; gap: 5px; padding: 12px; align-self: flex-start; }
+.conversationDemoTyping span { width: 6px; height: 6px; border-radius: 50%; background: #486379; animation: conversation-typing 1s ease-in-out infinite; }
+.conversationDemoTyping span:nth-child(2) { animation-delay: .15s; }
+.conversationDemoTyping span:nth-child(3) { animation-delay: .3s; }
+.droidMorphStage[data-demo-step='1'] .conversationDemo[data-manual-step='0'] .conversationDemoTyping { display: flex; }
+@keyframes conversation-typing { 0%, 100% { opacity: .35; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .conversationDemoTyping span { animation: none; } }

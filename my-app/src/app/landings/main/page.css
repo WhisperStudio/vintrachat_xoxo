@@ -3580,3 +3580,70 @@
 @media (prefers-reduced-motion: reduce) {
   .heroShell *, .solutionsSection *, .mainFlow * { animation: none !important; transition: none !important; }
 }
+
+/* Continue the website story back into the assistant on the same scroll timeline. */
+.droidMorphStage {
+  --return-progress: 0;
+  --web-close: clamp(0, calc(var(--return-progress) / .22), 1);
+  --bot-back: clamp(0, calc((var(--return-progress) - .12) / .10), 1);
+  --chat-focus: clamp(0, calc((var(--return-progress) - .3) / .16), 1);
+  height: 650vh;
+}
+.droidMorphStage .nordicBrowser {
+  background: color-mix(in srgb, #f6f9f7 calc((1 - var(--web-close)) * 100%), transparent);
+  border-color: color-mix(in srgb, #b7cbd0 calc((1 - var(--web-close)) * 100%), transparent);
+  box-shadow: 0 28px 80px rgb(4 19 34 / calc((1 - var(--web-close)) * .2));
+}
+.droidMorphStage .nordicBrowserBar { opacity: calc(1 - var(--web-close)); transform: scale(calc(1 - var(--web-close) * .12)); }
+.droidMorphStage .nordicSite {
+  opacity: calc(clamp(0, calc((var(--morph-progress) - .22) * 8), 1) * (1 - var(--web-close)));
+  transform: scale(calc(1 - var(--web-close) * .35));
+  transform-origin: center;
+}
+.droidMorphStage .morphSideCopy { opacity: calc(var(--copy-reveal) * (1 - var(--web-close))); }
+.droidMorphStage .siteChatBubble { opacity: calc(var(--bubble-reveal) * (1 - var(--web-close))); }
+.droidMorphStage .siteDroid {
+  opacity: max(calc(var(--droid-pop, 0) * (1 - var(--bubble-reveal))), calc(var(--bot-back) * (1 - var(--chat-focus))));
+  left: calc(50% + var(--droid-travel) * (1 - var(--bot-back)) * (50% - 56px));
+  top: calc(45% + var(--droid-travel) * (1 - var(--bot-back)) * (55% - 56px) - var(--droid-arc, 0%));
+}
+.droidMorphStage .siteChat {
+  opacity: max(calc(var(--chat-reveal) * (1 - var(--web-close))), var(--chat-focus));
+  right: calc(24px + var(--chat-focus) * (50% - 254px));
+  bottom: calc(100px + var(--chat-focus) * (50% - 360px));
+  width: calc(400px + var(--chat-focus) * 60px);
+  max-width: calc(100% - 40px);
+  height: min(calc(480px + var(--chat-focus) * 80px), calc(100% - 40px));
+  transform: translateY(calc((1 - var(--chat-reveal)) * 32px)) scale(calc(.78 + var(--chat-reveal) * .22));
+}
+.botStory { position: absolute; inset: 0; pointer-events: none; color: var(--solutions-text); }
+.botStoryCard { position: absolute; width: min(260px, 22vw); top: 28%; opacity: var(--story-reveal); transform: translateY(calc((1 - var(--story-reveal)) * 30px)); }
+.botStoryCard--support { --story-reveal: clamp(0, calc((var(--return-progress) - .44) / .12), 1); right: calc(50% + 270px); }
+.botStoryCard--guidance { --story-reveal: clamp(0, calc((var(--return-progress) - .62) / .12), 1); left: calc(50% + 270px); top: 36%; }
+.botStoryCard--design { --story-reveal: clamp(0, calc((var(--return-progress) - .8) / .12), 1); right: calc(50% + 270px); top: 61%; }
+.botStoryCard small { font-size: 10px; letter-spacing: .1em; font-weight: 650; color: var(--solutions-text); }
+.botStoryCard h3 { margin: 12px 0; font-size: clamp(20px, 2vw, 29px); line-height: 1.18; letter-spacing: -.035em; }
+.botStoryCard p { margin: 0; font-size: 13px; line-height: 1.8; }
+.botStoryCard a { display: inline-flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 13px; font-weight: 650; pointer-events: auto; text-decoration: underline; text-underline-offset: 5px; }
+.botStoryCard a:hover svg { transform: translate(2px,-2px); }
+.botStoryCard a svg { transition: transform .2s ease; }
+.botStoryCard a { visibility: hidden; }
+.droidMorphStage[data-bot-story-ready='true'] .botStoryCard a { visibility: visible; }
+@media (max-width: 1100px) and (min-width: 900px) {
+  .botStoryCard { width: 20vw; }
+  .botStoryCard--support, .botStoryCard--design { right: calc(50% + 235px); }
+  .botStoryCard--guidance { left: calc(50% + 235px); }
+  .droidMorphStage .siteChat { width: 400px; right: calc(24px + var(--chat-focus) * (50% - 224px)); }
+}
+@media (max-width: 900px), (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .droidMorphStage { height: auto; }
+  .botStory { position: relative; inset: auto; display: grid; gap: 28px; width: 100%; max-width: 680px; margin: 0 auto; }
+  .botStoryCard { position: static; width: 100%; opacity: 1; transform: none; visibility: visible; }
+  .botStoryCard h3 { font-size: 26px; }
+  .botStoryCard p { font-size: 14px; }
+  .botStoryCard a { visibility: visible !important; }
+  .droidMorphStage .siteChat { right: auto; bottom: auto; width: calc(100% - 24px); height: auto; }
+  .droidMorphStage .nordicSite { opacity: 1; transform: none; }
+  .droidMorphStage .morphSideCopy { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .botStoryCard a svg { transition: none; } }

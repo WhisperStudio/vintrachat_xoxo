@@ -3,33 +3,36 @@
 }
 
 :root {
-  --app-bg: #f8fafc;
-  --app-text: #111827;
-  --app-muted: #6b7280;
+  --app-bg: #eff3f6;
+  --app-text: #142d43;
+  --app-muted: #4c6479;
   --app-surface: #ffffff;
-  --app-surface-soft: #f9fafb;
-  --app-border: #e5e7eb;
-  --app-input-border: #d1d5db;
+  --app-surface-soft: #e8eff4;
+  --app-border: #c1cfdc;
+  --app-input-border: #7c94aa;
   --app-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
   --app-shadow-lg: 0 18px 40px rgba(15, 23, 42, 0.06);
-  --app-primary: #111827;
-  --app-primary-hover: #1f2937;
+  --app-primary: #183f60;
+  --app-primary-hover: #245779;
   --app-primary-text: #ffffff;
+  --app-focus: #286b96;
 }
 
 html[data-theme='dark'] {
-  --app-bg: #0b1120;
-  --app-text: #e5eefb;
-  --app-muted: #94a3b8;
-  --app-surface: #111827;
-  --app-surface-soft: #0f172a;
-  --app-border: rgba(148, 163, 184, 0.22);
-  --app-input-border: rgba(148, 163, 184, 0.28);
+  --app-bg: #081522;
+  --app-text: #edf4fa;
+  --app-muted: #b0c3d4;
+  --app-surface: #102439;
+  --app-surface-soft: #162e45;
+  --app-border: #36516b;
+  --app-input-border: #66849f;
   --app-shadow: 0 16px 34px rgba(2, 6, 23, 0.34);
   --app-shadow-lg: 0 24px 54px rgba(2, 6, 23, 0.42);
-  --app-primary: #dbeafe;
-  --app-primary-hover: #bfdbfe;
-  --app-primary-text: #0f172a;
+  --app-primary: #acd2ee;
+  --app-primary-hover: #c9e3f5;
+  --app-primary-text: #102b42;
+  --app-focus: #acd2ee;
+  color-scheme: dark;
 }
 
 html,
@@ -722,4 +725,14 @@ input {
   .authBrandStats {
     grid-template-columns: 1fr;
   }
+}
+
+/* Keyboard focus follows the active day/night palette. */
+:where(button, a, input, select, textarea, summary):focus-visible {
+  outline: 3px solid var(--app-focus, #286b96);
+  outline-offset: 3px;
+}
+:where(input[type='checkbox'], input[type='radio']) { accent-color: var(--app-primary); }
+@media (prefers-reduced-motion: reduce) {
+  html, body { transition: none; }
 }
