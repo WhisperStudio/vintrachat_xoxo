@@ -20,12 +20,16 @@ export function createNotificationHandler({
   schedule,
   enabled,
   origins,
+  allowDevelopmentLoopback = false,
   actions = notificationActions,
 }) {
   return async function handle(request) {
     const origin = request.headers.get('origin');
     const headers = { 'Cache-Control': 'no-store', Vary: 'Origin' };
-    if (origin && !origins.includes(origin))
+    // Only explicit loopback hosts, with any dev-server port. No hostname suffix matching.
+    const localOrigin = allowDevelopmentLoopback && origin
+      && /^http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d{1,5})?$/.test(origin);
+    if (origin && !origins.includes(origin) && !localOrigin)
       return Response.json(
         { error: { code: 'permission-denied', message: 'Origin not allowed.' } },
         { status: 403, headers },

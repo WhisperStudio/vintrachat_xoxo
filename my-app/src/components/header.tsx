@@ -749,7 +749,7 @@ const MobileWidgetScope = styled.div`
 `
 
 export default function Header() {
-  const { firebaseUser, dbUser, business, logout } = useAuth()
+  const { firebaseUser, dbUser, business, logout, loading, error: accountError } = useAuth()
   const { language } = useVintraLanguage()
   const text = headerI18n[language]
   const router = useRouter()
@@ -774,8 +774,9 @@ export default function Header() {
   const showWidgetScope = Boolean(isAdminRoute && firebaseUser && dbUser?.businessId && widgetList.length > 0)
 
   const showVintraAdmin = isVintraAdminEmail(firebaseUser?.email)
-  const showInvitationCenter = !!firebaseUser && !dbUser && !showVintraAdmin
-  const showGuestLinks = (!firebaseUser || showInvitationCenter) && !showVintraAdmin
+  const showInvitationCenter = !!firebaseUser?.emailVerified && !loading && !accountError && !dbUser && !showVintraAdmin
+  // Navigation reflects the session. Workspace access is checked separately.
+  const showGuestLinks = !firebaseUser
   const isMainLandingRoute = pathname === '/' || pathname === '/landings/main'
   const themeToggleLabel =
     language === 'no'
@@ -934,7 +935,7 @@ export default function Header() {
   const navItems = useMemo<NavItem[]>(() => {
     if (showGuestLinks) {
       return [
-        { href: '/priser', label: 'Priser', icon: <FiLayers /> },
+        { href: '/priser', label: language === 'no' ? 'Abonnementer' : 'Subscriptions', icon: <FiLayers /> },
         { href: '/landings/guest/websites', label: text.nav.websites, icon: <FiLayers /> },
         { href: '/landings/auth/chatWidget', label: text.nav.chatWidget, icon: <FiMessageSquare /> },
         ...(showInvitationCenter
@@ -950,18 +951,8 @@ export default function Header() {
       ]
     }
 
-    const authenticatedItems: NavItem[] = [
-      { href: '/landings/user', label: text.nav.dashboard, icon: <FiGrid /> },
-      { href: '/landings/auth/websites', label: text.nav.myWebsites, icon: <FiLayers /> },
-      { href: '/landings/auth/chatWidget', label: text.nav.myChatWidgets, icon: <FiMessageSquare /> },
-      { href: '/priser', label: 'Abonnement', icon: <FiLayers /> },
-      { href: '/admin', label: text.nav.adminPanel, icon: <FiBriefcase /> },
-    ]
-
-    return showVintraAdmin
-      ? [...authenticatedItems, { href: '/vintra-admin', label: text.nav.vintraAdmin, icon: <FiBriefcase /> }]
-      : authenticatedItems
-  }, [pendingInvites.length, showGuestLinks, showInvitationCenter, showVintraAdmin, text])
+    return [{ href: '/admin', label: language === 'no' ? 'Gå til adminpanelet' : 'Go to admin panel', icon: <FiBriefcase /> }]
+  }, [pendingInvites.length, showGuestLinks, showInvitationCenter, language, text])
 
   const isActivePath = (href: string) => {
     if (!pathname) return false

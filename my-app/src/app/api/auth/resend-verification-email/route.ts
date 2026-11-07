@@ -79,11 +79,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
-    console.error("Resend verification error:", err);
+    console.error("Resend verification error:", err?.code || err?.name || 'UnknownError');
     return NextResponse.json(
       {
         success: false,
-        message: err?.message || "Could not resend verification email.",
+        message: "Could not resend verification email.",
       },
       { status: 500 }
     );

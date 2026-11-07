@@ -149,6 +149,7 @@
 
 /* Shape artwork is independent of border selection, including no border. */
 .vintra-widget .widget-icon.launcher-custom {
+  box-sizing: border-box; padding: 0; flex-shrink: 0;
   border: 0 !important; border-radius: 0 !important; background: transparent !important;
 }
 .vintra-widget .widget-icon.launcher-custom > .launcher-artwork,

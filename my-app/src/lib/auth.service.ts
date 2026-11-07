@@ -49,7 +49,7 @@ import {
   getPlanLimits,
   type SubscriptionPlan,
 } from "@/lib/subscription";
-import { isVintraAdminEmail, normalizeEmail } from "@/lib/vintra-admin";
+import { normalizeEmail } from "@/lib/vintra-admin";
 import { parseAllowedDomainsInput } from "@/lib/widget-security";
 
 // ----------------------
@@ -86,10 +86,12 @@ export async function signInWithGoogle(): Promise<AuthResponse> {
     const result = await signInWithPopup(auth, googleProvider);
     const firebaseUser = result.user;
 
-    if (!firebaseUser.emailVerified) return { success: false, message: 'Verifiser emailen din først.' };
-    const profile = await getCurrentUser(firebaseUser);
-    return { success: true, message: 'Innlogging OK',
-      redirectTo: profile || isVintraAdminEmail(firebaseUser.email) ? '/admin' : '/invite' };
+    if (!firebaseUser.emailVerified) {
+      await firebaseSignOut(auth);
+      return { success: false, message: 'Verifiser emailen din først.' };
+    }
+    // AuthProvider alone loads membership and decides the workspace destination.
+    return { success: true, message: 'Innlogging OK', redirectTo: '/admin' };
   } catch (error) {
     console.error(error);
     return { success: false, message: "Innlogging feilet" };
@@ -651,15 +653,9 @@ export async function signInWithEmail(email: string, password: string) {
       }
     }
 
-    if (!cred.user.emailVerified) return { success: false, message: 'Verifiser emailen din først.' };
-    const userExists = await getCurrentUser(cred.user);
-
-    if (!userExists) {
-      return {
-        success: true,
-        message: "Du venter på invitasjon fra en bedrift.",
-        redirectTo: "/invite",
-      };
+    if (!cred.user.emailVerified) {
+      await firebaseSignOut(auth);
+      return { success: false, message: 'Verifiser emailen din først.' };
     }
 
     return {

@@ -16,7 +16,12 @@ export async function POST(req: NextRequest) {
     if (!token) return NextResponse.json({ error: 'Logg inn først.' }, { status: 401 })
     let actor
     try { actor = await verifyActiveUserToken(token) }
-    catch { return NextResponse.json({ error: 'Innloggingen er utløpt. Logg inn på nytt.' }, { status: 401 }) }
+    catch (error) {
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'server/misconfigured') {
+        return NextResponse.json({ error: 'Serverens Firebase-tilgang er ikke konfigurert.' }, { status: 503 })
+      }
+      return NextResponse.json({ error: 'Innloggingen er utløpt. Logg inn på nytt.' }, { status: 401 })
+    }
     const { action, ...data } = await req.json()
     const service = billingService()
     const actions = { status: service.status, checkout: service.checkout, confirm: service.confirm,

@@ -9,5 +9,4 @@ export async function verifyActiveUserToken(token: string) {
 export const apiOrigins = () => [
   'https://chat.vintrastudio.com', 'https://vintranordic.com', 'https://www.vintranordic.com',
   ...(process.env.NOTIFICATION_WEB_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean),
-  ...(process.env.NODE_ENV === 'development' ? ['http://localhost:8081', 'http://localhost:3000'] : []),
 ];

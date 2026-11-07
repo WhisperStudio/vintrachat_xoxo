@@ -16,7 +16,7 @@ const money = (amount: number) => new Intl.NumberFormat('nb-NO', { maximumFracti
 const descriptions = { free: 'Bli kjent med kundene dine.', pro: 'For bedrifter som vil vokse.', business: 'Mer kapasitet. Et større team.' }
 
 export default function PricingClient({ configured, testMode }: { configured: boolean; testMode: boolean }) {
-  const { firebaseUser, business, loading, refreshBusiness } = useAuth()
+  const { firebaseUser, business, loading, isAuthenticated, refreshBusiness } = useAuth()
   const params = useSearchParams()
   const [cycle, setCycle] = useState<Cycle>('monthly')
   const [account, setAccount] = useState<Account | null>(null)
@@ -35,7 +35,7 @@ export default function PricingClient({ configured, testMode }: { configured: bo
   }, [firebaseUser, business])
 
   useEffect(() => {
-    if (!firebaseUser || !business || !configured) return
+    if (!isAuthenticated || !firebaseUser || !business || !configured) { setAccount(null); return }
     let cancelled = false
     async function load() {
       try {
@@ -50,7 +50,7 @@ export default function PricingClient({ configured, testMode }: { configured: bo
     }
     void load()
     return () => { cancelled = true }
-  }, [firebaseUser, business, configured, params, request, retry])
+  }, [isAuthenticated, firebaseUser, business, configured, params, request, retry])
 
   async function pay(plan?: Plan) {
     setBusy(plan || 'portal'); setError('')
@@ -73,6 +73,7 @@ export default function PricingClient({ configured, testMode }: { configured: bo
           <button onClick={() => setCycle('yearly')} aria-pressed={cycle === 'yearly'}>Årlig <span>2 mnd gratis</span></button>
         </div>
       </section>
+      {!loading && !isAuthenticated && <div className="billing-notice">Her kan du sammenligne abonnementene og se hva som er inkludert. Du må <Link href="/auth/login?next=%2Fpriser">logge inn</Link> eller <Link href="/auth/signup">opprette en bruker</Link> for å velge og lagre et abonnement.</div>}
       {testMode && configured && <div className="billing-notice">Testmodus: Betalingene her er testbetalinger. Ingen ekte penger trekkes.</div>}
       {!configured && <div className="billing-notice">Betaling er ikke aktivert ennå. Du kan fortsatt opprette en gratis konto.</div>}
       {params.get('checkout') === 'canceled' && <div className="billing-notice">Betalingen ble avbrutt. Abonnementet ditt er ikke endret.</div>}
@@ -113,8 +114,8 @@ export default function PricingClient({ configured, testMode }: { configured: bo
               <li><FiCheck />AI-svar og menneskelig oppfølging</li>
               <li><FiCheck />{plan === 'free' ? 'Grunnleggende utseende' : 'Orb-knapp, glassutseende og egne ikoner'}</li>
             </ul>
-            {plan === 'free' ? <Link className="billing-cta" href={firebaseUser ? '/landings/auth/chatWidget' : '/auth/signup'}>{firebaseUser ? 'Åpne widgeten' : 'Start gratis'}<FiArrowRight /></Link>
-              : !firebaseUser ? <Link className="billing-cta" href="/auth/login?next=%2Fpriser">Logg inn og velg {info.name}<FiArrowRight /></Link>
+            {plan === 'free' ? <Link className="billing-cta" href={isAuthenticated ? '/landings/auth/chatWidget' : '/auth/signup'}>{isAuthenticated ? 'Åpne widgeten' : 'Start gratis'}<FiArrowRight /></Link>
+              : !isAuthenticated ? <Link className="billing-cta" href="/auth/login?next=%2Fpriser">Logg inn og velg {info.name}<FiArrowRight /></Link>
               : <button className="billing-cta" disabled={loading || Boolean(busy) || !configured || !account?.canManage}
                 onClick={() => void pay(plan)}>{busy === plan ? 'Åpner Stripe …' : current ? 'Administrer abonnement' : `Velg ${info.name}`}<FiArrowRight /></button>}
           </article>

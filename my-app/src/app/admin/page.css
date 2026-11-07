@@ -311,7 +311,7 @@
   letter-spacing: 1.3px;
   font-weight: 550;
 }
-.adminSidebarGroup button {
+.adminSidebarGroup :is(button, a) {
   border: 0;
   display: flex;
   align-items: center;
@@ -328,17 +328,17 @@
     background 0.15s,
     color 0.15s;
 }
-.adminSidebarGroup button > svg {
+.adminSidebarGroup :is(button, a) > svg {
   width: 17px;
   height: 17px;
   flex-shrink: 0;
   stroke-width: 1.6;
 }
-.adminSidebarGroup button:hover {
+.adminSidebarGroup :is(button, a):hover {
   background: var(--admin-sidebar-hover);
   color: var(--admin-sidebar-text);
 }
-.adminSidebarGroup button.sideActive {
+.adminSidebarGroup :is(button, a).sideActive {
   background: var(--admin-sidebar-active);
   color: var(--admin-sidebar-active-text);
   font-weight: 600;
@@ -430,7 +430,7 @@
 .adminSidebarCollapsed .adminSidebarBrandCopy,
 .adminSidebarCollapsed .adminBusinessCard > span:last-child,
 .adminSidebarCollapsed .adminSidebarGroupLabel,
-.adminSidebarCollapsed .adminSidebarGroup button > span,
+.adminSidebarCollapsed .adminSidebarGroup :is(button, a) > span,
 .adminSidebarCollapsed .adminSidebarHelp > span,
 .adminSidebarCollapsed .adminSidebarHelp > svg:last-child,
 .adminSidebarCollapsed .adminProfile > :is(div, .adminProfileLink),
@@ -445,7 +445,7 @@
   border-top: 1px solid var(--admin-sidebar-border);
   padding-top: 15px;
 }
-.adminSidebarCollapsed .adminSidebarGroup button,
+.adminSidebarCollapsed .adminSidebarGroup :is(button, a),
 .adminSidebarCollapsed .adminSidebarHelp,
 .adminSidebarCollapsed .adminProfile {
   justify-content: center;
@@ -1453,12 +1453,12 @@
   .adminSidebarCollapsed .adminSidebarBrandCopy,
   .adminSidebarCollapsed .adminBusinessCard > span:last-child,
   .adminSidebarCollapsed .adminSidebarGroupLabel,
-  .adminSidebarCollapsed .adminSidebarGroup button > span,
+  .adminSidebarCollapsed .adminSidebarGroup :is(button, a) > span,
   .adminSidebarCollapsed .adminSidebarHelp > span,
   .adminSidebarCollapsed .adminProfile > :is(div, .adminProfileLink) {
     display: block;
   }
-  .adminSidebarCollapsed .adminSidebarGroup button {
+  .adminSidebarCollapsed .adminSidebarGroup :is(button, a) {
     justify-content: flex-start;
   }
   .adminSidebarCollapsed .adminSidebarGroup {

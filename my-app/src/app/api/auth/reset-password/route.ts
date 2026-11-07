@@ -71,12 +71,31 @@ export async function POST(req: NextRequest) {
 
     const uid = resetDoc.id;
 
+    const account = await adminAuth.getUser(uid);
+    if (account.disabled || account.email?.trim().toLowerCase() !== String(resetData.email || '').trim().toLowerCase()) {
+      return NextResponse.json({ success: false, message: 'Invalid or expired reset link.' }, { status: 400 });
+    }
+
+    // Consume before changing Auth, so parallel requests cannot reuse the link.
+    // A failed Auth update requires requesting a fresh link.
+    const consumed = await adminDb.runTransaction(async transaction => {
+      const current = await transaction.get(resetDoc.ref);
+      const record = current.data();
+      if (!record || record.tokenHash !== hashToken(String(token)) || !validRecord('reset', uid, record)) return false;
+      const expiresAt = toDate(record.expiresAt);
+      if (!expiresAt || expiresAt.getTime() <= Date.now()) return false;
+      transaction.delete(resetDoc.ref);
+      return true;
+    });
+    if (!consumed) {
+      return NextResponse.json({ success: false, message: 'Invalid or expired reset link.' }, { status: 400 });
+    }
+
     await adminAuth.updateUser(uid, {
       password: String(newPassword),
     });
 
     await adminAuth.revokeRefreshTokens(uid);
-    await resetDoc.ref.delete();
 
     return NextResponse.json({
       success: true,

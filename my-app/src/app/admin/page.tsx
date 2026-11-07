@@ -51,7 +51,7 @@ type TutorialStep = {
 type AdminAppearanceTheme = 'light' | 'dark'
 
 export default function AdminPage() {
-  const { isAuthenticated, dbUser, business, loading, firebaseUser, logout } = useAuth()
+  const { isAuthenticated, dbUser, business, loading, firebaseUser, logout, error: accountError } = useAuth()
   const router = useRouter()
   const { language } = useVintraLanguage()
   const text = businessAdminI18n[language]
@@ -263,8 +263,10 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) router.push('/auth/login')
-  }, [firebaseUser?.email, isAuthenticated, loading, router])
+    if (loading || accountError) return
+    if (!firebaseUser) router.replace('/auth/login')
+    else if (!isAuthenticated) router.replace('/invite')
+  }, [firebaseUser, isAuthenticated, loading, accountError, router])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -424,6 +426,7 @@ export default function AdminPage() {
               <span><strong>{business?.name || 'Vintra'}</strong><small>{no ? 'Din bedrift' : 'Your business'}</small></span>
             </button>
             <nav className="adminNavigation" aria-label={text.sidebar.title}>
+              <div className="adminSidebarGroup"><Link href="/landings/main" title={no ? 'Gå til hovedsiden' : 'Go to homepage'}><FiArrowLeft aria-hidden="true" /><span>{no ? 'Gå til hovedsiden' : 'Go to homepage'}</span></Link></div>
               <div className="adminSidebarGroup">
                 <div className="adminSidebarGroupLabel">{no ? 'Arbeidsområde' : 'Workspace'}</div>
                 {renderNavItem('overview', text.sidebar.overview)}
@@ -434,9 +437,22 @@ export default function AdminPage() {
                 <div className="adminSidebarGroupLabel">{text.sidebar.administrative}</div>
                 {visibleAdminItems.map(item => renderNavItem(item.tab, item.label))}
               </div>
+              <div className="adminSidebarGroup">
+                <div className="adminSidebarGroupLabel">{no ? 'Bygg og administrer' : 'Build and manage'}</div>
+                <Link href="/landings/auth/websites" title={no ? 'Nettsidebygging' : 'Website builder'}><FiGlobe aria-hidden="true" /><span>{no ? 'Nettsidebygging' : 'Website builder'}</span></Link>
+                <Link href="/landings/auth/chatWidget" title={no ? 'Chatwidget-bygging' : 'Chat widget builder'}><FiLayers aria-hidden="true" /><span>{no ? 'Chatwidget-bygging' : 'Chat widget builder'}</span></Link>
+                <Link href="/priser" title={no ? 'Abonnementer' : 'Subscriptions'}><FiLayers aria-hidden="true" /><span>{no ? 'Abonnementer' : 'Subscriptions'}</span></Link>
+              </div>
+              {firebaseUser?.emailVerified && isVintraAdminEmail(firebaseUser.email) && (
+                <div className="adminSidebarGroup">
+                  <div className="adminSidebarGroupLabel">Vintra</div>
+                  <Link href="/vintra-admin" title={no ? 'Gå til Vintra-admin' : 'Go to Vintra admin'}>
+                    <FiSettings aria-hidden="true" /><span>Vintra-admin</span><FiArrowUpRight aria-hidden="true" />
+                  </Link>
+                </div>
+              )}
             </nav>
             <div className="adminSidebarBottom">
-              {isVintraAdminEmail(firebaseUser?.email) && <Link className="adminSidebarHelp" href="/vintra-admin" title="Vintra-admin"><FiSettings /><span>Vintra-admin</span><FiArrowUpRight /></Link>}
               <button className="adminSidebarHelp" onClick={openTutorial} title={text.overview.tutorial}><FiHelpCircle /><span>{text.overview.tutorial}</span><FiArrowUpRight /></button>
               <div className="adminProfile">
                 <span className="adminProfileAvatar">{(dbUser.displayName || dbUser.email).slice(0, 2).toUpperCase()}</span>
