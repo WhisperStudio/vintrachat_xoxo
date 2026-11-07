@@ -934,6 +934,7 @@ export default function Header() {
   const navItems = useMemo<NavItem[]>(() => {
     if (showGuestLinks) {
       return [
+        { href: '/priser', label: 'Priser', icon: <FiLayers /> },
         { href: '/landings/guest/websites', label: text.nav.websites, icon: <FiLayers /> },
         { href: '/landings/auth/chatWidget', label: text.nav.chatWidget, icon: <FiMessageSquare /> },
         ...(showInvitationCenter
@@ -953,6 +954,7 @@ export default function Header() {
       { href: '/landings/user', label: text.nav.dashboard, icon: <FiGrid /> },
       { href: '/landings/auth/websites', label: text.nav.myWebsites, icon: <FiLayers /> },
       { href: '/landings/auth/chatWidget', label: text.nav.myChatWidgets, icon: <FiMessageSquare /> },
+      { href: '/priser', label: 'Abonnement', icon: <FiLayers /> },
       { href: '/admin', label: text.nav.adminPanel, icon: <FiBriefcase /> },
     ]
 

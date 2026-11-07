@@ -21,7 +21,8 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      router.replace('/admin')
+      const destination = new URLSearchParams(window.location.search).get('next')
+      router.replace(destination === '/priser' ? '/priser' : '/admin')
     }
   }, [firebaseUser?.email, isAuthenticated, loading, router])
 

@@ -17,8 +17,16 @@ service cloud.firestore {
     }
     function member(bid) {
       return verified() && (owner(bid) || (hasMember(bid)
+        && paidTeamAccess(bid)
         && membership(bid).get('status', '') == 'active'
         && membership(bid).role in ['admin', 'manager', 'support', 'viewer', 'user']));
+    }
+    function paidTeamAccess(bid) {
+      let billing = business(bid).get('billing', {});
+      return !billing.keys().hasAny(['subscriptionId']) || (
+        billing.get('status', '') in ['active', 'trialing']
+        && billing.get('plan', 'free') in ['pro', 'business']
+        && billing.get('currentPeriodEnd', 0) * 1000 > request.time.toMillis());
     }
     function manager(bid) {
       return verified() && (owner(bid) || (member(bid) && membership(bid).role == 'admin'));
@@ -41,6 +49,9 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'name', 'chatWidgetKey', 'activeChatWidgetKey', 'chatWidgetConfig', 'chatAssistantConfig',
             'supportTaskCategories', 'onboarding', 'updatedAt', 'chatAnalytics'])
+          && (request.resource.data.get('chatWidgetKey', '') == resource.data.get('chatWidgetKey', '')
+            || request.resource.data.get('chatWidgetKey', '') == ''
+            || exists(/databases/$(database)/documents/businesses/$(bid)/chatWidgets/$(request.resource.data.chatWidgetKey)))
           && unchangedPlan(resource.data.get('chatWidgetConfig', {}), request.resource.data.get('chatWidgetConfig', {})));
       match /users/{uid} {
         allow read: if member(bid) || globalAdmin();
@@ -52,7 +63,9 @@ service cloud.firestore {
       }
       match /chatWidgets/{wid} {
         allow read: if member(bid) || globalAdmin();
-        allow create: if manager(bid)
+        // Only the original legacy widget can be materialized client-side.
+        // Additional widgets are created through the server's atomic quota check.
+        allow create: if manager(bid) && wid == business(bid).get('chatWidgetKey', '')
           && request.resource.data.keys().hasOnly(['widgetKey', 'name', 'config', 'assistantConfig', 'isDefault', 'createdAt', 'updatedAt'])
           && request.resource.data.widgetKey == wid
           && unchangedPlan(business(bid).get('chatWidgetConfig', {}), request.resource.data.config);

@@ -3,6 +3,7 @@ import { absoluteUrl } from '@/lib/site-config'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
+    { url: absoluteUrl('/priser'), changeFrequency: 'monthly', priority: 0.9 },
     {
       url: absoluteUrl('/'),
       lastModified: new Date(),

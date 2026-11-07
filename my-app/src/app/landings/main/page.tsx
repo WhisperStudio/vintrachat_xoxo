@@ -910,6 +910,7 @@ export default function MainLanding() {
                 <div className="sectionHeader sectionHeader--light">
                   <span className="sectionKicker">{text.pricingCta}</span>
                   <h2>{text.pricingTitle}</h2>
+                  <Link href="/priser">Se alle abonnementer for Vintra Chat →</Link>
                   <p>{text.pricingBody}</p>
                 </div>
               </Reveal>

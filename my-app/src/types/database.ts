@@ -16,6 +16,14 @@ export interface Business {
   chatWidgetConfig?: ChatWidgetConfig;
   chatWidgets?: ChatWidgetRecord[];
   chatAssistantConfig?: ChatAssistantConfig;
+  billing?: {
+    subscriptionId: string;
+    status: string;
+    plan: 'free' | 'pro' | 'business';
+    cycle: 'monthly' | 'yearly';
+    currentPeriodEnd: number;
+    cancelAtPeriodEnd: boolean;
+  };
   chatAnalytics?: ChatAnalytics;
   supportTaskCategories?: SupportTaskCategory[];
   onboarding?: BusinessOnboardingState;

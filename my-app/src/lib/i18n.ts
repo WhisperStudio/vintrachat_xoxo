@@ -1,6 +1,13 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
+import { PLANS } from '@/lib/billing/catalog.mjs'
+
+const planPrices = {
+  free: { monthly: PLANS.free.monthly / 100, yearly: PLANS.free.yearly / 100 },
+  pro: { monthly: PLANS.pro.monthly / 100, yearly: PLANS.pro.yearly / 100 },
+  business: { monthly: PLANS.business.monthly / 100, yearly: PLANS.business.yearly / 100 },
+}
 
 export type VintraLanguage = 'no' | 'en'
 
@@ -198,12 +205,8 @@ export const chatWidgetBuilderI18n = {
 
 export const chatWidgetBuilderExtraI18n = {
   en: {
-    currency: 'USD',
-    prices: {
-      free: { monthly: 0, yearly: 0 },
-      pro: { monthly: 29, yearly: 348 },
-      business: { monthly: 59, yearly: 708 },
-    },
+    currency: 'NOK',
+    prices: planPrices,
     sidebar: {
       subscription: 'Subscription',
       plan: 'Plan',
@@ -227,11 +230,7 @@ export const chatWidgetBuilderExtraI18n = {
   },
   no: {
     currency: 'NOK',
-    prices: {
-      free: { monthly: 0, yearly: 0 },
-      pro: { monthly: 299, yearly: 3588 },
-      business: { monthly: 599, yearly: 7188 },
-    },
+    prices: planPrices,
     sidebar: {
       subscription: 'Abonnement',
       plan: 'Plan',
@@ -269,18 +268,18 @@ export const chatWidgetPlanI18n = {
     },
     features: {
       free: [
-        '200 conversations/day',
+        '20 conversations/day',
         '1 team member',
-        'AI up to 200/day',
+        '100 messages/day',
         'Orb chat button',
         'Remove branding',
         'Email support',
         'Extended design options',
       ],
       pro: [
-        'Unlimited conversations',
+        '500 conversations/day',
         '5 team members',
-        'Unlimited AI conversations',
+        '2,500 messages/day',
         'Orb chat button',
         'Remove branding',
         'Email support',
@@ -288,10 +287,10 @@ export const chatWidgetPlanI18n = {
       ],
       business: [
         'Everything in Pro',
-        'Unlimited team members',
+        '20 team members',
         'Orb chat button',
-        'API access',
-        'SLA guarantee',
+        '10 widgets',
+        '2,000 conversations/day',
       ],
     },
   },
@@ -308,18 +307,18 @@ export const chatWidgetPlanI18n = {
     },
     features: {
       free: [
-        '200 samtaler/dag',
+        '20 samtaler/dag',
         '1 teammedlem',
-        'AI opptil 200/dag',
+        '100 meldinger/dag',
         'Orb chat-knapp',
         'Fjern branding',
         'E-postsupport',
         'Utvidede designvalg',
       ],
       pro: [
-        'Ubegrensede samtaler',
+        '500 samtaler/dag',
         '5 teammedlemmer',
-        'Ubegrensede AI-samtaler',
+        '2 500 meldinger/dag',
         'Orb chat-knapp',
         'Fjern branding',
         'E-postsupport',
@@ -327,10 +326,10 @@ export const chatWidgetPlanI18n = {
       ],
       business: [
         'Alt i Pro',
-        'Ubegrenset antall teammedlemmer',
+        '20 teammedlemmer',
         'Orb chat-knapp',
-        'API-tilgang',
-        'SLA-garanti',
+        '10 widgeter',
+        '2 000 samtaler/dag',
       ],
     },
   },

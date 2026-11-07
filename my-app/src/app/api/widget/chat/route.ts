@@ -1,3 +1,4 @@
+import { reserveUsage } from '@/lib/billing/usage.mjs'
 import { saveChatWithNotifications } from '@/lib/notifications.server'
 import { NextRequest, NextResponse } from 'next/server'
 import { FieldValue } from 'firebase-admin/firestore'
@@ -694,22 +695,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const plan = business.chatWidgetConfig.plan || 'free'
-    const planLimits = getPlanLimits(plan)
+    if (sessionId.length > 128 || !/^[a-zA-Z0-9_-]+$/.test(sessionId)) {
+      return NextResponse.json({ error: 'Invalid session ID' }, { status: 400, headers })
+    }
+    const usage = await reserveUsage(adminDb, business.id, widgetKey, sessionId)
     const todayKey = getTodayUsageKey()
-    const currentDailyConversationCount = getDailyConversationCount(business.chatAnalytics, new Date())
-    const isNewConversation = !body.sessionId
-
-    if (
-      plan === 'free' &&
-      isNewConversation &&
-      planLimits.maxDailyConversations !== null &&
-      currentDailyConversationCount >= planLimits.maxDailyConversations
-    ) {
-      return NextResponse.json(
-        { error: 'The Limit for todays usages is met' },
-        { status: 429, headers }
-      )
+    const isNewConversation = usage.isNewConversation
+    if ('retry' in usage && usage.retry) {
+      return NextResponse.json({ error: 'Chatten er opptatt akkurat nå. Prøv igjen om noen sekunder.', code: 'USAGE_BUSY' }, { status: 503, headers: { ...headers, 'Retry-After': '3' } })
+    }
+    if (!usage.allowed) {
+      return NextResponse.json({ error: 'Dagens grense for chat er nådd. Prøv igjen i morgen.', code: 'PLAN_LIMIT_REACHED' }, { status: 429, headers })
     }
 
     const assistantConfig = business.chatAssistantConfig || {
@@ -783,7 +779,7 @@ export async function POST(req: NextRequest) {
         createAnalyticsEvent('visitor-message', sessionId, countryCode, widgetKey),
       ]
 
-      if (!body.sessionId) {
+      if (isNewConversation) {
         analyticsTimelineEvents.unshift(
           createAnalyticsEvent('session-start', sessionId, countryCode, widgetKey)
         )
@@ -798,7 +794,7 @@ export async function POST(req: NextRequest) {
         'chatAnalytics.timeline': FieldValue.arrayUnion(...analyticsTimelineEvents),
         [statPaths.messageCountPath]: FieldValue.increment(1),
         [statPaths.hourPath]: FieldValue.increment(1),
-        ...(body.sessionId ? {} : {
+        ...(!isNewConversation ? {} : {
           'chatAnalytics.totalSessions': FieldValue.increment(1),
           'chatAnalytics.aiOnlySessions': FieldValue.increment(1),
           [`chatAnalytics.dailyConversationCounts.${todayKey}`]: FieldValue.increment(1),
@@ -828,7 +824,7 @@ export async function POST(req: NextRequest) {
         createAnalyticsEvent('visitor-message', sessionId, countryCode, widgetKey),
       ]
 
-      if (!body.sessionId) {
+      if (isNewConversation) {
         analyticsTimelineEvents.unshift(
           createAnalyticsEvent('session-start', sessionId, countryCode, widgetKey)
         )
@@ -841,7 +837,7 @@ export async function POST(req: NextRequest) {
         'chatAnalytics.timeline': FieldValue.arrayUnion(...analyticsTimelineEvents),
         [statPaths.messageCountPath]: FieldValue.increment(1),
         [statPaths.hourPath]: FieldValue.increment(1),
-        ...(body.sessionId ? {} : {
+        ...(!isNewConversation ? {} : {
           'chatAnalytics.totalSessions': FieldValue.increment(1),
           'chatAnalytics.aiOnlySessions': FieldValue.increment(1),
           [`chatAnalytics.dailyConversationCounts.${todayKey}`]: FieldValue.increment(1),
@@ -959,7 +955,7 @@ export async function POST(req: NextRequest) {
         'chatAnalytics.supportRequests': FieldValue.increment(isNewSupportChat ? 1 : 0),
         'chatAnalytics.savedSupportChats': FieldValue.increment(isNewSupportChat ? 1 : 0),
         'chatAnalytics.timeline': FieldValue.arrayUnion(
-          ...(!body.sessionId ? [createAnalyticsEvent('session-start', sessionId, countryCode, widgetKey)] : []),
+          ...(isNewConversation ? [createAnalyticsEvent('session-start', sessionId, countryCode, widgetKey)] : []),
           createAnalyticsEvent('support-request', sessionId, countryCode, widgetKey)
         ),
         [statPaths.messageCountPath]: FieldValue.increment(1),
@@ -968,7 +964,7 @@ export async function POST(req: NextRequest) {
         [statPaths.savedSupportChatsPath]: FieldValue.increment(isNewSupportChat ? 1 : 0),
       }
 
-      if (!body.sessionId) {
+      if (isNewConversation) {
         analyticsUpdates['chatAnalytics.totalSessions'] = FieldValue.increment(1)
         analyticsUpdates[`chatAnalytics.dailyConversationCounts.${getTodayUsageKey(now)}`] = FieldValue.increment(1)
         analyticsUpdates[`chatAnalytics.countryCounts.${countryCode}`] = FieldValue.increment(1)
@@ -1155,7 +1151,7 @@ export async function POST(req: NextRequest) {
       createAnalyticsEvent('visitor-message', sessionId, countryCode, widgetKey),
     ]
 
-    if (!body.sessionId) {
+    if (isNewConversation) {
       analyticsTimelineEvents.unshift(
         createAnalyticsEvent('session-start', sessionId, countryCode, widgetKey)
       )
@@ -1203,7 +1199,7 @@ export async function POST(req: NextRequest) {
       analyticsUpdates[statPaths.savedSupportChatsPath] = FieldValue.increment(
         isNewSupportChat ? 1 : 0
       )
-      if (!body.sessionId) {
+      if (isNewConversation) {
         analyticsUpdates['chatAnalytics.aiOnlySessions'] = FieldValue.increment(-1)
       }
 

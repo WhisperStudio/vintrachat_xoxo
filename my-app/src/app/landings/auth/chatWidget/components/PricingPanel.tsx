@@ -68,7 +68,7 @@ export default function PricingPanel({
   const formattedTotal =
     language === 'no'
       ? `${new Intl.NumberFormat('nb-NO').format(total)} kr`
-      : `$${total}`
+      : `NOK ${total}`
   const period = billingCycle === 'monthly' ? text.month : text.year
 
   return (

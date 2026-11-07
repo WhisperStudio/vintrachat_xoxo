@@ -1,3 +1,4 @@
+import { PLANS, effectivePlan } from '@/lib/billing/catalog.mjs'
 import type { BubbleIconChoice, Business, ChatAnalytics, ChatWidgetConfig } from '@/types/database'
 import { getAnalyticsDayKey } from '@/lib/chat-analytics'
 
@@ -18,35 +19,21 @@ export interface PlanFeatureAvailability {
 
 export interface PlanLimits {
   maxDailyConversations: number | null
+  maxDailyMessages: number
   maxTeamMembers: number | null
   maxWidgets: number | null
   orbAvailable: boolean
   extendedDesignOptions: boolean
 }
 
-const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
-  free: {
-    maxDailyConversations: 200,
-    maxTeamMembers: 1,
-    maxWidgets: 1,
-    orbAvailable: false,
-    extendedDesignOptions: false,
-  },
-  pro: {
-    maxDailyConversations: null,
-    maxTeamMembers: 5,
-    maxWidgets: null,
-    orbAvailable: true,
-    extendedDesignOptions: true,
-  },
-  business: {
-    maxDailyConversations: null,
-    maxTeamMembers: null,
-    maxWidgets: null,
-    orbAvailable: true,
-    extendedDesignOptions: true,
-  },
-}
+const PLAN_LIMITS = Object.fromEntries(Object.entries(PLANS).map(([key, plan]) => [key, {
+  maxDailyConversations: plan.conversations,
+  maxDailyMessages: plan.messages,
+  maxTeamMembers: plan.members,
+  maxWidgets: plan.widgets,
+  orbAvailable: key !== 'free',
+  extendedDesignOptions: key !== 'free',
+}])) as Record<SubscriptionPlan, PlanLimits>
 
 const PLAN_ORDER: Record<SubscriptionPlan, number> = {
   free: 0,
@@ -75,18 +62,10 @@ export function planMeetsMinimum(plan: SubscriptionPlan, minimumPlan: Subscripti
 }
 
 export function getEffectiveBusinessPlan(
-  business?: Pick<Business, 'chatWidgetConfig' | 'chatWidgets' | 'activeChatWidgetKey'> | null,
+  business?: Pick<Business, 'chatWidgetConfig' | 'chatWidgets' | 'activeChatWidgetKey' | 'billing'> | null,
   widgetConfig?: Partial<ChatWidgetConfig> | null
 ): SubscriptionPlan {
-  const activeWidget =
-    business?.chatWidgets?.find((widget) => widget.widgetKey === business.activeChatWidgetKey) ||
-    business?.chatWidgets?.[0]
-
-  return normalizeSubscriptionPlan(
-    business?.chatWidgetConfig?.plan ||
-      widgetConfig?.plan ||
-      activeWidget?.config?.plan
-  )
+  return normalizeSubscriptionPlan(effectivePlan(business))
 }
 
 export function getPlanFeatureAvailability(
@@ -167,6 +146,7 @@ export function sanitizeChatWidgetConfigForPlan<T extends Partial<ChatWidgetConf
   return {
     ...config,
     plan: normalizedPlan,
+    widgetIcons: normalizedPlan === 'free' ? undefined : config.widgetIcons,
     appearance: {
       ...(config.appearance || {}),
       glassLookEnabled: isPlanFeatureAvailable(normalizedPlan, 'glassLook')

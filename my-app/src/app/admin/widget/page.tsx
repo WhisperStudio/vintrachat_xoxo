@@ -190,17 +190,6 @@ const createDefaultWidgetConfig = (businessName: string): ChatWidgetConfig => ({
   allowedDomains: [],
 })
 
-const widgetPlanOptions: Array<{ value: ChatWidgetConfig['plan']; label: string }> = [
-  { value: 'free', label: 'Free' },
-  { value: 'pro', label: 'Pro' },
-  { value: 'business', label: 'Enterprise' },
-]
-
-const widgetBillingCycleOptions: Array<{ value: ChatWidgetConfig['billingCycle']; label: string }> = [
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'yearly', label: 'Yearly' },
-]
-
 const mergeWidgetConfig = (
   config: Partial<ChatWidgetConfig> | undefined,
   businessName: string
@@ -2249,35 +2238,6 @@ export default function WidgetAdminPanel({
     }
   }
 
-  const savePlanSettings = async (updates: Partial<Pick<ChatWidgetConfig, 'plan' | 'billingCycle'>>) => {
-    if (!dbUser?.businessId || !config) return
-
-    const targetWidgetKey = selectedWidgetKey || business?.activeChatWidgetKey || business?.chatWidgetKey || ''
-    if (!targetWidgetKey) {
-      setWidgetActionStatus('error')
-      return
-    }
-
-    setWidgetActionStatus('idle')
-
-    const mergedConfig = {
-      ...config,
-      ...updates,
-    } as ChatWidgetConfig
-
-    const result = await updateChatWidgetConfig(dbUser.businessId, mergedConfig, targetWidgetKey)
-
-    if (!result.success) {
-      setWidgetActionStatus('error')
-      return
-    }
-
-    setConfig(mergedConfig)
-    setWidgetActionStatus('saved')
-    void refreshBusiness()
-    setTimeout(() => setWidgetActionStatus('idle'), 2000)
-  }
-
   if (loading) {
     return (
       <div className="widget-admin-loading">
@@ -3497,41 +3457,8 @@ export default function WidgetAdminPanel({
           </div>
 
           <div className="widget-admin-widget-manager__summary">
-            <label className="widget-admin-field">
-              <span>Subscription plan</span>
-              <select
-                value={config?.plan || 'free'}
-                onChange={(event) =>
-                  void savePlanSettings({
-                    plan: event.target.value as ChatWidgetConfig['plan'],
-                  })
-                }
-              >
-                {widgetPlanOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="widget-admin-field">
-              <span>Billing cycle</span>
-              <select
-                value={config?.billingCycle || 'monthly'}
-                onChange={(event) =>
-                  void savePlanSettings({
-                    billingCycle: event.target.value as ChatWidgetConfig['billingCycle'],
-                  })
-                }
-              >
-                {widgetBillingCycleOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div><strong>{config?.plan === 'business' ? 'Enterprise' : config?.plan === 'pro' ? 'Pro' : 'Gratis'}</strong><span>Gjeldende abonnement</span></div>
+            <a href="/priser">Se priser og administrer abonnement →</a>
           </div>
 
           {widgetList.length > 0 && (

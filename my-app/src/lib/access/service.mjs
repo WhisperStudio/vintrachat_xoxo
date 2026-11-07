@@ -1,3 +1,4 @@
+import { effectivePlan } from '../billing/catalog.mjs';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { NotificationError } from '../notifications/service.mjs';
 
@@ -13,6 +14,8 @@ const id = value => {
 export function accessRole(business, member, uid) {
   if (!business || typeof uid !== 'string' || !uid || member?.status === 'disabled') return null;
   if (business.ownerId === uid) return 'owner';
+  // The owner occupies the sole Free seat, even if a payment webhook is delayed.
+  if (business.billing?.subscriptionId && effectivePlan(business) === 'free') return null;
   return member?.status === 'active' && roles.includes(member.role) ? member.role : null;
 }
 export function invitationMatches(invite, token) {
@@ -91,8 +94,9 @@ export function createAccessService(db, { teamLimit = (_plan) => 1 } = {}) {
       const team = await tx.get(members);
       const pending = await tx.get(invites.where('status', '==', 'pending'));
       const reserved = pending.docs.filter(d => millis(d.data().expiresAt) > Date.now());
-      const limit = teamLimit(b.data().chatWidgetConfig?.plan || 'free');
-      if (limit !== null && team.size + (team.docs.some(d => d.id === b.data().ownerId) ? 0 : 1) + reserved.length >= limit)
+      const limit = teamLimit(effectivePlan(b.data()));
+      const occupiedSeats = 1 + team.docs.filter(d => d.id !== b.data().ownerId && d.data().status === 'active').length;
+      if (limit !== null && occupiedSeats + reserved.length >= limit)
         fail('permission-denied', 'Team limit reached for this subscription.');
       if (reserved.some(d => email(d.data().email) === recipient))
         fail('invalid-argument', 'A pending invitation already exists.');
@@ -120,8 +124,9 @@ export function createAccessService(db, { teamLimit = (_plan) => 1 } = {}) {
       const issuer = await tx.get(members.doc(String(invite.createdBy || '_missing')));
       if (!['owner', 'admin'].includes(accessRole(b.data(), issuer.data(), invite.createdBy)))
         fail('permission-denied', 'The inviting administrator no longer has access.');
-      const limit = teamLimit(b.data().chatWidgetConfig?.plan || 'free');
-      if (!member.exists && limit !== null && team.size + (team.docs.some(d => d.id === b.data().ownerId) ? 0 : 1) >= limit)
+      const limit = teamLimit(effectivePlan(b.data()));
+      const occupiedSeats = 1 + team.docs.filter(d => d.id !== b.data().ownerId && d.data().status === 'active').length;
+      if (!member.exists && limit !== null && occupiedSeats >= limit)
         fail('permission-denied', 'Team limit reached for this subscription.');
       if (member.exists && !accessRole(b.data(), member.data(), auth.uid))
         fail('permission-denied', 'An administrator must restore your membership.');

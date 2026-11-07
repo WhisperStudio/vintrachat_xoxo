@@ -842,6 +842,7 @@ export async function getBusinessInfo(
             updatedAt: category.updatedAt?.toDate?.() || new Date(),
           }))
         : [],
+      billing: data.billing,
       onboarding: data.onboarding
         ? {
             tutorialCompletedAt:
@@ -875,9 +876,9 @@ export async function updateChatWidgetConfig(
     const widgetData = widgetSnap.exists() ? widgetSnap.data() || {} : {}
     const baseConfig = (widgetData.config || existingConfig || {}) as Partial<ChatWidgetConfig>
     const plan = normalizeSubscriptionPlan(
-      config?.plan ||
-        getEffectiveBusinessPlan(
+      getEffectiveBusinessPlan(
           {
+            billing: existingData.billing,
             chatWidgetConfig: existingConfig as ChatWidgetConfig | undefined,
             chatWidgets: widgetSnap.exists()
               ? [{
@@ -903,6 +904,7 @@ export async function updateChatWidgetConfig(
       ...baseConfig,
       ...config,
       plan,
+      billingCycle: existingConfig.billingCycle || 'monthly',
       allowedDomains,
       bubbleStyle: config?.bubbleStyle
         ? sanitizeBubbleStyleForPlan(config.bubbleStyle, plan)
@@ -925,15 +927,6 @@ export async function updateChatWidgetConfig(
         chatWidgetKey: targetWidgetKey,
         activeChatWidgetKey: targetWidgetKey,
         chatWidgetConfig: mergedConfig,
-        updatedAt: serverTimestamp(),
-      }))
-    } else if (config?.plan || config?.billingCycle) {
-      await updateDoc(businessRef, stripUndefinedForFirestore({
-        chatWidgetConfig: {
-          ...existingConfig,
-          ...(config?.plan ? { plan } : {}),
-          ...(config?.billingCycle ? { billingCycle: config.billingCycle } : {}),
-        },
         updatedAt: serverTimestamp(),
       }))
     } else {
@@ -980,72 +973,18 @@ export async function createChatWidget(
   name?: string,
   templateWidgetKey?: string,
   assistantConfigOverride?: Partial<ChatAssistantConfig>
-) {
-  const businessRef = doc(db, 'businesses', businessId)
-  const businessSnap = await getDoc(businessRef)
-  if (!businessSnap.exists()) {
-    return { success: false, message: 'Business not found' }
-  }
+): Promise<{ success: boolean; message: string; widgetKey?: string }> {
+  try {
+    const user = auth.currentUser
+    if (!user) return { success: false, message: 'Logg inn først.' }
+    const response = await fetch('/api/widgets', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await user.getIdToken()}` },
+      body: JSON.stringify({ businessId, name, templateWidgetKey, assistantConfigOverride }) })
+    const result = await response.json()
+    return response.ok ? result as { success: boolean; widgetKey: string; message: string }
+      : { success: false, message: result.error || 'Kunne ikke opprette widget.' }
+  } catch { return { success: false, message: 'Kunne ikke opprette widget. Prøv igjen.' } }
 
-  const businessData = businessSnap.data() || {}
-  const widgets = await listChatWidgets(businessId)
-  const currentPlan = (businessData.chatWidgetConfig?.plan || widgets[0]?.config?.plan || 'free') as SubscriptionPlan
-  const widgetLimit = getPlanLimits(currentPlan).maxWidgets
-
-  if (widgetLimit !== null && widgets.length >= widgetLimit) {
-    return {
-      success: false,
-      message:
-        currentPlan === 'free'
-          ? 'Free plan supports only one chat widget.'
-          : `Plan limit reached for ${currentPlan}.`,
-    }
-  }
-
-  const sourceWidget =
-    (templateWidgetKey
-      ? widgets.find((widget) => widget.widgetKey === templateWidgetKey)
-      : undefined) ||
-    widgets[0] ||
-    {
-      id: 'template',
-      widgetKey: 'template',
-      name: 'Main widget',
-      config: buildDefaultWidgetConfig(String(businessData.name || 'Chat Widget')),
-      isDefault: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-
-  const widgetKey = generateChatWidgetKey()
-  const widgetRef = doc(db, `businesses/${businessId}/chatWidgets/${widgetKey}`)
-  const widgetName = String(name || `Widget ${widgets.length + 1}`)
-
-  const nextConfig = stripUndefinedForFirestore({
-    ...sourceWidget.config,
-    customBranding: {
-      ...sourceWidget.config.customBranding,
-      title: name || sourceWidget.config.customBranding?.title || widgetName,
-    },
-  })
-  const nextAssistantConfig = stripUndefinedForFirestore(
-    assistantConfigOverride ||
-      sourceWidget.assistantConfig ||
-      (businessData.chatAssistantConfig as ChatAssistantConfig | undefined) ||
-      buildDefaultAssistantConfig()
-  )
-
-  await setDoc(widgetRef, stripUndefinedForFirestore({
-    widgetKey,
-    name: widgetName,
-    config: nextConfig,
-    assistantConfig: nextAssistantConfig,
-    isDefault: false,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  }))
-
-  return { success: true, widgetKey, message: 'Chat widget created' }
 }
 
 export async function setActiveChatWidget(
@@ -1104,7 +1043,7 @@ export async function deleteChatWidget(
     await updateDoc(businessRef, {
       chatWidgetKey: '',
       activeChatWidgetKey: '',
-      chatWidgetConfig: null,
+      chatWidgetConfig: businessSnap.data()?.chatWidgetConfig || { plan: 'free', billingCycle: 'monthly' },
       chatAssistantConfig: null,
       updatedAt: serverTimestamp(),
     })

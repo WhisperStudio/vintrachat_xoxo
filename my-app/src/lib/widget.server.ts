@@ -4,7 +4,7 @@ import type {
   ChatAssistantConfig,
   ChatWidgetConfig,
 } from '@/types/database'
-import { getEffectiveBusinessPlan, sanitizeChatWidgetConfigForPlan } from '@/lib/subscription'
+import { getEffectiveBusinessPlan, getPlanLimits, sanitizeChatWidgetConfigForPlan } from '@/lib/subscription'
 
 const launcherIconChoiceMap: Record<string, string> = {
   chat: 'FiMessageCircle',
@@ -104,7 +104,7 @@ function buildDefaultWidgetConfig(businessName = 'Chat Widget'): ChatWidgetConfi
   }
 }
 
-function mergeWidgetConfig(
+export function mergeWidgetConfig(
   config: Partial<ChatWidgetConfig> | undefined,
   businessName: string,
   enforcedPlan?: ChatWidgetConfig['plan']
@@ -231,6 +231,7 @@ export function toPublicAssistantConfig(
 export async function getBusinessByWidgetKey(
   widgetKey: string
 ): Promise<WidgetBusinessRecord | null> {
+  if (!/^[a-zA-Z0-9_-]{1,128}$/.test(widgetKey)) return null
   const businessesSnap = await adminDb.collection('businesses').get()
 
   for (const businessDoc of businessesSnap.docs) {
@@ -243,6 +244,7 @@ export async function getBusinessByWidgetKey(
       const isDefaultWidget = Boolean(widgetData.isDefault)
       const enforcedPlan = getEffectiveBusinessPlan(
         {
+          billing: businessData.billing,
           chatWidgetConfig: businessData.chatWidgetConfig,
           chatWidgets: [{
             id: widgetDoc.id,
@@ -258,6 +260,15 @@ export async function getBusinessByWidgetKey(
         widgetData.config
       )
 
+        const limit = getPlanLimits(enforcedPlan).maxWidgets
+        const allWidgets = await businessDoc.ref.collection('chatWidgets').get()
+        const ordered = allWidgets.docs.sort((a, b) => {
+          const primary = String(businessData.chatWidgetKey || '')
+          if (a.id === primary) return -1
+          if (b.id === primary) return 1
+          return (a.data().createdAt?.toMillis?.() || 0) - (b.data().createdAt?.toMillis?.() || 0) || a.id.localeCompare(b.id)
+        })
+        if (limit !== null && !ordered.slice(0, limit).some(w => w.id === widgetKey)) return null
         return {
           id: businessDoc.id,
           name: String(businessData.name || ''),
@@ -268,10 +279,7 @@ export async function getBusinessByWidgetKey(
             String(businessData.name || widgetData.name || 'Chat Widget'),
             enforcedPlan
           ),
-          chatAssistantConfig:
-            widgetData.assistantConfig ||
-            businessData.chatAssistantConfig ||
-            undefined,
+          chatAssistantConfig: sanitizeAssistantForPlan(widgetData.assistantConfig || businessData.chatAssistantConfig, enforcedPlan),
           chatAnalytics: businessData.chatAnalytics,
           chatWidgetEmbedSecret: businessData.chatWidgetEmbedSecret,
         }
@@ -280,7 +288,7 @@ export async function getBusinessByWidgetKey(
     const businessData = businessDoc.data() || {}
     if (String(businessData.chatWidgetKey || '') === widgetKey) {
       const enforcedPlan = getEffectiveBusinessPlan(
-        { chatWidgetConfig: businessData.chatWidgetConfig },
+        { billing: businessData.billing, chatWidgetConfig: businessData.chatWidgetConfig },
         businessData.chatWidgetConfig
       )
 
@@ -293,7 +301,7 @@ export async function getBusinessByWidgetKey(
           String(businessData.name || 'Chat Widget'),
           enforcedPlan
         ),
-        chatAssistantConfig: businessData.chatAssistantConfig,
+        chatAssistantConfig: sanitizeAssistantForPlan(businessData.chatAssistantConfig, enforcedPlan),
         chatAnalytics: businessData.chatAnalytics,
         chatWidgetEmbedSecret: businessData.chatWidgetEmbedSecret,
       }
@@ -301,4 +309,8 @@ export async function getBusinessByWidgetKey(
   }
 
   return null
+}
+
+function sanitizeAssistantForPlan(config: ChatAssistantConfig | undefined, plan: ChatWidgetConfig['plan']) {
+  return config && plan === 'free' ? { ...config, widgetIcons: undefined } : config
 }

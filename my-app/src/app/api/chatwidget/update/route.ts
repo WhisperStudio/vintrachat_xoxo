@@ -236,17 +236,13 @@ export async function POST(req: NextRequest) {
     })
 
     if (widgetKey && !widgetsSnap.docs.some((widgetDoc) => widgetDoc.id === widgetKey)) {
-      const widgetRef = businessRef.collection('chatWidgets').doc(widgetKey)
-      batch.set(
-        widgetRef,
-        {
-          widgetKey,
-          assistantConfig,
-          createdAt: FieldValue.serverTimestamp(),
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      )
+      if (widgetKey !== businessData.chatWidgetKey) {
+        return NextResponse.json({ error: 'Create the widget through the widget manager first.' }, { status: 400 })
+      }
+      batch.set(businessRef.collection('chatWidgets').doc(widgetKey), {
+        widgetKey, name: businessData.name || 'Main widget', config: businessData.chatWidgetConfig || { plan: 'free', billingCycle: 'monthly' },
+        assistantConfig, createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
+      })
     }
 
     await batch.commit()

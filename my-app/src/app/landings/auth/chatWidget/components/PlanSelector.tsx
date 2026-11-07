@@ -1,9 +1,10 @@
 'use client'
 
-import { FiCheck, FiChevronDown, FiX } from 'react-icons/fi'
-import { FaInfinity, FaRegCreditCard } from 'react-icons/fa'
-import { chatWidgetBuilderExtraI18n, chatWidgetPlanI18n, useVintraLanguage } from '@/lib/i18n'
-import { normalizeSubscriptionPlan } from '@/lib/subscription'
+import Link from 'next/link'
+import { FiChevronDown } from 'react-icons/fi'
+import { FaRegCreditCard } from 'react-icons/fa'
+import { useVintraLanguage } from '@/lib/i18n'
+import { PLANS } from '@/lib/billing/catalog.mjs'
 import './PlanSelector.css'
 
 type Plan = 'free' | 'pro' | 'business'
@@ -24,159 +25,18 @@ interface PlanSelectorProps {
   onToggle: () => void
 }
 
-const planFeatureStatuses: Record<Plan, Array<PlanFeature['status']>> = {
-  free: [
-    'included',
-    'included',
-    'included',
-    'excluded',
-    'excluded',
-    'excluded',
-    'excluded',
-  ],
-  pro: [
-    'highlight',
-    'included',
-    'included',
-    'included',
-    'included',
-    'included',
-    'included',
-  ],
-  business: [
-    'included',
-    'highlight',
-    'included',
-    'included',
-    'included',
-  ],
-}
-
-function formatPlanPrice(amount: number, language: 'no' | 'en', period: string) {
-  if (language === 'no') {
-    return `${new Intl.NumberFormat('nb-NO').format(amount)} kr / ${period}`
-  }
-
-  return `$${amount} / ${period}`
-}
-
-export default function PlanSelector({
-  plan,
-  billingCycle,
-  lockedPlan,
-  onPlanChange,
-  onBillingCycleChange,
-  isOpen,
-  onToggle,
-}: PlanSelectorProps) {
+export default function PlanSelector({ plan, lockedPlan, billingCycle, isOpen, onToggle }: PlanSelectorProps) {
   const { language } = useVintraLanguage()
-  const text = chatWidgetPlanI18n[language]
-  const extraText = chatWidgetBuilderExtraI18n[language]
-  const effectiveLockedPlan = lockedPlan ? normalizeSubscriptionPlan(lockedPlan) : null
-  const planFeatures: Record<Plan, PlanFeature[]> = {
-    free: text.features.free.map((label, index) => ({
-      label,
-      status: planFeatureStatuses.free[index] || 'included',
-    })),
-    pro: text.features.pro.map((label, index) => ({
-      label,
-      status: planFeatureStatuses.pro[index] || 'included',
-    })),
-    business: text.features.business.map((label, index) => ({
-      label,
-      status: planFeatureStatuses.business[index] || 'included',
-    })),
-  }
-
-  return (
-    <div className="group">
-      <button type="button" className={`dropbtn ${isOpen ? 'open' : ''}`} onClick={onToggle}>
-        <span className="label section-label">
-          <span className="section-label-icon section-label-icon--green" aria-hidden="true">
-            <FaRegCreditCard />
-          </span>
-          <span>{text.subscription}</span>
-        </span>
-        <span className="dropbtn-icon">
-          <FiChevronDown />
-        </span>
-      </button>
-
-      <div className={`option-grid option-grid-3 dropdown-content ${isOpen ? 'open' : ''}`}>
-        {([
-          ['free', text.plans.free.title, formatPlanPrice(extraText.prices.free[billingCycle], language, billingCycle === 'monthly' ? text.month : text.year), text.plans.free.description],
-          ['pro', text.plans.pro.title, formatPlanPrice(extraText.prices.pro[billingCycle], language, billingCycle === 'monthly' ? text.month : text.year), text.plans.pro.description],
-          ['business', text.plans.business.title, formatPlanPrice(extraText.prices.business[billingCycle], language, billingCycle === 'monthly' ? text.month : text.year), text.plans.business.description],
-        ] as const).map(([value, title, price, desc]) => {
-          const locked = Boolean(effectiveLockedPlan && value !== effectiveLockedPlan)
-
-          return (
-          <label key={value} className={`option-card ${plan === value ? 'checked' : ''} ${locked ? 'locked' : ''}`}>
-            <input
-              type="radio"
-              name="plan"
-              checked={plan === value}
-              disabled={locked}
-              onChange={() => {
-                if (locked) return
-                onPlanChange(value)
-              }}
-            />
-
-            <div className="option-main">
-               <span className="option-price">
-                <span className="option-title">{title}</span>
-             </span>
-                <span className="price-text">{price}</span>
-              
-              <span className="option-desc">{desc}</span>
-            </div>
-
-            <ul className="option-feature-list">
-              {planFeatures[value].map((feature) => (
-                <li key={feature.label} className={`feature-item ${feature.status}`}>
-                  <span className="feature-dot" />
-                  <span className="feature-label">{feature.label}</span>
-                  {feature.status === 'included' && <FiCheck className="feature-icon included" />}
-                  {feature.status === 'excluded' && <FiX className="feature-icon excluded" />}
-                  {feature.status === 'highlight' && <FaInfinity className="feature-icon highlight" />}
-                </li>
-              ))}
-            </ul>
-          </label>
-          )
-        })}
-
-        {effectiveLockedPlan ? (
-          <p className="plan-locked-note">
-            {language === 'no'
-              ? 'Dette er bedriftens gjeldende abonnement. Kontakt Vintra hvis du ønsker å endre det.'
-              : 'This is your workspace’s current plan. Contact Vintra if you would like to change it.'}
-          </p>
-        ) : null}
-
-        <div className="billing-cycle-toggle">
-          <label className={`billing-option ${billingCycle === 'monthly' ? 'active' : ''}`}>
-            <input
-              type="radio"
-              name="billingCycle"
-              checked={billingCycle === 'monthly'}
-              onChange={() => onBillingCycleChange('monthly')}
-            />
-            <span>{text.monthly}</span>
-          </label>
-
-          <label className={`billing-option ${billingCycle === 'yearly' ? 'active' : ''}`}>
-            <input
-              type="radio"
-              name="billingCycle"
-              checked={billingCycle === 'yearly'}
-              onChange={() => onBillingCycleChange('yearly')}
-            />
-            <span>{text.yearly}</span>
-          </label>
-        </div>
-      </div>
-    </div>
-  )
+  const info = PLANS[lockedPlan || plan]
+  const no = language === 'no'
+  return <div className="group">
+    <button type="button" className={`dropbtn ${isOpen ? 'open' : ''}`} onClick={onToggle} aria-expanded={isOpen}>
+      <span className="label section-label"><FaRegCreditCard /> {no ? 'Abonnement' : 'Subscription'}</span><FiChevronDown />
+    </button>
+    {isOpen && <div className="plan-locked-note">
+      <strong>{info.name} · {new Intl.NumberFormat('nb-NO').format(info[billingCycle] / 100)} NOK / {billingCycle === 'yearly' ? (no ? 'år' : 'year') : (no ? 'mnd' : 'month')}</strong>
+      <p>{info.conversations} {no ? 'samtaler/dag' : 'conversations/day'} · {info.widgets} {no ? 'widgeter' : 'widgets'} · {info.members} {no ? 'teammedlemmer' : 'team members'}</p>
+      <Link href="/priser">{no ? 'Se priser og endre abonnement →' : 'View pricing and manage subscription →'}</Link>
+    </div>}
+  </div>
 }

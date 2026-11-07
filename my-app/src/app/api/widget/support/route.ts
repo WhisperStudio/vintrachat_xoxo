@@ -1,3 +1,4 @@
+import { reserveUsage } from '@/lib/billing/usage.mjs'
 import { NextRequest, NextResponse } from 'next/server'
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/firebase-admin'
@@ -115,7 +116,7 @@ export async function GET(req: NextRequest) {
     const widgetKey = req.nextUrl.searchParams.get('key')
     const sessionId = req.nextUrl.searchParams.get('sessionId')
 
-    if (!widgetKey || !sessionId) {
+    if (!widgetKey || !sessionId || !/^[a-zA-Z0-9_-]{1,128}$/.test(sessionId)) {
       return NextResponse.json({ error: 'Missing widget key or sessionId' }, { status: 400, headers })
     }
 
@@ -193,7 +194,7 @@ export async function POST(req: NextRequest) {
     const visitorEmail = typeof body.visitorEmail === 'string' ? body.visitorEmail.trim() : ''
     const visitorPhone = typeof body.visitorPhone === 'string' ? body.visitorPhone.trim() : ''
 
-    if (!widgetKey || !sessionId) {
+    if (!widgetKey || !sessionId || !/^[a-zA-Z0-9_-]{1,128}$/.test(sessionId)) {
       return NextResponse.json(
         { error: 'Missing widget key or sessionId' },
         { status: 400, headers }
@@ -366,6 +367,10 @@ export async function POST(req: NextRequest) {
         { status: 400, headers }
       )
     }
+
+    const usage = await reserveUsage(adminDb, business.id, widgetKey, sessionId)
+    if ('retry' in usage && usage.retry) return NextResponse.json({ error: 'Chatten er opptatt akkurat nå. Prøv igjen om noen sekunder.', code: 'USAGE_BUSY' }, { status: 503, headers: { ...headers, 'Retry-After': '3' } })
+    if (!usage.allowed) return NextResponse.json({ error: 'Dagens grense for chat er nådd. Prøv igjen i morgen.', code: 'PLAN_LIMIT_REACHED' }, { status: 429, headers })
 
     const chatRef = adminDb.collection('businesses').doc(business.id).collection('supportChats').doc(sessionId)
     const snap = await chatRef.get()

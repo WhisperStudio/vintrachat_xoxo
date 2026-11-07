@@ -27,7 +27,7 @@ before(async () => {
 });
 beforeEach(async () => {
   await env.clearFirestore();
-  await db.doc('businesses/b1').set({ name: 'One', ownerId: 'owner', chatWidgetConfig: { plan: 'pro', billingCycle: 'monthly' } });
+  await db.doc('businesses/b1').set({ name: 'One', ownerId: 'owner', chatWidgetKey: 'w', chatWidgetConfig: { plan: 'pro', billingCycle: 'monthly' } });
   await db.doc('businesses/b2').set({ name: 'Two', ownerId: 'other' });
   await db.doc('businesses/b1/users/staff').set({ role: 'support', status: 'active' });
   await db.doc('businesses/b1/users/admin').set({ role: 'admin', status: 'active' });
@@ -39,7 +39,7 @@ after(async () => { await env?.cleanup(); if (app) await deleteApp(app); });
 
 test('private server collections and arbitrary descendants deny every client, including superadmin', async () => {
   for (const path of ['notificationDevices/d', 'notificationDevices/d/private/x', 'notificationJobs/j', 'notificationJobs/j/attempts/a',
-    'notificationAnnouncements/a', 'notificationReceipts/r', 'pending_auth/u', 'pending_password_resets/u', '_rate_limits/r', 'widgetRateLimits/r', '_widgetSecrets/b1', 'users/attacker']) {
+    'notificationAnnouncements/a', 'notificationReceipts/r', 'pending_auth/u', 'pending_password_resets/u', '_rate_limits/r', 'widgetRateLimits/r', 'billingAccounts/b1', 'businesses/b1/billingUsage/2026-11-07', '_widgetSecrets/b1', 'users/attacker']) {
     await db.doc(path).set({ secret: 'test' });
     for (const user of [null, 'staff', 'owner', 'super']) {
       const ref = doc(client(user, true, user === 'super' ? { superAdmin: true } : {}), path);
@@ -65,6 +65,9 @@ test('clients cannot self-enroll, grant roles, forge invitations, change ownersh
     await assertFails(setDoc(doc(c, `businesses/b1/users/${uid}`), { role: 'admin', status: 'active' }));
     await assertFails(setDoc(doc(c, 'businesses/b1/invitations/forged'), { ...invited, expiresAt: new Date(), createdAt: new Date() }));
     await assertFails(updateDoc(doc(c, 'businesses/b1/invitations/invite'), { status: 'accepted' }));
+    await assertFails(updateDoc(doc(c, 'businesses/b1'), { billing: { plan: 'business', status: 'active' } }));
+    await assertFails(updateDoc(doc(c, 'businesses/b1'), { chatWidgetKey: 'forged' }));
+    await assertFails(setDoc(doc(c, 'businesses/b1/chatWidgets/forged'), { widgetKey: 'forged', config: { plan: 'pro' } }));
     await assertFails(updateDoc(doc(c, 'businesses/b1'), { ownerId: `forged-${uid}` }));
     await assertFails(updateDoc(doc(c, 'businesses/b1'), { 'chatWidgetConfig.plan': 'enterprise' }));
     await assertFails(setDoc(doc(c, 'businesses/new'), { ownerId: `forged-${uid}` }));
@@ -87,6 +90,16 @@ test('owner widget edits work while protected settings stay immutable', async ()
   await assertSucceeds(updateDoc(doc(c, 'businesses/b1/chatWidgets/w'), { name: 'New name' }));
   await assertFails(updateDoc(doc(c, 'businesses/b1/chatWidgets/w'), { 'config.plan': 'enterprise' }));
   await assertFails(updateDoc(doc(client('staff'), 'businesses/b1/chatWidgets/w'), { name: 'No' }));
+});
+test('expired and free Stripe subscriptions revoke staff access but keep the owner able to manage billing', async () => {
+  const billing = { subscriptionId: 'sub_test', status: 'active', plan: 'pro', currentPeriodEnd: Math.floor(Date.now() / 1000) + 3600 };
+  await db.doc('businesses/b1').update({ billing });
+  await assertSucceeds(getDoc(doc(client('staff'), 'businesses/b1')));
+  for (const change of [{ currentPeriodEnd: 1 }, { plan: 'free' }, { status: 'past_due' }]) {
+    await db.doc('businesses/b1').update({ billing: { ...billing, ...change } });
+    await assertFails(getDoc(doc(client('staff'), 'businesses/b1')));
+    await assertSucceeds(getDoc(doc(client('owner'), 'businesses/b1')));
+  }
 });
 test('discovery returns only active memberships and immutable ownership', async () => {
   assert.deepEqual((await service.listBusinesses(request('staff', { uid: 'owner' }))).map(p => p.businessId), ['b1']);
@@ -127,7 +140,8 @@ test('only admins manage invitations and nobody changes their own or the owner r
   assert.equal((await db.doc('businesses/b1/users/staff').get()).data().role, 'manager');
 });
 test('concurrent invitation acceptance respects team limit', async () => {
-  const limited = createAccessService(db, { teamLimit: () => 5 });
+  // Owner + two active staff = three occupied seats; disabled users do not count.
+  const limited = createAccessService(db, { teamLimit: () => 4 });
   await db.doc('businesses/b1/invitations/second').set({ ...invited, email: 'second@example.com' });
   const results = await Promise.allSettled([
     limited.acceptInvitation(request('guest', { businessId: 'b1', invitationId: 'invite' })),
