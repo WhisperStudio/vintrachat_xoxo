@@ -1,0 +1,22 @@
+.adminContent:has(.workspaceEmbeddedBuilder, .workspaceWebsite, .workspaceBilling, .vintraAdminEmbedded) {
+  max-width: none;
+}
+.workspaceEmbeddedBuilder.chatbuilder-page { min-height: 0; background: transparent; }
+.workspaceEmbeddedBuilder .chatbuilder-content { padding: 0; max-width: none; }
+.workspaceWebsite.websiteBuilder { --bg: var(--admin-bg); --bg-2: var(--admin-bg); --text: var(--admin-text); --text-soft: var(--admin-text-soft); --muted: var(--admin-muted); --panel: var(--admin-surface); --panel-strong: var(--admin-surface-strong); --panel-soft: var(--admin-surface-soft); --brd: var(--admin-border); --brd-strong: var(--admin-border-strong); min-height: 0; background: transparent; }
+.workspaceWebsite.websiteBuilder .content { padding: 0; max-width: none; }
+.workspaceBilling.billing-page { padding: 0; min-height: 0; background: transparent; color: var(--admin-text); }
+.workspaceBilling .billing-wrap { max-width: none; }
+.workspaceBilling :is(.billing-card, .billing-account, .billing-trust, .billing-comparison, .billing-faq, .billing-cycle, .billing-notice) { background: var(--admin-surface); color: var(--admin-text); border-color: var(--admin-border); }
+.workspaceBilling :is(.billing-description, .billing-period, .billing-price span, .billing-caption, .billing-small, .billing-hero > p, .billing-card ul, .billing-faq p) { color: var(--admin-muted); }
+.workspaceBilling .billing-featured { background: var(--admin-surface-strong); border-color: var(--admin-accent); }
+.workspaceBilling :is(.billing-cycle button, .billing-footer a) { color: var(--admin-text-soft); }
+.workspaceBilling .billing-cycle button[aria-pressed='true'] { background: var(--admin-accent-soft); color: var(--admin-text); }
+.workspaceBilling :is(th, td) { border-color: var(--admin-border); color: var(--admin-text); background: var(--admin-surface); }
+.workspaceBilling :is(.billing-caption, .billing-trust p, .billing-footer, .billing-account small, .billing-usage, .billing-faq details p) { color: var(--admin-muted); }
+.workspaceBilling .billing-cta { background: var(--admin-accent-soft); color: var(--admin-text); border-color: var(--admin-border); }
+.workspaceBilling .billing-featured .billing-cta, .workspaceBilling .billing-recommended { background: var(--app-primary); color: var(--app-primary-text); }
+.workspaceBilling :is(.billing-hero h1 span, .billing-card li svg, .billing-trust > svg) { color: var(--admin-accent); }
+.workspaceBilling .billing-notice { background: var(--admin-warning-bg); color: var(--admin-warning-text); }
+.workspaceBilling .billing-success { background: var(--admin-success-bg); color: var(--admin-success-text); }
+.workspaceBilling .billing-error { background: var(--admin-danger-bg); color: var(--admin-danger-text); }

@@ -1,66 +1,6 @@
 /* Vintra workspace — calm surfaces, clear hierarchy, one shared palette. */
 .adminPage {
-  --admin-sidebar-width: 242px;
   /* The landing page's daylight sky, ink and blue action colors. */
-  --admin-bg: #edf2f5;
-  --admin-surface: #ffffff;
-  --admin-surface-strong: #ffffff;
-  --admin-surface-soft: #e8eff4;
-  --admin-border: #c1cfdc;
-  --admin-border-strong: #8fa6ba;
-  --admin-input-border: #8293ab;
-  --admin-text: #142e45;
-  --admin-text-soft: #354d69;
-  --admin-muted: #4c6479;
-  --admin-muted-strong: #536780;
-  --admin-accent: #214f70;
-  --admin-accent-soft: #dce9f2;
-  --admin-focus-ring: #286b96;
-  --admin-shadow: 0 2px 6px #13233d05;
-  --admin-shadow-soft: 0 12px 32px #13233d14;
-  --admin-overlay: #ffffff;
-  --admin-backdrop: #07122499;
-  --admin-sidebar-bg: #e3ecf2;
-  --admin-sidebar-text: #13233d;
-  --admin-sidebar-muted: #50667f;
-  --admin-sidebar-border: #b9ccdb;
-  --admin-sidebar-hover: #d5e3ed;
-  --admin-sidebar-active: #cbdfea;
-  --admin-sidebar-active-text: #163f5e;
-  --admin-chart-bar: #5e8dce;
-  --admin-chart-active: #2563eb;
-  --admin-heat-1: #e3ecfa;
-  --admin-heat-2: #c9dcf5;
-  --admin-heat-3: #a2c3ef;
-  --admin-heat-4: #79a6e1;
-  --admin-heat-text: #13233d;
-  --admin-chart-teal: #168577;
-  --admin-chart-violet: #8064c5;
-  --admin-spotlight-bg: #e5eefb;
-  --admin-spotlight-text: #163961;
-  --admin-spotlight-muted: #3d5c7f;
-  --admin-spotlight-border: #c3d5ee;
-  --admin-info-bg: #e8f1ff;
-  --admin-info-text: #2456a5;
-  --admin-success-bg: #e5f3ee;
-  --admin-success-text: #226653;
-  --admin-warning-bg: #fff1db;
-  --admin-warning-text: #895610;
-  --admin-danger-bg: #fcecea;
-  --admin-danger-text: #a03938;
-  --admin-danger-border: #e4b9b7;
-  --admin-violet-bg: #eeebfb;
-  --admin-violet-text: #6750a6;
-  --app-text: var(--admin-text);
-  --app-muted: var(--admin-muted);
-  --app-border: var(--admin-border);
-  --app-input-border: var(--admin-input-border);
-  --app-surface: var(--admin-surface);
-  --app-surface-soft: var(--admin-surface-soft);
-  --app-primary: #193f5e;
-  --app-primary-hover: #295978;
-  --app-primary-text: #ffffff;
-  color-scheme: light;
   min-height: 100dvh;
   padding-left: var(--admin-sidebar-width);
   background: var(--admin-bg);
@@ -75,61 +15,7 @@
   -webkit-font-smoothing: antialiased;
 }
 /* Night sky and aurora accents, shared with the landing page's night scene. */
-.adminPage[data-admin-theme='dark'] {
-  --admin-bg: #081522;
-  --admin-surface: #102439;
-  --admin-surface-strong: #1a344c;
-  --admin-surface-soft: #162d43;
-  --admin-border: #36516b;
-  --admin-border-strong: #66849f;
-  --admin-input-border: #657f9f;
-  --admin-text: #edf4ff;
-  --admin-text-soft: #c3d3e8;
-  --admin-muted: #a4b6ce;
-  --admin-muted-strong: #a4b6ce;
-  --admin-accent: #aed3ee;
-  --admin-accent-soft: #203f59;
-  --admin-focus-ring: #91caff;
-  --admin-shadow: 0 2px 6px #00000012;
-  --admin-shadow-soft: 0 12px 32px #00000050;
-  --admin-overlay: #111e32;
-  --admin-backdrop: #030914b3;
-  --admin-sidebar-bg: #0a1c2e;
-  --admin-sidebar-text: #edf4ff;
-  --admin-sidebar-muted: #a4b6ce;
-  --admin-sidebar-border: #36516b;
-  --admin-sidebar-hover: #183249;
-  --admin-sidebar-active: #23445f;
-  --admin-sidebar-active-text: #d2e8f7;
-  --admin-chart-bar: #548ad0;
-  --admin-chart-active: #91caff;
-  --admin-heat-1: #1d3555;
-  --admin-heat-2: #294a70;
-  --admin-heat-3: #355c87;
-  --admin-heat-4: #426d9c;
-  --admin-heat-text: #ffffff;
-  --admin-chart-teal: #65c9b5;
-  --admin-chart-violet: #b19aee;
-  --admin-spotlight-bg: #152c46;
-  --admin-spotlight-text: #d8ebff;
-  --admin-spotlight-muted: #aec8e3;
-  --admin-spotlight-border: #355577;
-  --admin-info-bg: #1d3555;
-  --admin-info-text: #a8d4ff;
-  --admin-success-bg: #163a36;
-  --admin-success-text: #8cdbc1;
-  --admin-warning-bg: #3c301e;
-  --admin-warning-text: #f1c67f;
-  --admin-danger-bg: #40272e;
-  --admin-danger-text: #ffa9a4;
-  --admin-danger-border: #7a454c;
-  --admin-violet-bg: #302b4e;
-  --admin-violet-text: #cbb9ff;
-  --app-primary: #aed3ee;
-  --app-primary-hover: #cce4f5;
-  --app-primary-text: #0a1b30;
-  color-scheme: dark;
-}
+
 .adminPage *,
 .adminPage *::before,
 .adminPage *::after {

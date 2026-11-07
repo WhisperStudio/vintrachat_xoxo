@@ -15,7 +15,7 @@ type Account = { plan: Plan; canManage: boolean; billing: Business['billing'] | 
 const money = (amount: number) => new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(amount / 100)
 const descriptions = { free: 'Bli kjent med kundene dine.', pro: 'For bedrifter som vil vokse.', business: 'Mer kapasitet. Et større team.' }
 
-export default function PricingClient({ configured, testMode }: { configured: boolean; testMode: boolean }) {
+export default function PricingClient({ configured, testMode, embedded = false }: { configured: boolean; testMode: boolean; embedded?: boolean }) {
   const { firebaseUser, business, loading, isAuthenticated, refreshBusiness } = useAuth()
   const params = useSearchParams()
   const [cycle, setCycle] = useState<Cycle>('monthly')
@@ -62,7 +62,7 @@ export default function PricingClient({ configured, testMode }: { configured: bo
     } catch (err) { setError(err instanceof Error ? err.message : 'Kunne ikke åpne betalingen.'); setBusy('') }
   }
 
-  return <main className="billing-page" data-header-tone="dark">
+  return <main className={embedded ? "billing-page workspaceBilling" : "billing-page"} data-header-tone="dark">
     <div className="billing-wrap">
       <div className="billing-eyebrow"><span /> VINTRA CHAT · ABONNEMENT</div>
       <section className="billing-hero">
@@ -114,7 +114,7 @@ export default function PricingClient({ configured, testMode }: { configured: bo
               <li><FiCheck />AI-svar og menneskelig oppfølging</li>
               <li><FiCheck />{plan === 'free' ? 'Grunnleggende utseende' : 'Orb-knapp, glassutseende og egne ikoner'}</li>
             </ul>
-            {plan === 'free' ? <Link className="billing-cta" href={isAuthenticated ? '/landings/auth/chatWidget' : '/auth/signup'}>{isAuthenticated ? 'Åpne widgeten' : 'Start gratis'}<FiArrowRight /></Link>
+            {plan === 'free' ? <Link className="billing-cta" href={isAuthenticated ? (embedded ? '/admin?section=builder' : '/landings/auth/chatWidget') : '/auth/signup'}>{isAuthenticated ? 'Åpne widgeten' : 'Start gratis'}<FiArrowRight /></Link>
               : !isAuthenticated ? <Link className="billing-cta" href="/auth/login?next=%2Fpriser">Logg inn og velg {info.name}<FiArrowRight /></Link>
               : <button className="billing-cta" disabled={loading || Boolean(busy) || !configured || !account?.canManage}
                 onClick={() => void pay(plan)}>{busy === plan ? 'Åpner Stripe …' : current ? 'Administrer abonnement' : `Velg ${info.name}`}<FiArrowRight /></button>}
