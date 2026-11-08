@@ -2,7 +2,7 @@
 
 Prissiden er `/priser`. Prisene og grensene ligger samlet i `src/lib/billing/catalog.mjs`.
 
-Lokal oppdatering (ennå ikke publisert): prissiden følger appens lagrede språkvalg, med Norsk/English-knapper. Priser, forklaringer, FAQ, status og feilmeldinger er oversatt. Språket sendes til Stripe Checkout og kundeportalen. Ved språkbytte erstattes en åpen Checkout-økt slik at den får riktig språk.
+Publisert 8. november 2026: prissiden følger appens lagrede språkvalg, med Norsk/English-knapper. Priser, forklaringer, FAQ, status og feilmeldinger er oversatt. Språket sendes til Stripe Checkout og kundeportalen. Ved språkbytte erstattes en åpen Checkout-økt slik at den får riktig språk.
 
 Under «Ditt abonnement» får eier en egen «Si opp abonnement» / «Cancel subscription»-knapp. Den åpner [Stripes bekreftelse for oppsigelse](https://docs.stripe.com/customer-management/portal-deep-links); å åpne siden sier ikke opp abonnementet. Serveren velger abonnement fra den private betalingskontoen og verifiserer kunde/eier. Oppsigelse skjer ved periodeslutt med eksisterende portalkonfigurasjon. Allerede planlagt oppsigelse viser sluttdato og beholder tilgang ut perioden.
 
@@ -22,7 +22,7 @@ Prisene er i NOK og opprettet med `tax_behavior: inclusive`. Eventuell avgiftsre
 Prissiden er publisert på https://chat.vintrastudio.com/priser og https://www.vintranordic.com/priser.
 
 - Vercel-prosjekt: `vintrachat-xoxo`, team `vintrastudios-projects`.
-- Aktiv produksjonsdeploy: `dpl_DxbZ3kgiBeJzSTusoXFSG31kf9q9`, publisert 8. november 2026 og promotert til begge domenene.
+- Produksjonskoden er flettet til `main` i `f78a5ce`. Vercels Git-integrasjon publiserer `main` til begge domenene. Kodeutgaven ble kontrollert i deploy `dpl_BmBSmA86Sj2zBcwX3ANfWkT3uXit` (READY).
 - Stripe live-konto: `acct_1T00euFOi3fYphOT`, ressurs `stripe-live-vintrastudio` (`ir_6WulzNLArLEIv5z7`), koblet **kun til Production**. Stripe har bekreftet at både betalinger og utbetalinger er aktivert.
 - Sandbox: `Vintra-box` (`ir_i1AObcZehRLytXMh`), koblet til **Development og Preview**. Lokal `.env.local` bruker fortsatt testnøkkelen.
 - Fire live-priser i NOK er opprettet og kontrollert mot tabellen ovenfor. Andre eksisterende Stripe-produkter/priser er beholdt.
@@ -97,7 +97,7 @@ Emulatortestene krever Java 21+. De nekter å kjøre mot produksjonsdata. Sandbo
 
 Siste lokale kontroll: 32 betaling-/Firestore-regeltester passerer, inkludert siste tillatte samtale/melding for alle tre planer, medlemsgrenser på 1/5/20 inkludert eier og reserverte invitasjoner, og riktig returadresse ved bytte av nettsted. Typekontroll består. Tidligere Vercel-bygg, auth-/varslings-/widgettester, HTTP-signaturtest og Stripe-sandbox-test bestod. Sandbox-testen dekker betalt testabonnement, oppsigelse og gamle webhook-hendelser.
 
-Lokal rettelse etter dobbeltsjekk: eksisterende teammedlemmer på Gratis uten Stripe-abonnement nektes nå tilgang i både serverens tilgangskontroll og Firestore-reglene. Eier beholder tilgang. Denne rettelsen er ennå ikke publisert; app og Firestore-regler må publiseres sammen. Tidligere manuelt tildelte Pro-/Enterprise-planer er fortsatt støttet.
+Publisert rettelse etter dobbeltsjekk: eksisterende teammedlemmer på Gratis uten Stripe-abonnement nektes nå tilgang i både serverens tilgangskontroll og Firestore-reglene. Eier beholder tilgang. Appen og Firestore-reglene er publisert. Regelsett: `05b5fa85-7e7d-4a68-a652-805a1ab3f7c6`. Tidligere manuelt tildelte Pro-/Enterprise-planer er fortsatt støttet.
 
 Produksjonskontroll 8. november 2026:
 
