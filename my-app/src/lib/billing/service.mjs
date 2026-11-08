@@ -49,10 +49,15 @@ export function createBillingService({ db, stripe, origin, portalConfiguration }
       });
     }
   }
-  async function portal(customer) {
+  async function portal(customer, language, subscriptionId) {
     if (!portalConfiguration) throw new BillingError(503, 'Kundeportalen er ikke konfigurert ennå.');
     const session = await stripe.billingPortal.sessions.create({ customer, configuration: portalConfiguration,
-      return_url: `${origin}/priser?portal=returned` });
+      locale: language === 'en' ? 'en' : 'nb',
+      return_url: `${origin}/priser?portal=returned`,
+      ...(subscriptionId ? { flow_data: { type: 'subscription_cancel',
+        subscription_cancel: { subscription: subscriptionId },
+        after_completion: { type: 'redirect', redirect: { return_url: `${origin}/priser?portal=returned` } } } } : {}),
+    });
     return { url: session.url };
   }
   async function synchronize(id, subscriptionId, customerId) {
@@ -86,7 +91,8 @@ export function createBillingService({ db, stripe, origin, portalConfiguration }
     return billing;
   }
   async function checkout(actor, data) {
-    const { businessId: id, plan, cycle } = data;
+    const { businessId: id, plan, cycle, language } = data;
+    const locale = language === 'en' ? 'en' : 'nb';
     const { business } = await authorize(actor, id);
     if (!paidPlan(plan) || !validCycle(cycle)) throw new BillingError(400, 'Velg et gyldig abonnement og betalingsintervall.');
     const price = (await loadPrices(stripe)).find(p => p.plan === plan && p.cycle === cycle);
@@ -102,30 +108,30 @@ export function createBillingService({ db, stripe, origin, portalConfiguration }
       const existing = subscriptions.data.find(s => !['canceled', 'incomplete_expired'].includes(s.status));
       if (existing) {
         await synchronize(id, existing.id, customerId);
-        return portal(customerId);
+        return portal(customerId, language);
       }
       if (account.checkoutId) {
         const previous = await stripe.checkout.sessions.retrieve(account.checkoutId);
         if (previous.status === 'open' && previous.url) {
           const sameOrigin = previous.success_url?.startsWith(`${origin}/`) && previous.cancel_url?.startsWith(`${origin}/`);
-          if (previous.metadata?.plan === plan && previous.metadata?.cycle === cycle && sameOrigin) return { url: previous.url };
+          if (previous.metadata?.plan === plan && previous.metadata?.cycle === cycle && sameOrigin && previous.locale === locale) return { url: previous.url };
           await stripe.checkout.sessions.expire(previous.id);
         }
         if (previous.status === 'complete' && previous.subscription) {
           const subscription = await stripe.subscriptions.retrieve(objectId(previous.subscription));
-          if (!['canceled', 'incomplete_expired'].includes(subscription.status)) return portal(customerId);
+          if (!['canceled', 'incomplete_expired'].includes(subscription.status)) return portal(customerId, language);
         }
       }
       // Persist a request ID before Stripe; retries after a timeout use the same idempotency key.
       const request = account.checkoutRequest?.plan === plan && account.checkoutRequest?.cycle === cycle
-        && account.checkoutRequest?.origin === origin
+        && account.checkoutRequest?.origin === origin && account.checkoutRequest?.locale === locale
         && account.checkoutRequest?.createdAt > Date.now() - 1800000
-        ? account.checkoutRequest : { id: randomUUID(), plan, cycle, origin, createdAt: Date.now() };
+        ? account.checkoutRequest : { id: randomUUID(), plan, cycle, origin, locale, createdAt: Date.now() };
       await ref.set({ checkoutRequest: request }, { merge: true });
       const session = await stripe.checkout.sessions.create({ mode: 'subscription', customer: customerId,
         line_items: [{ price: price.id, quantity: 1 }],
         client_reference_id: id, metadata: { businessId: id, plan, cycle },
-        subscription_data: { metadata: { businessId: id } }, locale: 'nb',
+        subscription_data: { metadata: { businessId: id } }, locale,
         billing_address_collection: 'required', tax_id_collection: { enabled: true },
         customer_update: { name: 'auto', address: 'auto' },
         success_url: `${origin}/priser?session_id={CHECKOUT_SESSION_ID}`,
@@ -157,11 +163,19 @@ export function createBillingService({ db, stripe, origin, portalConfiguration }
     return { plan: effectivePlan(business), billing: business.billing || null, canManage,
       usage: usage.data() || { conversations: 0, messages: 0 } };
   }
-  async function manage(actor, { businessId: id }) {
+  async function manage(actor, { businessId: id, language, cancel = false }) {
     await authorize(actor, id);
     const account = (await accountRef(id).get()).data();
     if (!account?.customerId) throw new BillingError(400, 'Bedriften har ikke et betalt abonnement ennå.');
-    return portal(account.customerId);
+    if (cancel) {
+      if (!account.subscriptionId) throw new BillingError(400, 'Fant ikke noe abonnement å si opp.');
+      const subscription = await stripe.subscriptions.retrieve(account.subscriptionId);
+      if (objectId(subscription.customer) !== account.customerId) throw new BillingError(403, 'Kunden stemmer ikke med abonnementet.');
+      if (!subscription.cancel_at_period_end && !['canceled', 'incomplete_expired'].includes(subscription.status)) {
+        return portal(account.customerId, language, subscription.id);
+      }
+    }
+    return portal(account.customerId, language);
   }
   async function refresh(actor, { businessId: id }) {
     await authorize(actor, id);

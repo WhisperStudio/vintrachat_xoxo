@@ -23,7 +23,8 @@ service cloud.firestore {
     }
     function paidTeamAccess(bid) {
       let billing = business(bid).get('billing', {});
-      return !billing.keys().hasAny(['subscriptionId']) || (
+      return (!billing.keys().hasAny(['subscriptionId'])
+        && business(bid).get('chatWidgetConfig', {}).get('plan', 'free') in ['pro', 'business']) || (
         billing.get('status', '') in ['active', 'trialing']
         && billing.get('plan', 'free') in ['pro', 'business']
         && billing.get('currentPeriodEnd', 0) * 1000 > request.time.toMillis());

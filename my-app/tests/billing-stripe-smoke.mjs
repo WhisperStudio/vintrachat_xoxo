@@ -18,13 +18,14 @@ const service = createBillingService({ db, stripe, origin: 'http://localhost:300
 let customerId, subscriptionId, checkoutId;
 try {
   await db.doc(`businesses/${id}`).set({ name: 'Automated Stripe sandbox test', ownerId: 'owner', chatWidgetConfig: { plan: 'free', billingCycle: 'monthly' } });
-  const checkout = await service.checkout(actor, { businessId: id, plan: 'pro', cycle: 'monthly' });
+  const checkout = await service.checkout(actor, { businessId: id, plan: 'pro', cycle: 'monthly', language: 'en' });
   assert.match(checkout.url, /^https:\/\/checkout.stripe.com\//);
   const account = (await db.doc(`billingAccounts/${id}`).get()).data();
   customerId = account.customerId; checkoutId = account.checkoutId;
   const session = await stripe.checkout.sessions.retrieve(checkoutId, { expand: ['line_items'] });
   assert.equal(session.amount_total, 29900); assert.equal(session.currency, 'nok'); assert.equal(session.livemode, false);
-  assert.equal((await service.checkout(actor, { businessId: id, plan: 'pro', cycle: 'monthly' })).url, checkout.url);
+  assert.equal(session.locale, 'en');
+  assert.equal((await service.checkout(actor, { businessId: id, plan: 'pro', cycle: 'monthly', language: 'en' })).url, checkout.url);
   assert.match((await service.manage(actor, { businessId: id })).url, /^https:\/\/billing.stripe.com\//);
   console.log('PASS: real Checkout (299 NOK), duplicate protection and customer portal');
   await stripe.checkout.sessions.expire(checkoutId);
@@ -35,6 +36,10 @@ try {
   subscriptionId = subscription.id;
   await service.webhook({ data: { object: subscription } });
   assert.equal(effectivePlan((await db.doc(`businesses/${id}`).get()).data()), 'pro');
+  const cancellation = await service.manage(actor, { businessId: id, cancel: true, language: 'en' });
+  assert.match(cancellation.url, /^https:\/\/billing.stripe.com\//);
+  assert.equal((await stripe.subscriptions.retrieve(subscriptionId)).cancel_at_period_end, false);
+  console.log('PASS: English Checkout and direct cancellation confirmation; opening the page does not cancel');
   await stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
   await service.webhook({ data: { object: subscription } });
   assert.equal(effectivePlan((await db.doc(`businesses/${id}`).get()).data()), 'pro');

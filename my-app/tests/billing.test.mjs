@@ -32,12 +32,12 @@ beforeEach(async () => {
     checkout: { sessions: {
       create: async params => { state.creates++; state.params = params; const session = { id: `cs_test_${state.creates}`, status: 'open',
         url: 'https://checkout.stripe.com/test', customer: params.customer, client_reference_id: params.client_reference_id, metadata: params.metadata,
-        success_url: params.success_url, cancel_url: params.cancel_url };
+        locale: params.locale, success_url: params.success_url, cancel_url: params.cancel_url };
         state.sessions.set(session.id, session); return session; },
       retrieve: async id => state.sessions.get(id),
       expire: async id => { state.sessions.get(id).status = 'expired'; },
     } },
-    billingPortal: { sessions: { create: async () => ({ url: 'https://billing.stripe.com/test' }) } },
+    billingPortal: { sessions: { create: async params => { state.portalParams = params; return { url: 'https://billing.stripe.com/test' }; } } },
   };
   state.stripe = stripe;
   service = createBillingService({ db, stripe, origin: 'http://localhost:3000', portalConfiguration: 'bpc_test' });
@@ -147,10 +147,59 @@ test('free conversation quotas are atomic, cannot trust a supplied session ID, a
   assert.equal(usage.messages, 20);
   assert.equal((await reserveUsage(db, 'b1', 'w1', 'new', new Date('2026-11-08T00:00:00Z'))).allowed, true);
 });
+for (const [plan, conversations, messages] of [['free', 20, 100], ['pro', 500, 2500], ['business', 2000, 10000]]) {
+  test(`${plan} allows its last conversation and message, then blocks excess usage`, async () => {
+    const now = new Date();
+    const ref = db.doc(`businesses/b1/billingUsage/${now.toISOString().slice(0, 10)}`);
+    await db.doc('businesses/b1').update({ billing: { subscriptionId: 'sub_test', status: 'active', plan, currentPeriodEnd: future } });
+    await ref.set({ conversations: conversations - 1, messages: conversations - 1 });
+    assert.equal((await reserveUsage(db, 'b1', 'w1', 'last', now)).allowed, true);
+    assert.equal((await reserveUsage(db, 'b1', 'w1', 'extra', now)).allowed, false);
+    await ref.update({ messages: messages - 1 });
+    assert.equal((await reserveUsage(db, 'b1', 'w1', 'last', now)).allowed, true);
+    assert.equal((await reserveUsage(db, 'b1', 'w1', 'last', now)).allowed, false);
+    assert.equal((await ref.get()).data().messages, messages);
+    await db.doc('businesses/b1').update({ 'billing.currentPeriodEnd': 1 });
+    assert.equal((await reserveUsage(db, 'b1', 'w1', 'last', now)).allowed, false);
+  });
+}
 test('reusing a session cannot bypass the daily message limit; quotas are shared across widgets', async () => {
   const now = new Date('2026-11-07T12:00:00Z');
   for (let i = 0; i < 100; i++) assert.equal((await reserveUsage(db, 'b1', 'w1', 'same-session', now)).allowed, true);
   assert.equal((await reserveUsage(db, 'b1', 'w1', 'same-session', now)).allowed, false);
   assert.equal((await reserveUsage(db, 'b1', 'w2', 'another-session', now)).allowed, false);
   assert.equal((await db.doc('businesses/b1/billingUsage/2026-11-07').get()).data().conversations, 1);
+});
+
+test('checkout and portal use the chosen language; changing language replaces a pending checkout', async () => {
+  const data = { businessId: 'b1', plan: 'pro', cycle: 'monthly', language: 'en' };
+  await service.checkout(actor, data);
+  assert.equal(state.params.locale, 'en');
+  await service.checkout(actor, data);
+  assert.equal(state.creates, 1);
+  await service.checkout(actor, { ...data, language: 'no' });
+  assert.equal(state.params.locale, 'nb');
+  assert.equal(state.sessions.get('cs_test_1').status, 'expired');
+  await service.manage(actor, { businessId: 'b1', language: 'en' });
+  assert.equal(state.portalParams.locale, 'en');
+  await service.manage(actor, { businessId: 'b1', language: 'invalid' });
+  assert.equal(state.portalParams.locale, 'nb');
+});
+test('cancellation opens an owner-only confirmation for the stored subscription without canceling it', async () => {
+  await db.doc('billingAccounts/b1').set({ customerId: 'cus_test', subscriptionId: 'sub_test' });
+  state.subscriptions.set('sub_test', subscription());
+  const data = { businessId: 'b1', cancel: true, language: 'en', subscriptionId: 'sub_forged' };
+  await assert.rejects(service.manage({ ...actor, uid: 'outsider' }, data), { status: 403 });
+  assert.equal(state.portalParams, undefined);
+  await service.manage(actor, data);
+  assert.equal(state.portalParams.flow_data.type, 'subscription_cancel');
+  assert.equal(state.portalParams.flow_data.subscription_cancel.subscription, 'sub_test');
+  assert.equal(state.portalParams.flow_data.after_completion.redirect.return_url, 'http://localhost:3000/priser?portal=returned');
+  assert.equal(state.portalParams.locale, 'en');
+  assert.equal(state.subscriptions.get('sub_test').status, 'active');
+  state.subscriptions.set('sub_test', { ...subscription(), customer: 'cus_foreign' });
+  await assert.rejects(service.manage(actor, data), { status: 403 });
+  state.subscriptions.set('sub_test', { ...subscription(), cancel_at_period_end: true });
+  await service.manage(actor, data);
+  assert.equal(state.portalParams.flow_data, undefined);
 });

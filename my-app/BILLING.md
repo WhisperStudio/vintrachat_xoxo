@@ -2,6 +2,13 @@
 
 Prissiden er `/priser`. Prisene og grensene ligger samlet i `src/lib/billing/catalog.mjs`.
 
+Lokal oppdatering (ennå ikke publisert): prissiden følger appens lagrede språkvalg, med Norsk/English-knapper. Priser, forklaringer, FAQ, status og feilmeldinger er oversatt. Språket sendes til Stripe Checkout og kundeportalen. Ved språkbytte erstattes en åpen Checkout-økt slik at den får riktig språk.
+
+Under «Ditt abonnement» får eier en egen «Si opp abonnement» / «Cancel subscription»-knapp. Den åpner [Stripes bekreftelse for oppsigelse](https://docs.stripe.com/customer-management/portal-deep-links); å åpne siden sier ikke opp abonnementet. Serveren velger abonnement fra den private betalingskontoen og verifiserer kunde/eier. Oppsigelse skjer ved periodeslutt med eksisterende portalkonfigurasjon. Allerede planlagt oppsigelse viser sluttdato og beholder tilgang ut perioden.
+
+Kontrollert lokalt: språkbytte, lagret språk, årsbeløp og mobilvisning i nettleser; 32 emulator-/regeltester og typekontroll. Ekte Stripe-sandbox bekrefter engelsk Checkout, oppsigelseslenke uten umiddelbar oppsigelse, betalt testabonnement og nedgradering etter oppsigelse. Ingen live-abonnementer ble endret.
+
+
 | Plan | Måned | År | Samtaler/dag | Meldinger/dag | Widgeter | Medlemmer inkl. eier |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Gratis | 0 kr | 0 kr | 20 | 100 | 1 | 1 |
@@ -88,7 +95,9 @@ RUN_STRIPE_SANDBOX_TEST=1 npm run test:stripe
 
 Emulatortestene krever Java 21+. De nekter å kjøre mot produksjonsdata. Sandbox-testen krever en `sk_test_`-nøkkel og tester ekte Stripe Checkout, 299 NOK, gjenbruk av økt, kundeportal, betalt abonnement, oppsigelse og forsinkede hendelser. Den rydder opp sine testkunder og abonnementer etterpå. Den fullfører abonnementet med Stripes testbetalingsmetode via API; den simulerer ikke kortinntasting eller 3DS i en nettleser.
 
-Siste kontroll: 23 betaling-/Firestore-regeltester passerer, inkludert riktig returadresse ved bytte av nettsted. Typekontroll og Vercel-bygg består. Tidligere auth-/varslings-/widgettester, HTTP-signaturtest og Stripe-sandbox-test bestod. Sandbox-testen dekker betalt testabonnement, oppsigelse og gamle webhook-hendelser.
+Siste lokale kontroll: 32 betaling-/Firestore-regeltester passerer, inkludert siste tillatte samtale/melding for alle tre planer, medlemsgrenser på 1/5/20 inkludert eier og reserverte invitasjoner, og riktig returadresse ved bytte av nettsted. Typekontroll består. Tidligere Vercel-bygg, auth-/varslings-/widgettester, HTTP-signaturtest og Stripe-sandbox-test bestod. Sandbox-testen dekker betalt testabonnement, oppsigelse og gamle webhook-hendelser.
+
+Lokal rettelse etter dobbeltsjekk: eksisterende teammedlemmer på Gratis uten Stripe-abonnement nektes nå tilgang i både serverens tilgangskontroll og Firestore-reglene. Eier beholder tilgang. Denne rettelsen er ennå ikke publisert; app og Firestore-regler må publiseres sammen. Tidligere manuelt tildelte Pro-/Enterprise-planer er fortsatt støttet.
 
 Produksjonskontroll 8. november 2026:
 

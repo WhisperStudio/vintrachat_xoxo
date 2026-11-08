@@ -15,7 +15,7 @@ export function accessRole(business, member, uid) {
   if (!business || typeof uid !== 'string' || !uid || member?.status === 'disabled') return null;
   if (business.ownerId === uid) return 'owner';
   // The owner occupies the sole Free seat, even if a payment webhook is delayed.
-  if (business.billing?.subscriptionId && effectivePlan(business) === 'free') return null;
+  if (effectivePlan(business) === 'free') return null;
   return member?.status === 'active' && roles.includes(member.role) ? member.role : null;
 }
 export function invitationMatches(invite, token) {

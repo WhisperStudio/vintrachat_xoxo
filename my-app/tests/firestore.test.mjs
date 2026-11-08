@@ -6,6 +6,7 @@ import { doc, collection, getDoc, getDocs, setDoc, updateDoc, deleteDoc, arrayUn
 import { initializeApp, deleteApp } from 'firebase-admin/app';
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { createAccessService } from '../src/lib/access/service.mjs';
+import { PLANS } from '../src/lib/billing/catalog.mjs';
 import { createNotificationService } from '../src/lib/notifications/service.mjs';
 import { hash } from '../src/lib/notifications/core.mjs';
 
@@ -101,6 +102,31 @@ test('expired and free Stripe subscriptions revoke staff access but keep the own
     await assertSucceeds(getDoc(doc(client('owner'), 'businesses/b1')));
   }
 });
+test('Free without Stripe denies existing staff in both server discovery and Firestore while retaining owner access', async () => {
+  await db.doc('businesses/b1').update({ 'chatWidgetConfig.plan': 'free' });
+  assert.equal((await service.listBusinesses(request('staff', {}))).length, 0);
+  assert.equal((await service.listBusinesses(request('owner', {})))[0].role, 'owner');
+  await assertFails(getDoc(doc(client('staff'), 'businesses/b1')));
+  await assertSucceeds(getDoc(doc(client('owner'), 'businesses/b1')));
+});
+for (const [plan, seats] of [['free', 1], ['pro', 5], ['business', 20]]) {
+  test(`${plan} enforces ${seats} team seats including the owner and pending invitations`, async () => {
+    await db.recursiveDelete(db.collection('businesses/b1/users'));
+    await db.recursiveDelete(db.collection('businesses/b1/invitations'));
+    await db.doc('businesses/b1').update({ 'chatWidgetConfig.plan': plan });
+    const access = createAccessService(db, { teamLimit: p => PLANS[p].members });
+    for (let i = 1; i < seats; i++) {
+      const uid = `seat${i}`;
+      const invite = await access.createInvitation(request('owner', { businessId: 'b1', email: `${uid}@example.com`, role: 'support' }));
+      if (i === seats - 1) await assert.rejects(access.createInvitation(request('owner', { businessId: 'b1', email: 'overflow@example.com', role: 'support' })), { code: 'permission-denied' });
+      await access.acceptInvitation(request(uid, { businessId: 'b1', invitationId: invite.invitationId }));
+    }
+    await assert.rejects(access.createInvitation(request('owner', { businessId: 'b1', email: 'overflow@example.com', role: 'support' })), { code: 'permission-denied' });
+    await db.doc('businesses/b1/invitations/old').set({ ...invited, email: 'overflow@example.com' });
+    await assert.rejects(access.acceptInvitation(request('overflow', { businessId: 'b1', invitationId: 'old' })), { code: 'permission-denied' });
+    assert.equal((await db.collection('businesses/b1/users').get()).size, seats - 1);
+  });
+}
 test('discovery returns only active memberships and immutable ownership', async () => {
   assert.deepEqual((await service.listBusinesses(request('staff', { uid: 'owner' }))).map(p => p.businessId), ['b1']);
   assert.equal((await service.listBusinesses(request('disabled', {}))).length, 0);
