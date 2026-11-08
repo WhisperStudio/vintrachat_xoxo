@@ -44,6 +44,9 @@ import type {
 } from '@/types/database'
 import './ChatWidget.css'
 
+import StudioKnowledgeSettings from '@/components/chat/StudioKnowledgeSettings'
+import StudioFeatureSettings, { type StudioDecisions } from '@/components/chat/StudioFeatureSettings'
+import { hasAssistantKnowledge, setupDecisionsComplete } from '@/lib/studio-onboarding.mjs'
 import WidgetFlowSettings from '@/components/chat/WidgetFlowSettings'
 import PersonalitySettings from '@/components/chat/PersonalitySettings'
 import { CHAT_PERSONALITIES } from '@/lib/chat-personality'
@@ -368,7 +371,7 @@ const defaultInputs: InputsState = {
   conversationCards: defaultConversationCards,
 }
 
-export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidgetSelected, onOpenAdvanced }: { embedded?: boolean; widgetKey?: string; onWidgetSelected?: (key: string) => void; onOpenAdvanced?: () => void }) {
+export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidgetSelected, setupMode = false, onSetupComplete }: { embedded?: boolean; widgetKey?: string; onWidgetSelected?: (key: string) => void; setupMode?: boolean; onSetupComplete?: () => Promise<void> }) {
   const router = useRouter()
   const { isAuthenticated, firebaseUser, dbUser, business, loading, error: accountError, refreshBusiness, refreshCurrentUser } = useAuth()
   const signedIn = Boolean(firebaseUser)
@@ -377,7 +380,9 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
   const t = chatWidgetBuilderI18n[language]
   const builderExtraText = chatWidgetBuilderExtraI18n[language]
 
-  const [workspaceMode, setWorkspaceMode] = useState<'design' | 'rules'>('design')
+  const [workspaceMode, setWorkspaceMode] = useState<'knowledge' | 'personality' | 'features' | 'design'>('knowledge')
+  const [decisions, setDecisions] = useState<StudioDecisions>({})
+  const [setupError, setSetupError] = useState('')
   const [inputs, setInputs] = useState<InputsState>(defaultInputs)
   const [assistantConfigDraft, setAssistantConfigDraft] = useState<ChatAssistantConfig>(createDefaultAssistantConfig())
   const [hasLoadedDbConfig, setHasLoadedDbConfig] = useState(false)
@@ -596,8 +601,6 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
     { key: 'body', label: builderExtraText.sidebar.chatMessages, eyebrow: builderExtraText.sidebar.messages, icon: FiMessageSquare },
     { key: 'footer', label: builderExtraText.sidebar.messageBox, eyebrow: builderExtraText.sidebar.input, icon: FiSend },
     { key: 'colorTheme', label: builderExtraText.sidebar.colors, eyebrow: builderExtraText.sidebar.theme, icon: FiDroplet },
-    { key: 'advanced', label: builderExtraText.sidebar.behavior, eyebrow: builderExtraText.sidebar.rules, icon: FiSliders },
-    { key: 'plan', label: builderExtraText.sidebar.subscription, eyebrow: builderExtraText.sidebar.plan, icon: FiCreditCard },
   ] as const
 
   useEffect(() => {
@@ -678,6 +681,17 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
   }
 
   const saveConfig = async () => {
+    setSetupError('')
+    if (setupMode && !setupDecisionsComplete(decisions)) {
+      setSetupError(no ? 'Velg AI, support, tickets og anmeldelser før du fullfører.' : 'Choose AI, support, tickets and reviews before finishing.')
+      setWorkspaceMode('features')
+      return
+    }
+    if (setupMode && assistantConfigDraft.enabled && !hasAssistantKnowledge(assistantConfigDraft)) {
+      setSetupError(no ? 'Legg inn bedriftsinformasjon før du slår på AI-svar.' : 'Add business information before enabling AI replies.')
+      setWorkspaceMode('knowledge')
+      return
+    }
     if (!isAuthenticated || !dbUser?.businessId) {
       router.push('/auth/login')
       return
@@ -743,6 +757,7 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
           )
         }
 
+        if (setupMode) await onSetupComplete?.()
         setSaveStatus('success')
         setTimeout(() => setSaveStatus('idle'), 2000)
       } else {
@@ -790,7 +805,7 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
             <button type="button" onClick={() => void refreshCurrentUser()}>{no ? 'Prøv igjen' : 'Try again'}</button>
           </div>
         )}
-        <section className="chatbuilder-hero">
+        {!embedded && <section className="chatbuilder-hero">
           <div className="studioIntro">
             {!embedded && <Link className="studioBackLink" href={isAuthenticated ? '/admin' : '/'}><FiArrowLeft aria-hidden="true" />{isAuthenticated ? (no ? 'Arbeidsområdet ditt' : 'Your workspace') : (no ? 'Til forsiden' : 'Back to home')}</Link>}
             <h1>{no ? 'Din merkevare. Din chat.' : 'Your brand. Your chat.'}</h1>
@@ -842,21 +857,9 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
           ) : (
             <div className="studioGuestNote"><span className="studioEyebrow">{no ? 'PRØV DEG FREM' : 'MAKE IT YOURS'}</span><strong>{no ? 'Finn uttrykket som passer deg.' : 'Find the look that feels like you.'}</strong><p>{no ? 'Du kan utforske editoren uten konto. Logg inn for å lagre chatwidgeten til bedriften din.' : 'Explore the editor without an account. Sign in to save your widget to your workspace.'}</p><Link href="/auth/login">{no ? 'Logg inn for å lagre' : 'Sign in to save'}<FiArrowRight aria-hidden="true" /></Link></div>
           )}
-        </section>
+        </section>}
 
-        <section className="studioPresets" aria-label={no ? 'Ferdige designstiler' : 'Design presets'}>
-          <div className="studioPresetIntro"><span className="studioEyebrow">{no ? 'ET GODT UTGANGSPUNKT' : 'A GOOD STARTING POINT'}</span><h2>{no ? 'Finn din stil.' : 'Find your style.'}</h2><p>{no ? 'Velg et samlet uttrykk. Behold navn, innhold og logo.' : 'Start with a coordinated look. Keep your name, content and logo.'}</p></div>
-          <div className="studioPresetChoices">
-            {([
-              { id: 'nordic', title: no ? 'Nordisk' : 'Nordic', description: no ? 'Rolig blå. Myke former.' : 'Calm blue. Soft edges.', color: '#285f86' },
-              { id: 'minimal', title: no ? 'Minimal' : 'Minimal', description: no ? 'Grafitt. Rent og diskret.' : 'Graphite. Clean and understated.', color: '#4b5563' },
-              { id: 'welcoming', title: no ? 'Varm & vennlig' : 'Warm & friendly', description: no ? 'Skoggrønn. Åpent og personlig.' : 'Forest green. Open and personal.', color: '#047857' },
-              { id: 'boutique', title: 'Boutique', description: no ? 'Lilla. Elegant med meldingskort.' : 'Violet. Elegant message cards.', color: '#6d28d9' },
-              { id: 'playful', title: no ? 'Leken' : 'Playful', description: no ? 'Rosa. Myke samtalebobler.' : 'Rose. Soft conversation bubbles.', color: '#a9296b' },
-            ] as const).map((preset) => <button type="button" className="studioPreset" key={preset.id} onClick={() => applyDesignPreset(preset.id)}><span className="studioPresetSample" style={{ '--preset-color': preset.color } as React.CSSProperties} aria-hidden="true"><i /><i /><i /></span><span><strong>{preset.title}</strong><small>{preset.description}</small></span><FiArrowRight aria-hidden="true" /></button>)}
-          </div>
-          {presetNotice && <p className="studioPresetNotice" role="status">{presetNotice}</p>}
-        </section>
+
 
 
         <div className="chatbuilder-grid">
@@ -901,18 +904,27 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
               </div>
             </div>
 
-            <div className="studioWorkspaceTabs" role="group" aria-label={no ? 'Arbeidsflate' : 'Workspace'}>
-              <button type="button" aria-pressed={workspaceMode === 'design'} onClick={() => setWorkspaceMode('design')}>{no ? 'Design' : 'Design'}</button>
-              <button type="button" aria-pressed={workspaceMode === 'rules'} onClick={() => setWorkspaceMode('rules')}>{no ? 'Regler og innhold' : 'Rules and content'}</button>
-            </div>
-            {workspaceMode === 'rules' && <div className="studioRules">
-              <PersonalitySettings value={assistantConfigDraft} no={no} onChange={(value) => { setAssistantConfigDraft(value); setSaveStatus('idle') }} />
-              <label className="widgetFlowToggle"><span>{no ? 'AI-assistent aktiv' : 'AI assistant enabled'}</span><input type="checkbox" checked={assistantConfigDraft.enabled} onChange={e => setAssistantConfigDraft(prev => ({ ...prev, enabled: e.target.checked }))} /></label>
-              {(['systemPrompt', 'businessContext', 'restrictions', 'extraInstructions'] as const).map(key => <label key={key} className="widgetFlowField"><span>{{ systemPrompt: no ? 'Assistentens rolle' : 'Assistant role', businessContext: no ? 'Bedriftsinformasjon' : 'Business information', restrictions: no ? 'Begrensninger' : 'Restrictions', extraInstructions: no ? 'Ekstra instruksjoner' : 'Extra instructions' }[key]}</span><textarea rows={4} value={assistantConfigDraft[key]} onChange={e => setAssistantConfigDraft(prev => ({ ...prev, [key]: e.target.value }))} /></label>)}
-              <WidgetFlowSettings settings={inputs.settings} mode="rules" no={no} onChange={updateFlowSettings} />
-              {signedIn && (onOpenAdvanced ? <button type="button" onClick={onOpenAdvanced}>{no ? 'Avanserte innstillinger' : 'Advanced settings'}</button> : <Link href="/admin?section=widgets&widgetPanel=ai">{no ? 'Avanserte kunnskapskilder, installasjon og domener' : 'Advanced knowledge sources, installation and domains'}</Link>)}
-            </div>}
-            {workspaceMode === 'design' && <div className="builder-layout">
+            {setupMode && <div className="studioSetupIntro"><span className="studioEyebrow">{no ? 'KOM I GANG' : 'GET STARTED'}</span><h2>{no ? 'Sett opp din første assistent' : 'Set up your first assistant'}</h2><p>{no ? 'Fire steg. Du kontrollerer innholdet og velger funksjonene. Etter lagring viser vi deg rundt i administrasjonen.' : 'Four steps. Review the information and choose your features. After saving, we will show you around the dashboard.'}</p></div>}
+            <nav className="studioWorkspaceTabs" aria-label={no ? 'Oppsett av assistenten' : 'Assistant setup'}>
+              {([{ id: 'knowledge', no: 'Bedriften', en: 'Business' }, { id: 'personality', no: 'Svarstil', en: 'Response style' }, { id: 'features', no: 'Funksjoner', en: 'Features' }, { id: 'design', no: 'Design', en: 'Design' }] as const).map((step, index) => <button type="button" key={step.id} aria-current={workspaceMode === step.id ? 'step' : undefined} onClick={() => setWorkspaceMode(step.id)}><span>{index + 1}</span>{no ? step.no : step.en}</button>)}
+            </nav>
+            {setupError && <p className="studioSetupError" role="alert">{setupError}</p>}
+            {workspaceMode === 'knowledge' && <div className="studioRules"><StudioKnowledgeSettings key={selectedWidgetKey || 'draft'} value={assistantConfigDraft} no={no} onChange={value => { setAssistantConfigDraft(value); setSaveStatus('idle') }} /></div>}
+            {workspaceMode === 'personality' && <div className="studioRules"><PersonalitySettings value={assistantConfigDraft} no={no} onChange={value => { setAssistantConfigDraft(value); setSaveStatus('idle') }} /></div>}
+            {workspaceMode === 'features' && <div className="studioRules"><StudioFeatureSettings assistant={assistantConfigDraft} settings={inputs.settings} no={no} setup={setupMode} decisions={decisions} onDecision={setDecisions} onAssistantChange={setAssistantConfigDraft} onSettingsChange={updateFlowSettings} /></div>}
+            {workspaceMode === 'design' && <>        <section className="studioPresets" aria-label={no ? 'Ferdige designstiler' : 'Design presets'}>
+          <div className="studioPresetIntro"><span className="studioEyebrow">{no ? 'ET GODT UTGANGSPUNKT' : 'A GOOD STARTING POINT'}</span><h2>{no ? 'Finn din stil.' : 'Find your style.'}</h2><p>{no ? 'Velg et samlet uttrykk. Behold navn, innhold og logo.' : 'Start with a coordinated look. Keep your name, content and logo.'}</p></div>
+          <div className="studioPresetChoices">
+            {([
+              { id: 'nordic', title: no ? 'Nordisk' : 'Nordic', description: no ? 'Rolig blå. Myke former.' : 'Calm blue. Soft edges.', color: '#285f86' },
+              { id: 'minimal', title: no ? 'Minimal' : 'Minimal', description: no ? 'Grafitt. Rent og diskret.' : 'Graphite. Clean and understated.', color: '#4b5563' },
+              { id: 'welcoming', title: no ? 'Varm & vennlig' : 'Warm & friendly', description: no ? 'Skoggrønn. Åpent og personlig.' : 'Forest green. Open and personal.', color: '#047857' },
+              { id: 'boutique', title: 'Boutique', description: no ? 'Lilla. Elegant med meldingskort.' : 'Violet. Elegant message cards.', color: '#6d28d9' },
+              { id: 'playful', title: no ? 'Leken' : 'Playful', description: no ? 'Rosa. Myke samtalebobler.' : 'Rose. Soft conversation bubbles.', color: '#a9296b' },
+            ] as const).map((preset) => <button type="button" className="studioPreset" key={preset.id} onClick={() => applyDesignPreset(preset.id)}><span className="studioPresetSample" style={{ '--preset-color': preset.color } as React.CSSProperties} aria-hidden="true"><i /><i /><i /></span><span><strong>{preset.title}</strong><small>{preset.description}</small></span><FiArrowRight aria-hidden="true" /></button>)}
+          </div>
+          {presetNotice && <p className="studioPresetNotice" role="status">{presetNotice}</p>}
+        </section><div className="builder-layout">
               <nav className="builder-sidebar" aria-label={no ? 'Widgetinnstillinger' : 'Widget settings'}>
                 {builderSections.map((section) => {
                   const SectionIcon = section.icon
@@ -996,6 +1008,10 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
                   onToggleSection={toggleSection}
                 />
               </section>
+            </div></>}
+            {setupMode && <div className="studioSetupActions">
+              <button type="button" disabled={workspaceMode === 'knowledge' || isSaving} onClick={() => setWorkspaceMode(({ personality: 'knowledge', features: 'personality', design: 'features', knowledge: 'knowledge' } as const)[workspaceMode])}>{no ? 'Tilbake' : 'Back'}</button>
+              {workspaceMode !== 'design' ? <button type="button" onClick={() => setWorkspaceMode(({ knowledge: 'personality', personality: 'features', features: 'design', design: 'design' } as const)[workspaceMode])}>{no ? 'Neste steg' : 'Next step'}</button> : <button type="button" disabled={isSaving} onClick={() => void saveConfig()}>{isSaving ? (no ? 'Lagrer...' : 'Saving...') : (no ? 'Lagre og start omvisning' : 'Save and start tour')}</button>}
             </div>}
             <div className="studioEditorNote" role="status">{saveStatus === 'error' ? t.saveFailed : saveStatus === 'success' ? t.savedButton : (no ? 'Forhåndsvisningen oppdateres mens du jobber. Lagre når du er fornøyd.' : 'Your preview updates as you work. Save when you’re happy with it.')}</div>
           </div>
