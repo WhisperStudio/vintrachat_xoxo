@@ -5,11 +5,13 @@ import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { randomBytes } from 'node:crypto';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const envPath = resolve(root, '.env.development.local');
 const credentialsPath = resolve(root, '.audit/local-admin-credentials.json');
 const require = createRequire(import.meta.url);
+require('@next/env').loadEnvConfig(root, true, { info() {}, error() {} });
 
 try {
   const config = JSON.parse(await readFile(resolve(homedir(), '.config/configstore/firebase-tools.json'), 'utf8'));
@@ -25,6 +27,8 @@ try {
   const settings = {
     FIREBASE_PROJECT_ID: 'vintrasolutions-f58a7',
     GOOGLE_APPLICATION_CREDENTIALS: credentialsPath,
+    AUTH_RECORD_SIGNING_KEY: process.env.AUTH_RECORD_SIGNING_KEY || randomBytes(32).toString('hex'),
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL_LOCAL || 'http://localhost:3000',
     VINTRA_NOTIFICATIONS_ENABLED: 'false',
   };
   for (const [key, value] of Object.entries(settings)) {

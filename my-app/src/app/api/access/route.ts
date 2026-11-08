@@ -10,6 +10,7 @@ const handle = createNotificationHandler({
   verifyToken: verifyActiveUserToken,
   enabled: () => true,
   origins: apiOrigins(),
+  allowDevelopmentLoopback: process.env.NODE_ENV === 'development' && !process.env.VERCEL,
   actions: new Set(['listBusinesses', 'listInvitations', 'createInvitation', 'acceptInvitation', 'deleteInvitation', 'updateUserRole']),
   service: () => createAccessService(getAdminDb(), {
     teamLimit: (plan: string) => getPlanLimits(normalizeSubscriptionPlan(plan)).maxTeamMembers,

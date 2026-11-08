@@ -3458,7 +3458,7 @@ export default function WidgetAdminPanel({
 
           <div className="widget-admin-widget-manager__summary">
             <div><strong>{config?.plan === 'business' ? 'Enterprise' : config?.plan === 'pro' ? 'Pro' : 'Gratis'}</strong><span>Gjeldende abonnement</span></div>
-            <a href="/priser">Se priser og administrer abonnement →</a>
+            <a href="/admin?section=subscriptions">Se priser og administrer abonnement →</a>
           </div>
 
           {widgetList.length > 0 && (

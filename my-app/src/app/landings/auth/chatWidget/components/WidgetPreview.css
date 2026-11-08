@@ -877,7 +877,7 @@
 .widget-starter-options__back > svg,
 .chat-footer button > svg,
 .widget-icon-inner > svg,
-.widget-icon > svg {
+.widget-icon > svg:not(.launcher-artwork) {
   width: var(--widget-glyph-size, 60%) !important;
   height: var(--widget-glyph-size, 60%) !important;
   min-width: 0 !important;

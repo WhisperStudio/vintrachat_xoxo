@@ -15,8 +15,8 @@ type Plan = keyof typeof PLANS
 type Cycle = 'monthly' | 'yearly'
 type Account = { plan: Plan; canManage: boolean; billing: Business['billing'] | null; usage: { conversations: number; messages: number } }
 
-export default function PricingClient({ configured, testMode }: { configured: boolean; testMode: boolean }) {
-  const { firebaseUser, business, loading, refreshBusiness } = useAuth()
+export default function PricingClient({ configured, testMode, embedded = false }: { configured: boolean; testMode: boolean; embedded?: boolean }) {
+  const { firebaseUser, business, loading, isAuthenticated, refreshBusiness } = useAuth()
   const { language, setLanguage } = useVintraLanguage()
   const no = language === 'no'
   const locale = no ? 'nb-NO' : 'en-GB'
@@ -42,7 +42,7 @@ export default function PricingClient({ configured, testMode }: { configured: bo
   }, [firebaseUser, business, language, t])
 
   useEffect(() => {
-    if (!firebaseUser || !business || !configured) return
+    if (!isAuthenticated || !firebaseUser || !business || !configured) { setAccount(null); return }
     let cancelled = false
     async function load() {
       try {
@@ -57,7 +57,7 @@ export default function PricingClient({ configured, testMode }: { configured: bo
     }
     void load()
     return () => { cancelled = true }
-  }, [firebaseUser, business, configured, params, request, retry, t])
+  }, [isAuthenticated, firebaseUser, business, configured, params, request, retry, t])
 
   async function pay(plan?: Plan, cancel = false) {
     setBusy(cancel ? 'cancel' : plan || 'portal'); setError('')
@@ -69,7 +69,7 @@ export default function PricingClient({ configured, testMode }: { configured: bo
     } catch (err) { setError(err instanceof Error ? err.message : t("Kunne ikke åpne betalingen.")); setBusy('') }
   }
 
-  return <main className="billing-page" data-header-tone="dark">
+  return <main className={embedded ? "billing-page workspaceBilling" : "billing-page"} data-header-tone="dark">
     <div className="billing-wrap">
       <div className="billing-cycle" aria-label={no ? 'Språk' : 'Language'}>
         <button type="button" lang="nb" aria-pressed={no} onClick={() => setLanguage('no')}>Norsk</button>
@@ -84,6 +84,7 @@ export default function PricingClient({ configured, testMode }: { configured: bo
           <button onClick={() => setCycle('yearly')} aria-pressed={cycle === 'yearly'}>{t("Årlig")} <span>{t("2 mnd gratis")}</span></button>
         </div>
       </section>
+      {!loading && !isAuthenticated && <div className="billing-notice">{no ? 'Sammenlign abonnementene her. ' : 'Compare plans here. '}<Link href="/auth/login?next=%2Fpriser">{no ? 'Logg inn' : 'Sign in'}</Link>{no ? ' eller ' : ' or '}<Link href="/auth/signup">{no ? 'opprett en konto' : 'create an account'}</Link>{no ? ' for å velge abonnement.' : ' to choose a subscription.'}</div>}
       {testMode && configured && <div className="billing-notice">{t("Testmodus: Betalingene her er testbetalinger. Ingen ekte penger trekkes.")}</div>}
       {!configured && <div className="billing-notice">{t("Betaling er ikke aktivert ennå. Du kan fortsatt opprette en gratis konto.")}</div>}
       {params.get('checkout') === 'canceled' && <div className="billing-notice">{t("Betalingen ble avbrutt. Abonnementet ditt er ikke endret.")}</div>}
@@ -131,8 +132,8 @@ export default function PricingClient({ configured, testMode }: { configured: bo
               <li><FiCheck />{t("AI-svar og menneskelig oppfølging")}</li>
               <li><FiCheck />{plan === 'free' ? t("Grunnleggende utseende") : t("Orb-knapp, glassutseende og egne ikoner")}</li>
             </ul>
-            {plan === 'free' ? <Link className="billing-cta" href={firebaseUser ? '/landings/auth/chatWidget' : '/auth/signup'}>{firebaseUser ? t("Åpne widgeten") : t("Start gratis")}<FiArrowRight /></Link>
-              : !firebaseUser ? <Link className="billing-cta" href="/auth/login?next=%2Fpriser">{no ? "Logg inn og velg" : "Sign in and choose"} {planName(plan)}<FiArrowRight /></Link>
+            {plan === 'free' ? <Link className="billing-cta" href={isAuthenticated ? (embedded ? '/admin?section=builder' : '/landings/auth/chatWidget') : '/auth/signup'}>{isAuthenticated ? t("Åpne widgeten") : t("Start gratis")}<FiArrowRight /></Link>
+              : !isAuthenticated ? <Link className="billing-cta" href="/auth/login?next=%2Fpriser">{no ? "Logg inn og velg" : "Sign in and choose"} {planName(plan)}<FiArrowRight /></Link>
               : <button className="billing-cta" disabled={loading || Boolean(busy) || !configured || !account?.canManage}
                 onClick={() => void pay(plan)}>{busy === plan ? t("Åpner Stripe …") : current ? t("Administrer abonnement") : `${no ? "Velg" : "Choose"} ${planName(plan)}`}<FiArrowRight /></button>}
           </article>

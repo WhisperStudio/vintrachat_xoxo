@@ -20,11 +20,9 @@ export default function LoginPage() {
   const [loginLoading, setLoginLoading] = useState(false)
 
   useEffect(() => {
-    if (!loading && isAuthenticated) {
-      const destination = new URLSearchParams(window.location.search).get('next')
-      router.replace(destination === '/priser' ? '/priser' : '/admin')
-    }
-  }, [firebaseUser?.email, isAuthenticated, loading, router])
+    if (loading || accountError || !firebaseUser?.emailVerified) return
+    router.replace(isAuthenticated ? '/admin' : '/invite')
+  }, [firebaseUser, isAuthenticated, loading, accountError, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

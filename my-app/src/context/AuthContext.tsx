@@ -49,6 +49,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       if (!authUser) return;
+      // Refresh account metadata as verification can happen in another tab.
+      await withTimeout(authUser.reload(), ACCOUNT_LOAD_TIMEOUT_MS, ACCOUNT_TIMEOUT_MESSAGE);
+      if (request !== accountRequest.current) return;
+      if (!authUser.emailVerified) throw new Error('Verifiser e-postadressen din før du åpner arbeidsområdet.');
       await withTimeout((async () => {
         const user = await getCurrentUser(authUser);
         if (request !== accountRequest.current) return;
@@ -70,9 +74,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshBusiness = useCallback(async () => {
     if (!dbUser?.businessId) return;
+    const request = accountRequest.current;
 
     try {
       const biz = await getBusinessInfo(dbUser.businessId);
+      if (request !== accountRequest.current) return;
       setBusiness(biz);
     } catch (err) {
       console.error("Business refresh error:", err);

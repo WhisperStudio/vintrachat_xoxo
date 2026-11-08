@@ -1,6 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState, type ReactElement } from 'react'
+import Link from 'next/link'
+import { APP_THEME_EVENT, resolveAppThemePreference, writeAppThemePreference } from '@/lib/theme-preference'
+import '../admin/workspace-theme.css'
+import './page.css'
 import { useRouter } from 'next/navigation'
 import {
   FiActivity,
@@ -326,7 +330,16 @@ function HealthTimeline({
   )
 }
 
-export default function VintraAdminClient() {
+export default function VintraAdminClient({ embedded = false }: { embedded?: boolean }) {
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const [businessSearch, setBusinessSearch] = useState('')
+  useEffect(() => {
+    const sync = () => setTheme(resolveAppThemePreference())
+    sync()
+    window.addEventListener(APP_THEME_EVENT, sync)
+    window.addEventListener('storage', sync)
+    return () => { window.removeEventListener(APP_THEME_EVENT, sync); window.removeEventListener('storage', sync) }
+  }, [])
   const { firebaseUser, loading, logout } = useAuth()
   const router = useRouter()
   const [summary, setSummary] = useState<VintraSummary | null>(null)
@@ -616,7 +629,7 @@ export default function VintraAdminClient() {
 
   if (loading) {
     return (
-      <main className="vintraAdminShell">
+      <main className={`workspaceTheme vintraAdminShell ${embedded ? "vintraAdminEmbedded" : ""}`} data-admin-theme={theme}>
         <div className="vintraAdminLoading">Loading Vintra admin...</div>
       </main>
     )
@@ -624,7 +637,7 @@ export default function VintraAdminClient() {
 
   if (!firebaseUser) {
     return (
-      <main className="vintraAdminShell">
+      <main className={`workspaceTheme vintraAdminShell ${embedded ? "vintraAdminEmbedded" : ""}`} data-admin-theme={theme}>
         <div className="vintraAdminGuard">
           <FiShield />
           <h1>Sign in required</h1>
@@ -636,7 +649,7 @@ export default function VintraAdminClient() {
 
   if (!isAllowed) {
     return (
-      <main className="vintraAdminShell">
+      <main className={`workspaceTheme vintraAdminShell ${embedded ? "vintraAdminEmbedded" : ""}`} data-admin-theme={theme}>
         <div className="vintraAdminGuard">
           <FiSlash />
           <h1>Access denied</h1>
@@ -647,7 +660,7 @@ export default function VintraAdminClient() {
   }
 
   return (
-    <main className="vintraAdminShell">
+    <main className={`workspaceTheme vintraAdminShell ${embedded ? "vintraAdminEmbedded" : ""}`} data-admin-theme={theme}>
       <section className="vintraAdminHero">
         <div>
           <p className="vintraAdminEyebrow">Internal control room</p>
@@ -655,6 +668,7 @@ export default function VintraAdminClient() {
           <p>Monitor database users, businesses, Gemini health, and AI usage from one place.</p>
         </div>
         <div className="vintraAdminHeroActions">
+          {!embedded && <><Link className="vintraAdminButton secondary" href="/admin">Til adminpanelet</Link><button className="vintraAdminButton secondary" onClick={() => writeAppThemePreference(theme === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? 'Lys modus' : 'Mørk modus'}</button></>}
           <button type="button" className="vintraAdminButton secondary" onClick={() => void loadSummary()} disabled={busy}>
             <FiRefreshCcw />
             Refresh
@@ -668,6 +682,7 @@ export default function VintraAdminClient() {
             key={tab.id}
             type="button"
             className={`vintraAdminTab ${activeTab === tab.id ? 'active' : ''}`}
+            aria-current={activeTab === tab.id ? 'page' : undefined}
             onClick={() => setActiveTab(tab.id)}
           >
             {tab.icon}
@@ -738,12 +753,14 @@ export default function VintraAdminClient() {
               <span>{summary?.businesses.length ?? 0}</span>
             </div>
 
+            <label className="vintraAdminSearch">Søk etter bedrift<input type="search" value={businessSearch} onChange={event => setBusinessSearch(event.target.value)} placeholder="Navn eller e-post" /></label>
             <div className="vintraAdminList">
-              {summary?.businesses.map((business) => (
+              {summary?.businesses.filter(business => (business.name + ' ' + business.email).toLowerCase().includes(businessSearch.trim().toLowerCase())).map((business) => (
                 <button
                   key={business.id}
                   type="button"
                   className={`vintraAdminListItem ${selectedBusiness?.id === business.id ? 'active' : ''}`}
+                  aria-pressed={selectedBusiness?.id === business.id}
                   onClick={() => setSelectedBusinessId(business.id)}
                 >
                   <strong>{business.name}</strong>

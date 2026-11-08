@@ -11,10 +11,7 @@ import type {
 import { normalizeEmail } from '@/lib/vintra-admin'
 
 function generateToken(length = 30) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  return Array.from({ length })
-    .map(() => chars[Math.floor(Math.random() * chars.length)])
-    .join('')
+  return crypto.randomBytes(length).toString('base64url').slice(0, length)
 }
 
 function generateChatWidgetKey() {

@@ -1,4 +1,5 @@
 export const billingEnglish: Record<string, string> = {
+  "Serverens Firebase-tilgang er ikke konfigurert.": "Server authentication is not configured.",
   "Bli kjent med kundene dine.": "Get to know your customers.",
   "For bedrifter som vil vokse.": "For growing businesses.",
   "Mer kapasitet. Et større team.": "More capacity. A bigger team.",
