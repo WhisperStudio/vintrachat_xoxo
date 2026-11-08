@@ -702,3 +702,10 @@ html[data-theme='dark'] .chatbuilder-page { color-scheme: dark; }
 .glassRadioButton:is(:hover, :focus-visible, .active) .motion-demo--pop .motion-demo-target { animation: vintra-enter-pop 1.6s cubic-bezier(.2,.7,.3,1) infinite; }
 .glassRadioButton:is(:hover, :focus-visible, .active) .motion-demo--bounce .motion-demo-target { animation: vintra-enter-bounce 1.6s cubic-bezier(.2,.7,.3,1) infinite; }
 @media (prefers-reduced-motion: reduce) { .motion-demo .motion-demo-target { animation: none !important; } }
+
+.studioWorkspaceTabs { display: flex; gap: 8px; padding: 12px 20px; border-bottom: 1px solid var(--border-strong); }
+.studioWorkspaceTabs button { padding: 10px 18px; border: 1px solid var(--border-strong); border-radius: 12px; color: var(--text); background: var(--panel); font: inherit; cursor: pointer; }
+.studioWorkspaceTabs button[aria-pressed='true'] { background: var(--studio-selected); border-color: var(--brand); font-weight: 700; }
+.studioRules { display: grid; gap: 24px; padding: 24px; }
+.chatbuilder-page .preview-panel { position: sticky; top: 24px; align-self: start; }
+@media (max-width: 1000px) { .chatbuilder-page .preview-panel { position: relative; top: auto; } }

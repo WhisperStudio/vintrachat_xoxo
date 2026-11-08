@@ -435,6 +435,8 @@ function mapTask(task: any): SupportTask {
     chatId: task.chatId || task.sourceChatId || undefined,
     sessionId: task.sessionId || task.sourceChatId || undefined,
     visitorName: task.visitorName || undefined,
+    visitorEmail: task.visitorEmail || undefined,
+    visitorPhone: task.visitorPhone || undefined,
     title: String(task.title || ''),
     description: String(task.description || ''),
     categoryId: String(task.categoryId || 'general'),

@@ -37,6 +37,16 @@ export function installWidgetMobileViewport(root) {
   window.addEventListener('scroll', keepPageStill, { passive: true });
   let pinned = true;
   let observedBody = null;
+  let editing = false;
+  let fullHeight = window.innerHeight;
+  function focusChanged(event) {
+    const target = event.composedPath()[0];
+    if (!target?.matches?.('textarea, input, [contenteditable="true"]')) return;
+    editing = event.type === 'focusin';
+    schedule();
+  }
+  root.addEventListener('focusin', focusChanged);
+  root.addEventListener('focusout', focusChanged);
   function onScroll(event) {
     const body = event.target;
     if (body?.classList?.contains('chat-body')) pinned = body.scrollHeight - body.clientHeight - body.scrollTop < 64;
@@ -73,7 +83,7 @@ export function installWidgetMobileViewport(root) {
     }
     const fullscreen = open && media.matches;
     root.classList.toggle('widget-mobile-fullscreen', fullscreen);
-    if (!fullscreen) { release(); return; }
+    if (!fullscreen) { root.classList.remove('widget-keyboard-open'); release(); return; }
     if (!locked) {
       let lock = document[lockKey];
       if (!lock) {
@@ -93,6 +103,11 @@ export function installWidgetMobileViewport(root) {
       locked = true;
       keepPageStill();
     }
+    const visibleHeight = viewport?.height || window.innerHeight;
+    if (!editing) fullHeight = Math.max(window.innerHeight, visibleHeight);
+    // Keyboard chrome is already excluded by VisualViewport; never subtract it again.
+    const keyboardOpen = editing && fullHeight - visibleHeight > 120;
+    root.classList.toggle('widget-keyboard-open', keyboardOpen);
     // Use the visible height exactly once: no extra keyboard bottom offset.
     root.style.setProperty('--widget-visual-height', (viewport?.height || window.innerHeight) + 'px');
     root.style.setProperty('--widget-visual-top', (viewport?.offsetTop || 0) + 'px');
@@ -112,19 +127,22 @@ export function installWidgetMobileViewport(root) {
       window.removeEventListener('scroll', keepPageStill);
       observer.disconnect();
       root.removeEventListener('scroll', onScroll, true);
+      root.removeEventListener('focusin', focusChanged);
+      root.removeEventListener('focusout', focusChanged);
       window.cancelAnimationFrame(frame);
       window.removeEventListener('resize', schedule);
       viewport?.removeEventListener('resize', schedule);
       viewport?.removeEventListener('scroll', schedule);
       media.removeEventListener('change', schedule);
       root.classList.remove('widget-mobile-fullscreen');
+      root.classList.remove('widget-keyboard-open');
       release();
     },
   };
 }
 
 export function shouldAnimateWidgetLauncher(open, hasOpened, unread, waiting) {
-  return Boolean(waiting || (!open && (!hasOpened || unread)));
+  return Boolean(!open && !waiting && (!hasOpened || unread));
 }
 
 // Keep the composer DOM node connected during polling/replies. Replacing the

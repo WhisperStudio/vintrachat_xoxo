@@ -44,6 +44,7 @@ import type {
 } from '@/types/database'
 import './ChatWidget.css'
 
+import WidgetFlowSettings from '@/components/chat/WidgetFlowSettings'
 import PersonalitySettings from '@/components/chat/PersonalitySettings'
 import { CHAT_PERSONALITIES } from '@/lib/chat-personality'
 import PlanSelector from './components/PlanSelector'
@@ -76,6 +77,9 @@ const defaultOpenSections = {
   icons: false,
   branding: false,
   advanced: false,
+  contact: false,
+  reviews: false,
+  tickets: false,
 }
 
 const defaultOrbStyle: OrbStyleConfig = {
@@ -283,12 +287,7 @@ type InputsState = {
       focusY: number
     }
   }
-  settings: {
-    autoOpen: boolean
-    delayMs: number
-    tasksEnabled?: boolean
-    reviewsEnabled?: boolean
-  }
+  settings: ChatWidgetConfig['settings']
   conversationCardsEnabled: boolean
   conversationCardsLimit: number
   conversationCards: AssistantConversationCard[]
@@ -369,7 +368,7 @@ const defaultInputs: InputsState = {
   conversationCards: defaultConversationCards,
 }
 
-export default function ChatWidgetBuilder({ embedded = false }: { embedded?: boolean }) {
+export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidgetSelected, onOpenAdvanced }: { embedded?: boolean; widgetKey?: string; onWidgetSelected?: (key: string) => void; onOpenAdvanced?: () => void }) {
   const router = useRouter()
   const { isAuthenticated, firebaseUser, dbUser, business, loading, error: accountError, refreshBusiness, refreshCurrentUser } = useAuth()
   const signedIn = Boolean(firebaseUser)
@@ -378,6 +377,7 @@ export default function ChatWidgetBuilder({ embedded = false }: { embedded?: boo
   const t = chatWidgetBuilderI18n[language]
   const builderExtraText = chatWidgetBuilderExtraI18n[language]
 
+  const [workspaceMode, setWorkspaceMode] = useState<'design' | 'rules'>('design')
   const [inputs, setInputs] = useState<InputsState>(defaultInputs)
   const [assistantConfigDraft, setAssistantConfigDraft] = useState<ChatAssistantConfig>(createDefaultAssistantConfig())
   const [hasLoadedDbConfig, setHasLoadedDbConfig] = useState(false)
@@ -562,6 +562,12 @@ export default function ChatWidgetBuilder({ embedded = false }: { embedded?: boo
     }, 450)
   }
 
+  const updateFlowSettings = (settings: ChatWidgetConfig['settings']) => {
+    updateInput('settings', settings)
+    if (settings.ticket?.mode && settings.ticket.mode !== inputs.settings.ticket?.mode) {
+      setAssistantConfigDraft(previous => ({ ...previous, humanSupportEnabled: settings.ticket?.mode !== 'off' }))
+    }
+  }
   const toggleSection = (section: BuilderSectionKey) => {
     // A click should not leave the hover outline behind after the pointer moves
     // into the newly opened section.
@@ -582,6 +588,9 @@ export default function ChatWidgetBuilder({ embedded = false }: { embedded?: boo
   }
 
   const builderSections = [
+    { key: 'contact', label: no ? 'Kontaktinfo' : 'Contact info', eyebrow: no ? 'SKJEMA' : 'FORM', icon: FiPhone },
+    { key: 'reviews', label: no ? 'Anmeldelser' : 'Reviews', eyebrow: no ? 'TILBAKEMELDING' : 'FEEDBACK', icon: FiCheck },
+    { key: 'tickets', label: 'Tickets / support', eyebrow: no ? 'OPPFØLGING' : 'FOLLOW-UP', icon: FiLifeBuoy },
     { key: 'bubble', label: builderExtraText.sidebar.chatButton, eyebrow: builderExtraText.sidebar.launcher, icon: FiMessageCircle },
     { key: 'header', label: builderExtraText.sidebar.chatTopBar, eyebrow: builderExtraText.sidebar.header, icon: FiLayout },
     { key: 'body', label: builderExtraText.sidebar.chatMessages, eyebrow: builderExtraText.sidebar.messages, icon: FiMessageSquare },
@@ -590,6 +599,15 @@ export default function ChatWidgetBuilder({ embedded = false }: { embedded?: boo
     { key: 'advanced', label: builderExtraText.sidebar.behavior, eyebrow: builderExtraText.sidebar.rules, icon: FiSliders },
     { key: 'plan', label: builderExtraText.sidebar.subscription, eyebrow: builderExtraText.sidebar.plan, icon: FiCreditCard },
   ] as const
+
+  useEffect(() => {
+    if (!widgetKey) return
+    const widget = widgetList.find(entry => entry.widgetKey === widgetKey)
+    if (widget) {
+      setSelectedWidgetKey(widgetKey)
+      applyWidgetConfig(widget.config, widget.assistantConfig || business?.chatAssistantConfig || null)
+    }
+  }, [widgetKey, business])
 
   const resetBuilder = () => {
     const config = selectedWidget?.config || business?.chatWidgetConfig
@@ -617,6 +635,7 @@ export default function ChatWidgetBuilder({ embedded = false }: { embedded?: boo
     if (!widget) return
 
     setSelectedWidgetKey(nextWidgetKey)
+    onWidgetSelected?.(nextWidgetKey)
     applyWidgetConfig(widget.config, widget.assistantConfig || business?.chatAssistantConfig || null)
 
     await setActiveChatWidget(dbUser.businessId, nextWidgetKey)
@@ -646,6 +665,7 @@ export default function ChatWidgetBuilder({ embedded = false }: { embedded?: boo
 
       await setActiveChatWidget(dbUser.businessId, result.widgetKey)
       setSelectedWidgetKey(result.widgetKey)
+      if (result.widgetKey) onWidgetSelected?.(result.widgetKey)
       await refreshBusiness()
       setSaveStatus('success')
       setTimeout(() => setSaveStatus('idle'), 1800)
@@ -738,6 +758,9 @@ export default function ChatWidgetBuilder({ embedded = false }: { embedded?: boo
 
   const activeSection = builderSections.find((section) => openSections[section.key]) || builderSections[0]
   const sectionDescriptions = {
+    contact: no ? 'Tilpass kontaktinformasjonen kunden sender til teamet.' : 'Configure the contact details visitors send to the team.',
+    reviews: no ? 'La kunden gi en frivillig anmeldelse etter samtalen.' : 'Let visitors leave an optional review after their conversation.',
+    tickets: no ? 'Bestem hvordan kunden får hjelp og sender inn oppgaver.' : 'Choose how visitors get help and submit requests.',
     bubble: no ? 'Velg hvordan kundene åpner chatten på nettsiden din.' : 'Choose how customers open the chat on your website.',
     header: no ? 'Gi samtalen en tydelig avsender og et personlig uttrykk.' : 'Give every conversation a clear identity and a personal touch.',
     body: no ? 'Tilpass meldinger og snarveier som hjelper kundene videre.' : 'Customize messages and shortcuts that help customers find their way.',
@@ -835,7 +858,7 @@ export default function ChatWidgetBuilder({ embedded = false }: { embedded?: boo
           {presetNotice && <p className="studioPresetNotice" role="status">{presetNotice}</p>}
         </section>
 
-        <PersonalitySettings value={assistantConfigDraft} no={no} onChange={(value) => { setAssistantConfigDraft(value); setSaveStatus('idle') }} />
+
         <div className="chatbuilder-grid">
           <div className="builder-panel glass" ref={builderPanelRef}>
             <div className="panel-header">
@@ -878,7 +901,18 @@ export default function ChatWidgetBuilder({ embedded = false }: { embedded?: boo
               </div>
             </div>
 
-            <div className="builder-layout">
+            <div className="studioWorkspaceTabs" role="group" aria-label={no ? 'Arbeidsflate' : 'Workspace'}>
+              <button type="button" aria-pressed={workspaceMode === 'design'} onClick={() => setWorkspaceMode('design')}>{no ? 'Design' : 'Design'}</button>
+              <button type="button" aria-pressed={workspaceMode === 'rules'} onClick={() => setWorkspaceMode('rules')}>{no ? 'Regler og innhold' : 'Rules and content'}</button>
+            </div>
+            {workspaceMode === 'rules' && <div className="studioRules">
+              <PersonalitySettings value={assistantConfigDraft} no={no} onChange={(value) => { setAssistantConfigDraft(value); setSaveStatus('idle') }} />
+              <label className="widgetFlowToggle"><span>{no ? 'AI-assistent aktiv' : 'AI assistant enabled'}</span><input type="checkbox" checked={assistantConfigDraft.enabled} onChange={e => setAssistantConfigDraft(prev => ({ ...prev, enabled: e.target.checked }))} /></label>
+              {(['systemPrompt', 'businessContext', 'restrictions', 'extraInstructions'] as const).map(key => <label key={key} className="widgetFlowField"><span>{{ systemPrompt: no ? 'Assistentens rolle' : 'Assistant role', businessContext: no ? 'Bedriftsinformasjon' : 'Business information', restrictions: no ? 'Begrensninger' : 'Restrictions', extraInstructions: no ? 'Ekstra instruksjoner' : 'Extra instructions' }[key]}</span><textarea rows={4} value={assistantConfigDraft[key]} onChange={e => setAssistantConfigDraft(prev => ({ ...prev, [key]: e.target.value }))} /></label>)}
+              <WidgetFlowSettings settings={inputs.settings} mode="rules" no={no} onChange={updateFlowSettings} />
+              {signedIn && (onOpenAdvanced ? <button type="button" onClick={onOpenAdvanced}>{no ? 'Avanserte innstillinger' : 'Advanced settings'}</button> : <Link href="/admin?section=widgets&widgetPanel=ai">{no ? 'Avanserte kunnskapskilder, installasjon og domener' : 'Advanced knowledge sources, installation and domains'}</Link>)}
+            </div>}
+            {workspaceMode === 'design' && <div className="builder-layout">
               <nav className="builder-sidebar" aria-label={no ? 'Widgetinnstillinger' : 'Widget settings'}>
                 {builderSections.map((section) => {
                   const SectionIcon = section.icon
@@ -917,6 +951,8 @@ export default function ChatWidgetBuilder({ embedded = false }: { embedded?: boo
 
               <section className="builder-content-panel" id="studio-settings" aria-labelledby="studio-section-title">
                 <div className="studioSectionIntro"><span className="studioEyebrow">{activeSection.eyebrow}</span><h2 id="studio-section-title">{activeSection.label}</h2><p>{sectionDescriptions[activeSection.key]}</p></div>
+                {(activeSection.key === 'contact' || activeSection.key === 'reviews' || activeSection.key === 'tickets') && <WidgetFlowSettings settings={inputs.settings} section={activeSection.key} mode="design" no={no} onChange={updateFlowSettings} />}
+                {activeSection.key === 'header' && <label className="widgetFlowToggle"><span>{no ? 'Vis anmeldelsesknapp (krever at anmeldelser er aktivert i Regler)' : 'Show review button (enable reviews in Rules first)'}</span><input type="checkbox" checked={inputs.settings.reviewPage?.showHeaderButton === true} onChange={e => updateInput('settings', { ...inputs.settings, reviewPage: { ...inputs.settings.reviewPage, showHeaderButton: e.target.checked } })} /></label>}
                 <PlanSelector
                   plan={inputs.plan}
                   billingCycle={inputs.billingCycle}
@@ -960,7 +996,7 @@ export default function ChatWidgetBuilder({ embedded = false }: { embedded?: boo
                   onToggleSection={toggleSection}
                 />
               </section>
-            </div>
+            </div>}
             <div className="studioEditorNote" role="status">{saveStatus === 'error' ? t.saveFailed : saveStatus === 'success' ? t.savedButton : (no ? 'Forhåndsvisningen oppdateres mens du jobber. Lagre når du er fornøyd.' : 'Your preview updates as you work. Save when you’re happy with it.')}</div>
           </div>
 
@@ -996,6 +1032,8 @@ export default function ChatWidgetBuilder({ embedded = false }: { embedded?: boo
             <WidgetPreview
               key={`${previewScenario}-${previewSession}-${CHAT_PERSONALITIES.find((item) => item.style === assistantConfigDraft.responseStyle)?.id || 'custom'}`}
               previewScenario={previewScenario}
+              supportEnabled={assistantConfigDraft.humanSupportEnabled}
+              designPage={workspaceMode === 'design' && (activeSection.key === 'contact' || activeSection.key === 'reviews' || activeSection.key === 'tickets') ? activeSection.key : undefined}
               billingCycle={inputs.billingCycle}
               plan={databasePlan}
               bubbleStyle={inputs.bubbleStyle}

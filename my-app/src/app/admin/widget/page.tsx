@@ -1,4 +1,7 @@
 'use client'
+import dynamic from 'next/dynamic'
+import WidgetFlowSettings from '@/components/chat/WidgetFlowSettings'
+const ChatWidgetStudio = dynamic(() => import('@/app/landings/auth/chatWidget/ChatWidgetBuilder'), { loading: () => <p role="status">Laster studio...</p> })
 
 import {
   useCallback,
@@ -689,6 +692,7 @@ const TONE_OPTIONS = [
 ] as const
 
 const ADMIN_TOP_SECTIONS = [
+  { id: 'studio', label: 'Design og regler', category: 'Widget studio', description: 'Samlet editor med forhåndsvisning.', icon: FiMessageSquare },
   {
     id: 'overview',
     label: 'Oversikt',
@@ -719,7 +723,7 @@ const ADMIN_TOP_SECTIONS = [
   },
   {
     id: 'ai',
-    label: 'AI',
+    label: 'Avansert AI',
     category: 'Assistent',
     description: 'Kontekst, regler og cards.',
     icon: FiCpu,
@@ -850,7 +854,7 @@ export default function WidgetAdminPanel({
   const [selectedStarterCardIndex, setSelectedStarterCardIndex] = useState<number | null>(null)
   const [selectedStarterOptionIndex, setSelectedStarterOptionIndex] = useState<number | null>(null)
   const [starterCardsError, setStarterCardsError] = useState('')
-  const [activeAdminSection, setActiveAdminSection] = useState<AdminTopSectionId>('overview')
+  const [activeAdminSection, setActiveAdminSection] = useState<AdminTopSectionId>(() => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('widgetPanel') === 'ai' ? 'ai' : 'studio')
   const [autoContextDirtyFields, setAutoContextDirtyFields] = useState<{
     businessContext: boolean
     faqSuggestions: boolean
@@ -2211,11 +2215,12 @@ export default function WidgetAdminPanel({
     } as ChatWidgetConfig
 
     const result = await updateChatWidgetConfig(dbUser.businessId, mergedConfig, targetWidgetKey)
+    const assistantResult = result.success ? await updateChatAssistantConfig(dbUser.businessId, assistantConfig, targetWidgetKey) : { success: false }
 
     setPortalSaving(false)
-    setPortalStatus(result.success ? 'saved' : 'error')
+    setPortalStatus(result.success && assistantResult.success ? 'saved' : 'error')
 
-    if (result.success) {
+    if (result.success && assistantResult.success) {
       setSelectedWidgetKey(targetWidgetKey)
       setConfig(mergedConfig)
       if (typeof window !== 'undefined') {
@@ -3302,6 +3307,7 @@ export default function WidgetAdminPanel({
         })}
       </nav>
 
+      {activeAdminSection === 'studio' && <ChatWidgetStudio embedded widgetKey={selectedWidgetKey} onWidgetSelected={setSelectedWidgetKey} onOpenAdvanced={() => setActiveAdminSection('ai')} />}
       {activeAdminSection === 'overview' ? (
       <section className="widget-admin-card widget-admin-overview-panel">
         <div className="widget-card-header widget-card-header--compact">
@@ -3827,59 +3833,7 @@ export default function WidgetAdminPanel({
               </button>
             </div>
 
-            <div className="widget-ai-grid">
-              <div className="widget-admin-toggle-card">
-                <div className="widget-ai-field widget-ai-toggle">
-                  <span><FieldIcon icon={FiLayers} accent="blue" /> Tasks page</span>
-                  <SettingSwitch
-                    checked={Boolean(config?.settings?.tasksEnabled)}
-                    onChange={(nextValue) =>
-                      setConfig((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              settings: {
-                                ...prev.settings,
-                                tasksEnabled: nextValue,
-                              },
-                            }
-                          : prev
-                      )
-                    }
-                    ariaLabel="Tasks page"
-                  />
-                </div>
-                <p className="field-note">
-                  Let visitors create tickets and view submitted tasks in a separate page inside the widget.
-                </p>
-              </div>
-
-              <div className="widget-admin-toggle-card">
-                <div className="widget-ai-field widget-ai-toggle">
-                  <span><FieldIcon icon={FiMessageSquare} accent="rose" /> Review page</span>
-                  <SettingSwitch
-                    checked={Boolean(config?.settings?.reviewsEnabled)}
-                    onChange={(nextValue) =>
-                      setConfig((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              settings: {
-                                ...prev.settings,
-                                reviewsEnabled: nextValue,
-                              },
-                            }
-                          : prev
-                      )
-                    }
-                    ariaLabel="Review page"
-                  />
-                </div>
-                <p className="field-note">
-                  Show a separate review page so visitors can leave feedback directly in the widget.
-                </p>
-              </div>
-            </div>
+            {config && <WidgetFlowSettings settings={config.settings} onChange={settings => { setConfig(prev => prev ? { ...prev, settings } : prev); if (settings.ticket?.mode && settings.ticket.mode !== config.settings.ticket?.mode) setAssistantConfig(prev => ({ ...prev, humanSupportEnabled: settings.ticket?.mode !== 'off' })) }} />}
           </div>
 
           <div className="widget-admin-field-accordion-stack">

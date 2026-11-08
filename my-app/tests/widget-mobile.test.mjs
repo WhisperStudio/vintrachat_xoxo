@@ -86,10 +86,14 @@ test('desktop and resizing to desktop leave the underlying page scrollable', () 
 
 test('launcher attention covers arrival, waiting and unread replies without disturbing an idle conversation', () => {
   assert.equal(shouldAnimateWidgetLauncher(false, false, false, false), true);
-  assert.equal(shouldAnimateWidgetLauncher(true, true, false, true), true);
+  assert.equal(shouldAnimateWidgetLauncher(true, true, false, true), false);
   assert.equal(shouldAnimateWidgetLauncher(false, true, true, false), true);
   assert.equal(shouldAnimateWidgetLauncher(false, true, false, false), false);
   assert.equal(shouldAnimateWidgetLauncher(true, true, false, false), false);
+  assert.equal(shouldAnimateWidgetLauncher(false, true, false, true), false);
+  assert.equal(shouldAnimateWidgetLauncher(false, false, false, true), false);
+  assert.equal(shouldAnimateWidgetLauncher(true, true, true, false), false);
+  assert.equal(shouldAnimateWidgetLauncher(false, true, true, true), false);
 });
 
 test('touch gestures scroll the conversation but cannot chain to the host at its boundaries', () => {
@@ -116,3 +120,25 @@ test('touch gestures scroll the conversation but cannot chain to the host at its
   assert.equal(gesture([], 50), true, 'host-page touches are blocked');
   controller.destroy();
 });
+
+ test('keyboard compacts only a focused mobile chat and restores after dismissal', () => {
+  const env = environment();
+  const root = env.root();
+  const controller = env.install(root);
+  controller.setOpen(true);
+  // The mock stores one entry per callback shared by both focus events.
+  const focus = [...env.listeners].find(([, type]) => type === 'focusout')[0];
+  const blur = [...env.listeners].find(([, type]) => type === 'focusout')[0];
+  focus({ type: 'focusin', composedPath: () => [{ matches: () => true }] });
+  env.window.visualViewport.height = 420;
+  env.window.visualViewport.offsetTop = 18;
+  controller.setOpen(true);
+  assert.equal(root.classes.has('widget-keyboard-open'), true);
+  assert.equal(root.values.get('--widget-visual-height'), '420px');
+  assert.equal(root.values.get('--widget-visual-top'), '18px');
+  blur({ type: 'focusout', composedPath: () => [{ matches: () => true }] });
+  controller.setOpen(true);
+  assert.equal(root.classes.has('widget-keyboard-open'), false);
+  controller.destroy();
+  assert.equal(env.listeners.size, 0);
+ });

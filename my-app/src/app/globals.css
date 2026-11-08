@@ -736,3 +736,12 @@ input {
 @media (prefers-reduced-motion: reduce) {
   html, body { transition: none; }
 }
+
+/* Theme changes commit together across pages, menus and pseudo-elements. */
+html[data-theme-switching='true'],
+html[data-theme-switching='true'] *,
+html[data-theme-switching='true'] *::before,
+html[data-theme-switching='true'] *::after {
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+}

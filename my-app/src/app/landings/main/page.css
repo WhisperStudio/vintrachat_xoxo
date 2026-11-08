@@ -61,7 +61,7 @@
   --hero-title: #13233d;
   --hero-copy: rgba(31, 51, 79, 0.88);
   --hero-muted: rgba(79, 95, 128, 0.72);
-  --hero-accent: #1570ef;
+  --hero-accent: #126b62;
   --hero-panel-border: rgba(148, 163, 184, 0.18);
   --hero-outline: rgba(255, 255, 255, 0.92);
   background:
@@ -69,7 +69,7 @@
 }
 
 .heroShell--day .cta-primary {
-  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  background: linear-gradient(135deg, #126b62, #158b7d);
   color: #ffffff;
 }
 
@@ -3534,7 +3534,7 @@
   .droidMorphStage .morphSideCopy { position: static; width: 100%; max-width: 600px; opacity: 1; transform: none; filter: none; text-align: left; }
   .morphSideCopy h3 { font-size: clamp(23px, 4vw, 30px); }
   .morphSideCopy p { display: block; }
-  .droidMorphStage .nordicBrowser { width: 100%; max-width: 680px; height: auto; min-height: 0; opacity: 1; transform: none !important; border-radius: 22px !important; box-shadow: 0 12px 32px #02081720; }
+  .droidMorphStage .nordicBrowser { width: 100%; max-width: 680px; height: auto; min-height: 0; opacity: 1; transform: none; border-radius: 22px; box-shadow: 0 12px 32px #02081720; }
   .droidMorphStage .nordicSite { height: auto; opacity: 1; filter: none; }
   .nordicBrowserBar { height: 42px; padding: 0 12px; font-size: 10px; }
   .nordicNav { height: auto; min-height: 64px; gap: 12px; padding: 12px 16px; flex-wrap: wrap; }
@@ -3586,7 +3586,7 @@
   --return-progress: 0;
   --web-close: clamp(0, calc(var(--return-progress) / .22), 1);
   --bot-back: clamp(0, calc((var(--return-progress) - .12) / .10), 1);
-  --chat-focus: clamp(0, calc((var(--return-progress) - .3) / .16), 1);
+  --chat-focus: clamp(0, calc(var(--return-progress) / .28), 1);
   height: 650vh;
 }
 .droidMorphStage .nordicBrowser {
@@ -3594,27 +3594,27 @@
   border-color: color-mix(in srgb, #b7cbd0 calc((1 - var(--web-close)) * 100%), transparent);
   box-shadow: 0 28px 80px rgb(4 19 34 / calc((1 - var(--web-close)) * .2));
 }
-.droidMorphStage .nordicBrowserBar { opacity: calc(1 - var(--web-close)); transform: scale(calc(1 - var(--web-close) * .12)); }
+.droidMorphStage .nordicBrowserBar { opacity: calc(1 - var(--web-close)); transform: none; }
 .droidMorphStage .nordicSite {
   opacity: calc(clamp(0, calc((var(--morph-progress) - .22) * 8), 1) * (1 - var(--web-close)));
-  transform: scale(calc(1 - var(--web-close) * .35));
+  transform: none;
   transform-origin: center;
 }
 .droidMorphStage .morphSideCopy { opacity: calc(var(--copy-reveal) * (1 - var(--web-close))); }
 .droidMorphStage .siteChatBubble { opacity: calc(var(--bubble-reveal) * (1 - var(--web-close))); }
 .droidMorphStage .siteDroid {
-  opacity: max(calc(var(--droid-pop, 0) * (1 - var(--bubble-reveal))), calc(var(--bot-back) * (1 - var(--chat-focus))));
+  opacity: calc(var(--droid-pop, 0) * (1 - var(--bubble-reveal)) * (1 - var(--web-close)));
   left: calc(50% + var(--droid-travel) * (1 - var(--bot-back)) * (50% - 56px));
   top: calc(45% + var(--droid-travel) * (1 - var(--bot-back)) * (55% - 56px) - var(--droid-arc, 0%));
 }
 .droidMorphStage .siteChat {
-  opacity: max(calc(var(--chat-reveal) * (1 - var(--web-close))), var(--chat-focus));
-  right: calc(24px + var(--chat-focus) * (50% - 254px));
-  bottom: calc(100px + var(--chat-focus) * (50% - 360px));
-  width: calc(400px + var(--chat-focus) * 60px);
+  opacity: var(--chat-reveal);
+  right: calc(24px * (1 - var(--chat-focus)) + 50% * var(--chat-focus));
+  bottom: calc(100px * (1 - var(--chat-focus)) + 50% * var(--chat-focus));
+  width: calc(400px + var(--chat-focus) * 100px);
   max-width: calc(100% - 40px);
   height: min(calc(480px + var(--chat-focus) * 80px), calc(100% - 40px));
-  transform: translateY(calc((1 - var(--chat-reveal)) * 32px)) scale(calc(.78 + var(--chat-reveal) * .22));
+  transform: translate(calc(var(--chat-focus) * 50%), calc(var(--chat-focus) * 50% + (1 - var(--chat-reveal)) * 32px)) scale(calc(.78 + var(--chat-reveal) * .22));
 }
 .botStory { position: absolute; inset: 0; pointer-events: none; color: var(--solutions-text); }
 .botStoryCard { position: absolute; width: min(260px, 22vw); top: 28%; opacity: var(--story-reveal); transform: translateY(calc((1 - var(--story-reveal)) * 30px)); }
@@ -3633,7 +3633,7 @@
   .botStoryCard { width: 20vw; }
   .botStoryCard--support, .botStoryCard--design { right: calc(50% + 235px); }
   .botStoryCard--guidance { left: calc(50% + 235px); }
-  .droidMorphStage .siteChat { width: 400px; right: calc(24px + var(--chat-focus) * (50% - 224px)); }
+  .droidMorphStage .siteChat { width: 400px; right: calc(24px * (1 - var(--chat-focus)) + 50% * var(--chat-focus)); }
 }
 @media (max-width: 900px), (pointer: coarse), (prefers-reduced-motion: reduce) {
   .droidMorphStage { height: auto; }
@@ -3647,3 +3647,36 @@
   .droidMorphStage .morphSideCopy { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) { .botStoryCard a svg { transition: none; } }
+
+/* Keep the scroll story on mobile, without expensive filters or idle animations. */
+@media ((max-width: 900px) or (pointer: coarse)) and (prefers-reduced-motion: no-preference) {
+ .scrollDroid { width: clamp(64px, 12vw, 112px); filter: none; }
+ .scrollDroidFloat, .scrollDroid .droidEyes { animation: none; }
+ .droidOrb, .droidEyes, .droidSmile { filter: none; }
+ .droidMorphStage { height: 520svh; }
+ .droidMorphSticky { position: sticky; top: 0; height: 100svh; display: grid; place-items: center; overflow: clip; gap: 0; }
+ .droidMorphStage .nordicBrowser { width: calc(100vw - 32px); max-width: 680px; height: min(620px, 78svh); min-height: 0; opacity: var(--browser-reveal); transform: scale(1); border-radius: 22px; }
+ .droidMorphStage .nordicSite { height: calc(100% - 42px); opacity: calc(clamp(0, calc((var(--morph-progress) - .22) * 8), 1) * (1 - var(--web-close))); }
+ .nordicHero { min-height: 0; height: calc(100% - 140px); padding: 18px; }
+ .nordicHeroCopy h3 { font-size: clamp(24px, 6vw, 36px); }
+ .nordicHeroCopy p { font-size: 12px; }
+ .droidMorphStage .siteDroid { display: block; width: 64px; }
+ .siteDroid > svg { filter: none; }
+ .droidMorphStage .siteChatBubble { display: grid; }
+ .droidMorphStage .siteChat { position: absolute; margin: 0; right: calc(12px * (1 - var(--chat-focus)) + 50% * var(--chat-focus)); bottom: calc(90px * (1 - var(--chat-focus)) + 50% * var(--chat-focus)); width: calc(100% - 24px); max-width: 500px; height: min(calc(440px + var(--chat-focus) * 80px), calc(100% - 24px)); opacity: var(--chat-reveal); transform: translate(calc(var(--chat-focus) * 50%), calc(var(--chat-focus) * 50% + (1 - var(--chat-reveal)) * 32px)) scale(calc(.78 + var(--chat-reveal) * .22)); }
+ .siteChatWelcome { overflow: hidden; padding: 12px; }
+ .siteChatOptions > div { padding: 8px; }
+ .droidMorphStage .morphSideCopy { display: none; }
+ .botStory { position: absolute; inset: auto 16px 8px; width: auto; margin: 0; }
+ .botStoryCard { display: none; }
+ .botStoryCard { grid-area: 1 / 1; }
+ .botStoryCard--support { display: block; opacity: clamp(0, calc((var(--return-progress) - .44) / .06), 1); visibility: hidden; }
+ .botStoryCard--guidance { display: block; visibility: hidden; }
+ .botStoryCard--design { display: block; visibility: hidden; }
+ .droidMorphStage[data-demo-step='1'] .botStoryCard--support,
+ .droidMorphStage[data-demo-step='2'] .botStoryCard--guidance,
+ .droidMorphStage[data-demo-step='3'] .botStoryCard--design,
+ .droidMorphStage[data-demo-step='4'] .botStoryCard--design { visibility: visible; }
+ .botStoryCard h3 { font-size: 18px; margin: 4px 0; }
+ .botStoryCard p, .botStoryCard a { display: none; }
+}

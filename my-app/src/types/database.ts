@@ -286,6 +286,8 @@ export interface SupportTask {
   chatId?: string;
   sessionId?: string;
   visitorName?: string;
+  visitorEmail?: string;
+  visitorPhone?: string;
   title: string;
   description: string;
   categoryId: string;
@@ -418,6 +420,15 @@ export interface ChatWidgetConfig {
     delayMs: number;
     tasksEnabled?: boolean;
     reviewsEnabled?: boolean;
+    contactForm?: {
+      title?: string; description?: string; showEmail?: boolean; showPhone?: boolean;
+      requireEmail?: boolean; requirePhone?: boolean; style?: 'comfortable' | 'compact';
+    };
+    reviewPage?: { title?: string; description?: string; autoAsk?: boolean; showHeaderButton?: boolean };
+    ticket?: {
+      mode?: 'off' | 'on-demand' | 'always'; allowVisitorCreation?: boolean;
+      title?: string; description?: string; layout?: 'cards' | 'compact';
+    };
   };
 
   // Security settings

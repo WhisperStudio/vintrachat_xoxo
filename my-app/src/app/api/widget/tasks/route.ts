@@ -1,3 +1,6 @@
+import { enforceWidgetRateLimit } from '@/lib/widget-rate-limit.server'
+import { getClientIp } from '@/lib/widget-security'
+import { resolveWidgetFlow, validateWidgetContact } from '@/lib/widget-flow.mjs'
 import { NextRequest, NextResponse } from 'next/server'
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/firebase-admin'
@@ -102,11 +105,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Widget not found' }, { status: 404, headers })
     }
 
+    const flow = resolveWidgetFlow(business.chatWidgetConfig?.settings, business.chatAssistantConfig)
+    if (!flow.allowVisitorCreation) return NextResponse.json({ error: 'Visitor tickets are disabled' }, { status: 403, headers })
+    if (!/^[a-zA-Z0-9_-]{1,128}$/.test(sessionId) || title.length > 150 || description.length > 5000) return NextResponse.json({ error: 'Invalid ticket' }, { status: 400, headers })
+    const contactError = validateWidgetContact(flow, { name: visitorName, email: body.visitorEmail, phone: body.visitorPhone })
+    if (contactError) return NextResponse.json({ error: contactError }, { status: 400, headers })
+
     const access = await authorizeWidgetRequest({ req, business })
     if (!access.allowed) {
       return NextResponse.json({ error: access.reason }, { status: 403, headers })
     }
 
+    const rate = await enforceWidgetRateLimit({ businessId: business.id, widgetKey, sessionId, clientId: getClientIp(req), action: 'widget-task', rules: [{ windowMs: 60_000, maxRequests: 3 }] })
+    if (!rate.allowed) return NextResponse.json({ error: 'Please wait before submitting another ticket.' }, { status: 429, headers })
     const taskRef = adminDb.collection('businesses').doc(business.id).collection('supportTasks').doc()
     await taskRef.set({
       businessId: business.id,
@@ -114,6 +125,8 @@ export async function POST(req: NextRequest) {
       chatId: sessionId,
       sessionId,
       visitorName: visitorName || null,
+      visitorEmail: flow.showEmail ? String(body.visitorEmail || '').trim() || null : null,
+      visitorPhone: flow.showPhone ? String(body.visitorPhone || '').trim() || null : null,
       title,
       description,
       categoryId: 'general',

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import WidgetPreview from '@/app/landings/auth/chatWidget/components/WidgetPreview'
 import '@/app/landings/auth/chatWidget/ChatWidget.css'
 import './LiveChatWidget.css'
+import { resolveWidgetFlow, validateWidgetContact } from '@/lib/widget-flow.mjs'
 import { siteConfig } from '@/lib/site-config'
 import type { ChatAssistantConfig, ChatWidgetConfig } from '@/types/database'
 
@@ -146,6 +147,8 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   const [supportChatStatus, setSupportChatStatus] = useState<SupportChatState>('none')
   const [supportTypingAt, setSupportTypingAt] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [ticketOpenRequest, setTicketOpenRequest] = useState(0)
+  const [tickets, setTickets] = useState<{ id: string; title: string; description: string; status: string }[]>([])
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [feedbackRating, setFeedbackRating] = useState(5)
   const [feedbackText, setFeedbackText] = useState('')
@@ -322,7 +325,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   }, [handoffEmail, handoffFormOpen, handoffName, handoffPhone, pendingHumanSupportText, widgetKey])
 
   useEffect(() => {
-    if (!sessionId) return
+    if (!sessionId || !resolveWidgetFlow(configResponse?.widgetConfig.settings, configResponse?.assistantConfig || {}).supportEnabled) return
 
     let active = true
     let pollTimer: number | null = null
@@ -379,7 +382,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       active = false
       if (pollTimer) window.clearInterval(pollTimer)
     }
-  }, [embedToken, embedTokenExpiresAt, fingerprintLight, sessionId, widgetKey])
+  }, [configResponse, embedToken, embedTokenExpiresAt, fingerprintLight, sessionId, widgetKey])
 
   useEffect(() => {
     if (!configResponse) return
@@ -412,8 +415,9 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   }, [configResponse, isOpen, widgetKey])
 
   const config = configResponse?.widgetConfig
-  const isHumanSupportOpen = supportChatStatus === 'open'
-  const isHumanSupportPending = supportChatStatus === 'needs-human'
+  const supportAllowed = resolveWidgetFlow(configResponse?.widgetConfig.settings, configResponse?.assistantConfig || {}).supportEnabled
+  const isHumanSupportOpen = supportAllowed && supportChatStatus === 'open'
+  const isHumanSupportPending = supportAllowed && supportChatStatus === 'needs-human'
   const isSupportTyping =
     isHumanSupportOpen &&
     Boolean(supportTypingAt) &&
@@ -724,6 +728,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
           ])
         }
 
+        if (data.taskFormRequested) setTicketOpenRequest(value => value + 1)
         if (data.feedbackFormRequested) {
           setFeedbackOpen(true)
         }
@@ -750,6 +755,8 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
 
   const handleSubmitHumanHandoff = async () => {
     const name = handoffName.trim()
+    const contactError = validateWidgetContact(resolveWidgetFlow(configResponse?.widgetConfig.settings), { name, email: handoffEmail, phone: handoffPhone })
+    if (contactError) { setError(contactError); return }
     if (!name || !pendingHumanSupportText.trim() || isSending || isRateLimited) return
 
     setIsSending(true)
@@ -870,8 +877,39 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     }
   }
 
+  useEffect(() => {
+    if (!sessionId || !configResponse || !resolveWidgetFlow(configResponse.widgetConfig.settings, configResponse.assistantConfig || {}).ticketsEnabled) return
+    let cancelled = false
+    const load = async () => {
+      try {
+        const token = await ensureEmbedToken()
+        const response = await fetch('/api/widget/tasks?key=' + encodeURIComponent(widgetKey) + '&sessionId=' + encodeURIComponent(sessionId), { headers: { 'X-Vintra-Embed-Token': token } })
+        const result = await response.json()
+        if (response.ok && !cancelled) setTickets(result.tasks || [])
+      } catch { /* Ticket submission reports actionable failures separately. */ }
+    }
+    void load()
+    return () => { cancelled = true }
+  }, [sessionId, widgetKey, configResponse])
+
+  const handleCreateTicket = async (ticket: { title: string; description: string; visitorName: string; visitorEmail: string; visitorPhone: string }) => {
+    const ticketSessionId = sessionId || crypto.randomUUID()
+    const token = await ensureEmbedToken()
+    const response = await fetch('/api/widget/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Vintra-Embed-Token': token, 'X-Vintra-Fingerprint': fingerprintLight },
+      body: JSON.stringify({ ...ticket, widgetKey, sessionId: ticketSessionId }),
+    })
+    const result = await response.json()
+    if (!response.ok) throw new Error(result.error || 'Unable to create ticket')
+    if (!sessionId) setSessionId(ticketSessionId)
+    if (result.task) setTickets(previous => [result.task, ...previous.filter(item => item.id !== result.task.id)])
+  }
+
   const handleSubmitFeedback = async () => {
-    if (!sessionId || feedbackSubmitting || !feedbackText.trim() || isRateLimited) return
+    if (feedbackSubmitting || !feedbackText.trim() || isRateLimited) return
+    const feedbackSessionId = sessionId || crypto.randomUUID()
+    if (!sessionId) setSessionId(feedbackSessionId)
 
     setFeedbackSubmitting(true)
     setError(null)
@@ -888,7 +926,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         },
         body: JSON.stringify({
           widgetKey,
-          sessionId,
+          sessionId: feedbackSessionId,
           rating: feedbackRating,
           text: feedbackText,
           pageTitle: document.title,
@@ -992,6 +1030,11 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         bodyStyle={config.bodyStyle}
         footerStyle={config.footerStyle}
         settings={config.settings}
+        supportEnabled={configResponse.assistantConfig?.humanSupportEnabled !== false}
+        onOpenReview={() => setFeedbackOpen(true)}
+        tickets={tickets}
+        ticketOpenRequest={ticketOpenRequest}
+        onCreateTicket={handleCreateTicket}
         position={config.position}
         colorTheme={config.colorTheme}
         appearance={config.appearance}
@@ -1015,13 +1058,13 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         openOverride={isOpen}
         onToggleOpen={handleToggle}
         statusText={configResponse?.assistantEnabled ? 'AI live' : 'AI off'}
-        disableInput={feedbackOpen || isRateLimited || handoffFormOpen}
+        disableInput={feedbackOpen || isRateLimited || (supportAllowed && handoffFormOpen)}
         disableSend={isSending}
         bubbleActivityState={isSending && !(isHumanSupportOpen || isHumanSupportPending) ? 'replying' : 'idle'}
         bubbleAttentionPending={isSending || isHumanSupportPending || (isHumanSupportOpen && messages[messages.length - 1]?.role === 'user')}
         supportTypingIndicator={isSupportTyping}
         humanHandoffOverlay={{
-          open: handoffFormOpen,
+          open: supportAllowed && handoffFormOpen,
           name: handoffName,
           email: handoffEmail,
           phone: handoffPhone,

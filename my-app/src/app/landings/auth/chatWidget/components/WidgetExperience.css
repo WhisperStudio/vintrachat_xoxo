@@ -231,3 +231,51 @@
 .vintra-widget .widget-option-chat-footer.surface-edge-wavy::before { clip-path: inset(5% 0 0 0); }
 .vintra-widget .message.surface-shape-rounded, .vintra-widget .widget-option-message.surface-shape-rounded { border-radius: 14px !important; }
 .vintra-widget .message.surface-shape-square, .vintra-widget .widget-option-message.surface-shape-square { border-radius: 0 !important; }
+
+/* The keyboard already consumes the bottom safe area. Keep the composer flush
+   with the visible viewport and reserve only a small, usable close bar. */
+.vintra-widget.widget-mobile-fullscreen.widget-keyboard-open .chat-widget.open .chat-header {
+  padding: 6px 12px;
+  min-height: 44px;
+  gap: 8px;
+}
+.vintra-widget.widget-mobile-fullscreen.widget-keyboard-open .chat-header p,
+.vintra-widget.widget-mobile-fullscreen.widget-keyboard-open .status-pill { display: none; }
+.vintra-widget.widget-mobile-fullscreen.widget-keyboard-open .chat-widget .avatar { width: 28px; height: 28px; }
+.vintra-widget.widget-mobile-fullscreen.widget-keyboard-open .chat-widget.open .chat-footer {
+  inset: auto;
+  margin: 0;
+  padding: 6px 10px 4px;
+  min-height: 0;
+  flex: 0 0 auto;
+}
+.vintra-widget.widget-mobile-fullscreen.widget-keyboard-open .chat-footer textarea {
+  font-size: 16px;
+  min-height: 44px;
+  max-height: min(96px, 24dvh);
+  padding: 10px 12px;
+}
+.vintra-widget.widget-mobile-fullscreen.widget-keyboard-open .chat-body { padding-bottom: 8px; }
+
+/* Give pending and delivered replies the same gutter and readable sender icons. */
+.vintra-widget .message-role-icon { width: 28px; height: 28px; bottom: -20px; --widget-glyph-size: 76%; }
+.vintra-widget .message-role-icon svg { width: 76%; height: 76%; }
+.vintra-widget .message--assistant .message-role-icon,
+.vintra-widget .message--support .message-role-icon { left: -15px; }
+.vintra-widget .message--user .message-role-icon { right: -15px; }
+.vintra-widget .message.message-typing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+  min-height: 44px;
+  gap: 0;
+}
+.vintra-widget .message-typing .typing-dots { display: flex; align-items: center; justify-content: center; width: 100%; margin: 0; }
+
+.vintra-widget :is(.widget-review-open, .widget-ticket-open) { display: grid; place-items: center; width: 32px; height: 32px; flex: 0 0 auto; border: 1px solid currentColor; border-radius: 10px; background: transparent; color: inherit; font-size: 24px; cursor: pointer; }
+.vintra-widget .form-spacing-compact { padding: 14px; }
+.vintra-widget .form-spacing-compact .widget-handoff-grid { gap: 8px; }
+.vintra-widget .form-spacing-compact input { padding: 8px 10px; }
+.vintra-widget .ticket-layout-compact .widget-task-card { padding: 10px 12px; border-radius: 8px; box-shadow: none; }
+.vintra-widget .ticket-layout-compact .widget-task-card p { margin: 4px 0; }

@@ -20,8 +20,18 @@ export function resolveAppThemePreference(): AppThemeMode {
   return 'light'
 }
 
+let themeTransitionTimer: ReturnType<typeof setTimeout> | undefined
+
 export function applyAppThemeToDocument(mode: AppThemeMode) {
   if (typeof document === 'undefined') return
+  if (document.documentElement.dataset.theme !== mode) {
+    // Suppress inherited and delayed transitions during the theme commit only.
+    document.documentElement.dataset.themeSwitching = 'true'
+    clearTimeout(themeTransitionTimer)
+    themeTransitionTimer = setTimeout(() => {
+      delete document.documentElement.dataset.themeSwitching
+    }, 100)
+  }
   document.documentElement.dataset.theme = mode
   document.documentElement.style.colorScheme = mode
   document.body.dataset.theme = mode

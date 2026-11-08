@@ -4,7 +4,6 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
 import PricingClient from '../priser/PricingClient'
-const ChatWidgetBuilder = dynamic(() => import('../landings/auth/chatWidget/ChatWidgetBuilder'))
 const WebsiteBuilder = dynamic(() => import('../landings/guest/websites/WebsiteBuilder'))
 const VintraAdminClient = dynamic(() => import('../vintra-admin/VintraAdminClient'))
 import { useAuth } from '@/context/AuthContext'
@@ -105,7 +104,6 @@ export default function AdminWorkspace({ billingConfigured, billingTestMode }: {
   const adminItems: Array<{ tab: AdminTab; label: string }> = [
     { tab: 'analytics', label: text.sidebar.analytics },
     { tab: 'users', label: text.sidebar.userManagement },
-    { tab: 'widgets', label: text.sidebar.chatWidgets },
     { tab: 'settings', label: text.sidebar.settings },
   ]
 
@@ -147,7 +145,7 @@ export default function AdminWorkspace({ billingConfigured, billingTestMode }: {
   const activeTabTitle =
     activeTab === 'overview'
       ? text.overview.title
-      : activeTab === 'builder' ? (language === 'no' ? 'Chatwidget-bygging' : 'Chat widget builder')
+      : activeTab === 'widgets' || activeTab === 'builder' ? 'Widget studio'
       : activeTab === 'subscriptions' ? (language === 'no' ? 'Abonnementer' : 'Subscriptions')
       : activeTab === 'vintra' ? 'Vintra-admin'
       : activeTab === 'websites' ? (language === 'no' ? 'Nettsidebygging' : 'Website builder')
@@ -235,7 +233,8 @@ export default function AdminWorkspace({ billingConfigured, billingTestMode }: {
 
   useEffect(() => {
     const section = searchParams.get('section')
-    if (section && visibleTabs.includes(section)) setActiveTab(section as AdminTab)
+    if (section === 'builder' || section === 'widget') setActiveTab('widgets')
+    else if (section && visibleTabs.includes(section)) setActiveTab(section as AdminTab)
   }, [searchParams, visibleTabs])
 
   const activeTutorialStep = tutorialSteps[tutorialStepIndex] || tutorialSteps[0]
@@ -466,7 +465,7 @@ export default function AdminWorkspace({ billingConfigured, billingTestMode }: {
               <div className="adminSidebarGroup">
                 <div className="adminSidebarGroupLabel">{no ? 'Bygg og administrer' : 'Build and manage'}</div>
                 {renderNavItem('websites', no ? 'Nettsidebygging' : 'Website builder')}
-                {renderNavItem('builder', no ? 'Chatwidget-bygging' : 'Chat widget builder')}
+                {renderNavItem('widgets', 'Widget studio')}
                 {renderNavItem('subscriptions', no ? 'Abonnementer' : 'Subscriptions')}
               </div>
               {firebaseUser?.emailVerified && isVintraAdminEmail(firebaseUser.email) && (
@@ -550,7 +549,6 @@ export default function AdminWorkspace({ billingConfigured, billingTestMode }: {
           )}
 
           {activeTab === 'websites' && <WebsiteBuilder embedded />}
-          {activeTab === 'builder' && <ChatWidgetBuilder embedded />}
           {activeTab === 'subscriptions' && <PricingClient configured={billingConfigured} testMode={billingTestMode} embedded />}
           {activeTab === 'vintra' && firebaseUser?.emailVerified && isVintraAdminEmail(firebaseUser.email) && <VintraAdminClient embedded />}
 

@@ -1,3 +1,4 @@
+import { resolveWidgetFlow, validateWidgetContact } from '@/lib/widget-flow.mjs'
 import { reserveUsage } from '@/lib/billing/usage.mjs'
 import { saveChatWithNotifications } from '@/lib/notifications.server'
 import { NextRequest, NextResponse } from 'next/server'
@@ -122,6 +123,7 @@ function didUserRequestHumanSupport(message: string, keywords: string[]) {
 
 function didUserRequestFeedback(message: string, keywords: string[]) {
   const normalized = message.toLowerCase()
+  if (/\b(?:no|not|never|don't|dont|nei|ikke)\b/.test(normalized)) return false
   return keywords.some((keyword) => normalized.includes(keyword.toLowerCase()))
 }
 
@@ -331,6 +333,8 @@ function buildPrompt(args: {
   replyInUserLanguage: boolean
   responseStyle: string
   extraInstructions: string
+  humanSupportEnabled: boolean
+  ticketsEnabled: boolean
   reviewsEnabled: boolean
   history: IncomingMessage[]
   message: string
@@ -443,11 +447,14 @@ function buildPrompt(args: {
     `FAQ suggestions / common questions to anticipate:\n${faqText}`,
     `Starter cards / quick entry points:\n${conversationCardsText}`,
     `Treat these phrases as likely requests for human support: ${args.supportKeywords.join(', ')}`,
+    args.humanSupportEnabled ? 'Human support is available on request.' : 'Human support is DISABLED. Do not offer a human, a callback, a support agent or handoff. Set needsHumanSupport to false.',
+    args.ticketsEnabled ? 'Visitors may request to create a support ticket.' : 'Visitor ticket creation is DISABLED. Do not offer or promise to create tickets.',
     'Return JSON with keys "reply" and "needsHumanSupport".',
     'Set "needsHumanSupport" to true only when the user explicitly asks to contact support, a human, an agent, or similar human follow-up.',
     args.reviewsEnabled
       ? 'When the visitor clearly seems finished and their issue is resolved, you may end by asking once whether they would like to leave a short review. Do not ask mid-conversation or repeatedly.'
       : 'Do not ask the visitor for a review or feedback.',
+    'When asking for a review, make it optional. Ask at most once in the conversation, after a resolved question, thanks or goodbye. Never open a form without consent. If support is disabled, do not offer human handoff or promise tickets.',
     'Keep the reply concise and suitable for a website chat widget.',
     historyText ? `Conversation so far:\n${historyText}` : 'Conversation so far:\nNo previous messages.',
     `Latest user message:\n${args.message}`,
@@ -766,9 +773,10 @@ export async function POST(req: NextRequest) {
       extraInstructions: '',
       forceSelectedModelOnly: false,
     }
-    const humanSupportEnabled = assistantConfig.humanSupportEnabled !== false
-    const taskTabEnabled = business.chatWidgetConfig?.settings?.tasksEnabled === true
-    const reviewTabEnabled = business.chatWidgetConfig?.settings?.reviewsEnabled === true
+    const flow = resolveWidgetFlow(business.chatWidgetConfig?.settings, assistantConfig)
+    const humanSupportEnabled = flow.supportEnabled
+    const taskTabEnabled = flow.allowVisitorCreation
+    const reviewTabEnabled = flow.reviewsEnabled
 
     if (requestFeedbackForm && reviewTabEnabled) {
       const businessRef = adminDb.collection('businesses').doc(business.id)
@@ -872,6 +880,8 @@ export async function POST(req: NextRequest) {
         )
       }
 
+      const contactError = validateWidgetContact(flow, { name: visitorName, email: visitorEmail, phone: visitorPhone })
+      if (visitorName && contactError) return NextResponse.json({ error: contactError }, { status: 400, headers })
       if (!visitorName) {
         return NextResponse.json(
           {
@@ -1008,7 +1018,7 @@ export async function POST(req: NextRequest) {
         restrictions: assistantConfig.restrictions,
         strictContextOnly: assistantConfig.strictContextOnly,
         strictness: assistantConfig.strictness || 'balanced',
-        supportKeywords,
+        supportKeywords: humanSupportEnabled ? supportKeywords : [],
         faqSuggestions:
           assistantConfig.faqSuggestionsEnabled && Array.isArray(assistantConfig.faqSuggestions)
             ? assistantConfig.faqSuggestions
@@ -1024,7 +1034,9 @@ export async function POST(req: NextRequest) {
         replyInUserLanguage: assistantConfig.replyInUserLanguage !== false,
         responseStyle: assistantConfig.responseStyle || '',
         extraInstructions: assistantConfig.extraInstructions || '',
-        reviewsEnabled: reviewTabEnabled,
+        humanSupportEnabled,
+        ticketsEnabled: flow.allowVisitorCreation,
+        reviewsEnabled: flow.autoAskReview,
         history,
         message,
       })
@@ -1057,7 +1069,7 @@ export async function POST(req: NextRequest) {
     }
 
     const needsHumanSupport = humanSupportEnabled && (heuristicsTriggered || aiWantsHumanSupport)
-    const requiresName = needsHumanSupport && !visitorName
+    const requiresName = needsHumanSupport && Boolean(validateWidgetContact(flow, { name: visitorName, email: visitorEmail, phone: visitorPhone }))
     const finalReply = requiresName ? buildNameRequestReply() : aiReply
 
     const now = new Date()

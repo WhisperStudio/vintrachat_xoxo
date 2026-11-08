@@ -1,3 +1,4 @@
+import { resolveWidgetFlow, validateWidgetContact } from '@/lib/widget-flow.mjs'
 import { getWidgetMotionClasses } from '@/lib/widget-motion'
 import { getMessageSurfaceClasses, getSurfaceClasses } from '@/lib/surface-design'
 import { createLauncherArtwork } from '@/lib/launcher-design'
@@ -991,7 +992,7 @@ export async function GET(
   }
 
   function getOrbPhase(orbStyle) {
-    if ((isWaitingForReply() || state.hasUnreadWhileClosed) && orbStyle.replyEnabled) return 'reply';
+    if (!state.open && !isWaitingForReply() && state.hasUnreadWhileClosed && orbStyle.replyEnabled) return 'reply';
     if (state.orbInactiveActive && orbStyle.inactiveEnabled) return 'inactive';
     if (state.hovered && orbStyle.hoverEnabled) return 'hover';
     return 'none';
@@ -1386,6 +1387,10 @@ export async function GET(
     }
   }
 
+  function syncTaskSubmitState() {
+    var button = mount.querySelector('.widget-task-submit');
+    if (button) button.disabled = state.taskSubmitting || !String(state.taskTitle || '').trim() || !String(state.taskDescription || '').trim() || Boolean(validateContact(getFlow(), { name: state.handoffName, email: state.handoffEmail, phone: state.handoffPhone }));
+  }
   function syncHandoffSubmitState() {
     var submitButton = mount.querySelector('.widget-handoff-submit');
     if (!submitButton) return;
@@ -1403,22 +1408,25 @@ export async function GET(
     return state.assistantEnabled ? 'AI live' : 'Offline';
   }
 
+  var resolveFlow = ${resolveWidgetFlow.toString()};
+  var validateContact = ${validateWidgetContact.toString()};
+  function getFlow() { return resolveFlow(getWidgetSettings(), getAssistantConfig()); }
   function getWidgetSettings() {
     var config = state.config || {};
     return (config && config.settings) || {};
   }
 
   function isTasksTabEnabled() {
-    return Boolean(getWidgetSettings().tasksEnabled);
+    return getFlow().ticketsEnabled;
   }
 
   function shouldShowPortalTabs() {
-    return isTasksTabEnabled() && state.tasks.length > 0;
+    return isTasksTabEnabled() && (getFlow().alwaysShowTickets || state.tasks.length > 0 || state.activePanel === 'tasks');
   }
 
   function getAvailablePanels() {
     var panels = [{ id: 'chats', label: 'Chats' }];
-    if (isTasksTabEnabled() && state.tasks.length > 0) panels.push({ id: 'tasks', label: 'Ticket' });
+    if (isTasksTabEnabled()) panels.push({ id: 'tasks', label: 'Ticket' });
     return panels;
   }
 
@@ -1505,11 +1513,12 @@ export async function GET(
         : '<div class="widget-panel-empty">No tickets yet. Use the form below to create one.</div>';
 
     return (
-      '<div class="widget-panel-page widget-panel-page--tasks">' +
+      '<div class="widget-panel-page widget-panel-page--tasks ticket-layout-' + getFlow().ticketLayout + '">' +
         '<div class="widget-panel-page__hero">' +
-          '<strong>Create a ticket</strong>' +
-          '<p>Send a task directly to the support team and track it here.</p>' +
+          '<strong>' + escapeHtml(getFlow().ticketTitle) + '</strong>' +
+          '<p>' + escapeHtml(getFlow().ticketDescription) + '</p>' +
         '</div>' +
+        (getFlow().allowVisitorCreation ? (
         '<label class="widget-feedback-field">' +
           '<span>Title</span>' +
           '<input type="text" class="widget-task-input" data-task-field="title" value="' + escapeHtml(state.taskTitle) + '" placeholder="What do you need help with?" />' +
@@ -1518,9 +1527,13 @@ export async function GET(
           '<span>Description</span>' +
           '<textarea rows="5" class="widget-task-textarea" data-task-field="description" placeholder="Describe the issue and what you want us to do next.">' + escapeHtml(state.taskDescription) + '</textarea>' +
         '</label>' +
+        '<label class="widget-feedback-field"><span>Name</span><input class="widget-ticket-contact" data-contact-field="name" autocomplete="name" value="' + escapeHtml(state.handoffName) + '" /></label>' +
+        (getFlow().showEmail ? '<label class="widget-feedback-field"><span>Email</span><input type="email" class="widget-ticket-contact" data-contact-field="email" autocomplete="email" value="' + escapeHtml(state.handoffEmail) + '" /></label>' : '') +
+        (getFlow().showPhone ? '<label class="widget-feedback-field"><span>Phone</span><input type="tel" class="widget-ticket-contact" data-contact-field="phone" autocomplete="tel" value="' + escapeHtml(state.handoffPhone) + '" /></label>' : '') +
         '<div class="widget-feedback-actions">' +
           '<button type="button" class="widget-feedback-primary widget-task-submit" ' + ((state.taskSubmitting || !String(state.taskTitle || '').trim() || !String(state.taskDescription || '').trim()) ? 'disabled' : '') + '>' + (state.taskSubmitting ? 'Submitting...' : 'Create ticket') + '</button>' +
-        '</div>' +
+        '</div>'
+        ) : '') +
         (state.taskNotice ? '<div class="widget-panel-inline-note">' + escapeHtml(state.taskNotice) + '</div>' : '') +
         tasksMarkup +
       '</div>'
@@ -1549,10 +1562,10 @@ export async function GET(
       ? '<div class="chat-status-line">Waiting for a support assistant</div>'
       : '';
     var typingMarkup = state.sending && !state.awaitingVisitorName && state.supportStatus !== 'needs-human' && state.supportStatus !== 'open'
-      ? '<div class="message message-bot message-typing" aria-live="polite" aria-label="Assistant is typing">' + (typingIconMarkup ? '<span class="message-role-icon">' + typingIconMarkup + '</span>' : '') + '<div class="typing-dots"><span></span><span></span><span></span></div></div>'
+      ? '<div class="message message-bot message--assistant message-typing" aria-live="polite" aria-label="Assistant is typing">' + (typingIconMarkup ? '<span class="message-role-icon">' + typingIconMarkup + '</span>' : '') + '<div class="typing-dots"><span></span><span></span><span></span></div></div>'
       : '';
     var supportTypingMarkup = state.supportStatus === 'open' && state.supportTypingAt && (Date.now() - new Date(state.supportTypingAt).getTime() < 4500)
-      ? '<div class="message message-support message-typing" aria-live="polite" aria-label="Support is typing">' + (supportTypingIconMarkup ? '<span class="message-role-icon">' + supportTypingIconMarkup + '</span>' : '') + '<div class="typing-dots"><span></span><span></span><span></span></div></div>'
+      ? '<div class="message message-support message--support message-typing" aria-live="polite" aria-label="Support is typing">' + (supportTypingIconMarkup ? '<span class="message-role-icon">' + supportTypingIconMarkup + '</span>' : '') + '<div class="typing-dots"><span></span><span></span><span></span></div></div>'
       : '';
 
     if (!state.messages.length) {
@@ -1765,8 +1778,8 @@ export async function GET(
         '<div class="widget-feedback-card">' +
           '<div class="widget-feedback-header">' +
             '<div>' +
-              '<h4>Leave feedback</h4>' +
-              '<p>Tell us what you think and give us a star rating.</p>' +
+              '<h4>' + escapeHtml(getFlow().reviewTitle) + '</h4>' +
+              '<p>' + escapeHtml(getFlow().reviewDescription) + '</p>' +
             '</div>' +
             '<button type="button" class="widget-feedback-close" aria-label="Close">' +
               '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>' +
@@ -1791,11 +1804,11 @@ export async function GET(
 
     return (
       '<div class="widget-handoff-overlay" role="dialog" aria-modal="true" aria-label="Human support request">' +
-        '<div class="widget-handoff-card">' +
+        '<div class="widget-handoff-card form-spacing-' + getFlow().formStyle + '">' +
           '<div class="widget-handoff-header">' +
             '<div>' +
-              '<h4>Connect with human support</h4>' +
-              '<p>Fill in your name, email and phone number so we can follow up.</p>' +
+              '<h4>' + escapeHtml(getFlow().contactTitle) + '</h4>' +
+              '<p>' + escapeHtml(getFlow().contactDescription) + '</p>' +
             '</div>' +
             '<button type="button" class="widget-handoff-close" aria-label="Close human handoff form">' +
               '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>' +
@@ -1806,14 +1819,18 @@ export async function GET(
               '<span>Name</span>' +
               '<input type="text" class="widget-handoff-input" data-handoff-field="name" value="' + escapeHtml(state.handoffName) + '" placeholder="Your name" autocomplete="name" />' +
             '</label>' +
+            (getFlow().showEmail ? (
             '<label class="widget-handoff-field">' +
               '<span>Email</span>' +
               '<input type="email" class="widget-handoff-input" data-handoff-field="email" value="' + escapeHtml(state.handoffEmail) + '" placeholder="you@example.com" autocomplete="email" />' +
-            '</label>' +
+            '</label>'
+            ) : '') +
+            (getFlow().showPhone ? (
             '<label class="widget-handoff-field">' +
               '<span>Phone</span>' +
               '<input type="tel" class="widget-handoff-input" data-handoff-field="phone" value="' + escapeHtml(state.handoffPhone) + '" placeholder="+47 123 45 678" autocomplete="tel" />' +
-            '</label>' +
+            '</label>'
+            ) : '') +
           '</div>' +
           '<div class="widget-handoff-actions">' +
             '<button type="button" class="widget-handoff-submit" ' + ((!String(state.handoffName || '').trim() || state.sending) ? 'disabled' : '') + '>Send request</button>' +
@@ -1843,6 +1860,7 @@ export async function GET(
   }
 
   async function syncSupportChat() {
+    if (!getFlow().supportEnabled) return;
     if (!state.sessionId) return;
     if (state.sending) return;
 
@@ -1993,6 +2011,10 @@ export async function GET(
   }
 
   async function submitTask() {
+    if (!state.sessionId) { state.sessionId = crypto.randomUUID(); writeStoredSessionId(state.sessionId); }
+    if (!getFlow().allowVisitorCreation) return;
+    var contactError = validateContact(getFlow(), { name: state.handoffName, email: state.handoffEmail, phone: state.handoffPhone });
+    if (contactError) { state.taskNotice = contactError; render(); return; }
     if (!state.sessionId || state.taskSubmitting || !String(state.taskTitle || '').trim() || !String(state.taskDescription || '').trim()) {
       return;
     }
@@ -2011,7 +2033,9 @@ export async function GET(
           sessionId: state.sessionId,
           title: state.taskTitle,
           description: state.taskDescription,
-          visitorName: state.handoffName || ''
+          visitorName: state.handoffName || '',
+          visitorEmail: getFlow().showEmail ? state.handoffEmail : '',
+          visitorPhone: getFlow().showPhone ? state.handoffPhone : ''
         })
       });
       var json = await response.json();
@@ -2057,11 +2081,14 @@ export async function GET(
 
   async function submitHumanHandoff() {
     var name = String(state.handoffName || '').trim();
-    var email = String(state.handoffEmail || '').trim();
-    var phone = String(state.handoffPhone || '').trim();
+    var email = getFlow().showEmail ? String(state.handoffEmail || '').trim() : '';
+    var phone = getFlow().showPhone ? String(state.handoffPhone || '').trim() : '';
     var pendingText = String(state.pendingHumanSupportText || '').trim();
 
-    if (!name || !pendingText || state.sending) return;
+    if (!getFlow().supportEnabled) return;
+    var contactError = validateContact(getFlow(), { name: name, email: email, phone: phone });
+    if (contactError) { state.error = contactError; render(); return; }
+    if (!pendingText || state.sending) return;
 
     state.sending = true;
     state.error = '';
@@ -2305,6 +2332,12 @@ export async function GET(
         return;
       }
 
+      if (button.classList.contains('widget-review-open')) {
+        if (!getFlow().reviewsEnabled) return;
+        state.feedbackOpen = true;
+        render();
+        return;
+      }
       if (button.classList.contains('widget-handoff-close')) {
         state.awaitingVisitorName = false;
         state.handoffFormOpen = false;
@@ -2445,6 +2478,7 @@ export async function GET(
 
       if (target.tagName === 'TEXTAREA' && target.classList && target.classList.contains('widget-task-textarea')) {
         state.taskDescription = target.value;
+        syncTaskSubmitState();
         return;
       }
 
@@ -2478,8 +2512,17 @@ export async function GET(
         return;
       }
 
+      if (target.classList && target.classList.contains('widget-ticket-contact')) {
+        var contactField = target.getAttribute('data-contact-field');
+        if (contactField === 'name') state.handoffName = target.value;
+        if (contactField === 'email') state.handoffEmail = target.value;
+        if (contactField === 'phone') state.handoffPhone = target.value;
+        syncTaskSubmitState();
+        return;
+      }
       if (target.classList && target.classList.contains('widget-task-input')) {
         state.taskTitle = target.value;
+        syncTaskSubmitState();
         return;
       }
 
@@ -2536,6 +2579,8 @@ export async function GET(
       return;
     }
 
+    if (!getFlow().ticketsEnabled) state.activePanel = 'chats';
+    if (!getFlow().supportEnabled) { state.supportStatus = ''; state.awaitingVisitorName = false; }
     showHost();
 
     var config = state.config || {};
@@ -2567,7 +2612,7 @@ export async function GET(
       refreshFaqSuggestions();
     }
     var headerIconMarkup = renderConfiguredWidgetIconSlot(getInterfaceIcon('avatarIcon', ''));
-    var avatarClass = 'avatar' + (isWaitingForReply() ? ' animation-' + (bubbleStyle.animationType || 'none') : '');
+    var avatarClass = 'avatar';
     var headerAvatar = getLogo(config)
       ? '<div class="' + avatarClass + ' avatar--image">' +
           '<img' +
@@ -2632,6 +2677,8 @@ export async function GET(
               '</div>' +
             '</div>' +
             '<div class="chat-header-actions">' +
+              (getFlow().reviewHeaderButton ? '<button type="button" class="widget-review-open" aria-label="Leave a review" title="Leave a review">&#9734;</button>' : '') +
+              (getFlow().allowVisitorCreation ? '<button type="button" data-widget-panel="tasks" class="widget-ticket-open" aria-label="Create a ticket" title="Create a ticket">+</button>' : '') +
               (headerStyle.showStatus ? '<span class="status-pill">' + renderIconSlot(icons.check) + ' ' + escapeHtml(getStatusLabel()) + '</span><span class="header-status-dot" aria-hidden="true"></span>' : '') +
               (state.open ? '<button type="button" class="close-btn' + (headerStyle.showCloseButton ? '' : ' widget-mobile-close-only') + '" aria-label="Close chat">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('closeIcon', 'FiX')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">×</span>') + '</button>' : '') +
             '</div>' +
@@ -2999,6 +3046,8 @@ export async function GET(
   }
 
   async function submitFeedback() {
+    if (!getFlow().reviewsEnabled) return;
+    if (!state.sessionId) { state.sessionId = crypto.randomUUID(); writeStoredSessionId(state.sessionId); }
     if (!state.sessionId || state.feedbackSubmitting || !String(state.feedbackText || '').trim()) {
       return;
     }

@@ -793,6 +793,8 @@ export default function AdminTasksPanel({ selectedWidgetKey = '', initialTaskId 
                   </span>
                   <div>
                     <strong>{selectedTask.visitorName || text.unnamedVisitor}</strong>
+                    {selectedTask.visitorEmail && <span>{selectedTask.visitorEmail}</span>}
+                    {selectedTask.visitorPhone && <span>{selectedTask.visitorPhone}</span>}
                     <p>{selectedTask.categoryName}</p>
                   </div>
                 </div>

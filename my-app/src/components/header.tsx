@@ -800,7 +800,7 @@ export default function Header() {
   }, [])
 
   useEffect(() => {
-    if (!isMainLandingRoute || typeof window === 'undefined') return
+    if (typeof window === 'undefined') return
 
     const media = window.matchMedia('(prefers-color-scheme: dark)')
     const syncThemeMode = () => setMainLandingThemeMode(resolveMainLandingThemePreference())
@@ -819,7 +819,7 @@ export default function Header() {
     }
   }, [isMainLandingRoute])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (typeof window === 'undefined') return
 
     let animationFrame = 0
@@ -846,7 +846,7 @@ export default function Header() {
 
     const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(scheduleToneUpdate) : null
 
-    scheduleToneUpdate()
+    updateTone()
     window.addEventListener('scroll', scheduleToneUpdate, { passive: true })
     window.addEventListener('resize', scheduleToneUpdate)
     resizeObserver?.observe(document.documentElement)
@@ -862,7 +862,7 @@ export default function Header() {
       window.removeEventListener('resize', scheduleToneUpdate)
       resizeObserver?.disconnect()
     }
-  }, [pathname])
+  }, [pathname, mainLandingThemeMode])
 
   useEffect(() => {
     const mobileQuery = window.matchMedia('(max-width: 720px)')

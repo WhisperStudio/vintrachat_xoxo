@@ -1,3 +1,4 @@
+import { resolveWidgetFlow } from '@/lib/widget-flow.mjs'
 import { NextRequest, NextResponse } from 'next/server'
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/firebase-admin'
@@ -66,6 +67,9 @@ export async function POST(req: NextRequest) {
     if (!business?.id) {
       return NextResponse.json({ error: 'Widget not found' }, { status: 404, headers })
     }
+
+    const flow = resolveWidgetFlow(business.chatWidgetConfig?.settings, business.chatAssistantConfig)
+    if (!flow.reviewsEnabled) return NextResponse.json({ error: 'Reviews are disabled' }, { status: 403, headers })
 
     const access = await authorizeWidgetRequest({ req, business })
     if (!access.allowed) {

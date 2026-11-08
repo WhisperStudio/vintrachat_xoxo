@@ -123,21 +123,21 @@ function DroidDetails() {
 
 // Small/touch screens and reduced-motion users get the same content without
 // the fixed, scroll-driven morph or its continuous layout work.
-function useSimplifiedMotion() {
+function useSimplifiedMotion(reducedOnly = false) {
   const [simplified, setSimplified] = useState(true)
   useEffect(() => {
-    const media = window.matchMedia('(max-width: 900px), (pointer: coarse), (prefers-reduced-motion: reduce)')
+    const media = window.matchMedia(reducedOnly ? '(prefers-reduced-motion: reduce)' : '(max-width: 900px), (pointer: coarse), (prefers-reduced-motion: reduce)')
     const sync = () => setSimplified(media.matches)
     sync()
     media.addEventListener('change', sync)
     return () => media.removeEventListener('change', sync)
-  }, [])
+  }, [reducedOnly])
   return simplified
 }
 
 function ScrollDroid() {
   const droidRef = useRef<HTMLDivElement>(null)
-  const simplified = useSimplifiedMotion()
+  const simplified = useSimplifiedMotion(true)
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   useEffect(() => { setAnchor(document.getElementById('hero-droid-space')) }, [])
 
@@ -190,9 +190,10 @@ function ScrollDroid() {
         scrollPosition = scrollTop + (displacement + momentum * dt) * decay
         scrollVelocity = (scrollVelocity - frequency * momentum * dt) * decay
       }
-      const progress = clamp(scrollPosition / Math.max((section?.offsetTop ?? vh) + vh * 0.72, vh))
+      const approachEnd = Math.max((stage?.offsetTop ?? section?.offsetTop ?? vh) - vh * 0.82, vh)
+      const progress = clamp(scrollPosition / approachEnd)
       const compact = vw < 700
-      const baseX = vw * ((compact ? 0.76 : 0.79) - (compact ? 0.48 : 0.53) * Math.sin(progress * Math.PI))
+      const baseX = vw * ((compact ? 0.76 : 0.79) - (compact ? 0.48 : 0.53) * Math.sin(progress * Math.PI / 2))
       const baseY = vh * (0.3 + progress * 0.34 - Math.sin(progress * Math.PI * 2) * 0.055)
       const rect = stage?.getBoundingClientRect()
       // Read geometry before writing styles to avoid forcing a second layout.
@@ -204,7 +205,7 @@ function ScrollDroid() {
       const timeline = rect ? clamp((vh * 0.82 - stageTop) / Math.max(rect.height - vh * 0.72, vh)) : 0
       const morph = clamp(timeline / 0.42)
       const returnProgress = clamp((timeline - 0.42) / 0.58)
-      stage?.style.setProperty('--return-progress', String(returnProgress))
+      stage?.style.setProperty('--return-progress', String(returnProgress * chatReveal))
       if (stage) stage.dataset.botStoryReady = String(returnProgress > 0.98)
       if (stage) {
         stage.dataset.demoStep = String(returnProgress >= .84 ? 4 : returnProgress >= .73 ? 3 : returnProgress >= .61 ? 2 : returnProgress >= .5 ? 1 : 0)
@@ -275,11 +276,13 @@ function ScrollDroid() {
       stage?.style.setProperty('--chat-reveal', String(chatReveal))
       const centerX = sticky ? sticky.left + sticky.width / 2 : vw / 2
       const centerY = sticky ? sticky.top + sticky.height / 2 : vh / 2
-      const path = smooth(clamp(morph / 0.43))
-      const inv = 1 - path
-      // Join the existing path continuously, then arrive at the viewer's actual center.
-      const x = inv ** 3 * baseX + 3 * inv ** 2 * path * vw * 0.155 + 3 * inv * path ** 2 * vw * 0.3 + path ** 3 * centerX
-      const y = inv ** 3 * baseY + 3 * inv ** 2 * path * vh * 0.48 + 3 * inv * path ** 2 * vh * 0.79 + path ** 3 * centerY
+      const path = smooth(clamp((morph - 0.22) / 0.21))
+      // Head directly to the viewer during the spin, staying inside small screens.
+      const margin = size * 0.65 + 12
+      const safeX = Math.min(vw - margin, Math.max(margin, baseX))
+      const safeY = Math.min(vh - margin, Math.max(margin, baseY))
+      const x = safeX + (centerX - safeX) * path
+      const y = safeY + (centerY - safeY) * path
       const whiten = clamp((morph - 0.27) / 0.09)
       const expand = smooth(clamp((morph - 0.43) / 0.22))
       const spin = reducedMotion ? 0 : smooth(clamp((morph - 0.22) / 0.43)) * 1080
@@ -658,7 +661,7 @@ export default function MainLanding() {
                 letterSpacing: -1.5, marginBottom: 20,
                 color: 'var(--hero-title)',
                 opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateY(20px)',
-                transition: 'all 0.6s ease 0.1s',
+                transition: 'opacity 0.6s ease 0.1s, transform 0.6s ease 0.1s',
               }}>
                 <span style={{ display: 'block' }}>{text.heroTitleStart}</span>
                 {text.heroTitleMiddle}<br />
@@ -668,7 +671,7 @@ export default function MainLanding() {
               <p style={{
                 fontSize: 18, lineHeight: 1.7, color: 'var(--hero-copy)', marginBottom: 36, maxWidth: 440,
                 opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateY(20px)',
-                transition: 'all 0.6s ease 0.2s',
+                transition: 'opacity 0.6s ease 0.2s, transform 0.6s ease 0.2s',
               }}>
                 {text.heroBody}
               </p>
@@ -676,7 +679,7 @@ export default function MainLanding() {
               <div style={{
                 display: 'flex', gap: 12, flexWrap: 'wrap',
                 opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateY(20px)',
-                transition: 'all 0.6s ease 0.3s',
+                transition: 'opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s',
               }}>
                 <Link href="/landings/auth/chatWidget" className="cta-primary">
                   {text.heroChatbotCta} <ArrowRight />
@@ -688,7 +691,7 @@ export default function MainLanding() {
 
               <div style={{
                 display: 'flex', gap: 20, marginTop: 32, flexWrap: 'wrap',
-                opacity: heroMounted ? 1 : 0, transition: 'all 0.7s ease 0.4s',
+                opacity: heroMounted ? 1 : 0, transition: 'opacity 0.7s ease 0.4s, transform 0.7s ease 0.4s',
               }}>
                 {text.heroBenefits.map(t => (
                   <div key={t} className="heroBenefit">
@@ -703,7 +706,7 @@ export default function MainLanding() {
               flex: '0 0 auto', position: 'relative', height: 'clamp(300px, 55vw, 380px)', width: 'min(100%, 360px)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               opacity: heroMounted ? 1 : 0, transform: heroMounted ? 'none' : 'translateX(30px)',
-              transition: 'all 0.8s ease 0.2s',
+              transition: 'opacity 0.8s ease 0.2s, transform 0.8s ease 0.2s',
             }}>
             </div>
           </div>
