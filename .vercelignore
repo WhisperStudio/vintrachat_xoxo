@@ -1,0 +1,12 @@
+**/.env
+**/.env.*
+**/.audit/**
+**/.vercel/**
+**/node_modules/**
+**/.next/**
+**/.git/**
+**/*-debug.log
+**/*.pem
+**/*.tsbuildinfo
+**/.DS_Store
+**/coverage/**
