@@ -371,7 +371,7 @@ const defaultInputs: InputsState = {
   conversationCards: defaultConversationCards,
 }
 
-export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidgetSelected, setupMode = false, onSetupComplete }: { embedded?: boolean; widgetKey?: string; onWidgetSelected?: (key: string) => void; setupMode?: boolean; onSetupComplete?: () => Promise<void> }) {
+export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidgetSelected, onOpenAdvanced, setupMode = false, onSetupComplete }: { embedded?: boolean; widgetKey?: string; onWidgetSelected?: (key: string) => void; onOpenAdvanced?: () => void; setupMode?: boolean; onSetupComplete?: () => Promise<void> }) {
   const router = useRouter()
   const { isAuthenticated, firebaseUser, dbUser, business, loading, error: accountError, refreshBusiness, refreshCurrentUser } = useAuth()
   const signedIn = Boolean(firebaseUser)
@@ -891,6 +891,13 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
                     <span>{isSaving ? t.saving : saveStatus === 'success' ? t.savedButton : saveStatus === 'error' ? t.saveFailed : t.saveConfiguration}</span>
                   </button>
                 ) : <Link href="/auth/login" className="save-btn">{no ? 'Logg inn for å lagre' : 'Sign in to save'}<FiArrowRight aria-hidden="true" /></Link>}
+
+                {onOpenAdvanced && (
+                  <button className="reset-btn" onClick={onOpenAdvanced} type="button">
+                    <FiCpu aria-hidden="true" />
+                    <span>{no ? 'AI-innstillinger' : 'AI settings'}</span>
+                  </button>
+                )}
 
                 <button className="reset-btn" onClick={handleReset} type="button">
                   <span
