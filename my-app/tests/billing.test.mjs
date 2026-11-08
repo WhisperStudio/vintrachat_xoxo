@@ -31,13 +31,15 @@ beforeEach(async () => {
     subscriptions: { list: async () => ({ data: [...state.subscriptions.values()] }), retrieve: async id => state.subscriptions.get(id) },
     checkout: { sessions: {
       create: async params => { state.creates++; state.params = params; const session = { id: `cs_test_${state.creates}`, status: 'open',
-        url: 'https://checkout.stripe.com/test', customer: params.customer, client_reference_id: params.client_reference_id, metadata: params.metadata };
+        url: 'https://checkout.stripe.com/test', customer: params.customer, client_reference_id: params.client_reference_id, metadata: params.metadata,
+        success_url: params.success_url, cancel_url: params.cancel_url };
         state.sessions.set(session.id, session); return session; },
       retrieve: async id => state.sessions.get(id),
       expire: async id => { state.sessions.get(id).status = 'expired'; },
     } },
     billingPortal: { sessions: { create: async () => ({ url: 'https://billing.stripe.com/test' }) } },
   };
+  state.stripe = stripe;
   service = createBillingService({ db, stripe, origin: 'http://localhost:3000', portalConfiguration: 'bpc_test' });
 });
 after(async () => { await deleteApp(app); });
@@ -71,6 +73,17 @@ test('concurrent checkout requests cannot create duplicate subscriptions', async
   assert.ok(results.some(r => r.status === 'fulfilled'));
   assert.equal(state.creates, 1);
   for (const result of results.filter(r => r.status === 'rejected')) assert.equal(result.reason.status, 409);
+});
+test('switching website domains replaces the pending checkout so the customer returns to their signed-in site', async () => {
+  const data = { businessId: 'b1', plan: 'pro', cycle: 'monthly' };
+  await service.checkout(actor, data);
+  const otherSite = createBillingService({ db, stripe: state.stripe, origin: 'https://www.vintranordic.com', portalConfiguration: 'bpc_test' });
+  await otherSite.checkout(actor, data);
+  assert.equal(state.sessions.get('cs_test_1').status, 'expired');
+  assert.equal(new URL(state.params.success_url).origin, 'https://www.vintranordic.com');
+  assert.equal(new URL(state.params.cancel_url).origin, 'https://www.vintranordic.com');
+  await otherSite.checkout(actor, data);
+  assert.equal(state.creates, 2);
 });
 test('a success URL alone cannot grant paid access or confirm another customer payment', async () => {
   await service.checkout(actor, { businessId: 'b1', plan: 'pro', cycle: 'monthly' });

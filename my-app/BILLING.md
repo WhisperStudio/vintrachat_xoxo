@@ -10,28 +10,24 @@ Prissiden er `/priser`. Prisene og grensene ligger samlet i `src/lib/billing/cat
 
 Prisene er i NOK og opprettet med `tax_behavior: inclusive`. Eventuell avgiftsregistrering og regnskapsoppsett må samsvare med virksomhetens Stripe-konto. Automatisk Stripe Tax er ikke aktivert av oppsettskriptet.
 
-## Klargjort og testet
+## Aktivt i produksjon
 
-- Stripe-sandbox `Vintra-box` er koblet til `vintrachat-xoxo` i Vercel-teamet `vintrastudios-projects`.
-- Fire gjentakende Stripe-priser og kundeportal er opprettet på denne sandbox-kontoen. Ingen ekte betaling er tatt.
-- Testnøkler er hentet til ignorerte lokale miljøfiler. Ingen hemmeligheter er versjonskontrollert.
-- Vercel CLI er nå logget inn på riktig konto og har bekreftet tilgang til prosjektet. Vercel-utvidelsen gir fortsatt 403 for miljøvariabler; CLI fungerer.
-- `STRIPE_PORTAL_CONFIGURATION_ID` er satt for Development og Preview i Vercel. De tilkoblede Stripe-nøklene er testnøkler; live-nøkler, produksjonswebhook og produksjonsutrulling gjenstår.
-- Den lokale Stripe-konfigurasjonen bruker nå `Vintra-box`. Den tidligere testsandboxen `stripe-coral-tree`/`vintrachat-billing-sandbox` er separat og brukes ikke av dette prosjektet. Ikke gjenbruk portal-ID eller webhook-hemmelighet på tvers av kontoer eller test/live.
-- Firebase CLI har bekreftet tilgang til `vintrasolutions-f58a7`. Databasereglene skal publiseres sammen med appen; de er ennå ikke publisert.
-- `.vercelignore` i repositoriets rot utelukker lokale miljøfiler, `.audit`, emulatorlogger og byggecache fra CLI-opplastinger. Dette er kontrollert med `vercel deploy --dry`.
+Prissiden er publisert på https://chat.vintrastudio.com/priser og https://www.vintranordic.com/priser.
 
-Sandboxen administreres under Stripe-integrasjonen i Vercel-teamet `vintrastudios-projects`, ressurs `Vintra-box`. Overtakelse av sandboxen og aktivering av ekte betaling må fullføres av kontoeieren i Stripe.
+- Vercel-prosjekt: `vintrachat-xoxo`, team `vintrastudios-projects`.
+- Aktiv produksjonsdeploy: `dpl_DxbZ3kgiBeJzSTusoXFSG31kf9q9`, publisert 8. november 2026 og promotert til begge domenene.
+- Stripe live-konto: `acct_1T00euFOi3fYphOT`, ressurs `stripe-live-vintrastudio` (`ir_6WulzNLArLEIv5z7`), koblet **kun til Production**. Stripe har bekreftet at både betalinger og utbetalinger er aktivert.
+- Sandbox: `Vintra-box` (`ir_i1AObcZehRLytXMh`), koblet til **Development og Preview**. Lokal `.env.local` bruker fortsatt testnøkkelen.
+- Fire live-priser i NOK er opprettet og kontrollert mot tabellen ovenfor. Andre eksisterende Stripe-produkter/priser er beholdt.
+- Kundeportal: `bpc_1UZLokFOi3fYphOT6BCceIv6`. Fakturaer, betalingsmåte, planbytte og oppsigelse ved periodeslutt er aktivert.
+- Webhook: `we_1UZLolFOi3fYphOTWsUzAv9g`, URL `https://chat.vintrastudio.com/api/billing/webhook`, med de åtte betalings-/abonnementshendelsene i oppsettskriptet.
+- `BILLING_APP_URL`, `STRIPE_PORTAL_CONFIGURATION_ID` og `STRIPE_WEBHOOK_SECRET` er satt i Production. Signeringshemmeligheten er lagret som Secret. Ingen hemmeligheter er versjonskontrollert.
+- `firestore.rules` er kompilert og publisert til `vintrasolutions-f58a7`. Reglene og serveren håndhever gratisgrensene.
+- `.vercelignore` i repositoriets rot utelukker miljøfiler, `.audit`, emulatorlogger og byggecache fra CLI-opplastinger.
 
-Kontroll etter at kontoeieren meldte om live-aktivering: Vercel Production bruker fortsatt `sk_test_`, alle fire prisene har `livemode: false`, og kontoen som appen er koblet til er fortsatt sandbox. `STRIPE_WEBHOOK_SECRET`, `STRIPE_PORTAL_CONFIGURATION_ID` og `BILLING_APP_URL` mangler i Production. `/priser` gir foreløpig 404 på begge produksjonsdomenene. Dette sier ikke noe om aktiveringen av kontoeierens separate live-konto; den må importeres og kobles til appen.
+Betalingsreturen og kundeportalen bruker samme verifiserte nettsted som kunden startet på (`chat.vintrastudio.com`, `vintranordic.com` eller `www.vintranordic.com`), slik at innloggingen beholdes. Andre verter bruker `BILLING_APP_URL`. Ved bytte av nettsted erstattes en åpen Checkout-økt med en ny som har riktig returadresse.
 
-## Publisert forhåndsvisning
-
-Prisside: https://vintrachat-xoxo-rfspg0kej-vintrastudios-projects.vercel.app/priser
-
-Deployment `dpl_JAm3X3A7AHschjhakt6sJpmMSJVi` er READY i Preview, med Vercel Authentication. Bygget bestod på Vercel. Nettleserkontrollen bekreftet de tre planene, 299/999 kr, ingen JavaScript-feil og ingen horisontal overløp på 390 px. Checkout uten innlogging gir 401.
-
-Dette er en forhåndsvisning av appen. Produksjonsdomenene er ikke flyttet. Ekstern betalingsretur og webhooks er ikke konfigurert for denne beskyttede forhåndsvisningen; full betalingsflyt er foreløpig verifisert med Stripe-sandbox og isolert lokal Firestore-emulator. `BILLING_APP_URL`, riktig live-nøkkel og webhook må settes før produksjon.
+Den tidligere forhåndsvisningen er fortsatt tilgjengelig på https://vintrachat-xoxo-rfspg0kej-vintrastudios-projects.vercel.app/priser, men bruker testoppsett og er beskyttet av Vercel Authentication.
 
 ## Lokal kjøring
 
@@ -92,8 +88,17 @@ RUN_STRIPE_SANDBOX_TEST=1 npm run test:stripe
 
 Emulatortestene krever Java 21+. De nekter å kjøre mot produksjonsdata. Sandbox-testen krever en `sk_test_`-nøkkel og tester ekte Stripe Checkout, 299 NOK, gjenbruk av økt, kundeportal, betalt abonnement, oppsigelse og forsinkede hendelser. Den rydder opp sine testkunder og abonnementer etterpå. Den fullfører abonnementet med Stripes testbetalingsmetode via API; den simulerer ikke kortinntasting eller 3DS i en nettleser.
 
-Siste kontroll: 22 betaling-/Firestore-regeltester passerer, i tillegg til bygg/typekontroll, de eksisterende auth-/varslings-/widgettestene, ekte Stripe-sandbox-test og HTTP-signaturtest. Stripe-sandbox-testen er også kjørt på den nye `Vintra-box`-kontoen: Checkout, kundeportal, betalt testabonnement, oppsigelse og gamle webhook-hendelser bestod. Testkundene og abonnementene ble ryddet opp.
+Siste kontroll: 23 betaling-/Firestore-regeltester passerer, inkludert riktig returadresse ved bytte av nettsted. Typekontroll og Vercel-bygg består. Tidligere auth-/varslings-/widgettester, HTTP-signaturtest og Stripe-sandbox-test bestod. Sandbox-testen dekker betalt testabonnement, oppsigelse og gamle webhook-hendelser.
 
-Nettleseren er kontrollert på desktop og 390 px mobilbredde: priskort, årsvalg, ingen horisontal overløp, ingen JavaScript-feil og 401 for Checkout uten innlogging. Innlogget nettleserflyt, 3DS, faktiske webhook-leveranser fra Stripe til produksjon og live-betaling gjenstår til riktig konto og produksjonstilgang er tilgjengelig.
+Produksjonskontroll 8. november 2026:
+
+- Nettleser: innlogging → prisside → ekte Stripe Checkout for Pro med 299 NOK. Betalingsskjemaet og knappen «Betal og abonner» vises. Årsprisene vises riktig, ingen horisontal overløp på 390 px og ingen JavaScript-feil.
+- API: eierkontroll, avvisning av uinnloggede/andre bedrifter, serverbestemt beløp, gjenbruk av betalingsøkt, kundeportal og manglende betalt tilgang før betaling er bekreftet.
+- Sluttkontroll etter publisering: alle fire prisvalg opprettet ekte Checkout-økter med riktig NOK-beløp og betalingsintervall. Bytte mellom de to domenene ga riktig returadresse, avsluttet forrige åpne økt og gjenbrukte den nye ved gjentatt forespørsel. Prissiden svarte HTTP 200 og kundeportalen kunne åpnes fra begge domenene.
+- Gratis: første widget kan opprettes, andre avvises. Direkte forsøk på å gi seg selv betalt tilgang avvises av de publiserte Firestore-reglene.
+- Webhook: riktig signatur gir 200 og feil signatur gir 400. En faktisk live-hendelse fra Stripe (`customer.updated`, kun for kontrollkunden) ble levert til produksjon med HTTP 200 og `pending_webhooks: 0`. Webhooken ble deretter satt tilbake til de åtte abonnementshendelsene.
+- Opprydding: kontrollkunden i Stripe, åpne kontrolløkter, kontrollbedriften og innloggingskontoen i Firebase er fjernet. Den midlertidige Vercel-tilgangen er tilbakekalt, og lokale midlertidige live-nøkler er slettet. Produksjonsvariablene og lokal sandbox er beholdt.
+
+Ingen ekte kortbelastning er gjennomført. Betalt oppgradering, fornyelse, 3DS og oppsigelse etter et faktisk kortkjøp er derfor ikke bekreftet i live; abonnementsendringene er kontrollert i sandbox.
 
 Referanser: [Stripe Checkout](https://docs.stripe.com/api/checkout/sessions/create), [webhooks](https://docs.stripe.com/webhooks), [kundeportal](https://docs.stripe.com/customer-management).

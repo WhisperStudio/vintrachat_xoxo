@@ -107,7 +107,8 @@ export function createBillingService({ db, stripe, origin, portalConfiguration }
       if (account.checkoutId) {
         const previous = await stripe.checkout.sessions.retrieve(account.checkoutId);
         if (previous.status === 'open' && previous.url) {
-          if (previous.metadata?.plan === plan && previous.metadata?.cycle === cycle) return { url: previous.url };
+          const sameOrigin = previous.success_url?.startsWith(`${origin}/`) && previous.cancel_url?.startsWith(`${origin}/`);
+          if (previous.metadata?.plan === plan && previous.metadata?.cycle === cycle && sameOrigin) return { url: previous.url };
           await stripe.checkout.sessions.expire(previous.id);
         }
         if (previous.status === 'complete' && previous.subscription) {
@@ -117,8 +118,9 @@ export function createBillingService({ db, stripe, origin, portalConfiguration }
       }
       // Persist a request ID before Stripe; retries after a timeout use the same idempotency key.
       const request = account.checkoutRequest?.plan === plan && account.checkoutRequest?.cycle === cycle
+        && account.checkoutRequest?.origin === origin
         && account.checkoutRequest?.createdAt > Date.now() - 1800000
-        ? account.checkoutRequest : { id: randomUUID(), plan, cycle, createdAt: Date.now() };
+        ? account.checkoutRequest : { id: randomUUID(), plan, cycle, origin, createdAt: Date.now() };
       await ref.set({ checkoutRequest: request }, { merge: true });
       const session = await stripe.checkout.sessions.create({ mode: 'subscription', customer: customerId,
         line_items: [{ price: price.id, quantity: 1 }],

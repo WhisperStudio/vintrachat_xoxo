@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     try { actor = await verifyActiveUserToken(token) }
     catch { return NextResponse.json({ error: 'Innloggingen er utløpt. Logg inn på nytt.' }, { status: 401 }) }
     const { action, ...data } = await req.json()
-    const service = billingService()
+    const service = billingService(req.nextUrl.origin)
     const actions = { status: service.status, checkout: service.checkout, confirm: service.confirm,
       portal: service.manage, refresh: service.refresh }
     if (!Object.hasOwn(actions, action)) return NextResponse.json({ error: 'Ugyldig handling.' }, { status: 400 })
