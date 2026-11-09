@@ -106,6 +106,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => { active = false; clearTimeout(timer); accountRequest.current += 1; unsub(); };
   }, [loadAccount]);
 
+  useEffect(() => {
+    if (!firebaseUser || firebaseUser.emailVerified) return;
+    // Email links often open in another tab. Recheck when the signup/login tab
+    // becomes active, rather than retaining its previous verification error.
+    const refresh = () => {
+      if (document.visibilityState === 'visible') void loadAccount(firebaseUser);
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [firebaseUser, loadAccount]);
+
   const logout = async () => {
     await signOut();
   };

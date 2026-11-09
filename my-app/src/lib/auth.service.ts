@@ -228,6 +228,7 @@ function buildDefaultWidgetConfig(businessName: string): ChatWidgetConfig {
     customBranding: {
       title: businessName,
       description: 'Vi er her for å hjelpe deg!',
+      logoStyle: { zoom: 100, focusX: 50, focusY: 50 },
     },
     widgetIcons: {
       launcherIcon: 'FiMessageCircle',

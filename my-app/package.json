@@ -10,7 +10,7 @@
     "test:rules": "firebase emulators:exec --project demo-vintra-notifications --only firestore \"node --test tests/firestore.test.mjs\"",
     "typecheck": "tsc --noEmit",
     "setup:local": "node scripts/setup-local-firebase.mjs",
-    "test:auth": "node --test tests/auth-records.test.mjs tests/local-auth.test.mjs tests/auth-loading.test.mjs tests/auth-session.test.mjs tests/auth-reset.test.mjs",
+    "test:auth": "node --test tests/auth-records.test.mjs tests/local-auth.test.mjs tests/auth-loading.test.mjs tests/auth-session.test.mjs tests/auth-reset.test.mjs tests/verification-session.test.mjs tests/widget-account-defaults.test.mjs",
     "test:widget": "node --test tests/widget-mobile.test.mjs tests/widget-flow.test.mjs",
     "setup:stripe": "node scripts/setup-stripe.mjs",
     "test:billing": "firebase emulators:exec --project demo-vintra-notifications --only firestore \"node --test --test-concurrency=1 tests/firestore.test.mjs tests/billing.test.mjs\"",

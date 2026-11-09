@@ -2,13 +2,14 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { FiArrowRight, FiCheckCircle, FiMail, FiShield, FiXCircle } from 'react-icons/fi'
+import { auth } from '@/lib/firebase'
+import { refreshVerificationSession } from '@/lib/verification-session.mjs'
 
 export default function VerifyEmailClient() {
   const searchParams = useSearchParams()
-  const router = useRouter()
   const token = searchParams.get('token')
   const hasStartedRef = useRef(false)
 
@@ -39,15 +40,20 @@ export default function VerifyEmailClient() {
         message: 'Verification failed.',
       }))
 
-      if (result.success) {
+      if (response.ok && result.success) {
         setStatus('success')
         setMessage(result.message)
 
         if (result.businessId) {
+          // Never navigate into a protected workspace with a stale unverified
+          // session. A full navigation also reloads the account provider.
+          const ready = await refreshVerificationSession(auth).catch(() => false)
           setIsRedirecting(true)
           setTimeout(() => {
-            router.push('/admin')
+            window.location.assign(ready ? '/admin' : '/auth/login')
           }, 2000)
+        } else {
+          await refreshVerificationSession(auth).catch(() => false)
         }
 
         return
@@ -57,8 +63,11 @@ export default function VerifyEmailClient() {
       setMessage(result.message)
     }
 
-    runVerification()
-  }, [token, router])
+    void runVerification().catch(() => {
+      setStatus('error')
+      setMessage('Could not verify your email right now. Check your connection and reload this page to try again.')
+    })
+  }, [token])
 
   return (
     <main className="authPage authExperience">
@@ -150,8 +159,8 @@ export default function VerifyEmailClient() {
               {isRedirecting ? (
                 <>
                   <div className="authCallout success">
-                    <strong>Workspace ready</strong>
-                    <span>Your business setup is complete. We are sending you to the admin area now.</span>
+                    <strong>Email confirmed</strong>
+                    <span>We are refreshing your session. You may be asked to sign in before opening your workspace.</span>
                   </div>
                   <div style={{ padding: '10px 0 0' }}>
                     <div className="loading-spinner" />
