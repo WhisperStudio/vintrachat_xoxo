@@ -178,3 +178,14 @@ html[data-theme='dark'] .nordicAuthError { border-color: #78403c; background: #3
 .nordicAuthRecoveryEmail svg { flex-shrink: 0; }
 .nordicAuthRecoverySteps { margin: 0; padding-left: 20px; color: var(--auth-muted); line-height: 1.8; }
 .nordicAuthRecoverySteps li + li { margin-top: 8px; }
+.nordicAuth { --auth-accent: #007f70; --auth-button: #008b78; --auth-selected: #e6f6f1; }
+html[data-theme='dark'] .nordicAuth { --auth-accent: #35dfb5; --auth-button: #35dfb5; --auth-button-text: #082b35; --auth-selected: #133b39; }
+.nordicAuthBrand > img { object-fit: contain; flex-shrink: 0; }
+.nordicAuthMountains { left: 0; width: 100%; height: 56%; object-fit: cover; object-position: 65% bottom; }
+.nordicAuthLandscape { background: linear-gradient(180deg, transparent 45%, #a8c9dc40); }
+html[data-theme='dark'] .nordicAuthMountains { filter: brightness(.65) saturate(.85); }
+.nordicAuthSpinner { color: #00a67e; }
+.nordicAuthAccount input:checked + span .nordicAuthRadio { background: #007f70 !important; color: #fff !important; }
+.nordicAuthTrees { position: absolute; bottom: 0; right: -3%; width: 76%; height: auto; --spruce-green: #315e70; }
+html[data-theme='dark'] .nordicAuthTrees { --spruce-green: #255064; }
+.nordicAuthLandscape .seasonSnowField { z-index: 2; }

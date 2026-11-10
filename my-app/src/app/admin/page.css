@@ -90,13 +90,15 @@
   gap: 11px;
 }
 .adminBrandMark {
-  width: 32px;
+  width: 36px;
   height: 36px;
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   color: var(--admin-accent);
   font-size: 25px;
 }
+.adminBrandMark img { display: block; width: 36px; height: 36px; object-fit: contain; }
 .adminSidebarBrandCopy {
   display: flex;
   flex-direction: column;

@@ -1,0 +1,7 @@
+.seasonSnowField { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 3; container-type: size; }
+.seasonSnowField--viewport { position: fixed; z-index: 20; }
+.seasonSnowField span { position: absolute; top: -24px; color: #d5ebf6; opacity: .65; text-shadow: 0 0 4px #24465c50; animation: vintraSnowDrift linear infinite; }
+@keyframes vintraSnowDrift { from { transform: translate3d(-12px, -24px, 0) rotate(0deg); } to { transform: translate3d(24px, calc(100cqh + 48px), 0) rotate(220deg); } }
+.spruceSnow { display: none; }
+[data-season='winter'] .spruceSnow { display: block; }
+@media (prefers-reduced-motion: reduce) { .seasonSnowField span { animation: none; top: var(--snow-rest); opacity: .4; } }

@@ -416,9 +416,9 @@ export default function AdminWorkspace({ billingConfigured, billingTestMode }: {
         <div className="adminSidebarFollowScreen">
           <aside id="admin-navigation" className={`adminSidebar ${sidebarCollapsed ? 'adminSidebarCollapsed' : ''}`} ref={sidebarRef}>
             <div className="adminSidebarHeader">
-              <Link href="/landings/main" className="adminSidebarBrand" aria-label="Vintra">
-                <span className="adminBrandMark"><FiLayers /></span>
-                <span className="adminSidebarBrandCopy"><strong>vintra<span>®</span></strong><small>{no ? 'ARBEIDSOMRÅDE' : 'WORKSPACE'}</small></span>
+              <Link href="/landings/main" className="adminSidebarBrand" aria-label="Vintra Nordic">
+                <span className="adminBrandMark"><img src="/image/logo.png" width="36" height="36" alt="" aria-hidden="true" /></span>
+                <span className="adminSidebarBrandCopy"><strong>vintra<span>®</span></strong><small>NORDIC</small></span>
               </Link>
               <button type="button" className="adminSidebarCollapseToggle" onClick={() => setSidebarCollapsed(current => !current)}
                 aria-label={sidebarCollapsed ? text.sidebar.expand : text.sidebar.collapse} title={sidebarCollapsed ? text.sidebar.expand : text.sidebar.collapse}>

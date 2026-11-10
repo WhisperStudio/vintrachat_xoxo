@@ -3798,3 +3798,39 @@ main[data-season='halloween'] .droidSeasonalTeeth { display: block; }
  .botStoryCard h3 { font-size: 18px; margin: 4px 0; }
  .botStoryCard p, .botStoryCard a { display: none; }
 }
+.heroShell--night { --hero-accent: #35dfb5; }
+.heroShell--day { --hero-accent: #007f70; }
+.heroShell--night .cta-primary, .mainFlow--night .cta-primary { background: linear-gradient(135deg, #56edc6, #28cfa5); color: #082b35; box-shadow: 0 8px 28px #00a67e25; }
+.heroShell--day .cta-primary { background: linear-gradient(135deg, #007e70, #00a085); }
+.heroBenefit svg, .featureCheck { color: #00a67e; }
+.mainFlow--night .featureCheck, .heroShell--night .heroBenefit svg { color: #35dfb5; }
+.chatbotTechnology { margin: 28px 0; padding: clamp(22px, 3vw, 36px); border: 1px solid #00a67e35; border-radius: 22px; background: linear-gradient(135deg, #00a67e16, #2f6fed0a); }
+.technologyBadge { display: inline-flex; padding: 6px 12px; border-radius: 99px; background: #007f70; color: #fff; font-size: 12px; font-weight: 700; }
+.technologyEyebrow { display: block; margin: 18px 0 10px; font-size: 12px; color: #7fd1b9; }
+.chatbotTechnology h3 { font-size: clamp(23px, 3vw, 32px); line-height: 1.25; letter-spacing: -.035em; margin: 0 0 16px; }
+.chatbotTechnology p, .chatbotUseCaseCard p { font-size: 14px; line-height: 1.8; color: #b9cbdc; margin: 0; }
+.mainFlow--day .technologyEyebrow { color: #007f70; }
+.mainFlow--day .chatbotTechnology p, .mainFlow--day .chatbotUseCaseCard p { color: #425b77; }
+.chatbotUseCaseGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.chatbotUseCaseCard { text-align: left; padding: 24px; border-radius: 18px; border-color: #7fd1b930; }
+.chatbotUseCaseCard h3 { margin: 12px 0 8px; font-size: 18px; }
+.scrollDroidFloat .droidSeasonalHat, .siteDroid .droidSeasonalHat { top: -16%; left: 18%; width: 66%; height: 38%; transform: rotate(-8deg); transform-origin: 50% 90%; }
+.droidSeasonalHat::before { left: 10%; width: 80%; height: 90%; clip-path: polygon(0 100%, 12% 58%, 25% 28%, 56% 8%, 82% 12%, 98% 34%, 86% 45%, 70% 32%, 67% 51%, 88% 100%); }
+.droidSeasonalHat::after { left: 0; bottom: 0; width: 100%; height: 24%; border-radius: 50% 50% 35% 35%; }
+.droidSeasonalHat i { left: 80%; top: 20%; width: 23%; }
+@media (max-width: 480px) { .chatbotUseCaseGrid { grid-template-columns: 1fr; } }
+/* Digital face, tailored seasonal accessories, and a quiet particle orbit. */
+.scrollDroidFloat > svg.droidSeasonalHat, .siteDroid > svg.droidSeasonalHat { top: -25%; left: 17%; width: 69%; height: 56%; transform: rotate(-7deg); overflow: visible; filter: drop-shadow(0 3px 2px #08182b35); }
+.scrollDroidFloat > svg.droidSeasonalGlasses, .siteDroid > svg.droidSeasonalGlasses { top: 36%; left: 21%; width: 59%; height: 23%; overflow: visible; filter: drop-shadow(0 1px 2px #34c8dd50); }
+.scrollDroidFloat > svg.droidSeasonalEars, .siteDroid > svg.droidSeasonalEars { top: -33%; left: 25%; width: 50%; height: 49%; overflow: visible; }
+main[data-season='summer'] svg.droidSeasonalGlasses, main[data-season='easter'] svg.droidSeasonalEars { display: block; }
+.droidSeasonalTeeth { fill: #edfbff; stroke: #7cc2dc; stroke-width: .65; stroke-linejoin: round; filter: drop-shadow(0 0 2px #68dfff80); }
+.droidAura { position: absolute; inset: -24%; pointer-events: none; z-index: -1; border-radius: 50%; background: radial-gradient(ellipse, #42d4ed16 0%, #2f6fed09 45%, transparent 70%); }
+.droidAura span { position: absolute; top: 50%; left: 50%; width: 3px; height: 3px; border-radius: 1px; background: #8cefff; box-shadow: 0 0 7px #42dbec; opacity: .7; animation: droidParticleOrbit 18s linear infinite; animation-delay: var(--orbit-delay); }
+.droidAura span:nth-child(3n) { width: 2px; height: 2px; background: #52dbb4; }
+.droidAura span:nth-child(even) { animation-direction: reverse; opacity: .4; }
+@keyframes droidParticleOrbit { from { transform: rotate(var(--orbit-angle)) translateX(90px) rotate(calc(-1 * var(--orbit-angle))) scale(.7); } 50% { opacity: .3; } to { transform: rotate(calc(var(--orbit-angle) + 360deg)) translateX(90px) rotate(calc(-1 * var(--orbit-angle) - 360deg)) scale(1.1); } }
+@media (max-width: 700px) { .droidAura { scale: .7; } }
+@media (prefers-reduced-motion: reduce) { .droidAura span { animation: none; transform: rotate(var(--orbit-angle)) translateX(90px); } }
+main[data-season='halloween'] :is(.droidEyes, .siteDroidEyes) { fill: #ff4d63; filter: drop-shadow(0 0 5px #ff203f) drop-shadow(0 0 10px #d91c4655); }
+main[data-season='halloween'] .droidSeasonalTeeth { fill: #fffaf2; stroke: #d5dfed; stroke-width: .7; filter: drop-shadow(0 1px 1px #07152f); }

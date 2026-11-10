@@ -745,3 +745,6 @@ html[data-theme-switching='true'] *::after {
   transition-duration: 0s !important;
   transition-delay: 0s !important;
 }
+.badge.success, .authCallout.success { color: #007f70; background: #e6f6f1; border-color: #7fd1b9; }
+html[data-theme='dark'] .badge.success, html[data-theme='dark'] .authCallout.success { color: #56edc6; background: #123c36; border-color: #247a66; }
+.loading-spinner { border-top-color: #00a67e; }

@@ -26,7 +26,10 @@ import {
   createHeroParticles,
 } from './page-helpers'
 import MountainBackground from '@/svgs/MountainBackground'
+import { SpruceTree } from '@/svgs/NordicTrees'
+import SeasonSnowfall from '@/components/SeasonSnowfall'
 import ConversationDemo from './ConversationDemo'
+import DroidAccessories from '@/svgs/DroidAccessories'
 
 const organizationId = `${siteConfig.url}/#organization`
 const websiteId = `${siteConfig.url}/#website`
@@ -345,10 +348,9 @@ function ScrollDroid() {
   const droid = (
     <div ref={droidRef} className="scrollDroid" aria-hidden="true">
       <div className="scrollDroidFloat">
+        <div className="droidAura">{Array.from({ length: 10 }, (_, index) => <span key={index} style={{ '--orbit-angle': index * 36 + 'deg', '--orbit-delay': -index * 1.8 + 's' } as CSSProperties} />)}</div>
         <div className="droidAntenna"><span /></div>
-      <span className="droidSeasonalHat"><i /></span>
-      <span className="droidSeasonalGlasses"><i /><i /></span>
-      <span className="droidSeasonalEars"><i /><i /></span>
+      <DroidAccessories />
       <div className="droidHand">
           <DroidArm />
         </div>
@@ -368,14 +370,22 @@ function ScrollDroid() {
           <circle className="droidShell" cx="90" cy="88" r="73" fill="url(#droidShell)" />
           <path className="droidShellPanel" d="M30 71 C54 44 126 40 151 70 L153 102 C126 119 52 119 27 101 Z" />
           <path className="droidVisor" d="M38 68 C61 50 121 49 143 68 L145 99 C121 112 60 112 35 98 Z" fill="url(#droidVisor)" />
+          <g className="droidScreenDetail" fill="none" stroke="#6fe8ff" strokeWidth=".8" opacity=".45">
+            <path d="M44 74v-6h12m72 0h9v6M44 91v5h11m73 0h9v-5M59 63h10m4 0h3m44 0h4" />
+            <path d="M48 78h84m-85 5h86m-86 5h86m-82 5h78" opacity=".25" />
+          </g>
           <g className="droidEyes">
-            <ellipse cx="70" cy="83" rx="8" ry="15" />
-            <ellipse cx="112" cy="83" rx="8" ry="15" />
+            <path d="M66 69h8v4h4v20h-4v4h-8v-4h-4V73h4Z" />
+            <path d="M108 69h8v4h4v20h-4v4h-8v-4h-4V73h4Z" />
           </g>
           <path className="droidSmile" d="M75 101 Q91 112 108 101" />
-          <path className="droidSeasonalTeeth" d="M76 101 82 110 88 102 94 110 101 101" />
+          <path className="droidSeasonalTeeth" d="M73 101Q78 103 83 104L79 117Q78 119 77 116ZM99 104Q104 103 109 101L105 116Q104 119 103 117Z" />
           <path className="droidGlint" d="M43 41 Q62 21 84 20" />
           <path className="droidSeam" d="M22 111 Q90 140 158 109" />
+          <g className="droidHardware" fill="none" stroke="#c5efff" strokeWidth="1.2" opacity=".65">
+            <path d="M23 78v17m5-21v24m125-24v24m5-20v17M60 124l7 5h9m28 0h10l7-5M74 151h8m4 0h8m4 0h8" />
+            <circle cx="49" cy="120" r="3" /><circle cx="131" cy="120" r="3" />
+          </g>
           <DroidDetails />
         </svg>
       </div>
@@ -428,9 +438,7 @@ function DroidMorphShowcase({ language }: { language: 'no' | 'en' }) {
 
         <div className="siteDroid" aria-hidden="true">
           <span className="siteDroidAntenna"><i /></span>
-          <span className="droidSeasonalHat"><i /></span>
-          <span className="droidSeasonalGlasses"><i /><i /></span>
-          <span className="droidSeasonalEars"><i /><i /></span>
+          <DroidAccessories />
           <svg viewBox="0 0 180 180">
             <defs>
               <radialGradient id="siteDroidShellGradient" cx="32%" cy="24%" r="78%">
@@ -447,7 +455,7 @@ function DroidMorphShowcase({ language }: { language: 'no' | 'en' }) {
             <path className="siteDroidGlass" d="M38 68 C61 50 121 49 143 68 L145 99 C121 112 60 112 35 98 Z" />
             <g className="siteDroidEyes"><ellipse cx="70" cy="83" rx="8" ry="15" /><ellipse cx="112" cy="83" rx="8" ry="15" /></g>
             <path className="siteDroidSmile" d="M75 101 Q91 112 108 101" />
-            <path className="droidSeasonalTeeth" d="M76 101 82 110 88 102 94 110 101 101" />
+            <path className="droidSeasonalTeeth" d="M73 101Q78 103 83 104L79 117Q78 119 77 116ZM99 104Q104 103 109 101L105 116Q104 119 103 117Z" />
             <path className="siteDroidGlint" d="M43 41 Q62 21 84 20" />
             <path className="siteDroidSeam" d="M22 111 Q90 140 158 109" />
             <DroidDetails />
@@ -619,25 +627,14 @@ export default function MainLanding() {
       />
 
       <main lang={language} data-header-tone={heroSceneMode === 'night' ? 'light' : 'dark'} data-season={season}>
+        {season === 'winter' && <SeasonSnowfall viewport />}
         <ScrollDroid />
         <ScrollHint language={language} />
         {/* -- HERO ----------------------------------------- */}
         <section className={`heroShell heroShell--${heroSceneMode}`}>
           <div className="heroBackdrop" aria-hidden="true">
             <MountainBackground className={`heroMountain heroMountain--${heroSceneMode}`} />
-            <div className="seasonSnowfall">
-              {Array.from({ length: 30 }, (_, index) => (
-                <span
-                  key={index}
-                  style={{
-                    left: `${(index * 37 + 11) % 100}%`,
-                    animationDelay: `${-((index * 13) % 24)}s`,
-                    animationDuration: `${14 + (index * 7) % 15}s`,
-                    fontSize: `${10 + (index * 5) % 10}px`,
-                  }}
-                >❄</span>
-              ))}
-            </div>
+
             {heroSceneMode === 'night' ? (
               <>
                 {nightStars.map((star) => (
@@ -789,6 +786,12 @@ export default function MainLanding() {
           <path className="mountainCenterFoot" d="M0 700 L0 641 C72 620 129 626 190 637 C251 606 309 603 366 622 C425 593 484 589 542 614 C602 595 659 603 716 627 C775 608 830 614 881 638 C929 625 966 630 1000 644 L1000 700 Z" />
           <path className="mountainFootContour" d="M18 657 C91 638 147 648 205 657 C266 627 321 628 377 645 C435 617 491 615 548 639 C607 621 663 629 719 651 C777 634 830 640 882 659 C927 648 964 651 989 660" />
           <path className="mountainFootContour mountainFootContour--lower" d="M30 680 C108 662 171 674 235 680 C298 652 358 659 417 673 C478 649 537 653 596 674 C657 657 717 667 776 680 C842 663 910 675 976 670" />
+          <g className="mountainSpruces">
+            <SpruceTree x={135} y={533} scale={1.1} />
+            <SpruceTree x={210} y={563} scale={.82} />
+            <SpruceTree x={796} y={531} scale={1.12} />
+            <SpruceTree x={866} y={570} scale={.78} />
+          </g>
         </svg>
       </div>
       <div className="solutionsIntro solutionsIntroArcContent">
@@ -901,11 +904,18 @@ export default function MainLanding() {
                       {text.useCases.map((label, index) => (
                         <div key={label} className="chatbotUseCaseCard">
                           <div className="chatbotUseCaseNumber">{String(index + 1).padStart(2, '0')}</div>
-                          <div className="chatbotUseCaseLabel">{label}</div>
+                          <h3 className="chatbotUseCaseLabel">{label}</h3>
+                          <p>{text.caseDetails[index]}</p>
                         </div>
                       ))}
                     </div>
 
+                    <div className="chatbotTechnology">
+                      <span className="technologyBadge">Gemini API</span>
+                      <span className="technologyEyebrow">{text.technologyLabel}</span>
+                      <h3>{text.technologyTitle}</h3>
+                      <p>{text.technologyBody}</p>
+                    </div>
                     <div className="chatbotFeatureBlock">
                       <div>
                         <h3>{text.chatbotFeatureTitle}</h3>
