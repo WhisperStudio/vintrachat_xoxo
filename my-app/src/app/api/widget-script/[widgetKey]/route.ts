@@ -1,4 +1,4 @@
-import { resolveWidgetFlow, validateWidgetContact } from '@/lib/widget-flow.mjs'
+import { getContextualWidgetSuggestions, resolveWidgetFlow, validateWidgetContact } from '@/lib/widget-flow.mjs'
 import { getWidgetMotionClasses } from '@/lib/widget-motion'
 import { getMessageSurfaceClasses, getSurfaceClasses } from '@/lib/surface-design'
 import { createLauncherArtwork } from '@/lib/launcher-design'
@@ -182,6 +182,193 @@ const widgetStyles = `
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+.vintra-widget .chat-content { position: relative; }
+.vintra-widget .chat-header-back {
+  display:grid;
+  place-items:center;
+  flex:0 0 38px;
+  width:38px;
+  height:38px;
+  padding:0;
+  border:1px solid color-mix(in srgb,var(--chat-primary,#285f86) 20%,transparent);
+  border-radius:50%;
+  background:color-mix(in srgb,var(--chat-primary,#285f86) 10%,var(--chat-bg,#fff));
+  color:var(--chat-primary,#285f86);
+  cursor:pointer;
+}
+.vintra-widget .chat-header-back svg { width:20px; height:20px; }
+.vintra-widget .widget-faq-suggestions { display:flex; flex-wrap:wrap; align-items:flex-start; gap:8px; padding:10px; border:1px solid color-mix(in srgb,var(--chat-primary,#285f86) 16%,transparent); border-radius:14px; background:color-mix(in srgb,var(--chat-primary,#285f86) 5%,var(--chat-bg,#fff)); }
+.vintra-widget .widget-faq-suggestions__title { flex:0 0 100%; color:var(--chat-text,#19354a); font-size:11px; font-weight:700; }
+.vintra-widget .widget-faq-chip {
+  flex:0 1 auto;
+  padding:8px 12px;
+  border:1px solid color-mix(in srgb,var(--chat-primary,#285f86) 24%,transparent);
+  border-radius:999px;
+  background:var(--chat-bg,#fff);
+  color:var(--chat-text,#19354a);
+  font:inherit;
+  font-size:12px;
+  cursor:pointer;
+}
+.vintra-widget .widget-faq-chip:hover { border-color:var(--chat-primary,#285f86); }
+.vintra-widget .widget-panel-page { display:flex; flex-direction:column; gap:12px; min-height:100%; }
+.vintra-widget .widget-task-list { display:flex; flex-direction:column; gap:10px; }
+.vintra-widget .widget-task-card {
+  padding:12px;
+  border:1px solid color-mix(in srgb,var(--chat-primary,#285f86) 16%,transparent);
+  border-radius:14px;
+  background:var(--chat-bg,#fff);
+  color:var(--chat-text,#19354a);
+}
+.vintra-widget .widget-task-card__top,
+.vintra-widget .widget-task-card__meta { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.vintra-widget .widget-task-card p { margin:8px 0; color:var(--chat-text,#19354a); }
+.vintra-widget .widget-task-card__meta,
+.vintra-widget .widget-panel-empty,
+.vintra-widget .widget-panel-inline-note { color:var(--chat-text,#475569); opacity:.8; font-size:12px; }
+.vintra-widget .widget-task-badge { padding:3px 8px; border-radius:999px; background:color-mix(in srgb,var(--chat-primary,#285f86) 12%,var(--chat-bg,#fff)); color:var(--chat-primary,#285f86); font-size:11px; }
+.vintra-widget .widget-feedback-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  overflow: auto;
+  background: var(--chat-bg, #fff);
+  color: var(--chat-text, #0f172a);
+}
+.vintra-widget .widget-feedback-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  min-height: 100%;
+  padding: 22px;
+  border-radius: inherit;
+  background: var(--chat-bg, #fff);
+}
+.vintra-widget .widget-feedback-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.vintra-widget .widget-feedback-header h4 { margin: 0; color: var(--chat-text, #0f172a); font-size: 1.05rem; }
+.vintra-widget .widget-feedback-header p { margin: 5px 0 0; color: var(--chat-text, #475569); opacity: .8; }
+.vintra-widget .widget-feedback-close {
+  display: grid;
+  place-items: center;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  border: 1px solid color-mix(in srgb,var(--chat-primary,#285f86) 20%,transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb,var(--chat-primary,#285f86) 10%,var(--chat-bg,#fff));
+  color: var(--chat-primary,#285f86);
+  cursor: pointer;
+}
+.vintra-widget .widget-feedback-rating { display: flex; gap: 6px; }
+.vintra-widget .widget-feedback-star {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--chat-border,#dce6ed);
+  border-radius: 10px;
+  background: var(--chat-bg,#fff);
+  color: #d89c16;
+  cursor: pointer;
+}
+.vintra-widget .widget-feedback-field { display: grid; gap: 6px; color: var(--chat-text,#19354a); }
+.vintra-widget .widget-feedback-field span { font-size: .85rem; font-weight: 700; }
+.vintra-widget .widget-feedback-field input,
+.vintra-widget .widget-feedback-field textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb,var(--chat-primary,#285f86) 24%,transparent);
+  border-radius: 12px;
+  background: var(--chat-bg,#fff);
+  color: var(--chat-text,#19354a);
+}
+.vintra-widget .widget-feedback-field textarea { min-height: 120px; resize: vertical; }
+.vintra-widget .widget-feedback-field :is(input,textarea):focus {
+  outline: none;
+  border-color: var(--chat-primary,#285f86);
+  box-shadow: 0 0 0 3px color-mix(in srgb,var(--chat-primary,#285f86) 14%,transparent);
+}
+.vintra-widget .widget-feedback-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: auto; }
+.vintra-widget .widget-feedback-primary,
+.vintra-widget .widget-feedback-secondary {
+  min-height: 42px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.vintra-widget .widget-feedback-primary { background: var(--chat-primary,#285f86); color: var(--chat-on-primary,#fff); }
+.vintra-widget .widget-feedback-secondary { background: color-mix(in srgb,var(--chat-primary,#285f86) 10%,var(--chat-bg,#fff)); color: var(--chat-primary,#285f86); }
+.vintra-widget .widget-feedback-primary:disabled,
+.vintra-widget .widget-feedback-secondary:disabled { opacity: .6; cursor: not-allowed; }
+.vintra-widget .widget-handoff-overlay {
+  position:absolute;
+  inset:0;
+  z-index:20;
+  display:flex;
+  overflow:auto;
+  background:var(--chat-bg,#fff);
+  color:var(--chat-text,#19354a);
+}
+.vintra-widget .widget-handoff-card {
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  width:100%;
+  min-height:100%;
+  padding:22px;
+  border-radius:inherit;
+  background:var(--chat-bg,#fff);
+}
+.vintra-widget .widget-handoff-header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.vintra-widget .widget-handoff-header h4 { margin:0; color:var(--chat-text,#19354a); }
+.vintra-widget .widget-handoff-header p { margin:5px 0 0; color:var(--chat-text,#475569); opacity:.8; }
+.vintra-widget .widget-handoff-close {
+  display:grid;
+  place-items:center;
+  flex:0 0 38px;
+  width:38px;
+  height:38px;
+  border:1px solid color-mix(in srgb,var(--chat-primary,#285f86) 20%,transparent);
+  border-radius:50%;
+  background:color-mix(in srgb,var(--chat-primary,#285f86) 10%,var(--chat-bg,#fff));
+  color:var(--chat-primary,#285f86);
+  cursor:pointer;
+}
+.vintra-widget .widget-handoff-close svg { width:20px; height:20px; }
+.vintra-widget .widget-handoff-grid { display:grid; gap:12px; }
+.vintra-widget .widget-handoff-field { display:grid; gap:6px; color:var(--chat-text,#19354a); }
+.vintra-widget .widget-handoff-field span { font-size:12px; font-weight:700; }
+.vintra-widget .widget-handoff-field input {
+  width:100%;
+  padding:12px 14px;
+  border:1px solid color-mix(in srgb,var(--chat-primary,#285f86) 24%,transparent);
+  border-radius:12px;
+  background:var(--chat-bg,#fff);
+  color:var(--chat-text,#19354a);
+}
+.vintra-widget .widget-handoff-field input:focus { outline:none; border-color:var(--chat-primary,#285f86); box-shadow:0 0 0 3px color-mix(in srgb,var(--chat-primary,#285f86) 14%,transparent); }
+.vintra-widget .widget-handoff-actions { display:flex; justify-content:flex-end; margin-top:auto; }
+.vintra-widget .widget-handoff-submit { min-height:42px; padding:10px 16px; border:0; border-radius:999px; background:var(--chat-primary,#285f86); color:var(--chat-on-primary,#fff); font-weight:700; cursor:pointer; }
+.vintra-widget .widget-handoff-submit:disabled { opacity:.6; cursor:not-allowed; }
+.vintra-widget .chat-footer-row .widget-ticket-open {
+  display: grid;
+  place-items: center;
+  flex: 0 0 46px;
+  width: 46px;
+  min-width: 46px;
+  height: 48px;
+  border: 1px solid color-mix(in srgb,var(--chat-primary,#285f86) 30%,transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb,var(--chat-primary,#285f86) 10%,var(--chat-bg,#fff));
+  color: var(--chat-primary,#285f86);
+  font-size: 24px;
+  cursor: pointer;
 }
 
 .vintra-root {
@@ -880,8 +1067,6 @@ export async function GET(
     tasks: [],
     tasksLoading: false,
     taskSubmitting: false,
-    taskTitle: '',
-    taskDescription: '',
     taskNotice: '',
     lightboxImageUrl: '',
     faqSuggestions: [],
@@ -1356,6 +1541,24 @@ export async function GET(
     });
   }
 
+  function getSuggestionCandidates() {
+    var assistantConfig = getAssistantConfig();
+    var faqItems = assistantConfig.faqSuggestionsEnabled && Array.isArray(assistantConfig.faqSuggestions)
+      ? assistantConfig.faqSuggestions.map(function (prompt) { return { prompt: String(prompt || '').trim() }; })
+      : [];
+    var menuItems = getConversationCards(state.config).reduce(function (items, card) {
+      (Array.isArray(card.options) ? card.options : []).forEach(function (option) {
+        items.push({
+          prompt: option.prompt,
+          label: option.label,
+          context: [card.title, card.description, option.description].join(' ')
+        });
+      });
+      return items;
+    }, []);
+    return menuItems.concat(faqItems);
+  }
+
   function syncComposerMode() {
     var footer = mount.querySelector('.chat-footer');
     var input = mount.querySelector('.chat-footer textarea');
@@ -1370,7 +1573,7 @@ export async function GET(
     }
 
     if (suggestions) {
-      suggestions.hidden = !expanded || state.messages.length > 1 || !state.faqSuggestions.length || state.faqSuggestionsDismissed;
+      suggestions.hidden = !state.open || state.messages.length > 1 || !getContextualSuggestions(String(state.inputValue || ''), getSuggestionCandidates(), state.faqSuggestions).length || state.faqSuggestionsDismissed;
     }
 
     if (input) {
@@ -1389,7 +1592,7 @@ export async function GET(
 
   function syncTaskSubmitState() {
     var button = mount.querySelector('.widget-task-submit');
-    if (button) button.disabled = state.taskSubmitting || !String(state.taskTitle || '').trim() || !String(state.taskDescription || '').trim() || Boolean(validateContact(getFlow(), { name: state.handoffName, email: state.handoffEmail, phone: state.handoffPhone }));
+    if (button) button.disabled = state.taskSubmitting || Boolean(validateContact(getFlow(), { name: state.handoffName, email: state.handoffEmail, phone: state.handoffPhone }));
   }
   function syncHandoffSubmitState() {
     var submitButton = mount.querySelector('.widget-handoff-submit');
@@ -1410,6 +1613,7 @@ export async function GET(
 
   var resolveFlow = ${resolveWidgetFlow.toString()};
   var validateContact = ${validateWidgetContact.toString()};
+  var getContextualSuggestions = ${getContextualWidgetSuggestions.toString()};
   function getFlow() { return resolveFlow(getWidgetSettings(), getAssistantConfig()); }
   function getWidgetSettings() {
     var config = state.config || {};
@@ -1477,10 +1681,10 @@ export async function GET(
     var panels = getAvailablePanels();
 
     return (
-      '<div class="widget-panel-tabs" role="tablist" aria-label="Widget pages" style="position:sticky;top:0.8rem;z-index:4;display:inline-flex;justify-content:center;align-items:center;gap:0.55rem;min-height:54px;max-width:calc(100% - 1.6rem);margin:0 auto;padding:0.4rem;border:1px solid rgba(148,163,184,0.16);border-radius:999px;background:rgba(255,255,255,0.82);box-shadow:0 12px 26px rgba(15,23,42,0.08);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none;">' +
+      '<div class="widget-panel-tabs" role="tablist" aria-label="Widget pages" style="position:sticky;top:0;z-index:4;display:inline-flex;justify-content:center;align-items:center;gap:0.45rem;min-height:40px;max-width:calc(100% - 1rem);margin:0 auto;padding:0.25rem;border:1px solid color-mix(in srgb,var(--chat-primary) 16%,transparent);border-radius:999px;background:color-mix(in srgb,var(--chat-bg) 88%,transparent);box-shadow:0 8px 18px rgba(15,23,42,0.06);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none;">' +
         panels.map(function (panel) {
           return (
-            '<button type="button" class="widget-panel-tab' + (state.activePanel === panel.id ? ' is-active' : '') + '" data-widget-panel="' + panel.id + '" role="tab" aria-selected="' + (state.activePanel === panel.id ? 'true' : 'false') + '" style="flex:0 0 auto;padding:0.62rem 0.95rem;border:1px solid rgba(148,163,184,0.18);border-radius:999px;background:' + (state.activePanel === panel.id ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.88)') + ';color:' + (state.activePanel === panel.id ? '#312e81' : '#475569') + ';font-weight:700;">' +
+            '<button type="button" class="widget-panel-tab' + (state.activePanel === panel.id ? ' is-active' : '') + '" data-widget-panel="' + panel.id + '" role="tab" aria-selected="' + (state.activePanel === panel.id ? 'true' : 'false') + '" style="flex:0 0 auto;padding:0.45rem 0.8rem;border:1px solid color-mix(in srgb,var(--chat-primary) ' + (state.activePanel === panel.id ? '28%' : '12%') + ',transparent);border-radius:999px;background:' + (state.activePanel === panel.id ? 'color-mix(in srgb,var(--chat-primary) 12%,var(--chat-bg))' : 'var(--chat-bg)') + ';color:' + (state.activePanel === panel.id ? 'var(--chat-primary)' : 'var(--chat-text)') + ';font-weight:700;">' +
               escapeHtml(panel.label) +
             '</button>'
           );
@@ -1514,24 +1718,12 @@ export async function GET(
 
     return (
       '<div class="widget-panel-page widget-panel-page--tasks ticket-layout-' + getFlow().ticketLayout + '">' +
-        '<div class="widget-panel-page__hero">' +
-          '<strong>' + escapeHtml(getFlow().ticketTitle) + '</strong>' +
-          '<p>' + escapeHtml(getFlow().ticketDescription) + '</p>' +
-        '</div>' +
         (getFlow().allowVisitorCreation ? (
-        '<label class="widget-feedback-field">' +
-          '<span>Title</span>' +
-          '<input type="text" class="widget-task-input" data-task-field="title" value="' + escapeHtml(state.taskTitle) + '" placeholder="What do you need help with?" />' +
-        '</label>' +
-        '<label class="widget-feedback-field">' +
-          '<span>Description</span>' +
-          '<textarea rows="5" class="widget-task-textarea" data-task-field="description" placeholder="Describe the issue and what you want us to do next.">' + escapeHtml(state.taskDescription) + '</textarea>' +
-        '</label>' +
         '<label class="widget-feedback-field"><span>Name</span><input class="widget-ticket-contact" data-contact-field="name" autocomplete="name" value="' + escapeHtml(state.handoffName) + '" /></label>' +
         (getFlow().showEmail ? '<label class="widget-feedback-field"><span>Email</span><input type="email" class="widget-ticket-contact" data-contact-field="email" autocomplete="email" value="' + escapeHtml(state.handoffEmail) + '" /></label>' : '') +
         (getFlow().showPhone ? '<label class="widget-feedback-field"><span>Phone</span><input type="tel" class="widget-ticket-contact" data-contact-field="phone" autocomplete="tel" value="' + escapeHtml(state.handoffPhone) + '" /></label>' : '') +
         '<div class="widget-feedback-actions">' +
-          '<button type="button" class="widget-feedback-primary widget-task-submit" ' + ((state.taskSubmitting || !String(state.taskTitle || '').trim() || !String(state.taskDescription || '').trim()) ? 'disabled' : '') + '>' + (state.taskSubmitting ? 'Submitting...' : 'Create ticket') + '</button>' +
+          '<button type="button" class="widget-feedback-primary widget-task-submit" ' + ((state.taskSubmitting || validateContact(getFlow(), { name: state.handoffName, email: state.handoffEmail, phone: state.handoffPhone })) ? 'disabled' : '') + '>' + (state.taskSubmitting ? 'Submitting...' : 'Send request') + '</button>' +
         '</div>'
         ) : '') +
         (state.taskNotice ? '<div class="widget-panel-inline-note">' + escapeHtml(state.taskNotice) + '</div>' : '') +
@@ -1746,11 +1938,14 @@ export async function GET(
   }
 
   function getFaqSuggestionsMarkup() {
-    if (!state.open || state.faqSuggestionsDismissed || state.messages.length > 1 || !state.faqSuggestions.length) return '';
+    if (!state.open || state.faqSuggestionsDismissed || state.messages.length > 1) return '';
+    var suggestions = getContextualSuggestions(String(state.inputValue || ''), getSuggestionCandidates(), state.faqSuggestions);
+    if (!suggestions.length) return '';
 
     return (
       '<div class="widget-faq-suggestions" aria-label="Suggested questions">' +
-        state.faqSuggestions.map(function (suggestion) {
+        '<strong class="widget-faq-suggestions__title">Suggestions for you</strong>' +
+        suggestions.map(function (suggestion) {
           return (
             '<button type="button" class="widget-faq-chip" data-faq-suggestion="' + escapeHtml(suggestion) + '">' +
               escapeHtml(suggestion) +
@@ -1782,7 +1977,7 @@ export async function GET(
               '<p>' + escapeHtml(getFlow().reviewDescription) + '</p>' +
             '</div>' +
             '<button type="button" class="widget-feedback-close" aria-label="Close">' +
-              '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>' +
+              '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7"></path></svg>' +
             '</button>' +
           '</div>' +
           '<div class="widget-feedback-rating" aria-label="Rating selector">' + stars + '</div>' +
@@ -1810,8 +2005,8 @@ export async function GET(
               '<h4>' + escapeHtml(getFlow().contactTitle) + '</h4>' +
               '<p>' + escapeHtml(getFlow().contactDescription) + '</p>' +
             '</div>' +
-            '<button type="button" class="widget-handoff-close" aria-label="Close human handoff form">' +
-              '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>' +
+            '<button type="button" class="widget-handoff-close" aria-label="Back to chat">' +
+              '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7"></path></svg>' +
             '</button>' +
           '</div>' +
           '<div class="widget-handoff-grid">' +
@@ -2015,9 +2210,15 @@ export async function GET(
     if (!getFlow().allowVisitorCreation) return;
     var contactError = validateContact(getFlow(), { name: state.handoffName, email: state.handoffEmail, phone: state.handoffPhone });
     if (contactError) { state.taskNotice = contactError; render(); return; }
-    if (!state.sessionId || state.taskSubmitting || !String(state.taskTitle || '').trim() || !String(state.taskDescription || '').trim()) {
-      return;
-    }
+    if (!state.sessionId || state.taskSubmitting) return;
+    var transcript = state.messages.map(function (message) {
+      return (message.role === 'user' ? 'Visitor: ' : message.role === 'support' ? 'Support: ' : 'Assistant: ') + String(message.text || '');
+    }).join('\\n');
+    var currentDraft = String(state.inputValue || '').trim();
+    if (currentDraft) transcript += (transcript ? '\\n' : '') + 'Visitor: ' + currentDraft;
+    var latestVisitorMessage = state.messages.slice().reverse().find(function (message) { return message.role === 'user'; });
+    var ticketTitle = String(latestVisitorMessage && latestVisitorMessage.text || currentDraft || 'Contact request').slice(0, 100);
+    var ticketDescription = String(transcript || 'The visitor asked to be contacted.').slice(-5000);
 
     state.taskSubmitting = true;
     state.taskNotice = '';
@@ -2031,8 +2232,8 @@ export async function GET(
         body: JSON.stringify({
           widgetKey: WIDGET_KEY,
           sessionId: state.sessionId,
-          title: state.taskTitle,
-          description: state.taskDescription,
+          title: ticketTitle,
+          description: ticketDescription,
           visitorName: state.handoffName || '',
           visitorEmail: getFlow().showEmail ? state.handoffEmail : '',
           visitorPhone: getFlow().showPhone ? state.handoffPhone : ''
@@ -2047,8 +2248,6 @@ export async function GET(
       if (json.task) {
         state.tasks = [json.task].concat(state.tasks || []);
       }
-      state.taskTitle = '';
-      state.taskDescription = '';
       state.taskNotice = 'Ticket created successfully.';
     } catch (error) {
       state.taskNotice = error instanceof Error ? error.message : 'Failed to create task';
@@ -2476,14 +2675,7 @@ export async function GET(
         return;
       }
 
-      if (target.tagName === 'TEXTAREA' && target.classList && target.classList.contains('widget-task-textarea')) {
-        state.taskDescription = target.value;
-        syncTaskSubmitState();
-        return;
-      }
-
       if (target.tagName === 'TEXTAREA') {
-        var hadTypedMessage = countCharacters(String(state.inputValue || '').trim()) > 0;
         var nextValue = truncateTextByCharacters(String(target.value || ''), MAX_WIDGET_MESSAGE_CHARS);
         if (target.value !== nextValue) {
           target.value = nextValue;
@@ -2494,21 +2686,14 @@ export async function GET(
           state.activeConversationCardId = '';
           state.starterCardPageIndex = 0;
         }
-        var hasTypedMessage = countCharacters(String(nextValue || '').trim()) > 0;
-        if (hadTypedMessage !== hasTypedMessage) {
-          markOrbActivity();
-          scheduleVisitorTypingSync();
-          render();
-          var refreshedInput = mount.querySelector('.chat-footer textarea');
-          if (refreshedInput) {
-            refreshedInput.focus();
-            refreshedInput.setSelectionRange(nextValue.length, nextValue.length);
-          }
-          return;
-        }
-        syncComposerMode();
         markOrbActivity();
         scheduleVisitorTypingSync();
+        render();
+        var refreshedInput = mount.querySelector('.chat-footer textarea');
+        if (refreshedInput) {
+          refreshedInput.focus();
+          refreshedInput.setSelectionRange(nextValue.length, nextValue.length);
+        }
         return;
       }
 
@@ -2520,12 +2705,6 @@ export async function GET(
         syncTaskSubmitState();
         return;
       }
-      if (target.classList && target.classList.contains('widget-task-input')) {
-        state.taskTitle = target.value;
-        syncTaskSubmitState();
-        return;
-      }
-
       if (target.classList && target.classList.contains('widget-handoff-input')) {
         var field = String(target.getAttribute('data-handoff-field') || '').trim();
         var nextFieldValue = truncateTextByCharacters(String(target.value || ''), 120);
@@ -2594,6 +2773,8 @@ export async function GET(
     var footerShowBorder = typeof footerStyle.showBorder === 'boolean' ? footerStyle.showBorder : (footerStyle.borderType === 'solid' || footerStyle.borderType === 'rounded');
     var assistantConfig = getAssistantConfig();
     var theme = getThemeName(config);
+    var themeVariables = THEME_VARS_BY_NAME[theme] || THEME_VARS_BY_NAME.modern || {};
+    var themeStyle = Object.keys(themeVariables).map(function (name) { return name + ':' + themeVariables[name]; }).join(';');
     var appearance = getAppearance(config);
     var themeClass = classes([
       THEME_CLASS_BY_NAME[theme] || THEME_CLASS_BY_NAME.modern || 'theme-modern',
@@ -2633,8 +2814,8 @@ export async function GET(
 
     var starterCardsMarkupState = getStarterCardsMarkup(config);
     var starterCardsMarkup = starterCardsMarkupState.html;
-    var showStarterCards = starterCardsMarkupState.showStarterCards;
-    var showStarterCardList = starterCardsMarkupState.showStarterCardList;
+    var showStarterCards = starterCardsMarkupState.showStarterCards && state.activePanel === 'chats';
+    var showStarterCardList = starterCardsMarkupState.showStarterCardList && state.activePanel === 'chats';
     var showPortalTabs = shouldShowPortalTabs();
     var panelMarkup = state.activePanel === 'tasks'
       ? getTaskPanelMarkup()
@@ -2650,7 +2831,7 @@ export async function GET(
     var sentNow = lastMessage && lastMessage.role === 'user' && lastMessage.id !== lastRenderedMessageId;
     lastRenderedMessageId = lastMessage ? lastMessage.id : '';
     var markup =
-      '<div class="vintra-stack ' + themeClass + '">' +
+      '<div class="vintra-stack ' + themeClass + '" style="' + escapeHtml(themeStyle) + '">' +
         '<div class="' + classes([
           'chat-widget',
           getWidgetMotionClasses(appearance),
@@ -2669,21 +2850,20 @@ export async function GET(
             showStarterCardList ? 'chat-header--starter-list' : ''
           ]) + '">' +
             '<div class="chat-header-left">' +
-              (showStarterCardList ? '<button type="button" class="chat-header-back" aria-label="Back to cards">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('backIcon', 'FiArrowLeft')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">←</span>') + '</button>' : '') +
-              (headerStyle.showAvatar !== false ? headerAvatar : '') +
+              ((showStarterCardList || state.activePanel === 'tasks') ? '<button type="button" class="chat-header-back" data-widget-panel="chats" aria-label="Back to chat">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('backIcon', 'FiArrowLeft')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">←</span>') + '</button>' : '') +
+              (state.activePanel !== 'tasks' && headerStyle.showAvatar !== false ? headerAvatar : '') +
               '<div class="chat-header-copy">' +
-                (headerStyle.showTitle !== false ? '<h3>' + escapeHtml(getTitle(config)) + '</h3>' : '') +
-                '<p>' + escapeHtml(getDescription(config)) + '</p>' +
+                (headerStyle.showTitle !== false ? '<h3>' + escapeHtml(state.activePanel === 'tasks' ? getFlow().contactTitle : getTitle(config)) + '</h3>' : '') +
+                '<p>' + escapeHtml(state.activePanel === 'tasks' ? getFlow().contactDescription : getDescription(config)) + '</p>' +
               '</div>' +
             '</div>' +
             '<div class="chat-header-actions">' +
-              (getFlow().reviewHeaderButton ? '<button type="button" class="widget-review-open" aria-label="Leave a review" title="Leave a review">&#9734;</button>' : '') +
-              (getFlow().allowVisitorCreation ? '<button type="button" data-widget-panel="tasks" class="widget-ticket-open" aria-label="Create a ticket" title="Create a ticket">+</button>' : '') +
-              (headerStyle.showStatus ? '<span class="status-pill">' + renderIconSlot(icons.check) + ' ' + escapeHtml(getStatusLabel()) + '</span><span class="header-status-dot" aria-hidden="true"></span>' : '') +
+              (state.activePanel === 'chats' && getFlow().reviewHeaderButton ? '<button type="button" class="widget-review-open" aria-label="Leave a review" title="Leave a review">&#9734;</button>' : '') +
+              (state.activePanel === 'chats' && headerStyle.showStatus ? '<span class="status-pill">' + renderIconSlot(icons.check) + ' ' + escapeHtml(getStatusLabel()) + '</span><span class="header-status-dot" aria-hidden="true"></span>' : '') +
               (state.open ? '<button type="button" class="close-btn' + (headerStyle.showCloseButton ? '' : ' widget-mobile-close-only') + '" aria-label="Close chat">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('closeIcon', 'FiX')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">×</span>') + '</button>' : '') +
             '</div>' +
           '</div>' +
-          '<div class="' + classes(['chat-body', getSurfaceClasses(bodyStyle), 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '" style="position:relative;' + (showPortalTabs ? 'padding-top:1.2rem;' : '') + '">' +
+          '<div class="' + classes(['chat-body', getSurfaceClasses(bodyStyle), 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '" style="position:relative;">' +
             (showPortalTabs ? getPanelTabsMarkup() : '') +
             panelMarkup +
           '</div>' +
@@ -2698,7 +2878,8 @@ export async function GET(
               'input-' + (footerStyle.inputStyle || 'flat')
             ]) + '">' +
               '<div class="chat-footer-row">' +
-                '<textarea rows="1" ' +
+              (getFlow().allowVisitorCreation ? '<button type="button" data-widget-panel="tasks" class="widget-ticket-open" aria-label="Create a support ticket" title="Create a support ticket">+</button>' : '') +
+              '<textarea rows="1" ' +
                   (state.feedbackOpen ? 'disabled ' : '') +
                   'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : ((state.supportStatus === 'needs-human' || state.supportStatus === 'open') ? 'Write a message for human support...' : 'Write a message...')) + '">' +
                   escapeHtml(truncateTextByCharacters(String(state.inputValue || ''), MAX_WIDGET_MESSAGE_CHARS)) +
@@ -3163,5 +3344,3 @@ export async function GET(
     },
   })
 }
-
-

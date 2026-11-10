@@ -52,12 +52,12 @@ export default function WidgetFlowSettings({ settings, onChange, no = true, sect
           <option value="always">{no ? 'Vis chat og tickets hele tiden' : 'Always show chat and tickets'}</option>
         </select></label>
         {toggle(no ? 'Kunden kan opprette tickets selv' : 'Visitors can create tickets', settings.ticket?.allowVisitorCreation !== false, allowVisitorCreation => patch('ticket', { allowVisitorCreation }))}
+        {toggle(no ? 'Vis ticket-fanen hele tiden' : 'Always show the tickets tab', settings.ticket?.showTabAlways ?? (settings.ticket?.mode === 'always'), showTabAlways => patch('ticket', { showTabAlways }))}
         <p>{no ? 'Innsendte tickets vises som oppgaver hos bedriften. Når support er av, blokkeres også innsending og overføring til et menneske.' : 'Submitted tickets appear as tasks for the business. Turning support off also blocks submission and human handoff.'}</p>
       </>}
       {design && <>
-        {text(no ? 'Tittel' : 'Title', flow.ticketTitle, title => patch('ticket', { title }))}
-        {text(no ? 'Beskrivelse' : 'Description', flow.ticketDescription, description => patch('ticket', { description }), true)}
-        <label className="widgetFlowField"><span>{no ? 'Ticketvisning' : 'Ticket layout'}</span><select value={flow.ticketLayout} onChange={e => patch('ticket', { layout: e.target.value })}><option value="cards">{no ? 'Kort' : 'Cards'}</option><option value="compact">{no ? 'Kompakt liste' : 'Compact list'}</option></select></label>
+        <p>{no ? 'Forespørselsskjemaet bruker kontaktfeltene, tittelen og beskrivelsen fra Kontaktinfo.' : 'The request form uses the contact fields, title, and description from Contact information.'}</p>
+        <label className="widgetFlowField"><span>{no ? 'Visning av ticketlisten' : 'Ticket list layout'}</span><select value={flow.ticketLayout} onChange={e => patch('ticket', { layout: e.target.value })}><option value="cards">{no ? 'Kort' : 'Cards'}</option><option value="compact">{no ? 'Kompakt liste' : 'Compact list'}</option></select></label>
       </>}
     </fieldset>}
   </div>

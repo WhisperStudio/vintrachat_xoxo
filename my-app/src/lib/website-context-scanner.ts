@@ -854,7 +854,7 @@ function extractJsonLdFacts($: LoadedCheerio) {
         if (!offer || typeof offer !== 'object') return
         const offerData = offer as Record<string, unknown>
         const parts = [
-          typeof offerData.name === 'string' ? offerData.name : '',
+          typeof offerData.name === 'string' ? offerData.name : typeof data.name === 'string' ? data.name : '',
           typeof offerData.price === 'string' || typeof offerData.price === 'number'
             ? String(offerData.price)
             : '',
@@ -958,6 +958,32 @@ function isPricingLine(line: string) {
   return !irrelevant && (hasCurrency || (hasKeyword && /\d/.test(line)) || looksLikePlan)
 }
 
+// Keep each amount with its own offer and interval, rather than flattening a
+// pricing grid into unrelated numbers (usage limits are not prices).
+export function extractPricingEvidence($: LoadedCheerio, url: string) {
+  const selector = '[itemprop="price"], [data-price], [class*="price"], [class*="Price"], [class*="pricing"], [class*="Pricing"], tr';
+  const money = /(?:\d[\d\s.,]*\s*(?:kr\b|nok\b|usd\b|eur\b|€|\$)|[€$]\s*\d|\b(?:gratis|free)\b)/i;
+  const textOf = (node: CheerioInput) => {
+    const copy = $(node).clone();
+    copy.find('script, style, nav').remove();
+    copy.find('*').append(' ');
+    return cleanText(copy.text());
+  };
+  const lines: string[] = [];
+  $(selector).each((_, element) => {
+    const node = $(element);
+    if (!money.test(textOf(element))) return;
+    if (node.find(selector).toArray().some(child => money.test(textOf(child)))) return;
+    const card = node.closest('article, tr, [data-plan], [class*="card"], [class*="Card"], [class*="package"]');
+    const label = card.find('h2, h3, h4, [itemprop="name"]').first().text().trim();
+    const heading = cleanText($('h1').first().text() || $('title').first().text());
+    const evidence = card.length ? textOf(card.get(0)!) : textOf(element);
+    if (evidence.length > 2200) return; // A whole multi-offer section is ambiguous.
+    lines.push(`[${label || heading || 'Offer on pricing page'}] ${evidence.slice(0, 1800)} | Page: ${heading} | Source: ${url}`);
+  });
+  return uniqueStrings(lines, 24);
+}
+
 function isBookingLink(value: string) {
   const lowered = normalizeForSearch(value)
   return BOOKING_KEYWORDS.some((keyword) => lowered.includes(keyword))
@@ -1044,9 +1070,11 @@ function extractUsefulPageData(html: string, url: string, rootUrl: URL, maxChara
     12
   )
 
+  const labelledPrices = extractPricingEvidence($, url)
   const pricingLines = uniqueStrings(
-    [...schemaFacts.prices, ...bodyLines.filter(isPricingLine), ...relevantLines.filter(isPricingLine)],
-    12
+    [...labelledPrices, ...schemaFacts.prices.map(line => `${line} | Page: ${rawTitle} | Source: ${url}`),
+      ...(!labelledPrices.length ? bodyLines.filter(isPricingLine).map(line => `${line} | Product not confirmed; Page: ${rawTitle} | Source: ${url}`) : [])],
+    24
   )
 
   return {
@@ -1082,7 +1110,8 @@ function scoreUrl(url: string, rootUrl: URL) {
   let score = 0
   const lowered = normalizeForSearch(url)
 
-  if (url === rootUrl.toString() || url === rootUrl.origin + '/') score += 30
+  if (url === rootUrl.toString() || url === rootUrl.origin + '/') score += 100
+  if (/\/(?:priser|prisliste|pricing|prices|plans|abonnement)(?:\/|$|\?)/i.test(new URL(url).pathname)) score += 55
 
   for (const entry of PAGE_TYPE_KEYWORDS) {
     if (entry.keywords.some((keyword) => lowered.includes(normalizeForSearch(keyword)))) {
@@ -2033,7 +2062,7 @@ function buildBusinessContext(
 ) {
   const overviewLines = buildOverviewLines(pages)
   const serviceLines = selectLinesByKeywords(pages, SERVICE_KEYWORDS, 10)
-  const pricingLines = uniqueStrings(pages.flatMap((page) => page.pricingLines), 10)
+  const pricingLines = uniqueStrings(pages.flatMap((page) => page.pricingLines), 24)
   const bookingLines = uniqueStrings(
     [
       ...selectLinesByKeywords(pages, BOOKING_KEYWORDS, 8),
@@ -2080,7 +2109,8 @@ function buildBusinessContext(
     ...formatBullets(serviceLines, 'No clear services or products were found.', 10),
     '',
     '## Pricing/plans',
-    ...formatBullets(pricingLines, 'No clear pricing information was found.', 10),
+    'Each price below belongs only to its named offer and billing interval. Unlabelled amounts must not be assigned to a product. Do not combine website-development and chatbot prices.',
+    ...formatBullets(pricingLines, 'No clear pricing information was found. Ask which product the visitor means; do not invent a price.', 24),
     '',
     '## Booking/appointments',
     ...formatBullets(bookingLines, 'No clear booking flow was found.', 10),
@@ -2422,6 +2452,11 @@ function buildAutofillResult(pages: ExtractedPage[], rootUrl: URL, security: Web
   }
 
   const knowledgeBase: WebsiteKnowledgeBaseAutofill = {
+    offerings: selectLinesByKeywords(pages, SERVICE_KEYWORDS, 16).join('\n'),
+    pricing: uniqueStrings(pages.flatMap(page => page.pricingLines), 24).join('\n'),
+    trialInfo: uniqueStrings(pages.flatMap(page => page.bodyLines.filter(line => /\b(?:gratis|free|trial|prøveperiode|prøvetid|betalingskort)\b/i.test(line)).map(line => `${line} | Source: ${page.url}`)), 12).join('\n'),
+    bookingInfo: uniqueStrings(pages.flatMap(page => page.bookingUrls), 12).join('\n'),
+    policies: uniqueStrings(pages.flatMap(page => page.legalLines), 12).join('\n'),
     websiteUrls: collectWebsiteUrls(pages, rootUrl),
     uploadedDocuments: [],
     manualNotes: '',

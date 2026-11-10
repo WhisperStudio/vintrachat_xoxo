@@ -43,6 +43,7 @@ import type {
   OrbStyleConfig,
 } from '@/types/database'
 import './ChatWidget.css'
+import '@/components/chat/StudioSettings.css'
 
 import StudioKnowledgeSettings from '@/components/chat/StudioKnowledgeSettings'
 import StudioFeatureSettings, { type StudioDecisions } from '@/components/chat/StudioFeatureSettings'
@@ -182,6 +183,8 @@ function mergeAssistantConfigDraft(config?: ChatAssistantConfig | null): ChatAss
       fallbackContact: config?.businessProfile?.fallbackContact ?? defaultsBusinessProfile.fallbackContact,
     },
     knowledgeBase: {
+      ...defaultsKnowledgeBase,
+      ...(config?.knowledgeBase || {}),
       websiteUrls: config?.knowledgeBase?.websiteUrls ?? defaultsKnowledgeBase.websiteUrls,
       uploadedDocuments: config?.knowledgeBase?.uploadedDocuments ?? defaultsKnowledgeBase.uploadedDocuments,
       manualNotes: config?.knowledgeBase?.manualNotes ?? defaultsKnowledgeBase.manualNotes,
@@ -371,7 +374,7 @@ const defaultInputs: InputsState = {
   conversationCards: defaultConversationCards,
 }
 
-export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidgetSelected, onOpenAdvanced, setupMode = false, onSetupComplete }: { embedded?: boolean; widgetKey?: string; onWidgetSelected?: (key: string) => void; onOpenAdvanced?: () => void; setupMode?: boolean; onSetupComplete?: () => Promise<void> }) {
+export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidgetSelected, setupMode = false, onSetupComplete }: { embedded?: boolean; widgetKey?: string; onWidgetSelected?: (key: string) => void; setupMode?: boolean; onSetupComplete?: () => Promise<void> }) {
   const router = useRouter()
   const { isAuthenticated, firebaseUser, dbUser, business, loading, error: accountError, refreshBusiness, refreshCurrentUser } = useAuth()
   const signedIn = Boolean(firebaseUser)
@@ -683,7 +686,7 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
   const saveConfig = async () => {
     setSetupError('')
     if (setupMode && !setupDecisionsComplete(decisions)) {
-      setSetupError(no ? 'Velg AI, support, tickets og anmeldelser før du fullfører.' : 'Choose AI, support, tickets and reviews before finishing.')
+      setSetupError(no ? 'Velg AI, kontaktinfo, support, tickets og anmeldelser før du fullfører.' : 'Choose AI, contact sharing, support, tickets and reviews before finishing.')
       setWorkspaceMode('features')
       return
     }
@@ -892,13 +895,6 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
                   </button>
                 ) : <Link href="/auth/login" className="save-btn">{no ? 'Logg inn for å lagre' : 'Sign in to save'}<FiArrowRight aria-hidden="true" /></Link>}
 
-                {onOpenAdvanced && (
-                  <button className="reset-btn" onClick={onOpenAdvanced} type="button">
-                    <FiCpu aria-hidden="true" />
-                    <span>{no ? 'AI-innstillinger' : 'AI settings'}</span>
-                  </button>
-                )}
-
                 <button className="reset-btn" onClick={handleReset} type="button">
                   <span
                     className={`reset-btn-icon ${resetAnimating ? 'reset-btn-icon--spin' : ''}`}
@@ -913,7 +909,7 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
 
             {setupMode && <div className="studioSetupIntro"><span className="studioEyebrow">{no ? 'KOM I GANG' : 'GET STARTED'}</span><h2>{no ? 'Sett opp din første assistent' : 'Set up your first assistant'}</h2><p>{no ? 'Fire steg. Du kontrollerer innholdet og velger funksjonene. Etter lagring viser vi deg rundt i administrasjonen.' : 'Four steps. Review the information and choose your features. After saving, we will show you around the dashboard.'}</p></div>}
             <nav className="studioWorkspaceTabs" aria-label={no ? 'Oppsett av assistenten' : 'Assistant setup'}>
-              {([{ id: 'knowledge', no: 'Bedriften', en: 'Business' }, { id: 'personality', no: 'Svarstil', en: 'Response style' }, { id: 'features', no: 'Funksjoner', en: 'Features' }, { id: 'design', no: 'Design', en: 'Design' }] as const).map((step, index) => <button type="button" key={step.id} aria-current={workspaceMode === step.id ? 'step' : undefined} onClick={() => setWorkspaceMode(step.id)}><span>{index + 1}</span>{no ? step.no : step.en}</button>)}
+              {([{ id: 'knowledge', no: 'Bedriften', en: 'Business', icon: FiMonitor }, { id: 'personality', no: 'Svarstil', en: 'Response style', icon: FiMessageCircle }, { id: 'features', no: 'Funksjoner', en: 'Features', icon: FiSliders }, { id: 'design', no: 'Design', en: 'Design', icon: FiDroplet }] as const).map((step, index) => <button type="button" key={step.id} aria-current={workspaceMode === step.id ? 'step' : undefined} onClick={() => setWorkspaceMode(step.id)}><span className="studioStepNumber">{index + 1}</span><step.icon aria-hidden="true" /><strong>{no ? step.no : step.en}</strong></button>)}
             </nav>
             {setupError && <p className="studioSetupError" role="alert">{setupError}</p>}
             {workspaceMode === 'knowledge' && <div className="studioRules"><StudioKnowledgeSettings key={selectedWidgetKey || 'draft'} value={assistantConfigDraft} no={no} onChange={value => { setAssistantConfigDraft(value); setSaveStatus('idle') }} /></div>}

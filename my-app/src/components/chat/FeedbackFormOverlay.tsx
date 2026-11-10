@@ -1,6 +1,6 @@
 'use client'
 
-import { FiStar, FiX } from 'react-icons/fi'
+import { FiArrowLeft, FiStar } from 'react-icons/fi'
 
 interface FeedbackFormOverlayProps {
   open: boolean
@@ -37,8 +37,8 @@ export default function FeedbackFormOverlay({
             <h4>{title}</h4>
             <p>{description}</p>
           </div>
-          <button type="button" className="widget-feedback-close" onClick={onClose} aria-label="Close">
-            <FiX />
+          <button type="button" className="widget-feedback-close" onClick={onClose} aria-label="Back to chat">
+            <FiArrowLeft />
           </button>
         </div>
 

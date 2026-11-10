@@ -97,6 +97,36 @@
   z-index: 0;
 }
 
+.seasonSnowfall {
+  position: absolute;
+  inset: 0 0 auto;
+  height: min(620px, 100%);
+  overflow: hidden;
+  pointer-events: none;
+  display: none;
+}
+.seasonSnowfall span {
+  position: absolute;
+  top: -24px;
+  color: #f5fbff;
+  opacity: 0.72;
+  text-shadow: 0 0 8px rgba(175, 221, 255, 0.5);
+  animation: seasonalSnowfall linear infinite;
+}
+.heroShell--day .seasonSnowfall span {
+  color: #47708f;
+  opacity: 0.38;
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+}
+main[data-season='winter'] .seasonSnowfall { display: block; }
+@keyframes seasonalSnowfall {
+  from { transform: translate3d(0, -20px, 0) rotate(0deg); }
+  to { transform: translate3d(18px, 660px, 0) rotate(220deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .seasonSnowfall span { animation: none; }
+}
+
 .heroMountain {
   position: absolute;
   left: -6%;
@@ -236,6 +266,91 @@
   0%, 100% { translate: 0 -5px; }
   50% { translate: 0 5px; }
 }
+
+.droidSeasonalHat,
+.droidSeasonalGlasses,
+.droidSeasonalEars { display: none; position: absolute; z-index: 5; pointer-events: none; }
+.scrollDroidFloat .droidSeasonalHat { top: -10%; left: 24%; width: 56%; height: 36%; transform: rotate(-13deg); }
+.droidSeasonalHat::before {
+  content: '';
+  position: absolute;
+  left: 16%;
+  top: 0;
+  width: 72%;
+  height: 82%;
+  border-radius: 58% 48% 8% 8%;
+  background: linear-gradient(145deg, #f04e50, #a7192e);
+  clip-path: polygon(0 100%, 22% 30%, 78% 0, 100% 100%);
+  box-shadow: inset -4px 2px 6px rgba(80, 0, 10, 0.2);
+}
+.droidSeasonalHat::after {
+  content: '';
+  position: absolute;
+  left: 6%;
+  bottom: 8%;
+  width: 88%;
+  height: 20%;
+  border-radius: 99px;
+  background: linear-gradient(#fff, #dce8f2);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.18);
+}
+.droidSeasonalHat i {
+  position: absolute;
+  left: 68%;
+  top: -7%;
+  width: 23%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, #e8eff5 68%);
+  box-shadow: 0 1px 5px rgba(15, 23, 42, 0.16);
+}
+.scrollDroidFloat .droidSeasonalGlasses { top: 39%; left: 23%; width: 54%; height: 16%; }
+.droidSeasonalGlasses { align-items: center; justify-content: space-between; }
+.droidSeasonalGlasses::before {
+  content: '';
+  position: absolute;
+  left: 44%;
+  top: 42%;
+  width: 12%;
+  height: 3px;
+  background: #d7a64b;
+}
+.droidSeasonalGlasses i {
+  display: block;
+  width: 43%;
+  height: 100%;
+  border: 2px solid #d6a64b;
+  border-radius: 6px 6px 12px 12px;
+  background: linear-gradient(145deg, rgba(21, 37, 61, 0.98), rgba(58, 93, 128, 0.94));
+  box-shadow: inset 0 2px rgba(255, 255, 255, 0.25), 0 2px 4px rgba(0, 0, 0, 0.24);
+}
+.scrollDroidFloat .droidSeasonalEars { top: -22%; left: 27%; width: 46%; height: 40%; }
+.droidSeasonalEars { justify-content: space-between; }
+.droidSeasonalEars i {
+  position: relative;
+  display: block;
+  width: 32%;
+  height: 100%;
+  border: 2px solid #e8f4ff;
+  border-radius: 55% 55% 35% 35%;
+  background: linear-gradient(90deg, #f5fbff, #d9e8f6);
+  transform: rotate(-12deg);
+}
+.droidSeasonalEars i + i { transform: rotate(12deg); }
+.droidSeasonalEars i::after {
+  content: '';
+  position: absolute;
+  inset: 18% 24% 14%;
+  border-radius: inherit;
+  background: #f2a4b7;
+}
+.droidSeasonalTeeth { display: none; fill: #fff; stroke: #e8eff5; stroke-width: 1.5; stroke-linejoin: round; }
+main[data-season='winter'] :is(.scrollDroidFloat, .siteDroid) .droidSeasonalHat { display: block; }
+main[data-season='winter'] :is(.scrollDroid .droidAntenna, .siteDroidAntenna) { display: none; }
+main[data-season='summer'] :is(.scrollDroidFloat, .siteDroid) .droidSeasonalGlasses { display: flex; }
+main[data-season='easter'] :is(.scrollDroidFloat, .siteDroid) .droidSeasonalEars { display: flex; }
+main[data-season='halloween'] :is(.droidSmile, .siteDroidSmile) { display: none; }
+main[data-season='halloween'] .droidSeasonalTeeth { display: block; }
 
 .droidOrb {
   position: relative;
@@ -642,6 +757,9 @@
   opacity: 0;
 }
 
+.siteDroid .droidSeasonalHat { top: -10%; left: 22%; width: 56%; height: 36%; transform: rotate(-13deg); }
+.siteDroid .droidSeasonalGlasses { top: 39%; left: 21%; width: 58%; height: 16%; }
+.siteDroid .droidSeasonalEars { top: -22%; left: 27%; width: 46%; height: 40%; }
 .siteDroid > svg { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 14px 18px rgba(13, 52, 105, 0.35)); }
 .siteDroidAntenna { position: absolute; z-index: -1; left: 50%; top: -18%; width: 5px; height: 28%; border-radius: 9px; background: #2364a8; transform: rotate(-9deg); }
 .siteDroidAntenna i { position: absolute; width: 12px; height: 12px; left: 50%; top: -5px; border-radius: 50%; background: #56ddff; box-shadow: 0 0 10px #56ddff; transform: translateX(-50%); }

@@ -1,3 +1,4 @@
+import { buildAnswerPolicy, isHumanSupportRequest, filterContactDisclosure } from '@/lib/assistant-answer-policy.mjs'
 import { resolveWidgetFlow, validateWidgetContact } from '@/lib/widget-flow.mjs'
 import { reserveUsage } from '@/lib/billing/usage.mjs'
 import { saveChatWithNotifications } from '@/lib/notifications.server'
@@ -35,6 +36,7 @@ type IncomingMessage = {
 type GeminiResult = {
   reply: string
   needsHumanSupport: boolean
+  complexUncertainty?: boolean
   modelUsed: string
 }
 
@@ -107,7 +109,7 @@ function trimHistory(history: unknown[]): IncomingMessage[] {
         message.text.trim().length > 0
       )
     })
-    .slice(-10)
+    .slice(-20)
     .map((message): IncomingMessage => ({
       id: message.id || crypto.randomUUID(),
       role: message.role === 'assistant' ? 'assistant' : 'user',
@@ -117,8 +119,7 @@ function trimHistory(history: unknown[]): IncomingMessage[] {
 }
 
 function didUserRequestHumanSupport(message: string, keywords: string[]) {
-  const normalized = message.toLowerCase()
-  return keywords.some((keyword) => normalized.includes(keyword.toLowerCase()))
+  return isHumanSupportRequest(message, keywords)
 }
 
 function didUserRequestFeedback(message: string, keywords: string[]) {
@@ -264,6 +265,7 @@ function extractGeminiResult(rawText: string): Omit<GeminiResult, 'modelUsed'> {
     return {
       reply: typeof parsed.reply === 'string' ? parsed.reply : 'I could not generate a reply.',
       needsHumanSupport: Boolean(parsed.needsHumanSupport),
+      complexUncertainty: parsed.complexUncertainty === true,
     }
   } catch {
     const replyMatch = rawText.match(/"reply"\s*:\s*"([\s\S]*?)"/)
@@ -284,6 +286,7 @@ function extractGeminiResult(rawText: string): Omit<GeminiResult, 'modelUsed'> {
 }
 
 function buildPrompt(args: {
+  contactSharing?: { enabled: boolean; allowOnUncertainty?: boolean }
   businessName: string
   systemPrompt: string
   businessContext: string
@@ -298,6 +301,7 @@ function buildPrompt(args: {
     fallbackContact: string
   }
   knowledgeBase?: {
+    offerings?: string; notOffered?: string; pricing?: string; trialInfo?: string; bookingInfo?: string; policies?: string
     websiteUrls: string[]
     uploadedDocuments: { name: string; type: string; status?: string; url?: string; text?: string }[]
     manualNotes: string
@@ -405,7 +409,7 @@ function buildPrompt(args: {
     args.strictness === 'sales'
       ? 'Strictness level: sales mode. You may explain broadly, suggest next steps, and be proactive, but never invent prices, guarantees, or legal terms.'
       : args.strictness === 'support'
-        ? 'Strictness level: support/legal mode. Only answer from approved business information. Do not guess or fill gaps with assumptions. If a fact is missing, say that you do not know and offer human support.'
+        ? 'Strictness level: support/legal mode. Only answer factual business questions from approved information. Identify missing facts precisely. Do not redirect automatically. Reason normally about the confirmed business scope.'
         : 'Strictness level: balanced mode. Answer from approved information first, explain clearly in your own words, and admit uncertainty when needed.'
 
   const knowledgeDocuments = knowledgeBase.uploadedDocuments.length
@@ -427,6 +431,12 @@ function buildPrompt(args: {
     `Business profile:\n${JSON.stringify(profile, null, 2)}`,
     `Knowledge base summary:\n${[
       knowledgeBase.websiteUrls.length ? `Website URLs: ${knowledgeBase.websiteUrls.join(', ')}` : 'Website URLs: none',
+      knowledgeBase.offerings ? `Confirmed products/services: ${knowledgeBase.offerings}` : 'Confirmed products/services: see business profile and approved context',
+      knowledgeBase.notOffered ? `Not offered / limitations: ${knowledgeBase.notOffered}` : 'No explicit exclusions configured; use business-scope reasoning without inventing services.',
+      knowledgeBase.pricing ? `Approved product-specific prices (each price belongs ONLY to its named offer):\n${knowledgeBase.pricing}` : 'No separately approved pricing; use only unambiguous product-labelled source evidence.',
+      knowledgeBase.trialInfo ? `Free plans/trials: ${knowledgeBase.trialInfo}` : 'No separately confirmed free plan/trial terms; inspect approved context without guessing.',
+      knowledgeBase.bookingInfo ? `Booking/ordering and actual capabilities: ${knowledgeBase.bookingInfo}` : '',
+      knowledgeBase.policies ? `Policies/conditions: ${knowledgeBase.policies}` : '',
       knowledgeBase.openingHours ? `Opening hours: ${knowledgeBase.openingHours}` : 'Opening hours: none',
       knowledgeBase.contactInfo ? `Contact info: ${knowledgeBase.contactInfo}` : 'Contact info: none',
       knowledgeBase.addresses ? `Addresses: ${knowledgeBase.addresses}` : 'Addresses: none',
@@ -449,13 +459,14 @@ function buildPrompt(args: {
     `Treat these phrases as likely requests for human support: ${args.supportKeywords.join(', ')}`,
     args.humanSupportEnabled ? 'Human support is available on request.' : 'Human support is DISABLED. Do not offer a human, a callback, a support agent or handoff. Set needsHumanSupport to false.',
     args.ticketsEnabled ? 'Visitors may request to create a support ticket.' : 'Visitor ticket creation is DISABLED. Do not offer or promise to create tickets.',
-    'Return JSON with keys "reply" and "needsHumanSupport".',
+    'Return JSON with keys "reply", "needsHumanSupport" and "complexUncertainty". complexUncertainty is true only for a genuinely complex, sensitive or contradictory unresolved case, never for a routine missing price or an unrelated service.',
     'Set "needsHumanSupport" to true only when the user explicitly asks to contact support, a human, an agent, or similar human follow-up.',
     args.reviewsEnabled
       ? 'When the visitor clearly seems finished and their issue is resolved, you may end by asking once whether they would like to leave a short review. Do not ask mid-conversation or repeatedly.'
       : 'Do not ask the visitor for a review or feedback.',
     'When asking for a review, make it optional. Ask at most once in the conversation, after a resolved question, thanks or goodbye. Never open a form without consent. If support is disabled, do not offer human handoff or promise tickets.',
     'Keep the reply concise and suitable for a website chat widget.',
+    buildAnswerPolicy(args),
     historyText ? `Conversation so far:\n${historyText}` : 'Conversation so far:\nNo previous messages.',
     `Latest user message:\n${args.message}`,
   ].join('\n\n')
@@ -518,10 +529,11 @@ async function generateGeminiReply(
                         type: 'string',
                         description: 'The assistant reply shown to the visitor.',
                       },
+                      complexUncertainty: { type: 'boolean', description: 'True only for genuinely complex unresolved cases; not routine missing details.' },
                       needsHumanSupport: {
                         type: 'boolean',
                         description:
-                          'True only when the visitor explicitly asks for human support or contact.',
+                          'True only for an explicit request to connect with a person, not a request for public contact details.',
                       },
                     },
                     required: ['reply', 'needsHumanSupport'],
@@ -716,6 +728,7 @@ export async function POST(req: NextRequest) {
     }
 
     const assistantConfig = business.chatAssistantConfig || {
+      contactSharing: { enabled: false },
       enabled: true,
       provider: 'gemini' as const,
       model: 'gemini-2.5-flash-lite',
@@ -1000,7 +1013,7 @@ export async function POST(req: NextRequest) {
         ? assistantConfig.supportTriggerKeywords
         : fallbackSupportKeywords
 
-    const heuristicsTriggered = didUserRequestHumanSupport(message, supportKeywords)
+    const heuristicsTriggered = isHumanSupportRequest(message, supportKeywords, history)
 
     let aiReply = 'The AI assistant is currently disabled.'
     let aiWantsHumanSupport = false
@@ -1009,6 +1022,7 @@ export async function POST(req: NextRequest) {
 
     if (assistantConfig.enabled) {
       const prompt = buildPrompt({
+        contactSharing: assistantConfig.contactSharing,
         businessName: business.name,
         systemPrompt: assistantConfig.systemPrompt,
         businessContext: assistantConfig.businessContext,
@@ -1048,7 +1062,7 @@ export async function POST(req: NextRequest) {
           allowFallbacks
         )
 
-        aiReply = result.reply
+        aiReply = filterContactDisclosure(result.reply, { contactSharing: assistantConfig.contactSharing, message, complex: result.complexUncertainty, language: assistantConfig.startLanguage })
         aiWantsHumanSupport = result.needsHumanSupport
         assistantConfig.model = result.modelUsed
         modelUsed = result.modelUsed
@@ -1068,7 +1082,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const needsHumanSupport = humanSupportEnabled && (heuristicsTriggered || aiWantsHumanSupport)
+    const needsHumanSupport = humanSupportEnabled && heuristicsTriggered
     const requiresName = needsHumanSupport && Boolean(validateWidgetContact(flow, { name: visitorName, email: visitorEmail, phone: visitorPhone }))
     const finalReply = requiresName ? buildNameRequestReply() : aiReply
 

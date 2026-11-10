@@ -842,6 +842,8 @@ export async function getBusinessInfo(
       billing: data.billing,
       onboarding: data.onboarding
         ? {
+            widgetSetupCompletedAt:
+              data.onboarding.widgetSetupCompletedAt?.toDate?.() || data.onboarding.widgetSetupCompletedAt || null,
             tutorialCompletedAt:
               data.onboarding.tutorialCompletedAt?.toDate?.() || data.onboarding.tutorialCompletedAt || null,
           }

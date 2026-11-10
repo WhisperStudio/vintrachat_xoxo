@@ -12,6 +12,7 @@ import {
   resolveMainLandingThemePreference,
 } from '@/lib/main-landing-theme'
 import { absoluteUrl, siteConfig } from '@/lib/site-config'
+import { type SiteSeason, normalizeSiteSeason } from '@/lib/seasonal-theme'
 
 import './page.css'
 import {
@@ -345,7 +346,10 @@ function ScrollDroid() {
     <div ref={droidRef} className="scrollDroid" aria-hidden="true">
       <div className="scrollDroidFloat">
         <div className="droidAntenna"><span /></div>
-        <div className="droidHand">
+      <span className="droidSeasonalHat"><i /></span>
+      <span className="droidSeasonalGlasses"><i /><i /></span>
+      <span className="droidSeasonalEars"><i /><i /></span>
+      <div className="droidHand">
           <DroidArm />
         </div>
         <svg className="droidOrb" viewBox="0 0 180 180">
@@ -369,6 +373,7 @@ function ScrollDroid() {
             <ellipse cx="112" cy="83" rx="8" ry="15" />
           </g>
           <path className="droidSmile" d="M75 101 Q91 112 108 101" />
+          <path className="droidSeasonalTeeth" d="M76 101 82 110 88 102 94 110 101 101" />
           <path className="droidGlint" d="M43 41 Q62 21 84 20" />
           <path className="droidSeam" d="M22 111 Q90 140 158 109" />
           <DroidDetails />
@@ -423,6 +428,9 @@ function DroidMorphShowcase({ language }: { language: 'no' | 'en' }) {
 
         <div className="siteDroid" aria-hidden="true">
           <span className="siteDroidAntenna"><i /></span>
+          <span className="droidSeasonalHat"><i /></span>
+          <span className="droidSeasonalGlasses"><i /><i /></span>
+          <span className="droidSeasonalEars"><i /><i /></span>
           <svg viewBox="0 0 180 180">
             <defs>
               <radialGradient id="siteDroidShellGradient" cx="32%" cy="24%" r="78%">
@@ -439,6 +447,7 @@ function DroidMorphShowcase({ language }: { language: 'no' | 'en' }) {
             <path className="siteDroidGlass" d="M38 68 C61 50 121 49 143 68 L145 99 C121 112 60 112 35 98 Z" />
             <g className="siteDroidEyes"><ellipse cx="70" cy="83" rx="8" ry="15" /><ellipse cx="112" cy="83" rx="8" ry="15" /></g>
             <path className="siteDroidSmile" d="M75 101 Q91 112 108 101" />
+            <path className="droidSeasonalTeeth" d="M76 101 82 110 88 102 94 110 101 101" />
             <path className="siteDroidGlint" d="M43 41 Q62 21 84 20" />
             <path className="siteDroidSeam" d="M22 111 Q90 140 158 109" />
             <DroidDetails />
@@ -500,6 +509,7 @@ function DroidMorphShowcase({ language }: { language: 'no' | 'en' }) {
 export default function MainLanding() {
   const [heroMounted, setHeroMounted] = useState(false)
   const [heroSceneMode, setHeroSceneMode] = useState<MainLandingThemeMode>('night')
+  const [season, setSeason] = useState<SiteSeason>('standard')
   const [nightStars] = useState(() => createHeroParticles(86, 'star'))
   const simplifiedMotion = useSimplifiedMotion()
   const { language } = useVintraLanguage()
@@ -519,6 +529,20 @@ export default function MainLanding() {
   useEffect(() => {
     const timer = window.setTimeout(() => setHeroMounted(true), 80)
     return () => window.clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    void fetch('/api/vintra-admin/season', { cache: 'no-store' })
+      .then(async (response) => {
+        const payload = await response.json() as { season?: unknown }
+        if (!response.ok) throw new Error('Failed to load seasonal appearance')
+        if (active) setSeason(normalizeSiteSeason(payload.season))
+      })
+      .catch((error: unknown) => {
+        console.error('Failed to load seasonal appearance:', error)
+      })
+    return () => { active = false }
   }, [])
 
   useEffect(() => {
@@ -594,13 +618,26 @@ export default function MainLanding() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(contactStructuredData) }}
       />
 
-      <main lang={language} data-header-tone={heroSceneMode === 'night' ? 'light' : 'dark'}>
+      <main lang={language} data-header-tone={heroSceneMode === 'night' ? 'light' : 'dark'} data-season={season}>
         <ScrollDroid />
         <ScrollHint language={language} />
         {/* -- HERO ----------------------------------------- */}
         <section className={`heroShell heroShell--${heroSceneMode}`}>
           <div className="heroBackdrop" aria-hidden="true">
             <MountainBackground className={`heroMountain heroMountain--${heroSceneMode}`} />
+            <div className="seasonSnowfall">
+              {Array.from({ length: 30 }, (_, index) => (
+                <span
+                  key={index}
+                  style={{
+                    left: `${(index * 37 + 11) % 100}%`,
+                    animationDelay: `${-((index * 13) % 24)}s`,
+                    animationDuration: `${14 + (index * 7) % 15}s`,
+                    fontSize: `${10 + (index * 5) % 10}px`,
+                  }}
+                >❄</span>
+              ))}
+            </div>
             {heroSceneMode === 'night' ? (
               <>
                 {nightStars.map((star) => (

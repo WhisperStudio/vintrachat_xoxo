@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
-import { resolveWidgetFlow, validateWidgetContact } from '../src/lib/widget-flow.mjs';
+import { getContextualWidgetSuggestions, resolveWidgetFlow, validateWidgetContact } from '../src/lib/widget-flow.mjs';
 import { installWidgetMobileViewport, shouldAnimateWidgetLauncher, patchWidgetMarkup } from '../src/lib/widget-mobile.mjs';
 
 test('support off overrides tickets and handoff; old configurations retain their behavior', () => {
@@ -25,6 +25,18 @@ test('ticket visibility, self service and review consent are independent', () =>
   assert.equal(flow.autoAskReview, false);
   assert.equal(flow.reviewHeaderButton, true);
   assert.equal(resolveWidgetFlow({ reviewsEnabled: false, reviewPage: { showHeaderButton: true } }).reviewHeaderButton, false);
+  assert.equal(resolveWidgetFlow({ ticket: { mode: 'on-demand', showTabAlways: true } }).alwaysShowTickets, true);
+  assert.equal(resolveWidgetFlow({ ticket: { mode: 'always', showTabAlways: false } }).alwaysShowTickets, false);
+});
+
+test('typed help suggestions rank welcome-menu prompts by the requested topic', () => {
+  const prompts = [
+    { prompt: 'What are your opening hours?', label: 'Opening hours', context: 'Frequently asked questions' },
+    { prompt: 'Can you tell me your prices?', label: 'Prices', context: 'Frequently asked questions' },
+    { prompt: 'How can I contact you?', label: 'Contact', context: 'Frequently asked questions' },
+  ];
+  assert.deepEqual(getContextualWidgetSuggestions('Hva er åpningstidene?', prompts), ['What are your opening hours?']);
+  assert.deepEqual(getContextualWidgetSuggestions('How much does it cost?', prompts), ['Can you tell me your prices?']);
 });
 
 test('required contact fields are visible and validated consistently', () => {
@@ -57,7 +69,7 @@ function exportedScript() {
     widgetKey: 'test-widget', origin: 'https://example.com', debugMode: false, forceOpen: false,
     serializeForJs: JSON.stringify, WIDGET_THEME_CLASS: {}, WIDGET_THEME_VARS: {}, WIDGET_ICON_MARKUP_BY_KEY: {}, WIDGET_ICON_ALIAS_MAP: {},
     widgetStyles: '', ORB_ICON_SVG: '', installWidgetMobileViewport, shouldAnimateWidgetLauncher, patchWidgetMarkup,
-    resolveWidgetFlow, validateWidgetContact,
+    resolveWidgetFlow, validateWidgetContact, getContextualWidgetSuggestions,
     ...loadFunctions('../src/lib/widget-motion.ts'), ...loadFunctions('../src/lib/surface-design.ts'), ...loadFunctions('../src/lib/launcher-design.ts'),
   });
 }
@@ -76,17 +88,19 @@ test('exported ticket form respects self-service and escapes editable copy', () 
   }
   visit(source);
   const context = {
-    state: { tasks: [], tasksLoading: false, handoffName: '', handoffEmail: '', handoffPhone: '' },
+    state: { tasks: [], tasksLoading: false, handoffName: '<script>bad</script>', handoffEmail: '', handoffPhone: '' },
     isTasksTabEnabled: () => true,
+    validateContact: validateWidgetContact,
     getFlow: () => resolveWidgetFlow({ ticket: { mode: 'always', allowVisitorCreation: false, title: '<script>bad</script>' } }),
     escapeHtml: value => String(value || '').replaceAll('<', '&lt;').replaceAll('>', '&gt;'),
   };
   const render = vm.runInNewContext(`(${getTaskPanel})`, context);
-  assert.match(render(), /&lt;script&gt;/);
   assert.doesNotMatch(render(), /widget-task-submit/);
   context.getFlow = () => resolveWidgetFlow({ ticket: { mode: 'always', allowVisitorCreation: true } });
   assert.match(render(), /widget-task-submit/);
   assert.match(render(), /data-contact-field="name"/);
+  assert.match(render(), /&lt;script&gt;bad&lt;\/script&gt;/);
+  assert.doesNotMatch(render(), /data-task-field="(?:title|description)"/);
 });
 
 function route(name, settings, assistant = {}, writes = []) {

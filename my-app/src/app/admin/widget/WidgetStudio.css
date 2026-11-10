@@ -1,0 +1,27 @@
+.widgetAdminSimple { color: var(--admin-text, var(--app-text)); display: grid; gap: 24px; min-width: 0; }
+.widgetStudioNav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.widgetStudioNav button { display: flex; align-items: center; gap: 12px; padding: 17px; text-align: left; border: 1px solid var(--admin-border, var(--app-border)); border-radius: 14px; background: var(--admin-surface, var(--app-surface)); color: inherit; cursor: pointer; }
+.widgetStudioNav button > svg { width: 20px; height: 20px; color: var(--admin-accent, #126b62); flex: 0 0 auto; }
+.widgetStudioNav button span { display: grid; gap: 4px; }
+.widgetStudioNav strong { font-size: 13px; font-weight: 650; }
+.widgetStudioNav small { font-size: 11px; line-height: 1.5; color: var(--admin-muted, var(--app-muted)); }
+.widgetStudioNav button[aria-current='page'] { background: var(--admin-accent-soft, #e0f0e9); border-color: var(--admin-accent, #126b62); color: var(--admin-accent, #126b62); }
+.widgetStudioCard { padding: clamp(22px, 3vw, 36px); border: 1px solid var(--admin-border, var(--app-border)); border-radius: 18px; background: var(--admin-surface, var(--app-surface)); display: grid; gap: 24px; }
+.widgetStudioCardHeading { display: flex; align-items: flex-start; gap: 16px; }
+.widgetStudioIcon { display: grid; place-items: center; width: 46px; height: 46px; flex: 0 0 auto; border-radius: 14px; background: var(--admin-accent-soft, #e0f0e9); color: var(--admin-accent, #126b62); font-size: 22px; }
+.widgetStudioCardHeading h2 { font-size: 24px; letter-spacing: -.03em; line-height: 1.25; margin: 0 0 8px; }
+.widgetStudioCardHeading p { font-size: 14px; line-height: 1.75; color: var(--admin-muted, var(--app-muted)); max-width: 70ch; margin: 0; }
+.widgetStudioColumns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.widgetStudioActions { display: flex; gap: 12px; flex-wrap: wrap; }
+.widgetStudioActions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 11px 18px; border-radius: 11px; border: 1px solid var(--admin-accent, #126b62); color: var(--app-primary-text, white); background: var(--admin-accent, #126b62); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+.widgetStudioActions button.secondary { color: var(--admin-accent, #126b62); background: transparent; }
+.widgetStudioActions button.danger { background: var(--admin-danger-bg, #fcecea); border-color: var(--admin-danger-border, #e4b9b7); color: var(--admin-danger-text, #a03938); }
+.widgetStudioActions button:disabled { opacity: .45; cursor: default; }
+.widgetStudioCode { white-space: pre-wrap; overflow-wrap: anywhere; padding: 22px; border: 1px solid var(--admin-border, var(--app-border)); border-radius: 12px; background: var(--admin-surface-soft, var(--app-surface-soft)); font-size: 13px; line-height: 1.8; }
+.widgetStudioAlert, .widgetStudioNotice { display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-radius: 12px; margin: 0; font-size: 13px; }
+.widgetStudioAlert { color: var(--admin-danger-text, #a03938); background: var(--admin-danger-bg, #fcecea); }
+.widgetStudioNotice { color: var(--admin-accent, #126b62); background: var(--admin-accent-soft, #e0f0e9); }
+.widgetStudioCard small { color: var(--admin-muted, var(--app-muted)); font-size: 12px; line-height: 1.65; }
+.widgetAdminSimple .workspaceEmbeddedBuilder { min-height: 0; }
+@media (max-width: 900px) { .widgetStudioNav { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .widgetStudioColumns { grid-template-columns: 1fr; } .widgetStudioNav small { display: none; } .widgetStudioCardHeading h2 { font-size: 21px; } }

@@ -3,8 +3,8 @@
   --bg: #edf2f5; --bg-2: #e3ebf1; --panel: #fbfcfd;
   --text: #132e45; --text-soft: #304f68; --muted: #496278;
   --border: #bacbd9; --border-strong: #758fa5;
-  --brand: #1b496b; --brand-2: #326483; --brand-grad: linear-gradient(115deg, #163b59, #326483);
-  --studio-selected: #dbe8f1; --studio-button: #193f5e; --studio-button-text: #ffffff;
+  --brand: #126b62; --brand-2: #158b7d; --brand-grad: linear-gradient(115deg, #126b62, #158b7d);
+  --studio-selected: #e0f0e9; --studio-button: #126b62; --studio-button-text: #ffffff;
   --studio-hover: #cedfeb;
   --studio-sweep: linear-gradient(100deg, #a8d4f4 0%, #dcecf9 65%, #dcecf900 100%);
   --studio-glow: #287fba24;
@@ -30,8 +30,8 @@ html[data-theme='dark'] .chatbuilder-page {
   --bg: #081725; --bg-2: #172e43; --panel: #10263a;
   --text: #f0f5fa; --text-soft: #d6e3ee; --muted: #adc2d4;
   --border: #395872; --border-strong: #7394af;
-  --brand: #aed3ee; --brand-2: #d0e6f5;
-  --studio-selected: #203f59; --studio-button: #aed3ee; --studio-button-text: #09243b;
+  --brand: #8dd9c4; --brand-2: #b2ebd9;
+  --studio-selected: #173e37; --studio-button: #8dd9c4; --studio-button-text: #0b2c25;
   --studio-hover: #2a4c67;
   --studio-sweep: linear-gradient(100deg, #285d85 0%, #1d4262 65%, #1d426200 100%);
   --studio-glow: #7dc8ff26;

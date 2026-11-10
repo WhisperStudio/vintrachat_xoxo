@@ -15,7 +15,7 @@ export function mergeWebsiteKnowledge(current, result) {
   const profile = result.autofill?.businessProfile || {};
   const knowledge = result.autofill?.knowledgeBase || {};
   const allowedProfile = {};
-  for (const key of ['businessName', 'industry', 'shortDescription', 'language', 'fallbackContact']) {
+  for (const key of ['businessName', 'industry', 'shortDescription', 'fallbackContact']) {
     if (typeof profile[key] === 'string' && profile[key].trim()) allowedProfile[key] = profile[key];
   }
   return {
@@ -24,6 +24,14 @@ export function mergeWebsiteKnowledge(current, result) {
     businessContext: String(result.businessContext || current.businessContext || ''),
     knowledgeBase: {
       ...current.knowledgeBase,
+      offerings: knowledge.offerings || current.knowledgeBase?.offerings || '',
+      notOffered: current.knowledgeBase?.notOffered || '',
+      pricing: knowledge.pricing || current.knowledgeBase?.pricing || '',
+      trialInfo: knowledge.trialInfo || current.knowledgeBase?.trialInfo || '',
+      bookingInfo: knowledge.bookingInfo || current.knowledgeBase?.bookingInfo || '',
+      policies: knowledge.policies || current.knowledgeBase?.policies || '',
+      manualNotes: current.knowledgeBase?.manualNotes?.trim() === current.businessContext?.trim()
+        ? '' : current.knowledgeBase?.manualNotes || '',
       websiteUrls: Array.isArray(knowledge.websiteUrls) ? knowledge.websiteUrls : current.knowledgeBase?.websiteUrls || [],
       openingHours: knowledge.openingHours || current.knowledgeBase?.openingHours || '',
       contactInfo: knowledge.contactInfo || current.knowledgeBase?.contactInfo || '',
@@ -36,5 +44,5 @@ export function mergeWebsiteKnowledge(current, result) {
 
 export function setupDecisionsComplete(decisions) {
   return typeof decisions.ai === 'boolean' && typeof decisions.reviews === 'boolean'
-    && typeof decisions.tickets === 'boolean' && ['off', 'on-demand', 'always'].includes(decisions.support);
+    && typeof decisions.contact === 'boolean' && typeof decisions.tickets === 'boolean' && ['off', 'on-demand', 'always'].includes(decisions.support);
 }

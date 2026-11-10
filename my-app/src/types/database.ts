@@ -30,6 +30,7 @@ export interface Business {
 }
 
 export interface BusinessOnboardingState {
+  widgetSetupCompletedAt?: Date | null;
   tutorialCompletedAt?: Date | null;
 }
 
@@ -55,6 +56,12 @@ export interface AssistantKnowledgeDocument {
 }
 
 export interface AssistantKnowledgeBase {
+  offerings?: string;
+  notOffered?: string;
+  pricing?: string;
+  trialInfo?: string;
+  bookingInfo?: string;
+  policies?: string;
   websiteUrls: string[];
   uploadedDocuments: AssistantKnowledgeDocument[];
   manualNotes: string;
@@ -115,6 +122,7 @@ export interface ChatWidgetVisibilityRules {
 }
 
 export interface ChatAssistantConfig {
+  contactSharing?: { enabled: boolean; allowOnUncertainty?: boolean };
   enabled: boolean;
   provider: 'gemini';
   model: string;
@@ -426,7 +434,7 @@ export interface ChatWidgetConfig {
     };
     reviewPage?: { title?: string; description?: string; autoAsk?: boolean; showHeaderButton?: boolean };
     ticket?: {
-      mode?: 'off' | 'on-demand' | 'always'; allowVisitorCreation?: boolean;
+      mode?: 'off' | 'on-demand' | 'always'; allowVisitorCreation?: boolean; showTabAlways?: boolean;
       title?: string; description?: string; layout?: 'cards' | 'compact';
     };
   };

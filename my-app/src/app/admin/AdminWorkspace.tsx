@@ -7,6 +7,7 @@ import PricingClient from '../priser/PricingClient'
 const WebsiteBuilder = dynamic(() => import('../landings/guest/websites/WebsiteBuilder'))
 const VintraAdminClient = dynamic(() => import('../vintra-admin/VintraAdminClient'))
 import { useAuth } from '@/context/AuthContext'
+import { needsStudioSetup } from '@/lib/studio-onboarding.mjs'
 import { db } from '@/lib/firebase'
 import { isVintraAdminEmail } from '@/lib/vintra-admin'
 import { useActiveWidgetSelection } from '@/lib/active-widget'
@@ -61,7 +62,7 @@ type TutorialStep = {
 type AdminAppearanceTheme = 'light' | 'dark'
 
 export default function AdminWorkspace({ billingConfigured, billingTestMode }: { billingConfigured: boolean; billingTestMode: boolean }) {
-  const { isAuthenticated, dbUser, business, loading, firebaseUser, logout, error: accountError } = useAuth()
+  const { isAuthenticated, dbUser, business, loading, firebaseUser, logout, refreshBusiness, error: accountError } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const { language } = useVintraLanguage()
@@ -79,6 +80,10 @@ export default function AdminWorkspace({ billingConfigured, billingTestMode }: {
   const usersPanelRef = useRef<HTMLDivElement | null>(null)
   const widgetsPanelRef = useRef<HTMLDivElement | null>(null)
   const tabButtonRefs = useRef<Partial<Record<AdminTab, HTMLButtonElement | null>>>({})
+  const [setupInProgress, setSetupInProgress] = useState(false)
+  const [tourChecked, setTourChecked] = useState(false)
+  const [tourSeen, setTourSeen] = useState(false)
+  const autoTourStarted = useRef('')
   const [tutorialDismissed, setTutorialDismissed] = useState(false)
   const [tutorialActive, setTutorialActive] = useState(false)
   const [tutorialStepIndex, setTutorialStepIndex] = useState(0)
@@ -152,84 +157,56 @@ export default function AdminWorkspace({ billingConfigured, billingTestMode }: {
       : [...visibleSupportItems, ...visibleFeedbackItems, ...visibleAdminItems].find(
           (item) => item.tab === activeTab
         )?.label || text.sidebar.overview
-  const showTutorial = useMemo(() => {
-    if (!dbUser?.businessId || tutorialDismissed) return false
+  const showTutorial = tourChecked && !tourSeen && !tutorialDismissed && !setupInProgress
+  const tutorialSteps: TutorialStep[] = useMemo(() => {
+    const content: { id: AdminTab; no: string; en: string; descNo: string; descEn: string; target?: () => HTMLElement | null }[] = [
+      { id: 'overview', no: 'Oversikten din', en: 'Your overview', descNo: 'Her ser du hva som skjer i bedriften: nye samtaler, oppgaver og tilbakemeldinger. Dette er startsiden din.', descEn: 'See what is happening in your business: new conversations, tasks and feedback. This is your starting point.' },
+      { id: 'widgets', no: 'Ett sted for assistenten', en: 'One home for your assistant', descNo: 'Bedriften, Svarstil, Funksjoner og Design samler hele oppsettet. Forhåndsvisningen viser endringene. Her finner du også installasjon, synlighet og widgetlisten.', descEn: 'Business, Response style, Features and Design contain your entire setup. The preview shows changes. Installation, visibility and the widget list are here too.', target: () => widgetsPanelRef.current },
+      { id: 'chats', no: 'Samtaler med kundene', en: 'Customer conversations', descNo: 'Les samtaler, følg med på henvendelser og svar selv når menneskelig support er aktivert. Velg riktig widget øverst.', descEn: 'Read conversations, follow requests and reply yourself when human support is enabled. Select the right widget at the top.', target: () => chatsPanelRef.current },
+      { id: 'tasks', no: 'Tickets og oppgaver', en: 'Tickets and tasks', descNo: 'Her kommer tickets fra kundene og oppgaver teamet oppretter. Følg status, prioritet og kontaktinfo frem til saken er løst.', descEn: 'Find visitor tickets and team tasks here. Track status, priority and contact details until each issue is resolved.', target: () => tasksPanelRef.current },
+      { id: 'feedback', no: 'Anmeldelser', en: 'Reviews', descNo: 'Se vurderinger og kommentarer fra kunder. Om kunden kan gi en anmeldelse, velger du under Funksjoner i Widget studio.', descEn: 'Read customer ratings and comments. Enable reviews under Features in Widget studio.', target: () => feedbackPanelRef.current },
+      { id: 'analytics', no: 'Se hva som fungerer', en: 'See what works', descNo: 'Statistikken viser aktivitet og bruk over tid. Bruk den til å forbedre innholdet og oppdage spørsmål kundene ofte stiller.', descEn: 'Statistics show activity and usage over time. Use them to improve content and spot common questions.', target: () => analyticsPanelRef.current },
+      { id: 'users', no: 'Teamet og tilgangene', en: 'Your team and access', descNo: 'Inviter kolleger og velg hvem som kan administrere, svare og lese. Antall teammedlemmer avhenger av abonnementet.', descEn: 'Invite colleagues and choose who can manage, reply or read. Team access depends on your plan.', target: () => usersPanelRef.current },
+      { id: 'websites', no: 'Nettsidebygging', en: 'Website builder', descNo: 'Utforsk eller utform en nettside for bedriften. Dette er et eget verktøy; du trenger ikke en ny nettside for å bruke chatten.', descEn: 'Explore or design a business website. This is a separate tool; a new website is not required to use chat.' },
+      { id: 'subscriptions', no: 'Abonnement og forbruk', en: 'Plan and usage', descNo: 'Sammenlign abonnement, se hva som er inkludert og administrer betaling. Du velger selv om du vil endre abonnementet.', descEn: 'Compare plans, see what is included and manage billing. Plan changes are always your choice.' },
+      { id: 'settings', no: 'Dine innstillinger', en: 'Your settings', descNo: 'Tilpass språk, utseende og andre innstillinger for arbeidsområdet. Hjelpeknappen øverst starter denne omvisningen på nytt.', descEn: 'Adjust language, appearance and workspace preferences. The help button at the top restarts this tour.' },
+      { id: 'vintra', no: 'Vintra-administrasjon', en: 'Vintra administration', descNo: 'Dette området er for Vintra-administratorer og gir oversikt over bedrifter og plattforminnstillinger.', descEn: 'This area is for Vintra administrators and provides business and platform administration.' },
+    ]
+    return content.filter(step => visibleTabs.includes(step.id)).map(step => ({ id: step.id, tab: step.id, title: language === 'no' ? step.no : step.en, description: language === 'no' ? step.descNo : step.descEn, targetRef: step.target || (() => document.getElementById('admin-workspace')) }))
+  }, [language, visibleTabs])
 
-    if (business?.onboarding?.tutorialCompletedAt) {
-      return false
+  useEffect(() => {
+    if (loading || !business || !firebaseUser) return
+    if (needsStudioSetup(business, firebaseUser.uid)) {
+      setSetupInProgress(true)
+      setActiveTab('widgets')
     }
-
-    if (!business?.createdAt) {
-      return false
-    }
-
-    const businessAgeMs = Date.now() - new Date(business.createdAt).getTime()
-    const businessAgeDays = businessAgeMs / (1000 * 60 * 60 * 24)
-    return businessAgeDays <= 14
-  }, [business?.createdAt, business?.onboarding?.tutorialCompletedAt, dbUser?.businessId, tutorialDismissed])
-
-  const tutorialSteps: TutorialStep[] = useMemo(
-    () => [
-      {
-        id: 'top-nav',
-        title: text.tutorial.steps.topNav.title,
-        description: text.tutorial.steps.topNav.description,
-        targetRef: () =>
-          document.querySelector<HTMLElement>('[data-vintra-main-nav]') || adminHeaderRef.current,
-        ctaLabel: text.tutorial.steps.topNav.cta,
-        ctaHref: '/admin?section=builder',
-      },
-      {
-        id: 'panel-header',
-        title: text.tutorial.steps.panelHeader.title,
-        description: text.tutorial.steps.panelHeader.description,
-        targetRef: () => adminHeaderRef.current,
-      },
-      {
-        id: 'chats',
-        title: text.tutorial.steps.chats.title,
-        description: text.tutorial.steps.chats.description,
-        tab: 'chats',
-        targetRef: () => chatsPanelRef.current,
-      },
-      {
-        id: 'tasks',
-        title: text.tutorial.steps.tasks.title,
-        description: text.tutorial.steps.tasks.description,
-        tab: 'tasks',
-        targetRef: () => tasksPanelRef.current,
-      },
-      {
-        id: 'feedback',
-        title: text.tutorial.steps.feedback.title,
-        description: text.tutorial.steps.feedback.description,
-        tab: 'feedback',
-        targetRef: () => feedbackPanelRef.current,
-      },
-      {
-        id: 'analytics',
-        title: text.tutorial.steps.analytics.title,
-        description: text.tutorial.steps.analytics.description,
-        tab: 'analytics',
-        targetRef: () => analyticsPanelRef.current,
-      },
-      {
-        id: 'users',
-        title: text.tutorial.steps.users.title,
-        description: text.tutorial.steps.users.description,
-        tab: 'users',
-        targetRef: () => usersPanelRef.current,
-      },
-      {
-        id: 'widgets',
-        title: text.tutorial.steps.widgets.title,
-        description: text.tutorial.steps.widgets.description,
-        tab: 'widgets',
-        targetRef: () => widgetsPanelRef.current,
-      },
-    ],
-    [text]
-  )
+  }, [loading, business, firebaseUser])
+  useEffect(() => {
+    if (!business || !firebaseUser) return
+    let seen = business.ownerId === firebaseUser.uid && Boolean(business.onboarding?.tutorialCompletedAt)
+    try { seen = seen || window.localStorage.getItem('vintra-tour:' + business.id + ':' + firebaseUser.uid) === 'done' } catch {}
+    setTourSeen(seen)
+    setTourChecked(true)
+  }, [business?.id, firebaseUser?.uid])
+  useEffect(() => {
+    if (!tourChecked || tourSeen || setupInProgress || loading || !business || !firebaseUser || needsStudioSetup(business, firebaseUser.uid)) return
+    if (autoTourStarted.current === firebaseUser.uid) return
+    autoTourStarted.current = firebaseUser.uid
+    setTutorialStepIndex(0)
+    setTutorialActive(true)
+    setActiveTab('overview')
+  }, [tourChecked, tourSeen, setupInProgress, loading, business, firebaseUser])
+  const finishStudioSetup = async () => {
+    if (!dbUser?.businessId) return
+    await updateDoc(doc(db, 'businesses', dbUser.businessId), { 'onboarding.widgetSetupCompletedAt': serverTimestamp(), updatedAt: serverTimestamp() })
+    await refreshBusiness()
+    autoTourStarted.current = firebaseUser?.uid || ''
+    setSetupInProgress(false)
+    setTutorialStepIndex(0)
+    setTutorialActive(true)
+    setActiveTab('overview')
+  }
 
   useEffect(() => {
     const section = searchParams.get('section')
@@ -270,6 +247,9 @@ export default function AdminWorkspace({ billingConfigured, billingTestMode }: {
     if (!dbUser?.businessId) return
 
     setTutorialDismissed(true)
+    setTourSeen(true)
+    try { window.localStorage.setItem('vintra-tour:' + dbUser.businessId + ':' + firebaseUser?.uid, 'done') } catch {}
+    if (business?.ownerId !== firebaseUser?.uid) return
     await updateDoc(doc(db, 'businesses', dbUser.businessId), {
       'onboarding.tutorialCompletedAt': serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -557,6 +537,8 @@ export default function AdminWorkspace({ billingConfigured, billingTestMode }: {
               <WidgetAdminPanel
                 selectedWidgetKey={resolvedWidgetKey}
                 onWidgetSelected={setSelectedWidgetKey}
+                setupMode={setupInProgress}
+                onSetupComplete={finishStudioSetup}
               />
             </div>
           )}

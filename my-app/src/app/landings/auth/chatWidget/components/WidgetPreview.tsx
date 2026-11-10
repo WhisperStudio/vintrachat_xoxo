@@ -1,11 +1,11 @@
 'use client'
-import { resolveWidgetFlow, validateWidgetContact } from '@/lib/widget-flow.mjs'
+import { getContextualWidgetSuggestions, resolveWidgetFlow, validateWidgetContact } from '@/lib/widget-flow.mjs'
 
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { installWidgetMobileViewport, shouldAnimateWidgetLauncher } from '@/lib/widget-mobile.mjs'
 import { OrbIcon } from '@/components/chat/OrbIcon'
-import { FiArrowLeft, FiCheckCircle, FiChevronRight, FiCpu, FiLifeBuoy, FiMessageCircle, FiMessageSquare, FiPhone, FiSend } from 'react-icons/fi'
+import { FiArrowLeft, FiCheckCircle, FiChevronRight, FiCpu, FiLifeBuoy, FiMessageCircle, FiMessageSquare, FiPhone, FiPlus, FiSend } from 'react-icons/fi'
 import { getWidgetThemeClass, getWidgetThemeStyle, joinWidgetClasses } from '@/components/chat/widgetDesign'
 import { normalizeConversationCards } from '@/lib/conversation-cards'
 import { getWidgetMotionClasses } from '@/lib/widget-motion'
@@ -351,7 +351,7 @@ export default function WidgetPreview({
   const internalRequestedTask = (text: string) =>
     taskKeywords.some((keyword) => text.toLowerCase().includes(keyword))
   const flow = resolveWidgetFlow(settings, { humanSupportEnabled: supportEnabled })
-  const [ticketDraft, setTicketDraft] = useState({ title: '', description: '', visitorName: '', visitorEmail: '', visitorPhone: '' })
+  const [ticketDraft, setTicketDraft] = useState({ visitorName: '', visitorEmail: '', visitorPhone: '' })
   const [ticketNotice, setTicketNotice] = useState('')
   const [ticketSubmitting, setTicketSubmitting] = useState(false)
   const [previewContact, setPreviewContact] = useState({ name: '', email: '', phone: '' })
@@ -367,12 +367,23 @@ export default function WidgetPreview({
   const submitTicket = async () => {
     const error = validateWidgetContact(flow, { name: ticketDraft.visitorName, email: ticketDraft.visitorEmail, phone: ticketDraft.visitorPhone })
     if (error) { setTicketNotice(error); return }
-    if (!flow.allowVisitorCreation || !ticketDraft.title.trim() || !ticketDraft.description.trim()) return
+    if (!flow.allowVisitorCreation) return
     setTicketSubmitting(true)
     try {
-      if (onCreateTicket) await onCreateTicket(ticketDraft)
+      const currentDraft = String(inputValue ?? '').trim()
+      const transcript = [
+        ...messages.map((message) => `${message.isBot ? 'Assistant' : 'Visitor'}: ${message.text}`),
+        ...(currentDraft ? [`Visitor: ${currentDraft}`] : []),
+      ].join('\n').slice(-5000)
+      const latestVisitorMessage = [...messages].reverse().find((message) => !message.isBot)?.text || currentDraft
+      if (onCreateTicket) await onCreateTicket({
+        title: latestVisitorMessage.slice(0, 100) || (no ? 'Kontaktforespørsel' : 'Contact request'),
+        description: transcript || (no ? 'Kunden ønsker å bli kontaktet.' : 'The visitor asked to be contacted.'),
+        visitorName: ticketDraft.visitorName,
+        visitorEmail: ticketDraft.visitorEmail,
+        visitorPhone: ticketDraft.visitorPhone,
+      })
       setTicketNotice(no ? 'Ticketen er sendt.' : 'Ticket submitted.')
-      setTicketDraft(prev => ({ ...prev, title: '', description: '' }))
     } catch (error) { setTicketNotice(error instanceof Error ? error.message : 'Unable to send ticket') }
     finally { setTicketSubmitting(false) }
   }
@@ -424,8 +435,6 @@ export default function WidgetPreview({
     onSubmit: () => {},
     onClose: () => {},
   }
-  const showFaqSuggestions =
-    isChatOpen && faqSuggestionsEnabled && !faqSuggestionsDismissed && messages.length <= 1 && activeFaqSuggestions.length > 0
   const hasUserMessage = messages.some((message) => !message.isBot)
   const visibleErrorMessage = errorMessage || internalErrorMessage
   const hasTypedMessage = countChars(String(inputValue ?? '').trim()) > 0
@@ -441,9 +450,25 @@ export default function WidgetPreview({
   const showStarterCards =
     starterCards.length > 0 &&
     isChatOpen &&
+    activePortalPanel === 'chats' &&
     !hasUserMessage &&
     countChars(String(inputValue ?? '').trim()) === 0
-  const showComposerSuggestions = showFaqSuggestions && countChars(String(inputValue ?? '').trim()) === 0 && !showStarterCards
+  const typedQuery = String(inputValue ?? '').trim()
+  const contextualSuggestionCandidates = useMemo(() => [
+    ...starterCards.flatMap((card) => card.options.map((option) => ({
+      prompt: option.prompt,
+      label: option.label,
+      context: `${card.title} ${card.description} ${option.description || ''}`,
+    }))),
+    ...(faqSuggestionsEnabled ? faqSuggestions.map((prompt) => ({ prompt, label: prompt })) : []),
+  ], [faqSuggestions, faqSuggestionsEnabled, starterCards])
+  const helpSuggestions = useMemo(
+    () => getContextualWidgetSuggestions(typedQuery, contextualSuggestionCandidates, activeFaqSuggestions),
+    [activeFaqSuggestions, contextualSuggestionCandidates, typedQuery]
+  )
+  const showFaqSuggestions =
+    isChatOpen && !faqSuggestionsDismissed && messages.length <= 1 && helpSuggestions.length > 0
+  const showComposerSuggestions = showFaqSuggestions && !showStarterCards
   const starterCardsPerPage =
     bodyStyle.conversationCardsStyle === 'minimal' && starterCards.length > 4
       ? 8
@@ -860,8 +885,13 @@ export default function WidgetPreview({
             >
             <div className={headerClasses}>
               <div className="chat-header-left">
-                {showStarterCardList ? (
-                  <button type="button" className="chat-header-back" onClick={() => setActiveConversationCardId(null)} aria-label={no ? 'Tilbake' : 'Go back'}>
+                {(showStarterCardList || activePortalPanel === 'tasks') ? (
+                  <button
+                    type="button"
+                    className="chat-header-back"
+                    onClick={() => activePortalPanel === 'tasks' ? setActivePortalPanel('chats') : setActiveConversationCardId(null)}
+                    aria-label={no ? 'Tilbake til chatten' : 'Back to chat'}
+                  >
                     {renderWidgetIcon(effectiveAssistantIcons.backIcon, { 'aria-hidden': true }) || <FiArrowLeft aria-hidden="true" />}
                   </button>
                 ) : null}
@@ -896,7 +926,7 @@ export default function WidgetPreview({
                   </>
                 ) : (
                   <>
-                    {headerStyle.showAvatar && (customBranding.logo || effectiveAssistantIcons.avatarIcon) ? (
+                    {activePortalPanel !== 'tasks' && headerStyle.showAvatar && (customBranding.logo || effectiveAssistantIcons.avatarIcon) ? (
                       <div className={`avatar ${customBranding.logo ? 'avatar--image' : ''}`}>
                         {customBranding.logo ? (
                           <img
@@ -918,19 +948,18 @@ export default function WidgetPreview({
                     ) : null}
 
                     <div className="chat-header-copy">
-                      {headerStyle.showTitle && <h3>{title}</h3>}
-                      <p>{description}</p>
+                      {headerStyle.showTitle && <h3>{activePortalPanel === 'tasks' ? flow.contactTitle : title}</h3>}
+                      <p>{activePortalPanel === 'tasks' ? flow.contactDescription : description}</p>
                     </div>
 
-                    {headerStyle.showStatus && <span className="header-status-dot" aria-hidden="true" />}
+                    {activePortalPanel !== 'tasks' && headerStyle.showStatus && <span className="header-status-dot" aria-hidden="true" />}
                   </>
                 )}
               </div>
 
               <div className="chat-header-actions">
-                {flow.reviewHeaderButton && <button type="button" className="widget-review-open" aria-label={no ? 'Gi en anmeldelse' : 'Leave a review'} title={no ? 'Gi en anmeldelse' : 'Leave a review'} onClick={() => onOpenReview ? onOpenReview() : setInternalFeedbackOpen(true)}>&#9734;</button>}
-                {flow.allowVisitorCreation && <button type="button" className="widget-ticket-open" aria-label={no ? 'Opprett ticket' : 'Create a ticket'} title={no ? 'Opprett ticket' : 'Create a ticket'} onClick={() => setActivePortalPanel('tasks')}>+</button>}
-                {headerStyle.showStatus && (
+                {activePortalPanel === 'chats' && flow.reviewHeaderButton && <button type="button" className="widget-review-open" aria-label={no ? 'Gi en anmeldelse' : 'Leave a review'} title={no ? 'Gi en anmeldelse' : 'Leave a review'} onClick={() => onOpenReview ? onOpenReview() : setInternalFeedbackOpen(true)}>&#9734;</button>}
+                {activePortalPanel === 'chats' && headerStyle.showStatus && (
                   <span className="status-pill">
                     <FiCheckCircle /> {statusText}
                   </span>
@@ -989,13 +1018,11 @@ export default function WidgetPreview({
               <div className={`widget-body-content ${showPortalTabs ? 'widget-body-content--with-panel-tabs' : ''}`}>
               {activePortalPanel === 'tasks' && showTasksTab ? (
                 <div className={`widget-panel-page widget-panel-page--tasks ticket-layout-${flow.ticketLayout}`}>
-                  <div className="widget-panel-page__hero">
-                    <strong>{flow.ticketTitle}</strong>
-                    <p>{flow.ticketDescription}</p>
-                  </div>
                   {(flow.allowVisitorCreation || designPage === 'tickets') && <>
-                    {(['title', 'description', 'visitorName', ...(flow.showEmail ? ['visitorEmail'] : []), ...(flow.showPhone ? ['visitorPhone'] : [])] as const).map(field => <label className="widget-feedback-field" key={field}><span>{{ title: no ? 'Tittel' : 'Title', description: no ? 'Beskrivelse' : 'Description', visitorName: no ? 'Navn' : 'Name', visitorEmail: 'Email', visitorPhone: no ? 'Telefon' : 'Phone' }[field as keyof typeof ticketDraft]}</span>{field === 'description' ? <textarea value={ticketDraft.description} maxLength={5000} rows={4} onChange={e => setTicketDraft(prev => ({ ...prev, description: e.target.value }))} /> : <input value={ticketDraft[field as keyof typeof ticketDraft]} type={field === 'visitorEmail' ? 'email' : field === 'visitorPhone' ? 'tel' : 'text'} onChange={e => setTicketDraft(prev => ({ ...prev, [field]: e.target.value }))} />}</label>)}
-                    <div className="widget-feedback-actions"><button type="button" className="widget-feedback-primary" disabled={ticketSubmitting || !ticketDraft.title.trim() || !ticketDraft.description.trim()} onClick={submitTicket}>{ticketSubmitting ? (no ? 'Sender...' : 'Sending...') : (no ? 'Send ticket' : 'Create ticket')}</button></div>
+                    <label className="widget-feedback-field"><span>{no ? 'Navn' : 'Name'}</span><input autoComplete="name" value={ticketDraft.visitorName} onChange={event => setTicketDraft(prev => ({ ...prev, visitorName: event.target.value }))} /></label>
+                    {flow.showEmail && <label className="widget-feedback-field"><span>Email</span><input type="email" autoComplete="email" value={ticketDraft.visitorEmail} onChange={event => setTicketDraft(prev => ({ ...prev, visitorEmail: event.target.value }))} /></label>}
+                    {flow.showPhone && <label className="widget-feedback-field"><span>{no ? 'Telefon' : 'Phone'}</span><input type="tel" autoComplete="tel" value={ticketDraft.visitorPhone} onChange={event => setTicketDraft(prev => ({ ...prev, visitorPhone: event.target.value }))} /></label>}
+                    <div className="widget-feedback-actions"><button type="button" className="widget-feedback-primary" disabled={ticketSubmitting || !flow.allowVisitorCreation || Boolean(validateWidgetContact(flow, { name: ticketDraft.visitorName, email: ticketDraft.visitorEmail, phone: ticketDraft.visitorPhone }))} onClick={submitTicket}>{ticketSubmitting ? (no ? 'Sender...' : 'Sending...') : (no ? 'Send forespørsel' : 'Send request')}</button></div>
                   </>}
                   {ticketNotice && <p role="status">{ticketNotice}</p>}
                   {tickets.map(ticket => <article className="widget-task-card" key={ticket.id}><div className="widget-task-card__top"><strong>{ticket.title}</strong><span className="widget-task-badge">{ticket.status}</span></div><p>{ticket.description}</p></article>)}
@@ -1147,7 +1174,8 @@ export default function WidgetPreview({
                   ))}
                   {showComposerSuggestions && (
                     <div className="widget-faq-suggestions" aria-label="Suggested questions">
-                      {activeFaqSuggestions.map((suggestion) => (
+                      <strong className="widget-faq-suggestions__title">{no ? 'Forslag til deg' : 'Suggestions for you'}</strong>
+                      {helpSuggestions.map((suggestion) => (
                         <button
                           key={suggestion}
                           type="button"
@@ -1256,6 +1284,17 @@ export default function WidgetPreview({
             ) : activePortalPanel === 'chats' ? (
               <div className={`${footerClasses} ${flashSection === 'footer' ? 'preview-section-flash' : ''}`.trim()}>
               <div className="chat-footer-row">
+                {flow.allowVisitorCreation && (
+                  <button
+                    type="button"
+                    className="widget-ticket-open"
+                    aria-label={no ? 'Send en ticket' : 'Create a support ticket'}
+                    title={no ? 'Send en ticket' : 'Create a support ticket'}
+                    onClick={() => setActivePortalPanel('tasks')}
+                  >
+                    <FiPlus aria-hidden="true" />
+                  </button>
+                )}
                 <textarea
                   id={`${widgetId}-message`}
                   aria-label={no ? 'Meldingen din' : 'Your message'}

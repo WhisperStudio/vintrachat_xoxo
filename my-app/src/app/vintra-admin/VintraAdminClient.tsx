@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactElement } from 'react'
 import Link from 'next/link'
 import { APP_THEME_EVENT, resolveAppThemePreference, writeAppThemePreference } from '@/lib/theme-preference'
+import { type SiteSeason, normalizeSiteSeason } from '@/lib/seasonal-theme'
 import '../admin/workspace-theme.css'
 import './page.css'
 import { useRouter } from 'next/navigation'
@@ -332,6 +333,8 @@ function HealthTimeline({
 
 export default function VintraAdminClient({ embedded = false }: { embedded?: boolean }) {
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const [season, setSeason] = useState<SiteSeason>('standard')
+  const [seasonSaving, setSeasonSaving] = useState(false)
   const [businessSearch, setBusinessSearch] = useState('')
   useEffect(() => {
     const sync = () => setTheme(resolveAppThemePreference())
@@ -357,6 +360,20 @@ export default function VintraAdminClient({ embedded = false }: { embedded?: boo
 
   const vintraFetch = useVintraFetch(firebaseUser)
   const isAllowed = isVintraAdminEmail(firebaseUser?.email)
+
+  useEffect(() => {
+    let active = true
+    void fetch('/api/vintra-admin/season', { cache: 'no-store' })
+      .then(async (response) => {
+        const payload = await response.json() as { season?: unknown; error?: string }
+        if (!response.ok) throw new Error(payload.error || 'Could not load site season')
+        if (active) setSeason(normalizeSiteSeason(payload.season))
+      })
+      .catch((loadError: unknown) => {
+        if (active) setError(loadError instanceof Error ? loadError.message : 'Could not load site season')
+      })
+    return () => { active = false }
+  }, [])
 
   const selectedBusiness = useMemo(() => {
     if (!summary?.businesses.length) return null
@@ -418,6 +435,26 @@ export default function VintraAdminClient({ embedded = false }: { embedded?: boo
     if (strictModelOnly) params.set('strict', '1')
     const query = params.toString()
     return query ? `/api/vintra-admin/summary?${query}` : '/api/vintra-admin/summary'
+  }
+
+  const saveSeason = async (nextSeason: SiteSeason) => {
+    setSeasonSaving(true)
+    setError('')
+    setStatusMessage('')
+    try {
+      const response = await vintraFetch('/api/vintra-admin/season', {
+        method: 'PUT',
+        body: JSON.stringify({ season: nextSeason }),
+      })
+      const payload = await response.json() as { season?: SiteSeason; error?: string }
+      if (!response.ok) throw new Error(payload.error || 'Could not save site season')
+      setSeason(payload.season || nextSeason)
+      setStatusMessage('Season saved.')
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Could not save site season')
+    } finally {
+      setSeasonSaving(false)
+    }
   }
 
   const loadSummary = async (model?: string | null, strictModelOnly = false) => {
@@ -712,6 +749,27 @@ export default function VintraAdminClient({ embedded = false }: { embedded?: boo
             </div>
             <span className="vintraAdminBadge">Last activity {formatDate(summary?.latestActivity)}</span>
           </div>
+
+          <section className="vintraAdminSeasonCard" aria-labelledby="vintraAdminSeasonTitle">
+            <div>
+              <h3 id="vintraAdminSeasonTitle">Website season</h3>
+              <p>Choose the seasonal look shown to everyone on the public site.</p>
+            </div>
+            <label className="vintraAdminSeason">
+              <span>Seasonal theme</span>
+              <select
+                value={season}
+                disabled={seasonSaving}
+                onChange={(event) => void saveSeason(event.target.value as SiteSeason)}
+              >
+                <option value="standard">Standard</option>
+                <option value="winter">Winter</option>
+                <option value="halloween">Halloween</option>
+                <option value="summer">Summer</option>
+                <option value="easter">Easter</option>
+              </select>
+            </label>
+          </section>
 
           <div className="vintraAdminChartsGrid">
             <BarList
