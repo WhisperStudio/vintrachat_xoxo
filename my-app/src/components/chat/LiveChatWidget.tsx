@@ -39,6 +39,41 @@ function handoffStorageKey(widgetKey: string) {
   return `vintra-widget-handoff:${widgetKey}`
 }
 
+function contactStorageKey(widgetKey: string) {
+  return `vintra-widget-contact:${widgetKey}`
+}
+
+function readStoredVisitorContact(widgetKey: string) {
+  if (typeof window === 'undefined') return { name: '', email: '', phone: '' }
+  try {
+    const raw = window.sessionStorage.getItem(contactStorageKey(widgetKey))
+    if (!raw) return { name: '', email: '', phone: '' }
+    const parsed = JSON.parse(raw)
+    if (Number(parsed?.expiresAt || 0) <= Date.now()) {
+      window.sessionStorage.removeItem(contactStorageKey(widgetKey))
+      return { name: '', email: '', phone: '' }
+    }
+    return {
+      name: String(parsed?.name || ''),
+      email: String(parsed?.email || ''),
+      phone: String(parsed?.phone || ''),
+    }
+  } catch {
+    return { name: '', email: '', phone: '' }
+  }
+}
+
+function writeStoredVisitorContact(widgetKey: string, contact: { name: string; email: string; phone: string }) {
+  try {
+    window.sessionStorage.setItem(contactStorageKey(widgetKey), JSON.stringify({
+      ...contact,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+    }))
+  } catch (error) {
+    console.error('Failed to store visitor contact details:', error)
+  }
+}
+
 function messageId() {
   return crypto.randomUUID()
 }
@@ -84,6 +119,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   const [messages, setMessages] = useState<WidgetMessage[]>(emptyMessages)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [isOpen, setIsOpen] = useState(forceOpen)
+  const [startCardVisible, setStartCardVisible] = useState(false)
   const [inputValue, setInputValue] = useState(() => {
     if (typeof window === 'undefined') return ''
     return window.localStorage.getItem(draftStorageKey(widgetKey)) || ''
@@ -101,6 +137,8 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   })
   const [handoffName, setHandoffName] = useState(() => {
     if (typeof window === 'undefined') return ''
+    const savedContact = readStoredVisitorContact(widgetKey)
+    if (savedContact.name) return savedContact.name
     try {
       const raw = window.localStorage.getItem(handoffStorageKey(widgetKey))
       if (!raw) return ''
@@ -112,6 +150,8 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   })
   const [handoffEmail, setHandoffEmail] = useState(() => {
     if (typeof window === 'undefined') return ''
+    const savedContact = readStoredVisitorContact(widgetKey)
+    if (savedContact.email) return savedContact.email
     try {
       const raw = window.localStorage.getItem(handoffStorageKey(widgetKey))
       if (!raw) return ''
@@ -123,6 +163,8 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   })
   const [handoffPhone, setHandoffPhone] = useState(() => {
     if (typeof window === 'undefined') return ''
+    const savedContact = readStoredVisitorContact(widgetKey)
+    if (savedContact.phone) return savedContact.phone
     try {
       const raw = window.localStorage.getItem(handoffStorageKey(widgetKey))
       if (!raw) return ''
@@ -146,6 +188,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   const [isSending, setIsSending] = useState(false)
   const [supportChatStatus, setSupportChatStatus] = useState<SupportChatState>('none')
   const [supportTypingAt, setSupportTypingAt] = useState<string | null>(null)
+  const [contactInfoSaved, setContactInfoSaved] = useState(() => Boolean(readStoredVisitorContact(widgetKey).name))
   const [error, setError] = useState<string | null>(null)
   const [ticketOpenRequest, setTicketOpenRequest] = useState(0)
   const [tickets, setTickets] = useState<{ id: string; title: string; description: string; status: string }[]>([])
@@ -390,8 +433,8 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     const position = configResponse.widgetConfig.position
     const openWidth = 504
     const openHeight = 760
-    const closedWidth = 84
-    const closedHeight = 84
+    const closedWidth = startCardVisible ? 320 : 84
+    const closedHeight = startCardVisible ? 320 : 84
 
     window.parent.postMessage(
       {
@@ -412,7 +455,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       },
       '*'
     )
-  }, [configResponse, isOpen, widgetKey])
+  }, [configResponse, isOpen, widgetKey, startCardVisible])
 
   const config = configResponse?.widgetConfig
   const supportAllowed = resolveWidgetFlow(configResponse?.widgetConfig.settings, configResponse?.assistantConfig || {}).supportEnabled
@@ -502,7 +545,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       setIsSending(true)
       setError(null)
 
-      if (isHumanSupportOpen || isHumanSupportPending) {
+      if (isHumanSupportOpen) {
         setMessages((prev) =>
           dedupeMessages([
             ...prev,
@@ -683,7 +726,9 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
 
         if (data.supportRequested) {
           setSupportChatStatus('needs-human')
+          if (data.humanAvailable) setTicketOpenRequest(value => value + 1)
         }
+        if (data.humanRequestQueued) setSupportChatStatus('needs-human')
 
         if (data.visitorNameRequired) {
           setPendingHumanSupportText(text)
@@ -739,7 +784,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       if (!message.toLowerCase().includes('too quickly')) {
         setError(isHumanSupportOpen || isHumanSupportPending ? 'Support message could not be sent right now.' : 'The assistant could not reply right now.')
       }
-      if (isHumanSupportOpen || isHumanSupportPending) {
+      if (isHumanSupportOpen) {
         setMessages((prev) => prev.filter((message) => message.id !== userMessage.id))
       } else {
         setMessages((prev) => prev.filter((message) => message.id !== userMessage.id))
@@ -836,11 +881,11 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       setSessionId(nextSessionId)
       window.localStorage.setItem(sessionStorageKey(widgetKey), nextSessionId)
       setSupportChatStatus((String(data.status || 'needs-human') as SupportChatState) || 'needs-human')
+      writeStoredVisitorContact(widgetKey, { name, email: handoffEmail.trim(), phone: handoffPhone.trim() })
+      setContactInfoSaved(true)
+      if (data.humanAvailable) setTicketOpenRequest(value => value + 1)
       setHandoffFormOpen(false)
       setPendingHumanSupportText('')
-      setHandoffName('')
-      setHandoffEmail('')
-      setHandoffPhone('')
       setInputValue('')
       window.localStorage.removeItem(draftStorageKey(widgetKey))
 
@@ -902,6 +947,12 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     })
     const result = await response.json()
     if (!response.ok) throw new Error(result.error || 'Unable to create ticket')
+    writeStoredVisitorContact(widgetKey, {
+      name: ticket.visitorName,
+      email: ticket.visitorEmail,
+      phone: ticket.visitorPhone,
+    })
+    setContactInfoSaved(true)
     if (!sessionId) setSessionId(ticketSessionId)
     if (result.task) setTickets(previous => [result.task, ...previous.filter(item => item.id !== result.task.id)])
   }
@@ -1025,6 +1076,12 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   return (
     <div className="widget-frame-shell">
       <WidgetPreview
+        localization={configResponse.assistantConfig?.localization}
+        startCard={configResponse.assistantConfig?.startCard}
+        translationWidgetKey={widgetKey}
+        translationEmbedToken={embedToken || undefined}
+        translationFingerprint={fingerprintLight}
+        onStartCardVisibleChange={setStartCardVisible}
         bubbleStyle={config.bubbleStyle}
         headerStyle={config.headerStyle}
         bodyStyle={config.bodyStyle}
@@ -1034,6 +1091,15 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         onOpenReview={() => setFeedbackOpen(true)}
         tickets={tickets}
         ticketOpenRequest={ticketOpenRequest}
+        humanSupportRequested={supportChatStatus === 'needs-human' || supportChatStatus === 'open' || supportChatStatus === 'ai-active'}
+        humanSupportStatus={supportChatStatus}
+        visitorContactSaved={contactInfoSaved}
+        visitorContact={{ name: handoffName, email: handoffEmail, phone: handoffPhone }}
+        onVisitorContactChange={(contact) => {
+          setHandoffName(contact.name)
+          setHandoffEmail(contact.email)
+          setHandoffPhone(contact.phone)
+        }}
         onCreateTicket={handleCreateTicket}
         position={config.position}
         colorTheme={config.colorTheme}

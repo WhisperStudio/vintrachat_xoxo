@@ -1,4 +1,6 @@
 'use client'
+import { useStudioCopy } from '@/components/chat/studio-copy'
+import './DesignGroups.css'
 import type { WidgetMotion } from '@/lib/widget-motion'
 import { getMessageSurfaceClasses, getSurfaceClasses, type SurfaceBorder } from '@/lib/surface-design'
 import { createLauncherArtwork, type LauncherBorder, type LauncherShape } from '@/lib/launcher-design'
@@ -380,6 +382,7 @@ function LogoUploadEditor({
   branding: CustomBranding
   onChange: (branding: CustomBranding) => void
 }) {
+  const copy = useStudioCopy()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const previewRef = useRef<HTMLDivElement | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
@@ -508,13 +511,13 @@ function LogoUploadEditor({
                 backgroundPosition: `${logoStyle.focusX}% ${logoStyle.focusY}%`,
               }}
             />
-            <div className="logoEditorHint">Drag inside the circle to reposition</div>
+            <div className="logoEditorHint">{copy("Drag inside the circle to reposition")}</div>
           </div>
         ) : (
           <div className="logoEditorPlaceholder">
             <FiImage className="logoEditorPlaceholderIcon" />
-            <strong>Drop a PNG logo here</strong>
-            <span>or click to choose a file</span>
+            <strong>{copy("Drop a PNG logo here")}</strong>
+            <span>{copy("or click to choose a file")}</span>
           </div>
         )}
       </div>
@@ -527,26 +530,22 @@ function LogoUploadEditor({
 
         <div className="logoEditorGrid">
           <label className="branding-field">
-            <span>Horizontal position</span>
+            <span>{copy("Horizontal position")}</span>
             <input type="range" min="0" max="100" step="1" value={logoStyle.focusX} onChange={(event) => updateLogoStyle({ focusX: Number(event.target.value) })} disabled={!branding.logo} />
           </label>
 
           <label className="branding-field">
-            <span>Vertical position</span>
+            <span>{copy("Vertical position")}</span>
             <input type="range" min="0" max="100" step="1" value={logoStyle.focusY} onChange={(event) => updateLogoStyle({ focusY: Number(event.target.value) })} disabled={!branding.logo} />
           </label>
         </div>
 
         <div className="logoEditorActions">
-          <button type="button" className="logoEditorAction" onClick={() => updateBranding({ logo: undefined })} disabled={!branding.logo}>
-            Remove logo
-          </button>
-          <button type="button" className="logoEditorAction secondary" onClick={() => updateLogoStyle(defaultLogoStyle)} disabled={!branding.logo}>
-            Reset crop
-          </button>
+          <button type="button" className="logoEditorAction" onClick={() => updateBranding({ logo: undefined })} disabled={!branding.logo}>{copy("Remove logo")}</button>
+          <button type="button" className="logoEditorAction secondary" onClick={() => updateLogoStyle(defaultLogoStyle)} disabled={!branding.logo}>{copy("Reset crop")}</button>
         </div>
 
-        <p className="logoEditorMeta">PNG only. Drop a file, then drag within the circle or adjust the sliders.</p>
+        <p className="logoEditorMeta">{copy("PNG only. Drop a file, then drag within the circle or adjust the sliders.")}</p>
         {error ? <p className="logoEditorError">{error}</p> : null}
       </div>
     </div>
@@ -569,6 +568,7 @@ function StarterCardEditor({
   onRemove: () => void
 }) {
   const { language } = useVintraLanguage()
+  const copy = useStudioCopy()
   const [activeField, setActiveField] = useState<'icon' | 'title' | 'description' | 'image' | null>(null)
 
   const updateOption = (optionIndex: number, patch: Partial<AssistantConversationCard['options'][number]>) => {
@@ -584,8 +584,8 @@ function StarterCardEditor({
       options: [
         ...card.options,
         {
-          label: `Option ${card.options.length + 1}`,
-          prompt: 'How can you help me?',
+          label: `${language === 'no' ? 'Valg' : 'Option'} ${card.options.length + 1}`,
+          prompt: copy("How can you help me?"),
           description: '',
         },
       ],
@@ -597,77 +597,76 @@ function StarterCardEditor({
       <div className="starterCardEditor__header">
         <div>
           <span className="starterCardEditor__eyebrow">{language === 'no' ? 'Kort' : 'Card'} {index + 1}</span>
-          <strong>{card.title || `Card ${index + 1}`}</strong>
+          <strong>{card.title || `${language === 'no' ? 'Kort' : 'Card'} ${index + 1}`}</strong>
         </div>
         <button type="button" className="starterCardEditor__remove" onClick={onRemove} disabled={disabled}>
-          <FiTrash2 aria-hidden="true" /> Remove
-        </button>
+          <FiTrash2 aria-hidden="true" />{copy("Remove")}</button>
       </div>
 
       <div className={`starterCardVisual starterCardVisual--${style}`}>
-        <button type="button" className="starterCardVisual__field starterCardVisual__icon" onClick={() => setActiveField(activeField === 'icon' ? null : 'icon')} disabled={disabled || style === 'image'} aria-label="Edit card icon">
+        <button type="button" className="starterCardVisual__field starterCardVisual__icon" onClick={() => setActiveField(activeField === 'icon' ? null : 'icon')} disabled={disabled || style === 'image'} aria-label={copy("Edit card icon")}>
           {renderWidgetIcon(card.icon, { 'aria-hidden': true }) || <FiMessageCircle aria-hidden="true" />}
           <span className="starterCardVisual__edit"><FiEdit3 aria-hidden="true" /></span>
         </button>
         <div className="starterCardVisual__copy">
           <button type="button" className="starterCardVisual__field starterCardVisual__title" onClick={() => setActiveField(activeField === 'title' ? null : 'title')} disabled={disabled}>
-            <span>{card.title || 'Untitled card'}</span><FiEdit3 aria-hidden="true" />
+            <span>{card.title || copy("Untitled card")}</span><FiEdit3 aria-hidden="true" />
           </button>
           <button type="button" className="starterCardVisual__field starterCardVisual__description" onClick={() => setActiveField(activeField === 'description' ? null : 'description')} disabled={disabled}>
-            <span>{card.description || 'Add a short description'}</span><FiEdit3 aria-hidden="true" />
+            <span>{card.description || copy("Add a short description")}</span><FiEdit3 aria-hidden="true" />
           </button>
         </div>
       </div>
 
       {activeField === 'title' ? (
         <label className="starterCardInlineEditor">
-          <span>Edit title</span>
-          <input autoFocus type="text" value={card.title} disabled={disabled} onChange={(event) => onChange({ ...card, title: event.target.value })} placeholder="Opening hours" />
+          <span>{copy("Edit title")}</span>
+          <input autoFocus type="text" value={card.title} disabled={disabled} onChange={(event) => onChange({ ...card, title: event.target.value })} placeholder={copy("Opening hours")} />
         </label>
       ) : null}
 
       {activeField === 'description' ? (
         <label className="starterCardInlineEditor">
-          <span>Edit description</span>
-          <input autoFocus type="text" value={card.description} disabled={disabled} onChange={(event) => onChange({ ...card, description: event.target.value })} placeholder="Help visitors choose the right topic." />
+          <span>{copy("Edit description")}</span>
+          <input autoFocus type="text" value={card.description} disabled={disabled} onChange={(event) => onChange({ ...card, description: event.target.value })} placeholder={copy("Help visitors choose the right topic.")} />
         </label>
       ) : null}
 
       {activeField === 'icon' ? (
         <IconPickerBubble
-          label="Card icon"
+          label={copy("Card icon")}
           value={card.icon || ''}
           onChange={(nextValue) => onChange({ ...card, icon: nextValue })}
-          helperText="Shown on the starter card unless the card is image-first."
+          helperText={copy("Shown on the starter card unless the card is image-first.")}
           disabled={disabled || style === 'image'}
         />
       ) : null}
 
       <button type="button" className="starterCardImageToggle" onClick={() => setActiveField(activeField === 'image' ? null : 'image')} disabled={disabled}>
-        <FiImage aria-hidden="true" /> {card.image ? 'Edit card image' : 'Add card image'} <FiChevronDown aria-hidden="true" />
+        <FiImage aria-hidden="true" /> {card.image ? copy("Edit card image") : copy("Add card image")} <FiChevronDown aria-hidden="true" />
       </button>
       {activeField === 'image' ? (
         <label className="starterCardInlineEditor">
-          <span>Image URL</span>
+          <span>{copy("Image URL")}</span>
           <input autoFocus type="url" value={card.image || ''} disabled={disabled} onChange={(event) => onChange({ ...card, image: event.target.value })} placeholder="https://..." />
         </label>
       ) : null}
 
       <div className="starterOptionsEditor">
         <div className="starterOptionsEditor__header">
-          <div><strong>Options</strong><span>{card.options.length} branches under this card</span></div>
-          <button type="button" onClick={addOption} disabled={disabled}><FiPlus aria-hidden="true" /> Add option</button>
+          <div><strong>{copy("Options")}</strong><span>{card.options.length} {language === 'no' ? 'valg under dette kortet' : 'options under this card'}</span></div>
+          <button type="button" onClick={addOption} disabled={disabled}><FiPlus aria-hidden="true" />{copy("Add option")}</button>
         </div>
         <div className="starterOptionsEditor__list">
           {card.options.map((option, optionIndex) => (
             <div className="starterOptionRow" key={`${card.id}-option-${optionIndex}`}>
               <span className="starterOptionRow__branch" aria-hidden="true" />
               <div className="starterOptionRow__fields">
-                <label><span>Label</span><input value={option.label} disabled={disabled} onChange={(event) => updateOption(optionIndex, { label: event.target.value })} /></label>
-                <label><span>Message sent</span><input value={option.prompt} disabled={disabled} onChange={(event) => updateOption(optionIndex, { prompt: event.target.value })} /></label>
-                <label className="starterOptionRow__description"><span>Description</span><input value={option.description || ''} disabled={disabled} onChange={(event) => updateOption(optionIndex, { description: event.target.value || undefined })} placeholder="Optional" /></label>
+                <label><span><FiEdit3 aria-hidden="true" />{copy("Label")}</span><input value={option.label} disabled={disabled} onChange={(event) => updateOption(optionIndex, { label: event.target.value })} /></label>
+                <label><span><FiSend aria-hidden="true" />{copy("Message sent")}</span><input value={option.prompt} disabled={disabled} onChange={(event) => updateOption(optionIndex, { prompt: event.target.value })} /></label>
+                <label className="starterOptionRow__description"><span><FiMessageSquare aria-hidden="true" />{copy("Description")}</span><input value={option.description || ''} disabled={disabled} onChange={(event) => updateOption(optionIndex, { description: event.target.value || undefined })} placeholder={copy("Optional")} /></label>
               </div>
-              <button type="button" className="starterOptionRow__remove" onClick={() => onChange({ ...card, options: card.options.filter((_, currentIndex) => currentIndex !== optionIndex) })} disabled={disabled} aria-label={`Remove option ${optionIndex + 1}`}><FiTrash2 aria-hidden="true" /></button>
+              <button type="button" className="starterOptionRow__remove" onClick={() => onChange({ ...card, options: card.options.filter((_, currentIndex) => currentIndex !== optionIndex) })} disabled={disabled} aria-label={`${language === 'no' ? 'Fjern valg' : 'Remove option'} ${optionIndex + 1}`}><FiTrash2 aria-hidden="true" /></button>
             </div>
           ))}
         </div>
@@ -709,6 +708,7 @@ export default function StyleSelector({
   onToggleSection,
 }: StyleSelectorProps) {
   const { language } = useVintraLanguage()
+  const copy = useStudioCopy()
   const text = chatWidgetStyleI18n[language]
   const renderLauncherPreview = (kind: 'border' | 'shape' | 'shadow' | 'animation' | 'size', value: string) => {
     // Use the real launcher's CSS so samples also follow future export changes.
@@ -833,14 +833,14 @@ export default function StyleSelector({
       ...conversationCards,
       {
         id,
-        title: `Starter card ${conversationCards.length + 1}`,
-        description: 'Help visitors choose the right topic quickly.',
+        title: `${language === 'no' ? 'Startkort' : 'Starter card'} ${conversationCards.length + 1}`,
+        description: copy("Help visitors choose the right topic quickly."),
         icon: 'FiMessageCircle',
         options: [
           {
-            label: 'Example question',
-            prompt: 'How can you help me?',
-            description: 'Replace this with a real next step.',
+            label: copy("Example question"),
+            prompt: copy("How can you help me?"),
+            description: copy("Replace this with a real next step."),
           },
         ],
       },
@@ -904,40 +904,32 @@ export default function StyleSelector({
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.bubble ? 'open' : ''}`}>
-          <div className={`option-card ${bubbleStyle.showStatus ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={bubbleStyle.showStatus} onClick={() => onBubbleStyleChange({ ...bubbleStyle, showStatus: !bubbleStyle.showStatus })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onBubbleStyleChange({ ...bubbleStyle, showStatus: !bubbleStyle.showStatus }))}>
-            <span className="option-title">{text.labels.showStatusDot}</span>
-            <OptionDesc>{text.labels.showStatusDotDesc}</OptionDesc>
-          </div>
-
-          <div className="option-card option-card--radio">
+<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiLayout aria-hidden="true" /></span><div><h3>{language === 'no' ? "Chatknappens utseende" : "Surface and appearance"}</h3><p>{language === 'no' ? "Form, kant og visuelle detaljer." : "Shape, borders and visual details."}</p></div></div>
+<div className="option-card option-card--radio">
             <span className="option-title">{text.labels.borderType}</span>
             <GlassRadioRow name="bubble-border-type" renderPreview={(value) => renderLauncherPreview('border', value)} value={['rounded', 'shadow'].includes(bubbleStyle.borderType) ? (bubbleStyle.borderType === 'rounded' ? 'solid' : 'none') : bubbleStyle.borderType} options={[{ value: 'none', label: text.options.none }, { value: 'solid', label: language === 'no' ? 'Enkel linje' : 'Single line' }, { value: 'dashed', label: language === 'no' ? 'Stiplet' : 'Dashed' }, { value: 'wavy', label: language === 'no' ? 'Bølget' : 'Wavy' }, { value: 'double', label: language === 'no' ? 'Dobbel linje' : 'Double line' }]} onChange={(nextValue) => onBubbleStyleChange({ ...bubbleStyle, shape: bubbleStyle.shape || (bubbleStyle.borderType === 'solid' ? 'rounded-square' : 'circle'), borderType: nextValue as LauncherBorder })} />
           </div>
-
-          <div className="option-card option-card--radio">
+<div className="option-card option-card--radio">
             <span className="option-title">{language === 'no' ? 'Form' : 'Shape'}</span>
             <GlassRadioRow name="bubble-shape" renderPreview={(value) => renderLauncherPreview('shape', value)} value={bubbleStyle.shape || (bubbleStyle.borderType === 'solid' ? 'rounded-square' : 'circle')} options={[{ value: 'circle', label: language === 'no' ? 'Sirkel' : 'Circle' }, { value: 'rounded-square', label: language === 'no' ? 'Avrundet firkant' : 'Rounded square' }, { value: 'square', label: language === 'no' ? 'Firkant' : 'Square' }, { value: 'triangle', label: language === 'no' ? 'Trekant' : 'Triangle' }, { value: 'diamond', label: language === 'no' ? 'Rombe' : 'Diamond' }]} onChange={(value) => onBubbleStyleChange({ ...bubbleStyle, shape: value as LauncherShape })} />
           </div>
-
-          <div className="option-card option-card--radio">
+<div className="option-card option-card--radio">
             <span className="option-title">{text.labels.shadowType}</span>
             <GlassRadioRow name="bubble-shadow-type" renderPreview={(value) => renderLauncherPreview('shadow', value)} value={bubbleStyle.shadowType} options={[{ value: 'none', label: text.options.none }, { value: 'light', label: text.options.light }, { value: 'medium', label: text.options.medium }, { value: 'heavy', label: text.options.heavy }]} onChange={(nextValue) => onBubbleStyleChange({ ...bubbleStyle, shadowType: nextValue as ShadowType })} />
           </div>
-
-          <div className="option-card option-card--radio">
+<div className="option-card option-card--radio">
             <span className="option-title">{text.labels.animation}</span>
             <GlassRadioRow name="bubble-animation-type" renderPreview={(value) => renderLauncherPreview('animation', value)} value={bubbleStyle.animationType} options={[{ value: 'none', label: text.options.none }, { value: 'bounce', label: text.options.bounce }, { value: 'fade', label: text.options.fade }, { value: 'slide', label: text.options.slide }]} onChange={(nextValue) => onBubbleStyleChange({ ...bubbleStyle, animationType: nextValue as AnimationType })} />
           </div>
-
-          <div className="option-card option-card--radio">
+<div className="option-card option-card--radio">
             <span className="option-title">{text.labels.size}</span>
             <GlassRadioRow name="bubble-size-type" renderPreview={(value) => renderLauncherPreview('size', value)} value={bubbleStyle.sizeType} options={[{ value: 'small', label: text.options.small }, { value: 'medium', label: text.options.medium }, { value: 'large', label: text.options.large }]} onChange={(nextValue) => onBubbleStyleChange({ ...bubbleStyle, sizeType: nextValue as SizeType })} />
           </div>
-
-          <div className="option-card option-card--radio option-card--wide">
+<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiImage aria-hidden="true" /></span><div><h3>{language === 'no' ? "Ikoner" : "Icons"}</h3><p>{language === 'no' ? "Velg symbolene som forklarer funksjonene." : "Choose the symbols for each function."}</p></div></div>
+<div className="option-card option-card--radio option-card--wide">
             <span className="option-title">{text.labels.launcherMode}</span>
             <OptionDesc>{text.labels.launcherModeDesc}</OptionDesc>
-            <div className="iconChoiceGroup" ref={iconChoiceRef} role="radiogroup" aria-label="Launcher mode">
+            <div className="iconChoiceGroup" ref={iconChoiceRef} role="radiogroup" aria-label={copy("Launcher mode")}>
               {iconIndicator ? (
                 <span className="iconChoiceIndicator" style={{ transform: `translate3d(${iconIndicator.left}px, ${iconIndicator.top}px, 0)`, width: `${iconIndicator.width}px`, height: `${iconIndicator.height}px`, opacity: iconIndicator.opacity }} />
               ) : null}
@@ -956,7 +948,7 @@ export default function StyleSelector({
                     aria-checked={active}
                     disabled={locked}
                     aria-disabled={locked}
-                    title={locked ? 'Available on Pro and Enterprise plans' : undefined}
+                    title={locked ? copy("Available on Pro and Enterprise plans") : undefined}
                     onClick={() => {
                       if (locked) return
                       onBubbleStyleChange({ ...bubbleStyle, iconChoice: choice.value })
@@ -971,37 +963,40 @@ export default function StyleSelector({
               })}
             </div>
           </div>
-
-          <div className="sectionIconGrid">
+<div className="sectionIconGrid">
             {sectionIconFields.bubble.map((item) => (
               <IconPickerBubble
                 key={item.field}
-                label={item.label}
+                label={copy(item.label)}
                 value={widgetIcons[item.field] || ''}
                 onChange={(nextValue) => updateWidgetIcon(item.field, nextValue)}
-                helperText={bubbleStyle.iconChoice === 'orb' ? 'Orb mode uses the orb visual instead of the launcher icon.' : customInterfaceIconsAvailable ? item.helper : 'Available on Pro and Enterprise plans.'}
+                helperText={bubbleStyle.iconChoice === 'orb' ? copy("Orb mode uses the orb visual instead of the launcher icon.") : customInterfaceIconsAvailable ? copy(item.helper) : copy("Available on Pro and Enterprise plans.")}
                 disabled={!customInterfaceIconsAvailable || bubbleStyle.iconChoice === 'orb'}
               />
             ))}
           </div>
-
-          {bubbleStyle.iconChoice === 'orb' ? (
+<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiPlus aria-hidden="true" /></span><div><h3>{language === 'no' ? "Tillegg" : "Extras"}</h3><p>{language === 'no' ? "Ekstra innhold og funksjoner." : "Additional content and features."}</p></div></div>
+<div className={`option-card ${bubbleStyle.showStatus ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={bubbleStyle.showStatus} onClick={() => onBubbleStyleChange({ ...bubbleStyle, showStatus: !bubbleStyle.showStatus })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onBubbleStyleChange({ ...bubbleStyle, showStatus: !bubbleStyle.showStatus }))}>
+            <span className="option-title">{text.labels.showStatusDot}</span>
+            <OptionDesc>{text.labels.showStatusDotDesc}</OptionDesc>
+          </div>
+{bubbleStyle.iconChoice === 'orb' ? (
             <div className="option-card option-card--orb option-card--radio option-card--wide">
-              <span className="option-title">Orb behavior</span>
-              <OptionDesc>Set one hover letter, up to three reply letters, and up to five idle letters.</OptionDesc>
+              <span className="option-title">{copy("Orb behavior")}</span>
+              <OptionDesc>{copy("Set one hover letter, up to three reply letters, and up to five idle letters.")}</OptionDesc>
               <div className="orbSettingsGrid">
-                <label className="orbField orbField--checkbox"><span>Show hover symbol</span><input type="checkbox" checked={orbStyle.hoverEnabled} onChange={(event) => updateOrbStyle({ hoverEnabled: event.target.checked })} /></label>
-                <label className="orbField"><span>Hover letter</span><input type="text" maxLength={1} value={orbStyle.hoverGlyph} onChange={(event) => updateOrbStyle({ hoverGlyph: event.target.value.slice(0, 1).toUpperCase() })} placeholder="A" disabled={!orbStyle.hoverEnabled} /></label>
-                <label className="orbField orbField--checkbox"><span>Show reply symbol</span><input type="checkbox" checked={orbStyle.replyEnabled} onChange={(event) => updateOrbStyle({ replyEnabled: event.target.checked })} /></label>
-                <label className="orbField"><span>Reply letters</span><input type="text" maxLength={3} value={orbStyle.replyGlyphs} onChange={(event) => updateOrbStyle({ replyGlyphs: event.target.value.slice(0, 3).toUpperCase() })} placeholder="ABC" disabled={!orbStyle.replyEnabled} /></label>
-                <label className="orbField orbField--checkbox"><span>Show inactive symbol</span><input type="checkbox" checked={orbStyle.inactiveEnabled} onChange={(event) => updateOrbStyle({ inactiveEnabled: event.target.checked })} /></label>
-                <label className="orbField"><span>Inactive letters</span><input type="text" maxLength={5} value={orbStyle.inactiveGlyphs} onChange={(event) => updateOrbStyle({ inactiveGlyphs: event.target.value.slice(0, 5).toUpperCase() })} placeholder="ABCDE" disabled={!orbStyle.inactiveEnabled} /></label>
-                <label className="orbField orbField--number"><span>Inactive min (min)</span><input type="number" min={1} max={60} step={1} value={inactivityMinMinutes} onChange={(event) => updateOrbStyle({ inactivityMinMinutes: Math.max(1, Math.min(60, Number(event.target.value) || 1)) })} placeholder="2" /></label>
-                <label className="orbField orbField--number"><span>Inactive max (min)</span><input type="number" min={1} max={120} step={1} value={inactivityMaxMinutes} onChange={(event) => updateOrbStyle({ inactivityMaxMinutes: Math.max(1, Math.min(120, Number(event.target.value) || 1)) })} placeholder="4" /></label>
+                <label className="orbField orbField--checkbox"><span>{copy("Show hover symbol")}</span><input type="checkbox" checked={orbStyle.hoverEnabled} onChange={(event) => updateOrbStyle({ hoverEnabled: event.target.checked })} /></label>
+                <label className="orbField"><span>{copy("Hover letter")}</span><input type="text" maxLength={1} value={orbStyle.hoverGlyph} onChange={(event) => updateOrbStyle({ hoverGlyph: event.target.value.slice(0, 1).toUpperCase() })} placeholder="A" disabled={!orbStyle.hoverEnabled} /></label>
+                <label className="orbField orbField--checkbox"><span>{copy("Show reply symbol")}</span><input type="checkbox" checked={orbStyle.replyEnabled} onChange={(event) => updateOrbStyle({ replyEnabled: event.target.checked })} /></label>
+                <label className="orbField"><span>{copy("Reply letters")}</span><input type="text" maxLength={3} value={orbStyle.replyGlyphs} onChange={(event) => updateOrbStyle({ replyGlyphs: event.target.value.slice(0, 3).toUpperCase() })} placeholder="ABC" disabled={!orbStyle.replyEnabled} /></label>
+                <label className="orbField orbField--checkbox"><span>{copy("Show inactive symbol")}</span><input type="checkbox" checked={orbStyle.inactiveEnabled} onChange={(event) => updateOrbStyle({ inactiveEnabled: event.target.checked })} /></label>
+                <label className="orbField"><span>{copy("Inactive letters")}</span><input type="text" maxLength={5} value={orbStyle.inactiveGlyphs} onChange={(event) => updateOrbStyle({ inactiveGlyphs: event.target.value.slice(0, 5).toUpperCase() })} placeholder="ABCDE" disabled={!orbStyle.inactiveEnabled} /></label>
+                <label className="orbField orbField--number"><span>{copy("Inactive min (min)")}</span><input type="number" min={1} max={60} step={1} value={inactivityMinMinutes} onChange={(event) => updateOrbStyle({ inactivityMinMinutes: Math.max(1, Math.min(60, Number(event.target.value) || 1)) })} placeholder="2" /></label>
+                <label className="orbField orbField--number"><span>{copy("Inactive max (min)")}</span><input type="number" min={1} max={120} step={1} value={inactivityMaxMinutes} onChange={(event) => updateOrbStyle({ inactivityMaxMinutes: Math.max(1, Math.min(120, Number(event.target.value) || 1)) })} placeholder="4" /></label>
               </div>
             </div>
           ) : null}
-        </div>
+</div>
       </div>
 
       <div className="group">
@@ -1011,32 +1006,33 @@ export default function StyleSelector({
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.header ? 'open' : ''}`}>
-          <div className={`option-card ${headerStyle.showStatus ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={headerStyle.showStatus} onClick={() => onHeaderStyleChange({ ...headerStyle, showStatus: !headerStyle.showStatus })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onHeaderStyleChange({ ...headerStyle, showStatus: !headerStyle.showStatus }))}><span className="option-title">{text.labels.showStatus}</span><OptionDesc>{text.labels.showStatusDesc}</OptionDesc></div>
-          <div className={`option-card ${headerStyle.showCloseButton ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={headerStyle.showCloseButton} onClick={() => onHeaderStyleChange({ ...headerStyle, showCloseButton: !headerStyle.showCloseButton })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onHeaderStyleChange({ ...headerStyle, showCloseButton: !headerStyle.showCloseButton }))}><span className="option-title">{text.labels.showCloseButton}</span><OptionDesc>{text.labels.showCloseButtonDesc}</OptionDesc></div>
-          <div className={`option-card ${headerStyle.showAvatar ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={headerStyle.showAvatar} onClick={() => onHeaderStyleChange({ ...headerStyle, showAvatar: !headerStyle.showAvatar })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onHeaderStyleChange({ ...headerStyle, showAvatar: !headerStyle.showAvatar }))}><span className="option-title">{text.labels.showAvatar}</span><OptionDesc>{text.labels.showAvatarDesc}</OptionDesc></div>
-          <div className={`option-card ${headerStyle.showTitle ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={headerStyle.showTitle} onClick={() => onHeaderStyleChange({ ...headerStyle, showTitle: !headerStyle.showTitle })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onHeaderStyleChange({ ...headerStyle, showTitle: !headerStyle.showTitle }))}><span className="option-title">{text.labels.showTitle}</span><OptionDesc>{text.labels.showTitleDesc}</OptionDesc></div>
-          {renderMotionControl('openAnimation')}
-          <div className="option-card option-card--radio"><span className="option-title">{language === 'no' ? 'Form' : 'Shape'}</span><GlassRadioRow name="header-corner-style" renderPreview={(value) => renderChatSurfacePreview('header', 'corner', value)} value={headerCornerStyle} options={[{ value: 'rounded', label: text.options.rounded }, { value: 'square', label: text.options.square }]} onChange={(nextValue) => onHeaderStyleChange({ ...headerStyle, cornerStyle: nextValue as CornerStyle, borderType: headerStyle.borderType })} /></div>
-          <div className="option-card option-card--radio"><span className="option-title">{text.labels.borderType}</span><GlassRadioRow name="header-border-type" renderPreview={(value) => renderChatSurfacePreview('header', 'border', value)} value={surfaceValue(headerStyle)} options={surfaceBorders} onChange={(value) => onHeaderStyleChange({ ...headerStyle, borderLine: value as SurfaceBorder })} /></div>
-          <div className="option-card option-card--radio"><span className="option-title">{text.labels.shadowType}</span><GlassRadioRow name="header-shadow-type" renderPreview={(value) => renderChatSurfacePreview('header', 'shadow', value)} value={headerStyle.shadowType} options={[{ value: 'none', label: text.options.none }, { value: 'light', label: text.options.light }, { value: 'medium', label: text.options.medium }, { value: 'heavy', label: text.options.heavy }]} onChange={(nextValue) => onHeaderStyleChange({ ...headerStyle, shadowType: nextValue as ShadowType })} /></div>
-
-          <div className="sectionIconGrid">
+<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiLayout aria-hidden="true" /></span><div><h3>{language === 'no' ? "Toppfeltets ramme" : "Surface and appearance"}</h3><p>{language === 'no' ? "Form, kant og visuelle detaljer." : "Shape, borders and visual details."}</p></div></div>
+{renderMotionControl('openAnimation')}
+<div className="option-card option-card--radio"><span className="option-title">{language === 'no' ? 'Form' : 'Shape'}</span><GlassRadioRow name="header-corner-style" renderPreview={(value) => renderChatSurfacePreview('header', 'corner', value)} value={headerCornerStyle} options={[{ value: 'rounded', label: text.options.rounded }, { value: 'square', label: text.options.square }]} onChange={(nextValue) => onHeaderStyleChange({ ...headerStyle, cornerStyle: nextValue as CornerStyle, borderType: headerStyle.borderType })} /></div>
+<div className="option-card option-card--radio"><span className="option-title">{text.labels.borderType}</span><GlassRadioRow name="header-border-type" renderPreview={(value) => renderChatSurfacePreview('header', 'border', value)} value={surfaceValue(headerStyle)} options={surfaceBorders} onChange={(value) => onHeaderStyleChange({ ...headerStyle, borderLine: value as SurfaceBorder })} /></div>
+<div className="option-card option-card--radio"><span className="option-title">{text.labels.shadowType}</span><GlassRadioRow name="header-shadow-type" renderPreview={(value) => renderChatSurfacePreview('header', 'shadow', value)} value={headerStyle.shadowType} options={[{ value: 'none', label: text.options.none }, { value: 'light', label: text.options.light }, { value: 'medium', label: text.options.medium }, { value: 'heavy', label: text.options.heavy }]} onChange={(nextValue) => onHeaderStyleChange({ ...headerStyle, shadowType: nextValue as ShadowType })} /></div>
+<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiMessageSquare aria-hidden="true" /></span><div><h3>{language === 'no' ? "Innhold i toppfeltet" : "Content and controls"}</h3><p>{language === 'no' ? "Velg hva som skal vises i dette området." : "Choose what appears in this area."}</p></div></div>
+<div className={`option-card ${headerStyle.showStatus ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={headerStyle.showStatus} onClick={() => onHeaderStyleChange({ ...headerStyle, showStatus: !headerStyle.showStatus })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onHeaderStyleChange({ ...headerStyle, showStatus: !headerStyle.showStatus }))}><span className="option-title">{text.labels.showStatus}</span><OptionDesc>{text.labels.showStatusDesc}</OptionDesc></div>
+<div className={`option-card ${headerStyle.showCloseButton ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={headerStyle.showCloseButton} onClick={() => onHeaderStyleChange({ ...headerStyle, showCloseButton: !headerStyle.showCloseButton })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onHeaderStyleChange({ ...headerStyle, showCloseButton: !headerStyle.showCloseButton }))}><span className="option-title">{text.labels.showCloseButton}</span><OptionDesc>{text.labels.showCloseButtonDesc}</OptionDesc></div>
+<div className={`option-card ${headerStyle.showAvatar ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={headerStyle.showAvatar} onClick={() => onHeaderStyleChange({ ...headerStyle, showAvatar: !headerStyle.showAvatar })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onHeaderStyleChange({ ...headerStyle, showAvatar: !headerStyle.showAvatar }))}><span className="option-title">{text.labels.showAvatar}</span><OptionDesc>{text.labels.showAvatarDesc}</OptionDesc></div>
+<div className={`option-card ${headerStyle.showTitle ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={headerStyle.showTitle} onClick={() => onHeaderStyleChange({ ...headerStyle, showTitle: !headerStyle.showTitle })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onHeaderStyleChange({ ...headerStyle, showTitle: !headerStyle.showTitle }))}><span className="option-title">{text.labels.showTitle}</span><OptionDesc>{text.labels.showTitleDesc}</OptionDesc></div>
+<label className="branding-field"><span>{language === 'no' ? 'Navn i chatten' : 'Chat name'}</span><input type="text" value={customBranding.title || ''} onChange={(event) => onCustomBrandingChange({ ...customBranding, title: event.target.value })} placeholder="Support Chat" /></label>
+<label className="branding-field"><span>{language === 'no' ? 'Kort velkomsttekst' : 'Short welcome message'}</span><input type="text" value={customBranding.description || ''} onChange={(event) => onCustomBrandingChange({ ...customBranding, description: event.target.value })} placeholder="We are here to help you!" /></label>
+<div className="branding-field branding-field--logo"><span>{language === 'no' ? 'Bedriftens logo' : 'Company logo'}</span><LogoUploadEditor branding={customBranding} onChange={onCustomBrandingChange} /></div>
+<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiImage aria-hidden="true" /></span><div><h3>{language === 'no' ? "Ikoner" : "Icons"}</h3><p>{language === 'no' ? "Velg symbolene som forklarer funksjonene." : "Choose the symbols for each function."}</p></div></div>
+<div className="sectionIconGrid">
             {sectionIconFields.header.map((item) => (
               <IconPickerBubble
                 key={item.field}
-                label={item.label}
+                label={copy(item.label)}
                 value={widgetIcons[item.field] || ''}
                 onChange={(nextValue) => updateWidgetIcon(item.field, nextValue)}
-                helperText={customInterfaceIconsAvailable ? item.helper : 'Available on Pro and Enterprise plans.'}
+                helperText={customInterfaceIconsAvailable ? copy(item.helper) : copy("Available on Pro and Enterprise plans.")}
                 disabled={!customInterfaceIconsAvailable}
               />
             ))}
           </div>
-
-          <label className="branding-field"><span>{language === 'no' ? 'Navn i chatten' : 'Chat name'}</span><input type="text" value={customBranding.title || ''} onChange={(event) => onCustomBrandingChange({ ...customBranding, title: event.target.value })} placeholder="Support Chat" /></label>
-          <label className="branding-field"><span>{language === 'no' ? 'Kort velkomsttekst' : 'Short welcome message'}</span><input type="text" value={customBranding.description || ''} onChange={(event) => onCustomBrandingChange({ ...customBranding, description: event.target.value })} placeholder="We are here to help you!" /></label>
-          <div className="branding-field branding-field--logo"><span>{language === 'no' ? 'Bedriftens logo' : 'Company logo'}</span><LogoUploadEditor branding={customBranding} onChange={onCustomBrandingChange} /></div>
-        </div>
+</div>
       </div>
 
       <div className="group">
@@ -1046,32 +1042,34 @@ export default function StyleSelector({
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.body ? 'open' : ''}`}>
-          {renderMotionControl('sentAnimation')}
-          {renderMotionControl('receivedAnimation')}
-          <div className="option-card option-card--radio"><span className="option-title">{text.labels.borderType}</span><GlassRadioRow name="body-border-type" renderPreview={(value) => renderChatSurfacePreview('body', 'border', value)} value={surfaceValue(bodyStyle)} options={surfaceBorders} onChange={(value) => onBodyStyleChange({ ...bodyStyle, borderLine: value as SurfaceBorder })} /></div>
-          <div className="option-card option-card--radio"><span className="option-title">{language === 'no' ? 'Form p\u00e5 meldingsbobler' : 'Message bubble shape'}</span><GlassRadioRow name="message-corner-style" renderPreview={(value) => renderChatSurfacePreview('body', 'message-corner', value)} value={bodyStyle.messageCornerStyle || (bodyStyle.messageStyle === 'flat' ? 'square' : 'rounded')} options={[{ value: 'rounded', label: text.options.rounded }, { value: 'square', label: text.options.square }]} onChange={(value) => onBodyStyleChange({ ...bodyStyle, messageCornerStyle: value as CornerStyle })} /></div>
-          <div className="option-card option-card--radio"><span className="option-title">{language === 'no' ? 'Kant p\u00e5 meldingsbobler' : 'Message bubble border'}</span><GlassRadioRow name="message-border-type" renderPreview={(value) => renderChatSurfacePreview('body', 'message-border', value)} value={bodyStyle.messageBorderLine || 'none'} options={surfaceBorders} onChange={(value) => onBodyStyleChange({ ...bodyStyle, messageBorderLine: value as SurfaceBorder })} /></div>
-          <div className="option-card option-card--radio"><span className="option-title">{text.labels.shadowType}</span><GlassRadioRow name="body-shadow-type" renderPreview={(value) => renderChatSurfacePreview('body', 'shadow', value)} value={bodyStyle.shadowType} options={[{ value: 'none', label: text.options.none }, { value: 'light', label: text.options.light }, { value: 'medium', label: text.options.medium }, { value: 'heavy', label: text.options.heavy }]} onChange={(nextValue) => onBodyStyleChange({ ...bodyStyle, shadowType: nextValue as ShadowType })} /></div>
-          <div className="option-card option-card--radio"><span className="option-title">{text.labels.messageStyle}</span><GlassRadioRow name="body-message-style" renderPreview={(value) => renderChatSurfacePreview('body', 'message', value)} value={bodyStyle.messageStyle} options={[{ value: 'bubble', label: text.options.bubble }, { value: 'flat', label: text.options.flat }, { value: 'card', label: text.options.card }]} onChange={(nextValue) => onBodyStyleChange({ ...bodyStyle, messageStyle: nextValue as MessageStyle })} /></div>
-          <div className={`option-card ${bodyStyle.showTimestamps ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={bodyStyle.showTimestamps} onClick={() => onBodyStyleChange({ ...bodyStyle, showTimestamps: !bodyStyle.showTimestamps })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onBodyStyleChange({ ...bodyStyle, showTimestamps: !bodyStyle.showTimestamps }))}><span className="option-title">{text.labels.showTimestamps}</span><OptionDesc>{text.labels.showTimestampsDesc}</OptionDesc></div>
-          <div className={`option-card ${bodyStyle.showReadReceipts ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={bodyStyle.showReadReceipts} onClick={() => onBodyStyleChange({ ...bodyStyle, showReadReceipts: !bodyStyle.showReadReceipts })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onBodyStyleChange({ ...bodyStyle, showReadReceipts: !bodyStyle.showReadReceipts }))}><span className="option-title">{text.labels.showReadReceipts}</span><OptionDesc>{text.labels.showReadReceiptsDesc}</OptionDesc></div>
-          <div className={`option-card ${bodyStyle.showConversationCards ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={bodyStyle.showConversationCards} onClick={() => onBodyStyleChange({ ...bodyStyle, showConversationCards: !bodyStyle.showConversationCards })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onBodyStyleChange({ ...bodyStyle, showConversationCards: !bodyStyle.showConversationCards }))}><span className="option-title">{text.labels.showStarterCards}</span><OptionDesc>{text.labels.showStarterCardsDesc}</OptionDesc></div>
-          {bodyStyle.showConversationCards ? <div className="option-card option-card--radio"><span className="option-title">{text.labels.cardStyle}</span><GlassRadioRow name="body-conversation-cards-style" value={bodyStyle.conversationCardsStyle} options={[{ value: 'modern', label: text.options.modern }, { value: 'minimal', label: text.options.minimal }, { value: 'bubble', label: text.options.bubbleGlow }, { value: 'image', label: text.options.imageBased }, { value: 'chips', label: text.options.quickChips }]} onChange={(nextValue) => onBodyStyleChange({ ...bodyStyle, conversationCardsStyle: nextValue as StyleSelectorProps['bodyStyle']['conversationCardsStyle'] })} /></div> : null}
-
-          <div className="sectionIconGrid">
+<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiLayout aria-hidden="true" /></span><div><h3>{language === 'no' ? "Meldingsområdet" : "Surface and appearance"}</h3><p>{language === 'no' ? "Form, kant og visuelle detaljer." : "Shape, borders and visual details."}</p></div></div>
+<div className="option-card option-card--radio"><span className="option-title">{text.labels.borderType}</span><GlassRadioRow name="body-border-type" renderPreview={(value) => renderChatSurfacePreview('body', 'border', value)} value={surfaceValue(bodyStyle)} options={surfaceBorders} onChange={(value) => onBodyStyleChange({ ...bodyStyle, borderLine: value as SurfaceBorder })} /></div>
+<div className="option-card option-card--radio"><span className="option-title">{text.labels.shadowType}</span><GlassRadioRow name="body-shadow-type" renderPreview={(value) => renderChatSurfacePreview('body', 'shadow', value)} value={bodyStyle.shadowType} options={[{ value: 'none', label: text.options.none }, { value: 'light', label: text.options.light }, { value: 'medium', label: text.options.medium }, { value: 'heavy', label: text.options.heavy }]} onChange={(nextValue) => onBodyStyleChange({ ...bodyStyle, shadowType: nextValue as ShadowType })} /></div>
+<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiMessageSquare aria-hidden="true" /></span><div><h3>{language === 'no' ? "Chatmeldingene" : "Chat messages"}</h3><p>{language === 'no' ? "Stil, form, kant og animasjon for meldingene." : "Message style, shape, border and animation."}</p></div></div>
+<div className="option-card option-card--radio"><span className="option-title">{language === 'no' ? 'Form p\u00e5 meldingsbobler' : 'Message bubble shape'}</span><GlassRadioRow name="message-corner-style" renderPreview={(value) => renderChatSurfacePreview('body', 'message-corner', value)} value={bodyStyle.messageCornerStyle || (bodyStyle.messageStyle === 'flat' ? 'square' : 'rounded')} options={[{ value: 'rounded', label: text.options.rounded }, { value: 'square', label: text.options.square }]} onChange={(value) => onBodyStyleChange({ ...bodyStyle, messageCornerStyle: value as CornerStyle })} /></div>
+<div className="option-card option-card--radio"><span className="option-title">{language === 'no' ? 'Kant p\u00e5 meldingsbobler' : 'Message bubble border'}</span><GlassRadioRow name="message-border-type" renderPreview={(value) => renderChatSurfacePreview('body', 'message-border', value)} value={bodyStyle.messageBorderLine || 'none'} options={surfaceBorders} onChange={(value) => onBodyStyleChange({ ...bodyStyle, messageBorderLine: value as SurfaceBorder })} /></div>
+<div className="option-card option-card--radio"><span className="option-title">{text.labels.messageStyle}</span><GlassRadioRow name="body-message-style" renderPreview={(value) => renderChatSurfacePreview('body', 'message', value)} value={bodyStyle.messageStyle} options={[{ value: 'bubble', label: text.options.bubble }, { value: 'flat', label: text.options.flat }, { value: 'card', label: text.options.card }]} onChange={(nextValue) => onBodyStyleChange({ ...bodyStyle, messageStyle: nextValue as MessageStyle })} /></div>
+{renderMotionControl('sentAnimation')}
+{renderMotionControl('receivedAnimation')}
+<div className={`option-card ${bodyStyle.showTimestamps ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={bodyStyle.showTimestamps} onClick={() => onBodyStyleChange({ ...bodyStyle, showTimestamps: !bodyStyle.showTimestamps })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onBodyStyleChange({ ...bodyStyle, showTimestamps: !bodyStyle.showTimestamps }))}><span className="option-title">{text.labels.showTimestamps}</span><OptionDesc>{text.labels.showTimestampsDesc}</OptionDesc></div>
+<div className={`option-card ${bodyStyle.showReadReceipts ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={bodyStyle.showReadReceipts} onClick={() => onBodyStyleChange({ ...bodyStyle, showReadReceipts: !bodyStyle.showReadReceipts })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onBodyStyleChange({ ...bodyStyle, showReadReceipts: !bodyStyle.showReadReceipts }))}><span className="option-title">{text.labels.showReadReceipts}</span><OptionDesc>{text.labels.showReadReceiptsDesc}</OptionDesc></div>
+<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiImage aria-hidden="true" /></span><div><h3>{language === 'no' ? "Ikoner" : "Icons"}</h3><p>{language === 'no' ? "Velg symbolene som forklarer funksjonene." : "Choose the symbols for each function."}</p></div></div>
+<div className="sectionIconGrid">
             {sectionIconFields.body.map((item) => (
               <IconPickerBubble
                 key={item.field}
-                label={item.label}
+                label={copy(item.label)}
                 value={widgetIcons[item.field] || ''}
                 onChange={(nextValue) => updateWidgetIcon(item.field, nextValue)}
-                helperText={customInterfaceIconsAvailable ? item.helper : 'Available on Pro and Enterprise plans.'}
+                helperText={customInterfaceIconsAvailable ? copy(item.helper) : copy("Available on Pro and Enterprise plans.")}
                 disabled={!customInterfaceIconsAvailable}
               />
             ))}
           </div>
-
-          {bodyStyle.showConversationCards ? (
+<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiPlus aria-hidden="true" /></span><div><h3>{language === 'no' ? "Tillegg" : "Extras"}</h3><p>{language === 'no' ? "Ekstra innhold og funksjoner." : "Additional content and features."}</p></div></div>
+<div className={`option-card ${bodyStyle.showConversationCards ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={bodyStyle.showConversationCards} onClick={() => onBodyStyleChange({ ...bodyStyle, showConversationCards: !bodyStyle.showConversationCards })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onBodyStyleChange({ ...bodyStyle, showConversationCards: !bodyStyle.showConversationCards }))}><span className="option-title">{text.labels.showStarterCards}</span><OptionDesc>{text.labels.showStarterCardsDesc}</OptionDesc></div>
+{bodyStyle.showConversationCards ? <div className="option-card option-card--radio"><span className="option-title">{text.labels.cardStyle}</span><GlassRadioRow name="body-conversation-cards-style" value={bodyStyle.conversationCardsStyle} options={[{ value: 'modern', label: text.options.modern }, { value: 'minimal', label: text.options.minimal }, { value: 'bubble', label: text.options.bubbleGlow }, { value: 'image', label: text.options.imageBased }, { value: 'chips', label: text.options.quickChips }]} onChange={(nextValue) => onBodyStyleChange({ ...bodyStyle, conversationCardsStyle: nextValue as StyleSelectorProps['bodyStyle']['conversationCardsStyle'] })} /></div> : null}
+{bodyStyle.showConversationCards ? (
             <div className="starterCardsPanel">
               <div className="starterCardsPanel__header">
                 <div>
@@ -1124,8 +1122,8 @@ export default function StyleSelector({
                         <span className="starterCardsTree__icon">{renderWidgetIcon(card.icon, { 'aria-hidden': true }) || <FiMessageCircle aria-hidden="true" />}</span>
                         <span className="starterCardsTree__copy">
                           <span className="starterCardsTree__eyebrow">{language === 'no' ? 'Kort' : 'Card'} {index + 1}</span>
-                          <strong>{card.title || `Untitled card ${index + 1}`}</strong>
-                          <span>{card.description || 'No description yet'}</span>
+                          <strong>{card.title || `${language === 'no' ? 'Kort uten tittel' : 'Untitled card'} ${index + 1}`}</strong>
+                          <span>{card.description || copy("No description yet")}</span>
                         </span>
                         <span className="starterCardsTree__meta">{card.options.length} {language === 'no' ? 'valg' : 'options'}</span>
                         <FiChevronRight className="starterCardsTree__chevron" aria-hidden="true" />
@@ -1137,7 +1135,7 @@ export default function StyleSelector({
               )}
             </div>
           ) : null}
-        </div>
+</div>
       </div>
 
       <div className="group">
@@ -1147,26 +1145,28 @@ export default function StyleSelector({
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.footer ? 'open' : ''}`}>
-          <div className={`option-card ${footerStyle.showSendButton ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={footerStyle.showSendButton} onClick={() => onFooterStyleChange({ ...footerStyle, showSendButton: !footerStyle.showSendButton })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onFooterStyleChange({ ...footerStyle, showSendButton: !footerStyle.showSendButton }))}><span className="option-title">{text.labels.showSendButton}</span><OptionDesc>{text.labels.showSendButtonDesc}</OptionDesc></div>
-          <div className="option-card option-card--radio"><span className="option-title">{language === 'no' ? 'Form' : 'Shape'}</span><GlassRadioRow name="footer-corner-style" renderPreview={(value) => renderChatSurfacePreview('footer', 'corner', value)} value={footerCornerStyle} options={[{ value: 'rounded', label: text.options.rounded }, { value: 'square', label: text.options.square }]} onChange={(nextValue) => onFooterStyleChange({ ...footerStyle, cornerStyle: nextValue as CornerStyle, borderType: footerStyle.borderType })} /></div>
-          <div className="option-card option-card--radio"><span className="option-title">{text.labels.borderType}</span><GlassRadioRow name="footer-border-type" renderPreview={(value) => renderChatSurfacePreview('footer', 'border', value)} value={surfaceValue(footerStyle)} options={surfaceBorders} onChange={(value) => onFooterStyleChange({ ...footerStyle, borderLine: value as SurfaceBorder })} /></div>
-          <div className="option-card option-card--radio"><span className="option-title">{text.labels.shadowType}</span><GlassRadioRow name="footer-shadow-type" renderPreview={(value) => renderChatSurfacePreview('footer', 'shadow', value)} value={footerStyle.shadowType} options={[{ value: 'none', label: text.options.none }, { value: 'light', label: text.options.light }, { value: 'medium', label: text.options.medium }, { value: 'heavy', label: text.options.heavy }]} onChange={(nextValue) => onFooterStyleChange({ ...footerStyle, shadowType: nextValue as ShadowType })} /></div>
-          <div className="option-card option-card--radio"><span className="option-title">{text.labels.inputStyle}</span><GlassRadioRow name="footer-input-style" renderPreview={(value) => renderChatSurfacePreview('footer', 'input', value)} value={footerStyle.inputStyle} options={[{ value: 'flat', label: text.options.flat }, { value: 'rounded', label: text.options.rounded }, { value: 'outlined', label: text.options.outlined }]} onChange={(nextValue) => onFooterStyleChange({ ...footerStyle, inputStyle: nextValue as InputStyle })} /></div>
-          <div className={`option-card ${footerStyle.showPlaceholder ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={footerStyle.showPlaceholder} onClick={() => onFooterStyleChange({ ...footerStyle, showPlaceholder: !footerStyle.showPlaceholder })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onFooterStyleChange({ ...footerStyle, showPlaceholder: !footerStyle.showPlaceholder }))}><span className="option-title">{text.labels.showPlaceholder}</span><OptionDesc>{text.labels.showPlaceholderDesc}</OptionDesc></div>
-
-          <div className="sectionIconGrid">
+<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiLayout aria-hidden="true" /></span><div><h3>{language === 'no' ? "Skrivefeltets ramme" : "Surface and appearance"}</h3><p>{language === 'no' ? "Form, kant og visuelle detaljer." : "Shape, borders and visual details."}</p></div></div>
+<div className="option-card option-card--radio"><span className="option-title">{language === 'no' ? 'Form' : 'Shape'}</span><GlassRadioRow name="footer-corner-style" renderPreview={(value) => renderChatSurfacePreview('footer', 'corner', value)} value={footerCornerStyle} options={[{ value: 'rounded', label: text.options.rounded }, { value: 'square', label: text.options.square }]} onChange={(nextValue) => onFooterStyleChange({ ...footerStyle, cornerStyle: nextValue as CornerStyle, borderType: footerStyle.borderType })} /></div>
+<div className="option-card option-card--radio"><span className="option-title">{text.labels.borderType}</span><GlassRadioRow name="footer-border-type" renderPreview={(value) => renderChatSurfacePreview('footer', 'border', value)} value={surfaceValue(footerStyle)} options={surfaceBorders} onChange={(value) => onFooterStyleChange({ ...footerStyle, borderLine: value as SurfaceBorder })} /></div>
+<div className="option-card option-card--radio"><span className="option-title">{text.labels.shadowType}</span><GlassRadioRow name="footer-shadow-type" renderPreview={(value) => renderChatSurfacePreview('footer', 'shadow', value)} value={footerStyle.shadowType} options={[{ value: 'none', label: text.options.none }, { value: 'light', label: text.options.light }, { value: 'medium', label: text.options.medium }, { value: 'heavy', label: text.options.heavy }]} onChange={(nextValue) => onFooterStyleChange({ ...footerStyle, shadowType: nextValue as ShadowType })} /></div>
+<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiMessageSquare aria-hidden="true" /></span><div><h3>{language === 'no' ? "Innhold og skrivefelt" : "Content and controls"}</h3><p>{language === 'no' ? "Velg hva som skal vises i dette området." : "Choose what appears in this area."}</p></div></div>
+<div className={`option-card ${footerStyle.showSendButton ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={footerStyle.showSendButton} onClick={() => onFooterStyleChange({ ...footerStyle, showSendButton: !footerStyle.showSendButton })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onFooterStyleChange({ ...footerStyle, showSendButton: !footerStyle.showSendButton }))}><span className="option-title">{text.labels.showSendButton}</span><OptionDesc>{text.labels.showSendButtonDesc}</OptionDesc></div>
+<div className="option-card option-card--radio"><span className="option-title">{text.labels.inputStyle}</span><GlassRadioRow name="footer-input-style" renderPreview={(value) => renderChatSurfacePreview('footer', 'input', value)} value={footerStyle.inputStyle} options={[{ value: 'flat', label: text.options.flat }, { value: 'rounded', label: text.options.rounded }, { value: 'outlined', label: text.options.outlined }]} onChange={(nextValue) => onFooterStyleChange({ ...footerStyle, inputStyle: nextValue as InputStyle })} /></div>
+<div className={`option-card ${footerStyle.showPlaceholder ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={footerStyle.showPlaceholder} onClick={() => onFooterStyleChange({ ...footerStyle, showPlaceholder: !footerStyle.showPlaceholder })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onFooterStyleChange({ ...footerStyle, showPlaceholder: !footerStyle.showPlaceholder }))}><span className="option-title">{text.labels.showPlaceholder}</span><OptionDesc>{text.labels.showPlaceholderDesc}</OptionDesc></div>
+<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiImage aria-hidden="true" /></span><div><h3>{language === 'no' ? "Ikoner" : "Icons"}</h3><p>{language === 'no' ? "Velg symbolene som forklarer funksjonene." : "Choose the symbols for each function."}</p></div></div>
+<div className="sectionIconGrid">
             {sectionIconFields.footer.map((item) => (
               <IconPickerBubble
                 key={item.field}
-                label={item.label}
+                label={copy(item.label)}
                 value={widgetIcons[item.field] || ''}
                 onChange={(nextValue) => updateWidgetIcon(item.field, nextValue)}
-                helperText={customInterfaceIconsAvailable ? item.helper : 'Available on Pro and Enterprise plans.'}
+                helperText={customInterfaceIconsAvailable ? copy(item.helper) : copy("Available on Pro and Enterprise plans.")}
                 disabled={!customInterfaceIconsAvailable}
               />
             ))}
           </div>
-        </div>
+</div>
       </div>
 
       <div className="group">

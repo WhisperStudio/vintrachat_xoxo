@@ -17,7 +17,7 @@ type Account = { plan: Plan; canManage: boolean; billing: Business['billing'] | 
 
 export default function PricingClient({ configured, testMode, embedded = false }: { configured: boolean; testMode: boolean; embedded?: boolean }) {
   const { firebaseUser, business, loading, isAuthenticated, refreshBusiness } = useAuth()
-  const { language, setLanguage } = useVintraLanguage()
+  const { language } = useVintraLanguage()
   const no = language === 'no'
   const locale = no ? 'nb-NO' : 'en-GB'
   const t = useCallback((text: string) => no ? text : billingEnglish[text] || text, [no])
@@ -71,11 +71,7 @@ export default function PricingClient({ configured, testMode, embedded = false }
 
   return <main className={embedded ? "billing-page workspaceBilling" : "billing-page"} data-header-tone="dark">
     <div className="billing-wrap">
-      <div className="billing-cycle" aria-label={no ? 'Språk' : 'Language'}>
-        <button type="button" lang="nb" aria-pressed={no} onClick={() => setLanguage('no')}>Norsk</button>
-        <button type="button" lang="en" aria-pressed={!no} onClick={() => setLanguage('en')}>English</button>
-      </div>
-      <div className="billing-eyebrow"><span /> {t("VINTRA CHAT · ABONNEMENT")}</div>
+
       <section className="billing-hero">
         <h1>{t("Små spørsmål.")}<br /><span>{t("Store muligheter.")}</span></h1>
         <p>{t("Gi besøkende et svar når de trenger det. Start gratis, og få mer kapasitet og flere muligheter når bedriften vokser.")}</p>

@@ -581,6 +581,11 @@
   cursor: not-allowed;
 }
 
+.widget-icon-picker__clear svg {
+  width: 20px;
+  height: 20px;
+}
+
 .widget-icon-picker__helper {
   margin: 0;
   color: #64748b;
@@ -658,6 +663,20 @@
   font-size: 0.76rem;
   font-weight: 700;
   text-align: center;
+}
+
+.widget-icon-picker__show-all {
+  width: 100%;
+  margin-top: 0.65rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.96);
+  color: #334155;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .orbSettingsGrid {

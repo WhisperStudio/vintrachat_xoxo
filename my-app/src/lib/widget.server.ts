@@ -214,6 +214,8 @@ export function toPublicAssistantConfig(
   if (!config) return null
 
   return {
+    localization: config.localization,
+    startCard: config.startCard,
     enabled: config.enabled,
     humanSupportEnabled: config.humanSupportEnabled,
     handoffMessage: config.handoffMessage,

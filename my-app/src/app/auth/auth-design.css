@@ -189,3 +189,8 @@ html[data-theme='dark'] .nordicAuthMountains { filter: brightness(.65) saturate(
 .nordicAuthTrees { position: absolute; bottom: 0; right: -3%; width: 76%; height: auto; --spruce-green: #315e70; }
 html[data-theme='dark'] .nordicAuthTrees { --spruce-green: #255064; }
 .nordicAuthLandscape .seasonSnowField { z-index: 2; }
+.nordicAuthFormContent .authCard { width: 100%; max-width: none; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: var(--auth-text); }
+.nordicAuthFormContent .authHeadline { color: var(--auth-text); font-size: 30px; }
+.nordicAuthFormContent .authBody, .nordicAuthFormContent .authTinyNote, .nordicAuthFormContent .authChecklist span { color: var(--auth-muted); }
+.nordicAuthFormContent .authSecondarySurface, .nordicAuthFormContent .authNotice { background: var(--auth-soft); border-color: var(--auth-line); color: var(--auth-text); }
+.nordicAuthFormContent .authButtonStack .primaryBtn, .nordicAuthFormContent .authButtonStack .secondaryBtn { min-height: 46px; border-radius: 9px; }

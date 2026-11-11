@@ -1,6 +1,6 @@
 'use client'
 
-import Image from 'next/image'
+import AuthFrame from '../AuthFrame'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -67,62 +67,7 @@ export default function VerifyEmailSentClient() {
   }
 
   return (
-    <main className="authPage authExperience">
-      <div className="authShowcase">
-        <section className="authBrandPanel">
-          <div className="authBrandHeader">
-            <div className="authBrandLogo">
-              <Image src="/image/logo.png" alt="Vintra logo" width={40} height={40} />
-            </div>
-            <div className="authBrandName">
-              <strong>Vintra</strong>
-              <span>Websites and AI chatbots for businesses</span>
-            </div>
-          </div>
-
-          <div>
-            <div className="authBrandEyebrow">Account verification</div>
-            <h1>One more click and your workspace is ready.</h1>
-          </div>
-
-          <p className="authBrandLead">
-            We have sent a branded verification email so you can activate your account securely and move straight into setup.
-          </p>
-
-          <div className="authFeatureList">
-            <div className="authFeatureItem">
-              <div className="authFeatureIcon">
-                <FiMail size={18} />
-              </div>
-              <div>
-                <strong>Check the message from Vintra</strong>
-                <span>Open the verification email and use the secure button inside it to confirm your address.</span>
-              </div>
-            </div>
-
-            <div className="authFeatureItem">
-              <div className="authFeatureIcon">
-                <FiShield size={18} />
-              </div>
-              <div>
-                <strong>Protected activation</strong>
-                <span>Your verification link is unique to your signup flow so only the account owner can finish setup.</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="authBrandStats">
-            <div className="authStatCard">
-              <strong>24h</strong>
-              <span>Verification links stay active long enough to finish onboarding calmly.</span>
-            </div>
-            <div className="authStatCard">
-              <strong>60s</strong>
-              <span>Short resend cooldown to prevent accidental spam and keep delivery clean.</span>
-            </div>
-          </div>
-        </section>
-
+    <AuthFrame>
         <section className="authCard authCardElevated">
           <div className="authCardHeader">
             <div className="authIconBadge">
@@ -130,7 +75,7 @@ export default function VerifyEmailSentClient() {
             </div>
             <div>
               <p className="authKicker">Verification sent</p>
-              <h2 className="authHeadline">Check your inbox</h2>
+              <h2 className="authHeadline" id="auth-title">Check your inbox</h2>
             </div>
           </div>
 
@@ -211,7 +156,6 @@ export default function VerifyEmailSentClient() {
             Continue to login <FiArrowRight size={16} />
           </Link>
         </section>
-      </div>
-    </main>
+    </AuthFrame>
   )
 }

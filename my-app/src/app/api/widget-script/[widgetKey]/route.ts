@@ -199,6 +199,7 @@ const widgetStyles = `
   cursor:pointer;
 }
 .vintra-widget .chat-header-back svg { width:20px; height:20px; }
+.vintra-widget .close-btn > svg { width:24px !important; height:24px !important; min-width:24px; min-height:24px; }
 .vintra-widget .widget-faq-suggestions { display:flex; flex-wrap:wrap; align-items:flex-start; gap:8px; padding:10px; border:1px solid color-mix(in srgb,var(--chat-primary,#285f86) 16%,transparent); border-radius:14px; background:color-mix(in srgb,var(--chat-primary,#285f86) 5%,var(--chat-bg,#fff)); }
 .vintra-widget .widget-faq-suggestions__title { flex:0 0 100%; color:var(--chat-text,#19354a); font-size:11px; font-weight:700; }
 .vintra-widget .widget-faq-chip {
@@ -367,9 +368,10 @@ const widgetStyles = `
   border-radius: 14px;
   background: color-mix(in srgb,var(--chat-primary,#285f86) 10%,var(--chat-bg,#fff));
   color: var(--chat-primary,#285f86);
-  font-size: 24px;
+  font-size: 20px;
   cursor: pointer;
 }
+.vintra-widget .chat-footer-row .widget-ticket-open svg { width:20px; height:20px; }
 
 .vintra-root {
   position: fixed;
@@ -982,6 +984,48 @@ export async function GET(
     } catch (error) {}
   }
 
+  function readStoredContactValue() {
+    try {
+      var key = '__vintraWidgetContact__' + WIDGET_KEY;
+      var raw = window.sessionStorage.getItem(key) || '';
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (!parsed || Number(parsed.expiresAt || 0) <= Date.now()) {
+        window.sessionStorage.removeItem(key);
+        return null;
+      }
+      return {
+        name: String(parsed.name || ''),
+        email: String(parsed.email || ''),
+        phone: String(parsed.phone || '')
+      };
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function writeStoredContactValue(value) {
+    try {
+      var key = '__vintraWidgetContact__' + WIDGET_KEY;
+      if (!value || !String(value.name || '').trim()) {
+        window.sessionStorage.removeItem(key);
+        return;
+      }
+      window.sessionStorage.setItem(key, JSON.stringify({
+        name: String(value.name || ''),
+        email: String(value.email || ''),
+        phone: String(value.phone || ''),
+        expiresAt: Date.now() + 10 * 60 * 1000
+      }));
+    } catch (error) {
+      setDebug('Could not save visitor contact details\\n' + (error && error.message ? error.message : String(error)));
+    }
+  }
+
+  function hasStoredContactValue() {
+    return state.contactSaved === true;
+  }
+
   function readStoredSupportStatus() {
     try {
       var value = window.localStorage.getItem(SUPPORT_STATUS_STORAGE_KEY) || '';
@@ -1011,6 +1055,7 @@ export async function GET(
   var storedSupportStatus = storedSessionId ? readStoredSupportStatus() : '';
   var storedDraftValue = readStoredDraftValue();
   var storedHandoffValue = readStoredHandoffValue();
+  var storedContactValue = readStoredContactValue();
 
   function captchaStorageKey() {
     return '__vintraWidgetCaptcha__' + WIDGET_KEY;
@@ -1035,6 +1080,12 @@ export async function GET(
   }
 
   var state = {
+    uiLanguage: 'no',
+    translations: {},
+    translationLoading: false,
+    translationError: false,
+    translationRequest: 0,
+    startCardDismissed: false,
     open: FORCE_OPEN,
     sessionId: storedSessionId,
     sending: false,
@@ -1052,9 +1103,10 @@ export async function GET(
     awaitingVisitorName: Boolean(storedHandoffValue && storedHandoffValue.open),
     pendingHumanSupportText: '',
     handoffFormOpen: Boolean(storedHandoffValue && storedHandoffValue.open),
-    handoffName: storedHandoffValue ? storedHandoffValue.name : '',
-    handoffEmail: storedHandoffValue ? storedHandoffValue.email : '',
-    handoffPhone: storedHandoffValue ? storedHandoffValue.phone : '',
+    handoffName: storedContactValue ? storedContactValue.name : (storedHandoffValue ? storedHandoffValue.name : ''),
+    handoffEmail: storedContactValue ? storedContactValue.email : (storedHandoffValue ? storedHandoffValue.email : ''),
+    handoffPhone: storedContactValue ? storedContactValue.phone : (storedHandoffValue ? storedHandoffValue.phone : ''),
+    contactSaved: Boolean(storedContactValue && storedContactValue.name),
     countryCode: '',
     hasOpenedOnce: FORCE_OPEN,
     hasUnreadWhileClosed: false,
@@ -1625,12 +1677,18 @@ export async function GET(
   }
 
   function shouldShowPortalTabs() {
-    return isTasksTabEnabled() && (getFlow().alwaysShowTickets || state.tasks.length > 0 || state.activePanel === 'tasks');
+    return isTasksTabEnabled() && (
+      getFlow().alwaysShowTickets ||
+      state.tasks.length > 0 ||
+      state.activePanel === 'tasks' ||
+      ((state.supportStatus === 'needs-human' || state.supportStatus === 'open' || state.supportStatus === 'ai-active') &&
+        (getFlow().allowVisitorCreation || getFlow().showTeamTasksToVisitors))
+    );
   }
 
   function getAvailablePanels() {
     var panels = [{ id: 'chats', label: 'Chats' }];
-    if (isTasksTabEnabled()) panels.push({ id: 'tasks', label: 'Ticket' });
+    if (isTasksTabEnabled()) panels.push({ id: 'tasks', label: 'Tickets' });
     return panels;
   }
 
@@ -1714,20 +1772,29 @@ export async function GET(
               '</article>'
             );
           }).join('') + '</div>'
-        : '<div class="widget-panel-empty">No tickets yet. Use the form below to create one.</div>';
+        : '<div class="widget-panel-empty">' + (getFlow().allowVisitorCreation ? 'No tickets yet. Use the form below to create one.' : 'No tickets to show yet.') + '</div>';
+    var supportConversationMarkup = state.supportStatus && state.supportStatus !== 'closed'
+      ? '<article class="widget-task-card"><div class="widget-task-card__top"><strong>Human support</strong><span class="widget-task-badge">' +
+        escapeHtml(state.supportStatus === 'open' ? 'Connected' : state.supportStatus === 'ai-active' ? 'AI assistant active' : 'Waiting for support') +
+        '</span></div><p>Your support conversation and updates are available in Chats.</p><button type="button" class="widget-feedback-secondary" data-widget-panel="chats">Open conversation</button></article>'
+      : '';
+    var contactMarkup = getFlow().allowVisitorCreation
+      ? (state.contactSaved
+            ? '<p class="widget-panel-empty">Using your saved contact details.</p>'
+            : '<label class="widget-feedback-field"><span>Name</span><input class="widget-ticket-contact" data-contact-field="name" autocomplete="name" value="' + escapeHtml(state.handoffName) + '" /></label>' +
+              (getFlow().showEmail ? '<label class="widget-feedback-field"><span>Email</span><input type="email" class="widget-ticket-contact" data-contact-field="email" autocomplete="email" value="' + escapeHtml(state.handoffEmail) + '" /></label>' : '') +
+              (getFlow().showPhone ? '<label class="widget-feedback-field"><span>Phone</span><input type="tel" class="widget-ticket-contact" data-contact-field="phone" autocomplete="tel" value="' + escapeHtml(state.handoffPhone) + '" /></label>' : '')) +
+          '<div class="widget-feedback-actions">' +
+            '<button type="button" class="widget-feedback-primary widget-task-submit" ' + ((state.taskSubmitting || validateContact(getFlow(), { name: state.handoffName, email: state.handoffEmail, phone: state.handoffPhone })) ? 'disabled' : '') + '>' + (state.taskSubmitting ? 'Submitting...' : 'Send request') + '</button>' +
+          '</div>'
+      : '';
 
     return (
       '<div class="widget-panel-page widget-panel-page--tasks ticket-layout-' + getFlow().ticketLayout + '">' +
-        (getFlow().allowVisitorCreation ? (
-        '<label class="widget-feedback-field"><span>Name</span><input class="widget-ticket-contact" data-contact-field="name" autocomplete="name" value="' + escapeHtml(state.handoffName) + '" /></label>' +
-        (getFlow().showEmail ? '<label class="widget-feedback-field"><span>Email</span><input type="email" class="widget-ticket-contact" data-contact-field="email" autocomplete="email" value="' + escapeHtml(state.handoffEmail) + '" /></label>' : '') +
-        (getFlow().showPhone ? '<label class="widget-feedback-field"><span>Phone</span><input type="tel" class="widget-ticket-contact" data-contact-field="phone" autocomplete="tel" value="' + escapeHtml(state.handoffPhone) + '" /></label>' : '') +
-        '<div class="widget-feedback-actions">' +
-          '<button type="button" class="widget-feedback-primary widget-task-submit" ' + ((state.taskSubmitting || validateContact(getFlow(), { name: state.handoffName, email: state.handoffEmail, phone: state.handoffPhone })) ? 'disabled' : '') + '>' + (state.taskSubmitting ? 'Submitting...' : 'Send request') + '</button>' +
-        '</div>'
-        ) : '') +
-        (state.taskNotice ? '<div class="widget-panel-inline-note">' + escapeHtml(state.taskNotice) + '</div>' : '') +
-        tasksMarkup +
+          contactMarkup +
+          (state.taskNotice ? '<div class="widget-panel-inline-note">' + escapeHtml(state.taskNotice) + '</div>' : '') +
+          supportConversationMarkup +
+          tasksMarkup +
       '</div>'
     );
   }
@@ -1761,7 +1828,7 @@ export async function GET(
       : '';
 
     if (!state.messages.length) {
-      return waitingLine + '<div class="message message-bot">Chat is ready. Send a message to start.</div>' + typingMarkup + supportTypingMarkup;
+      return waitingLine + '<div class="message message-bot">' + escapeHtml(uiText('Chat is ready. Send a message to start.')) + '</div>' + typingMarkup + supportTypingMarkup;
     }
 
     return waitingLine + state.messages.map(function (msg) {
@@ -1997,6 +2064,12 @@ export async function GET(
   function getHandoffOverlayMarkup() {
     if (!state.awaitingVisitorName) return '';
 
+    var contactMarkup = state.contactSaved
+      ? '<p class="widget-panel-empty">Using your saved contact details.</p>'
+      : '<label class="widget-handoff-field"><span>Name</span><input type="text" class="widget-handoff-input" data-handoff-field="name" value="' + escapeHtml(state.handoffName) + '" placeholder="Your name" autocomplete="name" /></label>' +
+        (getFlow().showEmail ? '<label class="widget-handoff-field"><span>Email</span><input type="email" class="widget-handoff-input" data-handoff-field="email" value="' + escapeHtml(state.handoffEmail) + '" placeholder="you@example.com" autocomplete="email" /></label>' : '') +
+        (getFlow().showPhone ? '<label class="widget-handoff-field"><span>Phone</span><input type="tel" class="widget-handoff-input" data-handoff-field="phone" value="' + escapeHtml(state.handoffPhone) + '" placeholder="+47 123 45 678" autocomplete="tel" /></label>' : '');
+
     return (
       '<div class="widget-handoff-overlay" role="dialog" aria-modal="true" aria-label="Human support request">' +
         '<div class="widget-handoff-card form-spacing-' + getFlow().formStyle + '">' +
@@ -2009,24 +2082,7 @@ export async function GET(
               '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7"></path></svg>' +
             '</button>' +
           '</div>' +
-          '<div class="widget-handoff-grid">' +
-            '<label class="widget-handoff-field">' +
-              '<span>Name</span>' +
-              '<input type="text" class="widget-handoff-input" data-handoff-field="name" value="' + escapeHtml(state.handoffName) + '" placeholder="Your name" autocomplete="name" />' +
-            '</label>' +
-            (getFlow().showEmail ? (
-            '<label class="widget-handoff-field">' +
-              '<span>Email</span>' +
-              '<input type="email" class="widget-handoff-input" data-handoff-field="email" value="' + escapeHtml(state.handoffEmail) + '" placeholder="you@example.com" autocomplete="email" />' +
-            '</label>'
-            ) : '') +
-            (getFlow().showPhone ? (
-            '<label class="widget-handoff-field">' +
-              '<span>Phone</span>' +
-              '<input type="tel" class="widget-handoff-input" data-handoff-field="phone" value="' + escapeHtml(state.handoffPhone) + '" placeholder="+47 123 45 678" autocomplete="tel" />' +
-            '</label>'
-            ) : '') +
-          '</div>' +
+          '<div class="widget-handoff-grid">' + contactMarkup + '</div>' +
           '<div class="widget-handoff-actions">' +
             '<button type="button" class="widget-handoff-submit" ' + ((!String(state.handoffName || '').trim() || state.sending) ? 'disabled' : '') + '>Send request</button>' +
           '</div>' +
@@ -2247,6 +2303,8 @@ export async function GET(
 
       if (json.task) {
         state.tasks = [json.task].concat(state.tasks || []);
+        writeStoredContactValue({ name: state.handoffName, email: state.handoffEmail, phone: state.handoffPhone });
+        state.contactSaved = true;
       }
       state.taskNotice = 'Ticket created successfully.';
     } catch (error) {
@@ -2341,9 +2399,8 @@ export async function GET(
       state.awaitingVisitorName = false;
       state.pendingHumanSupportText = '';
       state.handoffFormOpen = false;
-      state.handoffName = '';
-      state.handoffEmail = '';
-      state.handoffPhone = '';
+      writeStoredContactValue({ name: name, email: email, phone: phone });
+      state.contactSaved = true;
       state.inputValue = '';
       writeStoredDraftValue('');
       writeStoredHandoffValue(null);
@@ -2351,6 +2408,7 @@ export async function GET(
       state.starterCardPageIndex = 0;
       state.supportTypingAt = '';
       setSupportStatus('needs-human');
+      if (humanSupportJson.humanAvailable) state.activePanel = 'tasks';
 
       var humanSupportAck = {
         id: 'assistant-' + Date.now(),
@@ -2374,6 +2432,7 @@ export async function GET(
       });
 
       startSupportPolling();
+      if (humanSupportJson.humanAvailable) void loadTasks();
     } catch (error) {
       updateMessages(state.messages.filter(function (message) {
         return message.id !== userMessageId;
@@ -2473,9 +2532,66 @@ export async function GET(
   }
 
   var widgetActionsBound = false;
+  var languageNames = { no: 'Norsk', en: 'English', sv: 'Svenska', da: 'Dansk', de: 'Deutsch', fi: 'Suomi', is: 'Íslenska' };
+  function uiText(text) { return state.translations[text] || text; }
+  function getLanguages() {
+    var config = getAssistantConfig().localization || {};
+    var primary = Object.prototype.hasOwnProperty.call(languageNames, config.defaultLanguage) ? config.defaultLanguage : 'no';
+    return { enabled: config.enabled === true, primary: primary, allowed: Array.from(new Set([primary].concat(config.allowedLanguages || []))).filter(function(code) { return Object.prototype.hasOwnProperty.call(languageNames, code); }) };
+  }
+  async function translateWidget(language) {
+    var request = ++state.translationRequest;
+    state.uiLanguage = language;
+    state.translations = {};
+    state.translationLoading = true;
+    state.translationError = false;
+    render();
+    try {
+      await loadEmbedToken();
+      var response = await fetch(ORIGIN + '/api/widget/translate', { method: 'POST', mode: 'cors', headers: widgetHeaders(), body: JSON.stringify({ widgetKey: WIDGET_KEY, language: language }) });
+      if (!response.ok) throw new Error('Translation unavailable');
+      var result = await response.json();
+      if (request !== state.translationRequest) return;
+      state.translations = result.translations || {};
+      try { window.localStorage.setItem('vintra-widget-language:' + WIDGET_KEY, language); } catch (error) {}
+    } catch (error) {
+      if (request === state.translationRequest) state.translationError = true;
+    } finally {
+      if (request === state.translationRequest) { state.translationLoading = false; render(); }
+    }
+  }
+  function languageSelectorMarkup() {
+    var config = getLanguages();
+    return config.enabled ? '<select class="widget-language-select" aria-label="Language / Språk">' + config.allowed.map(function(code) { return '<option value="' + code + '"' + (state.uiLanguage === code ? ' selected' : '') + '>' + languageNames[code] + '</option>'; }).join('') + '</select>' : '';
+  }
+  function startCardMarkup() {
+    var card = getAssistantConfig().startCard;
+    if (!card || !card.enabled || !card.text || state.open || state.hasOpenedOnce || state.startCardDismissed) return '';
+    return '<aside class="widget-start-card"><button type="button" class="widget-start-card-close" aria-label="Close">×</button><button type="button" class="widget-start-card-message">' + escapeHtml(card.text) + '<strong>' + escapeHtml(getTitle(state.config)) + '</strong></button></aside>';
+  }
+  function translateRenderedCopy() {
+    mount.lang = state.uiLanguage === 'no' ? 'nb' : state.uiLanguage;
+    var walker = document.createTreeWalker(mount, NodeFilter.SHOW_TEXT);
+    var node;
+    while ((node = walker.nextNode())) {
+      var parent = node.parentElement;
+      if (!parent || parent.closest('textarea, input, select, .message, .widget-task-card, script, style')) continue;
+      var original = node.textContent.trim();
+      if (original && state.translations[original]) node.textContent = node.textContent.replace(original, state.translations[original]);
+    }
+    mount.querySelectorAll('[placeholder], [aria-label], [title]').forEach(function(element) {
+      ['placeholder', 'aria-label', 'title'].forEach(function(attribute) {
+        var value = element.getAttribute(attribute);
+        if (value && state.translations[value]) element.setAttribute(attribute, state.translations[value]);
+      });
+    });
+  }
   function bindWidgetActions() {
     if (widgetActionsBound) return;
     widgetActionsBound = true;
+    mount.addEventListener('change', function(event) {
+      if (event.target && event.target.matches('.widget-language-select') && getLanguages().allowed.includes(event.target.value)) void translateWidget(event.target.value);
+    });
 
     mount.addEventListener('pointerdown', function (event) {
       var target = event.target;
@@ -2497,6 +2613,10 @@ export async function GET(
 
       var button = target.closest('button');
       if (!button) return;
+
+      if (button.classList.contains('widget-start-card-close')) { state.startCardDismissed = true; render(); return; }
+      if (button.classList.contains('widget-start-card-message')) { state.open = true; state.hasOpenedOnce = true; render(); focusComposerInput(); return; }
+      if (button.classList.contains('widget-translation-retry')) { void translateWidget(state.uiLanguage); return; }
 
       if (button.classList.contains('widget-icon')) {
         state.open = !state.open;
@@ -2556,7 +2676,7 @@ export async function GET(
       if (button.classList.contains('widget-faq-chip')) {
         var suggestion = String(button.getAttribute('data-faq-suggestion') || button.textContent || '').trim();
         if (suggestion) {
-          state.inputValue = suggestion;
+          state.inputValue = uiText(suggestion);
           state.activeConversationCardId = '';
           state.starterCardPageIndex = 0;
           state.faqSuggestionsDismissed = true;
@@ -2594,7 +2714,7 @@ export async function GET(
       if (button.classList.contains('widget-starter-option')) {
         var prompt = String(button.getAttribute('data-starter-prompt') || '').trim();
         if (prompt) {
-          state.inputValue = prompt;
+          state.inputValue = uiText(prompt);
           state.activeConversationCardId = '';
           state.starterCardPageIndex = 0;
           state.faqSuggestionsDismissed = true;
@@ -2850,14 +2970,14 @@ export async function GET(
             showStarterCardList ? 'chat-header--starter-list' : ''
           ]) + '">' +
             '<div class="chat-header-left">' +
-              ((showStarterCardList || state.activePanel === 'tasks') ? '<button type="button" class="chat-header-back" data-widget-panel="chats" aria-label="Back to chat">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('backIcon', 'FiArrowLeft')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">←</span>') + '</button>' : '') +
+              (state.activePanel === 'tasks' ? '<button type="button" class="chat-header-back" data-widget-panel="chats" aria-label="Back to chat">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('backIcon', 'FiArrowLeft')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">←</span>') + '</button>' : '') +
               (state.activePanel !== 'tasks' && headerStyle.showAvatar !== false ? headerAvatar : '') +
               '<div class="chat-header-copy">' +
-                (headerStyle.showTitle !== false ? '<h3>' + escapeHtml(state.activePanel === 'tasks' ? getFlow().contactTitle : getTitle(config)) + '</h3>' : '') +
-                '<p>' + escapeHtml(state.activePanel === 'tasks' ? getFlow().contactDescription : getDescription(config)) + '</p>' +
+                (headerStyle.showTitle !== false ? '<h3>' + escapeHtml(state.activePanel === 'tasks' ? getFlow().ticketTitle : getTitle(config)) + '</h3>' : '') +
+                '<p>' + escapeHtml(state.activePanel === 'tasks' ? getFlow().ticketDescription : getDescription(config)) + '</p>' +
               '</div>' +
             '</div>' +
-            '<div class="chat-header-actions">' +
+            '<div class="chat-header-actions">' + languageSelectorMarkup() +
               (state.activePanel === 'chats' && getFlow().reviewHeaderButton ? '<button type="button" class="widget-review-open" aria-label="Leave a review" title="Leave a review">&#9734;</button>' : '') +
               (state.activePanel === 'chats' && headerStyle.showStatus ? '<span class="status-pill">' + renderIconSlot(icons.check) + ' ' + escapeHtml(getStatusLabel()) + '</span><span class="header-status-dot" aria-hidden="true"></span>' : '') +
               (state.open ? '<button type="button" class="close-btn' + (headerStyle.showCloseButton ? '' : ' widget-mobile-close-only') + '" aria-label="Close chat">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('closeIcon', 'FiX')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">×</span>') + '</button>' : '') +
@@ -2878,7 +2998,7 @@ export async function GET(
               'input-' + (footerStyle.inputStyle || 'flat')
             ]) + '">' +
               '<div class="chat-footer-row">' +
-              (getFlow().allowVisitorCreation ? '<button type="button" data-widget-panel="tasks" class="widget-ticket-open" aria-label="Create a support ticket" title="Create a support ticket">+</button>' : '') +
+              (getFlow().allowVisitorCreation && (state.supportStatus === 'needs-human' || state.supportStatus === 'open' || state.supportStatus === 'ai-active') ? '<button type="button" data-widget-panel="tasks" class="widget-ticket-open" aria-label="Create a support ticket" title="Create a support ticket"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3.75h9l5 5v11.5H5z"/><path d="M14 3.75v5h5M8 13h8M8 16.5h8"/></svg></button>' : '') +
               '<textarea rows="1" ' +
                   (state.feedbackOpen ? 'disabled ' : '') +
                   'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : ((state.supportStatus === 'needs-human' || state.supportStatus === 'open') ? 'Write a message for human support...' : 'Write a message...')) + '">' +
@@ -2888,6 +3008,8 @@ export async function GET(
               '</div>' +
             '</div>'
           )) +
+          (state.translationLoading ? '<span class="widget-translation-status" role="status">Loading...</span>' : '') +
+          (state.translationError ? '<button type="button" class="widget-translation-retry">Translation unavailable. Try again.</button>' : '') +
           (state.error ? '<div class="widget-inline-error" role="alert">' + escapeHtml(state.error) + '</div>' : '') +
           getImageLightboxMarkup() +
           '</div>' +
@@ -2899,6 +3021,7 @@ export async function GET(
             '</div>'
           ) : '') +
         '</div>' +
+        startCardMarkup() +
         '<button type="button" class="' + classes([
           'widget-icon launcher-custom',
           'border-' + (bubbleStyle.borderType || 'none'),
@@ -2925,6 +3048,7 @@ export async function GET(
       '</div>';
 
     patchMarkup(mount, markup);
+    translateRenderedCopy();
     if (mobileViewportController) mobileViewportController.setOpen(state.open);
     applyThemeVars(mount.querySelector('.vintra-stack'), theme);
     syncComposerMode();
@@ -3019,6 +3143,10 @@ export async function GET(
       state.assistantConfig = json.assistantConfig || null;
       state.assistantEnabled = json.assistantEnabled !== false;
       state.configLoaded = true;
+      var languages = getLanguages();
+      var savedLanguage = '';
+      try { savedLanguage = window.localStorage.getItem('vintra-widget-language:' + WIDGET_KEY) || ''; } catch (error) {}
+      void translateWidget(languages.enabled && languages.allowed.includes(savedLanguage) ? savedLanguage : languages.primary);
 
       if (FORCE_OPEN || (state.config && state.config.settings && state.config.settings.autoOpen)) {
         state.open = true;
@@ -3067,7 +3195,7 @@ export async function GET(
       return;
     }
 
-    var inHumanSupportMode = state.supportStatus === 'needs-human' || state.supportStatus === 'open';
+    var inHumanSupportMode = state.supportStatus === 'open';
     var userMessageId = 'user-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
     updateMessages(state.messages.concat([
       {
@@ -3210,9 +3338,11 @@ export async function GET(
           void loadTasks();
         }
 
-        if (json.supportRequested) {
+        if (json.supportRequested || json.humanRequestQueued) {
           setSupportStatus('needs-human');
+          if (json.humanAvailable) state.activePanel = 'tasks';
           startSupportPolling();
+          if (json.humanAvailable) void loadTasks();
         } else if (state.supportStatus === 'ai-active') {
           stopSupportPolling();
         }

@@ -121,7 +121,15 @@ export interface ChatWidgetVisibilityRules {
   hideOnPaths?: string[];
 }
 
+export type WidgetLanguage = 'no' | 'en' | 'sv' | 'da' | 'de' | 'fi' | 'is';
+export interface WidgetLocalization {
+  enabled: boolean;
+  defaultLanguage: WidgetLanguage;
+  allowedLanguages: WidgetLanguage[];
+}
 export interface ChatAssistantConfig {
+  localization?: WidgetLocalization;
+  startCard?: { enabled: boolean; text: string };
   contactSharing?: { enabled: boolean; allowOnUncertainty?: boolean };
   enabled: boolean;
   provider: 'gemini';
@@ -435,6 +443,7 @@ export interface ChatWidgetConfig {
     reviewPage?: { title?: string; description?: string; autoAsk?: boolean; showHeaderButton?: boolean };
     ticket?: {
       mode?: 'off' | 'on-demand' | 'always'; allowVisitorCreation?: boolean; showTabAlways?: boolean;
+      showTeamTasksToVisitors?: boolean;
       title?: string; description?: string; layout?: 'cards' | 'compact';
     };
   };
@@ -466,6 +475,10 @@ export interface BusinessUser {
   createdAt: Date;
   updatedAt: Date;
   lastLogin?: Date;
+  supportPresence?: {
+    available: boolean;
+    lastSeenAt?: Date;
+  };
 }
 
 // Pending user - før accept invite

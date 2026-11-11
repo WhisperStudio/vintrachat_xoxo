@@ -1,0 +1,5 @@
+.compactLanguageSwitch { display: inline-flex; align-items: center; flex-shrink: 0; gap: 2px; padding: 3px; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 10px; color: inherit; background: color-mix(in srgb, currentColor 4%, transparent); }
+.compactLanguageSwitch button { min-width: 34px; min-height: 34px; padding: 5px; border: 0; border-radius: 7px; background: transparent; color: inherit; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; opacity: .6; }
+.compactLanguageSwitch button[aria-pressed='true'] { background: color-mix(in srgb, currentColor 12%, transparent); opacity: 1; }
+.compactLanguageSwitch button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.compactLanguageSwitch > span { opacity: .35; font-size: 12px; }

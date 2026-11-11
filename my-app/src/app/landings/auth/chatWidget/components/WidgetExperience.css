@@ -280,3 +280,12 @@
 .vintra-widget .form-spacing-compact input { padding: 8px 10px; }
 .vintra-widget .ticket-layout-compact .widget-task-card { padding: 10px 12px; border-radius: 8px; box-shadow: none; }
 .vintra-widget .ticket-layout-compact .widget-task-card p { margin: 4px 0; }
+.widget-language-select { max-width: 110px; min-height: 36px; padding: 5px 8px; border: 1px solid currentColor; border-radius: 9px; background: var(--chat-bg, white); color: var(--chat-text, #19354a); font: inherit; font-size: 12px; }
+.widget-start-card { position: absolute; bottom: 88px; right: 0; width: min(280px, calc(100vw - 32px)); max-height: 215px; overflow: auto; border: 1px solid #dce6ed; border-radius: 16px 16px 4px 16px; background: var(--chat-bg, white); color: var(--chat-text, #19354a); box-shadow: 0 12px 35px #183f5c22; z-index: 2; }
+.position-bottom-left .widget-start-card { right: auto; left: 0; border-radius: 16px 16px 16px 4px; }
+.widget-start-card-message { display: block; width: 100%; padding: 22px 28px 18px 18px; background: transparent; border: 0; color: inherit; font: inherit; font-size: 14px; line-height: 1.5; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; cursor: pointer; }
+.widget-start-card-message strong { display: block; margin-top: 8px; color: var(--chat-primary, #285f86); font-size: 12px; }
+.widget-start-card-close { position: absolute; top: 2px; right: 2px; width: 28px; height: 28px; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
+.widget-start-card button:focus-visible, .widget-language-select:focus-visible { outline: 2px solid var(--chat-primary, #285f86); outline-offset: -3px; }
+.widget-translation-status { display: block; padding: 4px 12px; font-size: 11px; color: var(--chat-text, #19354a); }
+.widget-start-card { pointer-events: auto; }

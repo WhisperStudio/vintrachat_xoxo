@@ -3,6 +3,7 @@
 import { FiArrowLeft, FiStar } from 'react-icons/fi'
 
 interface FeedbackFormOverlayProps {
+  translate?: (text: string) => string
   open: boolean
   title?: string
   description?: string
@@ -16,6 +17,7 @@ interface FeedbackFormOverlayProps {
 }
 
 export default function FeedbackFormOverlay({
+  translate: t = (text: string) => text,
   open,
   title = 'Leave feedback',
   description = 'Tell us what you think and give us a star rating.',
@@ -37,12 +39,12 @@ export default function FeedbackFormOverlay({
             <h4>{title}</h4>
             <p>{description}</p>
           </div>
-          <button type="button" className="widget-feedback-close" onClick={onClose} aria-label="Back to chat">
+          <button type="button" className="widget-feedback-close" onClick={onClose} aria-label={t("Back to chat")}>
             <FiArrowLeft />
           </button>
         </div>
 
-        <div className="widget-feedback-rating" aria-label="Rating selector">
+        <div className="widget-feedback-rating" aria-label={t("Rating selector")}>
           {Array.from({ length: 5 }, (_, index) => {
             const value = index + 1
             return (
@@ -51,7 +53,7 @@ export default function FeedbackFormOverlay({
                 type="button"
                 className={`widget-feedback-star ${value <= rating ? 'is-active' : ''}`}
                 onClick={() => onRatingChange(value)}
-                aria-label={`${value} star${value === 1 ? '' : 's'}`}
+                aria-label={`${value} ${t('stars')}`}
               >
                 <FiStar />
               </button>
@@ -60,20 +62,20 @@ export default function FeedbackFormOverlay({
         </div>
 
         <label className="widget-feedback-field">
-          <span>Your feedback</span>
+          <span>{t("Your feedback")}</span>
           <textarea
             id="widget-feedback-text"
             name="widget-feedback-text"
             value={text}
             onChange={(event) => onTextChange(event.target.value)}
             rows={5}
-            placeholder="What went well, and what could be better?"
+            placeholder={t('What went well, and what could be better?')}
           />
         </label>
 
         <div className="widget-feedback-actions">
           <button type="button" className="widget-feedback-secondary" onClick={onClose} disabled={submitting}>
-            Cancel
+            {t('Cancel')}
           </button>
           <button
             type="button"
@@ -81,7 +83,7 @@ export default function FeedbackFormOverlay({
             onClick={onSubmit}
             disabled={submitting || rating < 1 || !text.trim()}
           >
-            {submitting ? 'Submitting...' : 'Submit feedback'}
+            {submitting ? t('Submitting...') : t('Submit feedback')}
           </button>
         </div>
       </div>

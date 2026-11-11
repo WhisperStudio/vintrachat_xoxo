@@ -6,6 +6,7 @@ import type { ChatAssistantConfig } from '@/types/database'
 import { mergeWebsiteKnowledge } from '@/lib/studio-onboarding.mjs'
 import { useAuth } from '@/context/AuthContext'
 import './WidgetFlowSettings.css'
+import WidgetLanguageSettings from './WidgetLanguageSettings'
 
 export default function StudioKnowledgeSettings({ value, onChange, no }: {
   value: ChatAssistantConfig; onChange: (value: ChatAssistantConfig) => void; no: boolean
@@ -43,6 +44,7 @@ export default function StudioKnowledgeSettings({ value, onChange, no }: {
   }
   return <div className="studioKnowledge widgetFlowSettings">
     <div className="studioSectionIntro"><span className="studioSectionSymbol"><FiBookOpen aria-hidden="true" /></span><span className="studioEyebrow">{no ? 'BEDRIFTEN' : 'BUSINESS'}</span><h2>{no ? 'Hva skal assistenten vite?' : 'What should your assistant know?'}</h2><p>{no ? 'Hent et utkast fra nettsiden din, eller skriv selv. Kontroller alltid opplysningene før du lagrer.' : 'Import a draft from your website, or write it yourself. Check the information before saving.'}</p></div>
+    <WidgetLanguageSettings value={value} onChange={onChange} no={no} />
     <div className="studioWebsiteImport">
       <label className="widgetFlowField"><span><FiLink aria-hidden="true" />{no ? 'Lenke til bedriften' : 'Business website'}</span><input type="url" placeholder="https://din-bedrift.no" value={url} onChange={e => setUrl(e.target.value)} disabled={busy} /></label>
       <button type="button" disabled={busy || !url.trim()} onClick={() => void scan()}><FiDownloadCloud aria-hidden="true" />{busy ? (no ? 'Leser nettsiden…' : 'Reading website…') : (no ? 'Hent informasjon' : 'Import information')}</button>

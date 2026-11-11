@@ -21,7 +21,7 @@ import {
 import { LuMessagesSquare } from "react-icons/lu";
 
 import { useAuth } from '@/context/AuthContext'
-import { db, storage } from '@/lib/firebase'
+import { auth, db, storage } from '@/lib/firebase'
 import {
   acceptSupportChat,
   closeSupportChat,
@@ -185,6 +185,10 @@ export default function AdminChatsPanel({
   const [chatListPage, setChatListPage] = useState(0)
   const [readAtMap, setReadAtMap] = useState<Record<string, number>>({})
   const [enablingHumanSupport, setEnablingHumanSupport] = useState(false)
+  const [supportAvailable, setSupportAvailable] = useState(false)
+  const [presenceBusy, setPresenceBusy] = useState(false)
+  const [presenceError, setPresenceError] = useState('')
+  const supportAvailableRef = useRef(false)
   const [taskDraft, setTaskDraft] = useState<{
     title: string
     description: string
@@ -206,6 +210,65 @@ export default function AdminChatsPanel({
   const readStorageKey = dbUser?.businessId ? `vintra-admin-chat-read:${dbUser.businessId}` : ''
   const taskComposerOpen = taskComposerMode !== null
   const isQuickTaskComposer = taskComposerMode === 'quick'
+  supportAvailableRef.current = supportAvailable
+
+  useEffect(() => {
+    const businessId = dbUser?.businessId
+    if (!businessId || !auth.currentUser) return
+
+    let active = true
+    const requestPresence = async (available: boolean, method: 'GET' | 'POST') => {
+      const token = await auth.currentUser?.getIdToken()
+      if (!token) throw new Error('You must sign in again to update availability.')
+      const response = await fetch(
+        method === 'GET'
+          ? `/api/admin/support-presence?businessId=${encodeURIComponent(businessId)}`
+          : '/api/admin/support-presence',
+        {
+          method,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
+          },
+          ...(method === 'POST' ? { body: JSON.stringify({ businessId, available }) } : {}),
+          keepalive: method === 'POST',
+        }
+      )
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Could not update support availability.')
+      return result
+    }
+
+    const heartbeat = async () => {
+      if (!supportAvailableRef.current || document.visibilityState !== 'visible') return
+      try {
+        await requestPresence(true, 'POST')
+      } catch (error) {
+        if (active) setPresenceError(error instanceof Error ? error.message : 'Could not update support availability.')
+      }
+    }
+
+    void requestPresence(false, 'GET')
+      .then((result) => {
+        if (active) setSupportAvailable(Boolean(result.available))
+      })
+      .catch((error) => {
+        if (active) setPresenceError(error instanceof Error ? error.message : 'Could not load support availability.')
+      })
+
+    const interval = window.setInterval(() => void heartbeat(), 25_000)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') void heartbeat()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      active = false
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      if (supportAvailableRef.current) void requestPresence(false, 'POST').catch((error) => console.error('Failed to clear support presence:', error))
+    }
+  }, [dbUser?.businessId])
 
   useEffect(() => {
     let mounted = true
@@ -523,6 +586,28 @@ export default function AdminChatsPanel({
       await refreshBusiness()
     } finally {
       setEnablingHumanSupport(false)
+    }
+  }
+
+  const handleSupportAvailabilityChange = async () => {
+    const nextAvailable = !supportAvailable
+    setPresenceBusy(true)
+    setPresenceError('')
+    try {
+      const token = await auth.currentUser?.getIdToken()
+      if (!token || !dbUser?.businessId) throw new Error('You must sign in again to update availability.')
+      const response = await fetch('/api/admin/support-presence', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ businessId: dbUser.businessId, available: nextAvailable }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Could not update support availability.')
+      setSupportAvailable(Boolean(result.available))
+    } catch (error) {
+      setPresenceError(error instanceof Error ? error.message : 'Could not update support availability.')
+    } finally {
+      setPresenceBusy(false)
     }
   }
 
@@ -849,6 +934,21 @@ export default function AdminChatsPanel({
               <span className="adminChatsUnreadPill">
                 {unreadCount} {text.unread}
               </span>
+              <button
+                type="button"
+                className={`adminSupportPresenceToggle ${supportAvailable ? 'is-available' : ''}`}
+                onClick={() => void handleSupportAvailabilityChange()}
+                disabled={presenceBusy}
+                aria-pressed={supportAvailable}
+              >
+                <span className="adminSupportPresenceDot" aria-hidden="true" />
+                {presenceBusy
+                  ? (language === 'no' ? 'Oppdaterer …' : 'Updating …')
+                  : supportAvailable
+                    ? (language === 'no' ? 'Tilgjengelig for support' : 'Available for support')
+                    : (language === 'no' ? 'Ikke tilgjengelig' : 'Unavailable')}
+              </button>
+              {presenceError ? <p className="adminSupportPresenceError" role="alert">{presenceError}</p> : null}
             </span>
 
             {!hideWidgetPicker && <AdminDropdown

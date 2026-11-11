@@ -1,0 +1,12 @@
+.chatbuilder-page .designGroupHeading { grid-column: 1 / -1; display: flex; align-items: center; gap: 13px; margin: 24px 0 4px; padding: 20px 0 12px; border-top: 1px solid var(--border, #cfdee5); }
+.chatbuilder-page .designGroupHeading:first-child { margin-top: 0; padding-top: 4px; border-top: 0; }
+.chatbuilder-page .designGroupHeading__icon { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: 12px; background: var(--admin-accent-soft, #e3eeef); color: var(--admin-accent, #285f6e); }
+.chatbuilder-page .designGroupHeading__icon svg { width: 19px; height: 19px; }
+.chatbuilder-page .designGroupHeading h3 { margin: 0 0 4px; font-size: 15px; font-weight: 700; color: var(--admin-text, var(--text)); }
+.chatbuilder-page .designGroupHeading p { margin: 0; font-size: 12px; line-height: 1.5; color: var(--admin-muted, var(--text-soft)); }
+.chatbuilder-page .starterOptionRow__fields label > span { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; margin-bottom: 7px; }
+.chatbuilder-page .starterOptionRow__fields label > span svg { width: 14px; height: 14px; color: var(--admin-accent, #285f6e); }
+.chatbuilder-page .starterOptionsEditor__header strong { font-size: 15px; }
+.chatbuilder-page .designExtras { margin-top: 28px; padding: 24px; border: 1px solid var(--border, #cfdee5); border-radius: 16px; background: var(--admin-surface, var(--surface, #f7fafb)); }
+@media (max-width: 640px) { .chatbuilder-page .designExtras { padding: 16px; } }
+.chatbuilder-page .sectionIconGrid { grid-column: 1 / -1; }

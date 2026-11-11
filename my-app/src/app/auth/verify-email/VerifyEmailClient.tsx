@@ -1,6 +1,6 @@
 'use client'
 
-import Image from 'next/image'
+import AuthFrame from '../AuthFrame'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
@@ -70,50 +70,7 @@ export default function VerifyEmailClient() {
   }, [token])
 
   return (
-    <main className="authPage authExperience">
-      <div className="authShowcase">
-        <section className="authBrandPanel">
-          <div className="authBrandHeader">
-            <div className="authBrandLogo">
-              <Image src="/image/logo.png" alt="Vintra logo" width={40} height={40} />
-            </div>
-            <div className="authBrandName">
-              <strong>Vintra</strong>
-              <span>Trusted setup for business websites and AI chat</span>
-            </div>
-          </div>
-
-          <div>
-            <div className="authBrandEyebrow">Secure verification</div>
-            <h1>We are checking your email now.</h1>
-          </div>
-
-          <p className="authBrandLead">
-            This last step protects your workspace and makes sure only the owner of the inbox can finish account activation.
-          </p>
-
-          <div className="authFeatureList">
-            <div className="authFeatureItem">
-              <div className="authFeatureIcon">
-                <FiShield size={18} />
-              </div>
-              <div>
-                <strong>Safe account activation</strong>
-                <span>Verification confirms ownership before access to your workspace, widgets, and business settings.</span>
-              </div>
-            </div>
-            <div className="authFeatureItem">
-              <div className="authFeatureIcon">
-                <FiMail size={18} />
-              </div>
-              <div>
-                <strong>Clean onboarding handoff</strong>
-                <span>Once confirmed, we can route you into login or directly toward your admin setup flow.</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
+    <AuthFrame>
         <section className="authCard authCardElevated">
           {status === 'loading' && (
             <>
@@ -123,7 +80,7 @@ export default function VerifyEmailClient() {
                 </div>
                 <div>
                   <p className="authKicker">In progress</p>
-                  <h2 className="authHeadline">Verifying your email</h2>
+                  <h2 className="authHeadline" id="auth-title">Verifying your email</h2>
                 </div>
               </div>
 
@@ -215,7 +172,6 @@ export default function VerifyEmailClient() {
             Back to login <FiArrowRight size={16} />
           </Link>
         </section>
-      </div>
-    </main>
+    </AuthFrame>
   )
 }

@@ -46,6 +46,7 @@ import './ChatWidget.css'
 import '@/components/chat/StudioSettings.css'
 
 import StudioKnowledgeSettings from '@/components/chat/StudioKnowledgeSettings'
+import WidgetLanguageSettings from '@/components/chat/WidgetLanguageSettings'
 import StudioFeatureSettings, { type StudioDecisions } from '@/components/chat/StudioFeatureSettings'
 import { hasAssistantKnowledge, setupDecisionsComplete } from '@/lib/studio-onboarding.mjs'
 import WidgetFlowSettings from '@/components/chat/WidgetFlowSettings'
@@ -389,7 +390,7 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
   const [inputs, setInputs] = useState<InputsState>(defaultInputs)
   const [assistantConfigDraft, setAssistantConfigDraft] = useState<ChatAssistantConfig>(createDefaultAssistantConfig())
   const [hasLoadedDbConfig, setHasLoadedDbConfig] = useState(false)
-  const [previewScenario, setPreviewScenario] = useState<'welcome' | 'conversation'>('welcome')
+  const [previewScenario, setPreviewScenario] = useState<'welcome' | 'conversation' | 'start-card'>('welcome')
   const [previewSession, setPreviewSession] = useState(0)
   const [presetNotice, setPresetNotice] = useState('')
   const [previewMode, setPreviewMode] = useState<PreviewMode>('desktop')
@@ -1011,7 +1012,7 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
                   onToggleSection={toggleSection}
                 />
               </section>
-            </div></>}
+            </div><div className="designExtras"><WidgetLanguageSettings value={assistantConfigDraft} no={no} onChange={value => { setAssistantConfigDraft(value); setSaveStatus('idle') }} /></div></>}
             {setupMode && <div className="studioSetupActions">
               <button type="button" disabled={workspaceMode === 'knowledge' || isSaving} onClick={() => setWorkspaceMode(({ personality: 'knowledge', features: 'personality', design: 'features', knowledge: 'knowledge' } as const)[workspaceMode])}>{no ? 'Tilbake' : 'Back'}</button>
               {workspaceMode !== 'design' ? <button type="button" onClick={() => setWorkspaceMode(({ knowledge: 'personality', personality: 'features', features: 'design', design: 'design' } as const)[workspaceMode])}>{no ? 'Neste steg' : 'Next step'}</button> : <button type="button" disabled={isSaving} onClick={() => void saveConfig()}>{isSaving ? (no ? 'Lagrer...' : 'Saving...') : (no ? 'Lagre og start omvisning' : 'Save and start tour')}</button>}
@@ -1044,12 +1045,15 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
             </div>
             <p className="studioPreviewNote">{no ? 'Test designet her. Meldinger i forhåndsvisningen blir ikke sendt til bedriften.' : 'Try your design here. Preview messages are not sent to your business.'}</p>
             <div className="studioPreviewScenes" role="group" aria-label={no ? 'Visning i chatten' : 'Chat scene'}>
+              <button type="button" aria-pressed={previewScenario === 'start-card'} onClick={() => { setPreviewScenario('start-card'); setPreviewSession(value => value + 1) }}>{no ? 'Startkort' : 'Welcome card'}</button>
               <button type="button" aria-pressed={previewScenario === 'welcome'} onClick={() => { setPreviewScenario('welcome'); setPreviewSession((value) => value + 1) }}>{no ? 'Velkomst' : 'Welcome'}</button>
               <button type="button" aria-pressed={previewScenario === 'conversation'} onClick={() => { setPreviewScenario('conversation'); setPreviewSession((value) => value + 1) }}>{no ? 'Samtale' : 'Conversation'}</button>
               <button type="button" className="studioPreviewRestart" onClick={() => setPreviewSession((value) => value + 1)} aria-label={no ? 'Start forhåndsvisningen på nytt' : 'Restart preview'} title={no ? 'Start på nytt' : 'Restart'}><FiRefreshCw aria-hidden="true" /></button>
             </div>
             <WidgetPreview
               key={`${previewScenario}-${previewSession}-${CHAT_PERSONALITIES.find((item) => item.style === assistantConfigDraft.responseStyle)?.id || 'custom'}`}
+              localization={assistantConfigDraft.localization || { enabled: false, defaultLanguage: 'no', allowedLanguages: ['no'] }}
+              startCard={assistantConfigDraft.startCard}
               previewScenario={previewScenario}
               supportEnabled={assistantConfigDraft.humanSupportEnabled}
               designPage={workspaceMode === 'design' && (activeSection.key === 'contact' || activeSection.key === 'reviews' || activeSection.key === 'tickets') ? activeSection.key : undefined}
@@ -1065,7 +1069,7 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
               appearance={inputs.appearance}
               customBranding={inputs.customBranding}
               assistantIcons={inputs.widgetIcons}
-              initialOpen={true}
+              initialOpen={previewScenario !== 'start-card'}
               enablePreviewChat={true}
               showConditionalFeaturePreview={false}
               previewReply={(() => { const personality = CHAT_PERSONALITIES.find((item) => item.style === assistantConfigDraft.responseStyle); return personality ? (no ? personality.sampleNo : personality.sampleEn) : (no ? 'Dette er et eksempelsvar. Egen svarstil brukes av AI-en etter lagring.' : 'This is a sample reply. The AI uses your custom response style after saving.') })()}

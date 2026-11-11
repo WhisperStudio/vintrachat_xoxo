@@ -20,6 +20,13 @@ export function mergeWebsiteKnowledge(current, result) {
   }
   return {
     ...current,
+    startCard: {
+      enabled: current.startCard?.enabled ?? false,
+      text: current.startCard?.text?.trim() || [
+        profile.businessName ? `Hei! Velkommen til ${profile.businessName}.` : 'Hei! Velkommen.',
+        profile.shortDescription || '', 'Hva kan vi hjelpe deg med?',
+      ].filter(Boolean).join(' ').slice(0, 350),
+    },
     businessProfile: { ...current.businessProfile, ...allowedProfile },
     businessContext: String(result.businessContext || current.businessContext || ''),
     knowledgeBase: {

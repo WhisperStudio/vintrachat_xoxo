@@ -2415,8 +2415,10 @@
 }
 
 .close-btn svg {
-  width: 55%;
-  height: 55%;
+  width: 70%;
+  height: 70%;
+  min-width: 22px;
+  min-height: 22px;
   display: block;
   margin: auto;
 }

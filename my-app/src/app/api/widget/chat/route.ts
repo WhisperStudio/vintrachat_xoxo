@@ -2,6 +2,7 @@ import { buildAnswerPolicy, isHumanSupportRequest, filterContactDisclosure } fro
 import { resolveWidgetFlow, validateWidgetContact } from '@/lib/widget-flow.mjs'
 import { reserveUsage } from '@/lib/billing/usage.mjs'
 import { saveChatWithNotifications } from '@/lib/notifications.server'
+import { hasAvailableSupportAgent } from '@/lib/widget-support-presence.server'
 import { NextRequest, NextResponse } from 'next/server'
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/firebase-admin'
@@ -89,7 +90,18 @@ const fallbackTaskKeywords = [
 
 const MAX_WIDGET_MESSAGE_CHARS = 300
 function buildHumanHandoffReply() {
-  return 'Takk for info, jeg har flagget det inn til et menneske. Mens vi venter, er det noe annet du lurer på?'
+  return 'Jeg kobler deg til menneskelig support. Du kan fortsatt bruke AI-chatten mens du venter på at en medarbeider svarer.'
+}
+function buildNoAgentReply(allowVisitorCreation: boolean) {
+  return allowVisitorCreation
+    ? 'Det er ingen menneskelige medarbeidere ledige akkurat nå. Jeg kan fortsatt hjelpe deg her. Hvis du ønsker det, kan du sende inn en ticket via ticket-knappen; teamet følger opp når de kan.'
+    : 'Det er ingen menneskelige medarbeidere ledige akkurat nå. Jeg har sendt en forespørsel til supportteamet om oppfølging, men kan ikke garantere når den blir sett eller besvart. Jeg kan fortsatt hjelpe deg her imens.'
+}
+function buildNameRequestReply(humanAvailable = true, allowVisitorCreation = false) {
+  if (humanAvailable) return 'To connect you with human support, please add your contact details. You can keep using the AI chat while you wait.'
+  return allowVisitorCreation
+    ? 'No human support staff are available right now. I can still help here. Add your contact details to leave a request, or create a ticket if you prefer.'
+    : 'No human support staff are available right now. Add your contact details and I will send a follow-up request, but I cannot guarantee when it will be seen or answered. You can keep using the AI chat.'
 }
 function normalizeGeminiModel(model: string | null | undefined) {
   const value = String(model || '').trim()
@@ -371,7 +383,7 @@ function buildPrompt(args: {
     : 'No starter cards configured.'
 
   const languageRule = args.replyInUserLanguage
-    ? `For the first assistant reply in a conversation, start in ${args.startLanguage || 'English'}. After that, reply in the same language as the latest user message.`
+    ? `Reply in the same language as the latest user message, including the first reply. If no language can be determined, use ${args.startLanguage || 'Norwegian'}. Interface language choices do not restrict conversation languages.`
     : `Reply in ${args.startLanguage || 'English'} unless the business context explicitly requires another language.`
 
   const profile = args.businessProfile || {
@@ -470,10 +482,6 @@ function buildPrompt(args: {
     historyText ? `Conversation so far:\n${historyText}` : 'Conversation so far:\nNo previous messages.',
     `Latest user message:\n${args.message}`,
   ].join('\n\n')
-}
-
-function buildNameRequestReply() {
-  return 'To contact human support, please write your name first. Is there anything else I can help you with?'
 }
 
 async function generateGeminiReply(
@@ -893,14 +901,16 @@ export async function POST(req: NextRequest) {
         )
       }
 
+      const humanAvailable = await hasAvailableSupportAgent(business.id)
       const contactError = validateWidgetContact(flow, { name: visitorName, email: visitorEmail, phone: visitorPhone })
       if (visitorName && contactError) return NextResponse.json({ error: contactError }, { status: 400, headers })
       if (!visitorName) {
         return NextResponse.json(
           {
             sessionId,
-            reply: buildNameRequestReply(),
+            reply: buildNameRequestReply(humanAvailable, flow.allowVisitorCreation),
             supportRequested: false,
+            humanAvailable,
             visitorNameRequired: true,
             countryCode,
           },
@@ -923,6 +933,7 @@ export async function POST(req: NextRequest) {
       }
 
       const now = new Date()
+      const handoffReply = humanAvailable ? buildHumanHandoffReply() : buildNoAgentReply(flow.allowVisitorCreation)
       const userSupportMessage = {
         id: crypto.randomUUID(),
         role: 'user',
@@ -932,7 +943,7 @@ export async function POST(req: NextRequest) {
       const assistantSupportMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        text: buildHumanHandoffReply(),
+        text: handoffReply,
         createdAt: now.toISOString(),
       }
       const supportMessages = [userSupportMessage, assistantSupportMessage]
@@ -1000,8 +1011,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           sessionId,
-          reply: buildHumanHandoffReply(),
-          supportRequested: true,
+          reply: handoffReply,
+          supportRequested: humanAvailable,
+          humanRequestQueued: true,
+          humanAvailable,
           countryCode,
         },
         { headers }
@@ -1014,6 +1027,9 @@ export async function POST(req: NextRequest) {
         : fallbackSupportKeywords
 
     const heuristicsTriggered = isHumanSupportRequest(message, supportKeywords, history)
+    let humanAvailable = heuristicsTriggered && humanSupportEnabled
+      ? await hasAvailableSupportAgent(business.id)
+      : false
 
     let aiReply = 'The AI assistant is currently disabled.'
     let aiWantsHumanSupport = false
@@ -1045,7 +1061,7 @@ export async function POST(req: NextRequest) {
               )
             : [],
         startLanguage: assistantConfig.startLanguage || 'English',
-        replyInUserLanguage: assistantConfig.replyInUserLanguage !== false,
+        replyInUserLanguage: true,
         responseStyle: assistantConfig.responseStyle || '',
         extraInstructions: assistantConfig.extraInstructions || '',
         humanSupportEnabled,
@@ -1082,9 +1098,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const needsHumanSupport = humanSupportEnabled && heuristicsTriggered
+    const needsHumanSupport = humanSupportEnabled && (heuristicsTriggered || aiWantsHumanSupport)
+    if (needsHumanSupport && !humanAvailable) {
+      humanAvailable = await hasAvailableSupportAgent(business.id)
+    }
     const requiresName = needsHumanSupport && Boolean(validateWidgetContact(flow, { name: visitorName, email: visitorEmail, phone: visitorPhone }))
-    const finalReply = requiresName ? buildNameRequestReply() : aiReply
+    const finalReply = requiresName
+      ? buildNameRequestReply(humanAvailable, flow.allowVisitorCreation)
+      : needsHumanSupport
+        ? humanAvailable
+          ? buildHumanHandoffReply()
+          : buildNoAgentReply(flow.allowVisitorCreation)
+        : aiReply
 
     const now = new Date()
     const messageTimeline: IncomingMessage[] = [
@@ -1304,7 +1329,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       sessionId,
       reply: finalReply,
-      supportRequested: needsHumanSupport && !requiresName && !existingSupportChat,
+      supportRequested: needsHumanSupport && !requiresName && humanAvailable && !existingSupportChat,
+      humanRequestQueued: needsHumanSupport && !requiresName,
+      humanAvailable: needsHumanSupport && humanAvailable,
       visitorNameRequired: requiresName,
       countryCode,
     }, { headers })

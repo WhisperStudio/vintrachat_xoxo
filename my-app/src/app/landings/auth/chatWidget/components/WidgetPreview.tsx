@@ -2,10 +2,13 @@
 import { getContextualWidgetSuggestions, resolveWidgetFlow, validateWidgetContact } from '@/lib/widget-flow.mjs'
 
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { normalizeLocalization, WIDGET_LANGUAGES, collectWidgetCopy } from '@/lib/widget-localization'
+import { useWidgetTranslation } from '@/components/chat/useWidgetTranslation'
+import type { WidgetLocalization, WidgetLanguage, ChatAssistantConfig } from '@/types/database'
 import { createPortal } from 'react-dom'
 import { installWidgetMobileViewport, shouldAnimateWidgetLauncher } from '@/lib/widget-mobile.mjs'
 import { OrbIcon } from '@/components/chat/OrbIcon'
-import { FiArrowLeft, FiCheckCircle, FiChevronRight, FiCpu, FiLifeBuoy, FiMessageCircle, FiMessageSquare, FiPhone, FiPlus, FiSend } from 'react-icons/fi'
+import { FiArrowLeft, FiCheckCircle, FiChevronRight, FiCpu, FiFileText, FiLifeBuoy, FiMessageCircle, FiMessageSquare, FiPhone, FiSend } from 'react-icons/fi'
 import { getWidgetThemeClass, getWidgetThemeStyle, joinWidgetClasses } from '@/components/chat/widgetDesign'
 import { normalizeConversationCards } from '@/lib/conversation-cards'
 import { getWidgetMotionClasses } from '@/lib/widget-motion'
@@ -21,6 +24,12 @@ import type { AssistantConversationCard, AssistantWidgetIcons, ChatWidgetInterfa
 
 
 interface WidgetPreviewProps {
+  localization?: WidgetLocalization
+  startCard?: ChatAssistantConfig['startCard']
+  translationWidgetKey?: string
+  translationEmbedToken?: string
+  translationFingerprint?: string
+  onStartCardVisibleChange?: (visible: boolean) => void
   total?: number
   billingCycle?: 'monthly' | 'yearly'
   plan?: 'free' | 'pro' | 'business'
@@ -102,11 +111,16 @@ interface WidgetPreviewProps {
   previewMode?: 'desktop' | 'mobile'
   designPage?: 'contact' | 'reviews' | 'tickets'
   ticketOpenRequest?: number
+  humanSupportRequested?: boolean
+  humanSupportStatus?: 'none' | 'needs-human' | 'open' | 'ai-active' | 'closed'
+  visitorContactSaved?: boolean
+  visitorContact?: { name: string; email: string; phone: string }
+  onVisitorContactChange?: (contact: { name: string; email: string; phone: string }) => void
   supportEnabled?: boolean
   onOpenReview?: () => void
   onCreateTicket?: (ticket: { title: string; description: string; visitorName: string; visitorEmail: string; visitorPhone: string }) => Promise<void>
   tickets?: { id: string; title: string; description: string; status: string }[]
-  previewScenario?: 'welcome' | 'conversation'
+  previewScenario?: 'welcome' | 'conversation' | 'start-card'
   enablePreviewChat?: boolean
   showConditionalFeaturePreview?: boolean
   previewReply?: string
@@ -194,6 +208,7 @@ function resolveShowBorder(style: { borderType: 'none' | 'solid' | 'rounded' | '
 }
 
 export default function WidgetPreview({
+  localization, startCard, translationWidgetKey, translationEmbedToken, translationFingerprint, onStartCardVisibleChange,
   total,
   billingCycle,
   plan,
@@ -211,7 +226,7 @@ export default function WidgetPreview({
   variant = 'default',
   previewMode = 'desktop',
   previewScenario = 'welcome',
-  designPage, ticketOpenRequest = 0, supportEnabled = true, onOpenReview, onCreateTicket, tickets = [],
+  designPage, ticketOpenRequest = 0, humanSupportRequested = false, humanSupportStatus = 'none', visitorContactSaved = false, visitorContact, onVisitorContactChange, supportEnabled = true, onOpenReview, onCreateTicket, tickets = [],
   enablePreviewChat = false,
   showConditionalFeaturePreview = false,
   previewReply = 'hi, this is only a test',
@@ -239,7 +254,20 @@ export default function WidgetPreview({
   flashSection = null,
 }: WidgetPreviewProps) {
   const { language } = useVintraLanguage()
-  const no = language === 'no'
+  const languageConfig = normalizeLocalization(localization || { defaultLanguage: translationWidgetKey ? 'no' : language })
+  const [chosenLanguage, setChosenLanguage] = useState<WidgetLanguage | null>(null)
+  useEffect(() => {
+    if (!translationWidgetKey) return
+    try { setChosenLanguage(window.localStorage.getItem('vintra-widget-language:' + translationWidgetKey) as WidgetLanguage | null) } catch { /* Storage is optional. */ }
+  }, [translationWidgetKey])
+  const chooseLanguage = (code: WidgetLanguage) => {
+    setChosenLanguage(code)
+    if (translationWidgetKey) try { window.localStorage.setItem('vintra-widget-language:' + translationWidgetKey, code) } catch { /* Storage is optional. */ }
+  }
+  const uiLanguage = languageConfig.enabled && chosenLanguage && languageConfig.allowedLanguages.includes(chosenLanguage) ? chosenLanguage : languageConfig.defaultLanguage
+  const { t, error: translationError, loading: translationLoading, retry: retryTranslation } = useWidgetTranslation(uiLanguage, collectWidgetCopy({ customBranding, settings, startCard, conversationCards, faqSuggestions }), translationWidgetKey, translationEmbedToken, Boolean(localization || translationWidgetKey), translationFingerprint)
+  const no = uiLanguage === 'no'
+  const [startCardDismissed, setStartCardDismissed] = useState(false)
   const widgetId = useId()
   const launcherRef = useRef<HTMLDivElement | null>(null)
   const replyTimerRef = useRef<number | null>(null)
@@ -260,9 +288,9 @@ export default function WidgetPreview({
   const chatBodyRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const [internalMessages, setInternalMessages] = useState<Message[]>(() => [
-    { id: 'preview-welcome', text: no ? 'Hei! Hva kan vi hjelpe deg med?' : 'Hi! How can we help you?', isBot: true, role: 'assistant' },
+    { id: 'preview-welcome', text: t("Hi! How can we help you?", "Hei! Hva kan vi hjelpe deg med?"), isBot: true, role: 'assistant' },
     ...(enablePreviewChat && previewScenario === 'conversation' ? [
-      { id: 'preview-question', text: no ? 'Jeg vil gjerne vite mer om tjenestene deres.' : 'I’d like to learn more about your services.', isBot: false, role: 'user' as const },
+      { id: 'preview-question', text: t("I’d like to learn more about your services.", "Jeg vil gjerne vite mer om tjenestene deres."), isBot: false, role: 'user' as const },
       { id: 'preview-answer', text: previewReply, isBot: true, role: 'assistant' as const },
     ] : []),
   ])
@@ -288,6 +316,8 @@ export default function WidgetPreview({
   const [unread, setUnread] = useState(false)
   const lastMessageRef = useRef('')
   const isChatOpen = openOverride ?? internalIsChatOpen
+  const showStartCard = Boolean(startCard?.enabled && startCard.text.trim() && !startCardDismissed && !isChatOpen && !hasOpened)
+  useEffect(() => { onStartCardVisibleChange?.(showStartCard) }, [showStartCard, onStartCardVisibleChange])
   useEffect(() => {
     const fit = previewFitRef.current
     if (!fit || variant === 'embedded') return
@@ -311,12 +341,12 @@ export default function WidgetPreview({
 
   const messages = useMemo(() => messagesOverride ?? internalMessages.map((message) => {
     const sampleCopy: Record<string, string> = {
-      'preview-welcome': no ? 'Hei! Hva kan vi hjelpe deg med?' : 'Hi! How can we help you?',
-      'preview-question': no ? 'Jeg vil gjerne vite mer om tjenestene deres.' : 'I’d like to learn more about your services.',
-      'preview-answer': no ? 'Det hjelper vi deg gjerne med. Fortell litt om hva du trenger, så finner vi riktig løsning sammen.' : 'We’d be happy to help. Tell us a little about what you need, and we’ll find the right solution together.',
+      'preview-welcome': t("Hi! How can we help you?", "Hei! Hva kan vi hjelpe deg med?"),
+      'preview-question': t("I’d like to learn more about your services.", "Jeg vil gjerne vite mer om tjenestene deres."),
+      'preview-answer': t("We’d be happy to help. Tell us a little about what you need, and we’ll find the right solution together.", "Det hjelper vi deg gjerne med. Fortell litt om hva du trenger, så finner vi riktig løsning sammen."),
     }
     return sampleCopy[message.id] ? { ...message, text: sampleCopy[message.id] } : message
-  }), [messagesOverride, internalMessages, no])
+  }), [messagesOverride, internalMessages, no, t])
   const inputValue = inputValueOverride ?? internalInputValue
   const isReplying = bubbleActivityState === 'replying' || internalIsReplying
   const showTypingIndicator = isReplying
@@ -350,13 +380,27 @@ export default function WidgetPreview({
     feedbackKeywords.some((keyword) => text.toLowerCase().includes(keyword))
   const internalRequestedTask = (text: string) =>
     taskKeywords.some((keyword) => text.toLowerCase().includes(keyword))
-  const flow = resolveWidgetFlow(settings, { humanSupportEnabled: supportEnabled })
-  const [ticketDraft, setTicketDraft] = useState({ visitorName: '', visitorEmail: '', visitorPhone: '' })
+  const rawFlow = resolveWidgetFlow(settings, { humanSupportEnabled: supportEnabled })
+  const flow = { ...rawFlow, ticketTitle: t(rawFlow.ticketTitle), ticketDescription: t(rawFlow.ticketDescription), reviewTitle: t(rawFlow.reviewTitle), reviewDescription: t(rawFlow.reviewDescription), contactTitle: t(rawFlow.contactTitle), contactDescription: t(rawFlow.contactDescription) }
+  const [ticketDraft, setTicketDraft] = useState(() => ({
+    visitorName: visitorContact?.name || '',
+    visitorEmail: visitorContact?.email || '',
+    visitorPhone: visitorContact?.phone || '',
+  }))
   const [ticketNotice, setTicketNotice] = useState('')
   const [ticketSubmitting, setTicketSubmitting] = useState(false)
   const [previewContact, setPreviewContact] = useState({ name: '', email: '', phone: '' })
-  const showTasksTab = flow.ticketsEnabled || designPage === 'tickets'
-  const showPortalTabs = showTasksTab && (flow.alwaysShowTickets || activePortalPanel === 'tasks' || tickets.length > 0 || showConditionalFeaturePreview)
+  const showTasksTab = flow.allowVisitorCreation || flow.showTeamTasksToVisitors || flow.alwaysShowTickets || designPage === 'tickets'
+  const showPortalTabs = showTasksTab && (flow.alwaysShowTickets || activePortalPanel === 'tasks' || tickets.length > 0 || (humanSupportRequested && (flow.allowVisitorCreation || flow.showTeamTasksToVisitors)) || showConditionalFeaturePreview)
+  const hasSavedContact = visitorContactSaved
+  useEffect(() => {
+    if (!visitorContact) return
+    setTicketDraft({
+      visitorName: visitorContact.name,
+      visitorEmail: visitorContact.email,
+      visitorPhone: visitorContact.phone,
+    })
+  }, [visitorContact?.email, visitorContact?.name, visitorContact?.phone])
   useEffect(() => {
     setActivePortalPanel(designPage === 'tickets' ? 'tasks' : 'chats')
     setInternalFeedbackOpen(designPage === 'reviews')
@@ -377,13 +421,13 @@ export default function WidgetPreview({
       ].join('\n').slice(-5000)
       const latestVisitorMessage = [...messages].reverse().find((message) => !message.isBot)?.text || currentDraft
       if (onCreateTicket) await onCreateTicket({
-        title: latestVisitorMessage.slice(0, 100) || (no ? 'Kontaktforespørsel' : 'Contact request'),
-        description: transcript || (no ? 'Kunden ønsker å bli kontaktet.' : 'The visitor asked to be contacted.'),
+        title: latestVisitorMessage.slice(0, 100) || (t("Contact request", "Kontaktforespørsel")),
+        description: transcript || (t("The visitor asked to be contacted.", "Kunden ønsker å bli kontaktet.")),
         visitorName: ticketDraft.visitorName,
         visitorEmail: ticketDraft.visitorEmail,
         visitorPhone: ticketDraft.visitorPhone,
       })
-      setTicketNotice(no ? 'Ticketen er sendt.' : 'Ticket submitted.')
+      setTicketNotice(t("Ticket submitted.", "Ticketen er sendt."))
     } catch (error) { setTicketNotice(error instanceof Error ? error.message : 'Unable to send ticket') }
     finally { setTicketSubmitting(false) }
   }
@@ -445,8 +489,8 @@ export default function WidgetPreview({
 
     const normalized = normalizeConversationCards(conversationCards)
     const limited = normalized.slice(0, Math.max(1, Number(conversationCardsLimit || 4)))
-    return limited
-  }, [conversationCardsLimit, bodyStyle.showConversationCards, conversationCards, conversationCardsEnabled])
+    return limited.map(card => ({ ...card, title: t(card.title), description: t(card.description), options: card.options.map(option => ({ ...option, label: t(option.label), description: option.description ? t(option.description) : undefined, prompt: t(option.prompt) })) }))
+  }, [conversationCardsLimit, bodyStyle.showConversationCards, conversationCards, conversationCardsEnabled, t])
   const showStarterCards =
     starterCards.length > 0 &&
     isChatOpen &&
@@ -613,7 +657,7 @@ export default function WidgetPreview({
     if (!nextText) return
 
     if (countChars(nextText) > 300) {
-      setInternalErrorMessage(no ? 'Meldingen er for lang. Maks 300 tegn.' : 'Message is too long. Max 300 characters.')
+      setInternalErrorMessage(t("Message is too long. Max 300 characters.", "Meldingen er for lang. Maks 300 tegn."))
       return
     }
 
@@ -743,8 +787,8 @@ export default function WidgetPreview({
     `input-${footerStyle.inputStyle}`,
     highlightedSection === 'footer' ? 'preview-section-highlight' : ''
   )
-  const title = customBranding.title || 'Support Chat'
-  const description = customBranding.description || (no ? 'Hva kan vi hjelpe deg med?' : 'How can we help you?')
+  const title = t(customBranding.title || 'Support Chat')
+  const description = customBranding.description ? t(customBranding.description) : (t("How can we help you?", "Hva kan vi hjelpe deg med?"))
   const logoStyle = normalizeLogoStyle(customBranding.logoStyle)
   const orbSettings = bubbleStyle.orbStyle || {
     hoverEnabled: true,
@@ -860,7 +904,7 @@ export default function WidgetPreview({
       ref={viewportRef}
       className={`vintra-widget widget-viewport ${variant === 'embedded' ? 'widget-viewport-embedded' : ''} position-${position} preview-${previewMode}`}
     >
-      <div className={`floating-chat-preview ${themeClass}`} style={themeVars as CSSProperties}>
+      <div className={`floating-chat-preview ${themeClass}`} style={themeVars as CSSProperties} lang={uiLanguage === 'no' ? 'nb' : uiLanguage}>
         <div className="widgetcontainer">
           <div id={`${widgetId}-chat`} role="region" aria-label={title}
             onKeyDown={(event) => { if (event.key === 'Escape' && headerStyle.showCloseButton && !activeHumanHandoffOverlay.open && !activeFeedbackOverlay.open) { setIsChatOpen(false); launcherRef.current?.focus() } }}
@@ -885,12 +929,12 @@ export default function WidgetPreview({
             >
             <div className={headerClasses}>
               <div className="chat-header-left">
-                {(showStarterCardList || activePortalPanel === 'tasks') ? (
+                {activePortalPanel === 'tasks' ? (
                   <button
                     type="button"
                     className="chat-header-back"
-                    onClick={() => activePortalPanel === 'tasks' ? setActivePortalPanel('chats') : setActiveConversationCardId(null)}
-                    aria-label={no ? 'Tilbake til chatten' : 'Back to chat'}
+                    onClick={() => setActivePortalPanel('chats')}
+                    aria-label={t("Back to chat", "Tilbake til chatten")}
                   >
                     {renderWidgetIcon(effectiveAssistantIcons.backIcon, { 'aria-hidden': true }) || <FiArrowLeft aria-hidden="true" />}
                   </button>
@@ -948,8 +992,8 @@ export default function WidgetPreview({
                     ) : null}
 
                     <div className="chat-header-copy">
-                      {headerStyle.showTitle && <h3>{activePortalPanel === 'tasks' ? flow.contactTitle : title}</h3>}
-                      <p>{activePortalPanel === 'tasks' ? flow.contactDescription : description}</p>
+                      {headerStyle.showTitle && <h3>{activePortalPanel === 'tasks' ? flow.ticketTitle : title}</h3>}
+                      <p>{activePortalPanel === 'tasks' ? flow.ticketDescription : description}</p>
                     </div>
 
                     {activePortalPanel !== 'tasks' && headerStyle.showStatus && <span className="header-status-dot" aria-hidden="true" />}
@@ -958,10 +1002,11 @@ export default function WidgetPreview({
               </div>
 
               <div className="chat-header-actions">
-                {activePortalPanel === 'chats' && flow.reviewHeaderButton && <button type="button" className="widget-review-open" aria-label={no ? 'Gi en anmeldelse' : 'Leave a review'} title={no ? 'Gi en anmeldelse' : 'Leave a review'} onClick={() => onOpenReview ? onOpenReview() : setInternalFeedbackOpen(true)}>&#9734;</button>}
+                {languageConfig.enabled && <select className="widget-language-select" aria-label="Language / Språk" value={uiLanguage} onChange={event => chooseLanguage(event.target.value as WidgetLanguage)}>{languageConfig.allowedLanguages.map(code => <option key={code} value={code}>{WIDGET_LANGUAGES[code]}</option>)}</select>}
+                {activePortalPanel === 'chats' && flow.reviewHeaderButton && <button type="button" className="widget-review-open" aria-label={t("Leave a review", "Gi en anmeldelse")} title={t("Leave a review", "Gi en anmeldelse")} onClick={() => onOpenReview ? onOpenReview() : setInternalFeedbackOpen(true)}>&#9734;</button>}
                 {activePortalPanel === 'chats' && headerStyle.showStatus && (
                   <span className="status-pill">
-                    <FiCheckCircle /> {statusText}
+                    <FiCheckCircle /> {t(statusText)}
                   </span>
                 )}
 
@@ -974,12 +1019,12 @@ export default function WidgetPreview({
                       width={40}
                       height={40}
                       onClick={() => { setIsChatOpen(false); launcherRef.current?.focus() }}
-                      aria-label={no ? 'Lukk chatten' : 'Close chat'}
+                      aria-label={t("Close chat", "Lukk chatten")}
                     >
                       {renderWidgetIcon(effectiveAssistantIcons.closeIcon, { 'aria-hidden': true }) || 'x'}
                     </WebGLLiquidGlassSendButton>
                   ) : (
-                    <button type="button" className="close-btn" onClick={() => { setIsChatOpen(false); launcherRef.current?.focus() }} aria-label={no ? 'Lukk chatten' : 'Close chat'}>
+                    <button type="button" className="close-btn" onClick={() => { setIsChatOpen(false); launcherRef.current?.focus() }} aria-label={t("Close chat", "Lukk chatten")}>
                       {renderWidgetIcon(effectiveAssistantIcons.closeIcon, { 'aria-hidden': true }) || 'x'}
                     </button>
                   )
@@ -992,16 +1037,14 @@ export default function WidgetPreview({
                 stickToBottomRef.current = node.scrollHeight - node.clientHeight - node.scrollTop < 64
               }}>
               {showPortalTabs ? (
-                <div className={`widget-panel-tabs ${showConditionalFeaturePreview ? 'widget-panel-tabs--preview-only' : ''}`} role="tablist" aria-label="Widget pages">
+                <div className={`widget-panel-tabs ${showConditionalFeaturePreview ? 'widget-panel-tabs--preview-only' : ''}`} role="tablist" aria-label={t("Widget pages")}>
                   <button
                     type="button"
                     className={`widget-panel-tab ${activePortalPanel === 'chats' ? 'is-active' : ''}`}
                     onClick={() => setActivePortalPanel('chats')}
                     role="tab"
                     aria-selected={activePortalPanel === 'chats'}
-                  >
-                    Chats
-                  </button>
+                  >{t("Chats")}</button>
                   {showTasksTab ? (
                     <button
                       type="button"
@@ -1009,32 +1052,49 @@ export default function WidgetPreview({
                       onClick={() => setActivePortalPanel('tasks')}
                       role="tab"
                       aria-selected={activePortalPanel === 'tasks'}
-                    >
-                      Ticket
-                    </button>
+                    >{t("Tickets")}</button>
                   ) : null}
                 </div>
               ) : null}
               <div className={`widget-body-content ${showPortalTabs ? 'widget-body-content--with-panel-tabs' : ''}`}>
               {activePortalPanel === 'tasks' && showTasksTab ? (
                 <div className={`widget-panel-page widget-panel-page--tasks ticket-layout-${flow.ticketLayout}`}>
+                  {humanSupportStatus !== 'none' && humanSupportStatus !== 'closed' && (
+                    <article className="widget-task-card">
+                      <div className="widget-task-card__top">
+                        <strong>{t("Human support", "Menneskelig support")}</strong>
+                        <span className="widget-task-badge">
+                          {humanSupportStatus === 'open'
+                            ? t("Connected", "Tilkoblet")
+                            : humanSupportStatus === 'ai-active'
+                              ? t("AI assistant active", "AI-assistenten er aktiv")
+                              : t("Waiting for support", "Venter på support")}
+                        </span>
+                      </div>
+                      <p>{t("Your support conversation and its updates are available in Chats.", "Support-samtalen og oppdateringer finner du under Chatter.")}</p>
+                      <button type="button" className="widget-feedback-secondary" onClick={() => setActivePortalPanel('chats')}>
+                        {t("Open conversation", "Åpne samtalen")}
+                      </button>
+                    </article>
+                  )}
                   {(flow.allowVisitorCreation || designPage === 'tickets') && <>
-                    <label className="widget-feedback-field"><span>{no ? 'Navn' : 'Name'}</span><input autoComplete="name" value={ticketDraft.visitorName} onChange={event => setTicketDraft(prev => ({ ...prev, visitorName: event.target.value }))} /></label>
-                    {flow.showEmail && <label className="widget-feedback-field"><span>Email</span><input type="email" autoComplete="email" value={ticketDraft.visitorEmail} onChange={event => setTicketDraft(prev => ({ ...prev, visitorEmail: event.target.value }))} /></label>}
-                    {flow.showPhone && <label className="widget-feedback-field"><span>{no ? 'Telefon' : 'Phone'}</span><input type="tel" autoComplete="tel" value={ticketDraft.visitorPhone} onChange={event => setTicketDraft(prev => ({ ...prev, visitorPhone: event.target.value }))} /></label>}
-                    <div className="widget-feedback-actions"><button type="button" className="widget-feedback-primary" disabled={ticketSubmitting || !flow.allowVisitorCreation || Boolean(validateWidgetContact(flow, { name: ticketDraft.visitorName, email: ticketDraft.visitorEmail, phone: ticketDraft.visitorPhone }))} onClick={submitTicket}>{ticketSubmitting ? (no ? 'Sender...' : 'Sending...') : (no ? 'Send forespørsel' : 'Send request')}</button></div>
+                    {!hasSavedContact && <label className="widget-feedback-field"><span>{t("Name", "Navn")}</span><input autoComplete="name" value={ticketDraft.visitorName} onChange={event => { const next = { ...ticketDraft, visitorName: event.target.value }; setTicketDraft(next); onVisitorContactChange?.({ name: next.visitorName, email: next.visitorEmail, phone: next.visitorPhone }) }} /></label>}
+                    {!hasSavedContact && flow.showEmail && <label className="widget-feedback-field"><span>{t("Email")}</span><input type="email" autoComplete="email" value={ticketDraft.visitorEmail} onChange={event => { const next = { ...ticketDraft, visitorEmail: event.target.value }; setTicketDraft(next); onVisitorContactChange?.({ name: next.visitorName, email: next.visitorEmail, phone: next.visitorPhone }) }} /></label>}
+                    {!hasSavedContact && flow.showPhone && <label className="widget-feedback-field"><span>{t("Phone", "Telefon")}</span><input type="tel" autoComplete="tel" value={ticketDraft.visitorPhone} onChange={event => { const next = { ...ticketDraft, visitorPhone: event.target.value }; setTicketDraft(next); onVisitorContactChange?.({ name: next.visitorName, email: next.visitorEmail, phone: next.visitorPhone }) }} /></label>}
+                    {hasSavedContact && <p>{t("Using your saved contact details.", "Bruker lagret kontaktinformasjon.")}</p>}
+                    <div className="widget-feedback-actions"><button type="button" className="widget-feedback-primary" disabled={ticketSubmitting || !flow.allowVisitorCreation || Boolean(validateWidgetContact(flow, { name: ticketDraft.visitorName, email: ticketDraft.visitorEmail, phone: ticketDraft.visitorPhone }))} onClick={submitTicket}>{ticketSubmitting ? (t("Sending...", "Sender...")) : (t("Send request", "Send forespørsel"))}</button></div>
                   </>}
                   {ticketNotice && <p role="status">{ticketNotice}</p>}
                   {tickets.map(ticket => <article className="widget-task-card" key={ticket.id}><div className="widget-task-card__top"><strong>{ticket.title}</strong><span className="widget-task-badge">{ticket.status}</span></div><p>{ticket.description}</p></article>)}
                   {!onCreateTicket &&                   <div className="widget-task-list">
                     <article className="widget-task-card">
                       <div className="widget-task-card__top">
-                        <strong>Refund follow-up</strong>
-                        <span className="widget-task-badge widget-task-badge--in-progress">in-progress</span>
+                        <strong>{t("Refund follow-up")}</strong>
+                        <span className="widget-task-badge widget-task-badge--in-progress">{t("in-progress")}</span>
                       </div>
-                      <p>Follow up with the customer and confirm the refund window.</p>
+                      <p>{t("Follow up with the customer and confirm the refund window.")}</p>
                       <div className="widget-task-card__meta">
-                        <span>Support</span>
+                        <span>{t("Support")}</span>
                         <span>10:26 AM</span>
                       </div>
                     </article>
@@ -1049,13 +1109,13 @@ export default function WidgetPreview({
                       </div>
                     ) : null}
                     <div className="widget-starter-cards__hero-copy">
-                      <strong>{no ? 'Hei, og velkommen.' : 'Hello, and welcome.'}</strong>
-                      <p>{no ? 'Velg et tema, eller skriv til oss.' : 'Choose a topic, or send us a message.'}</p>
+                      <strong>{t("Hello, and welcome.", "Hei, og velkommen.")}</strong>
+                      <p>{t("Choose a topic, or send us a message.", "Velg et tema, eller skriv til oss.")}</p>
                     </div>
                   </div>
 
                   {starterCardPages.length > 1 ? (
-                    <div className="widget-starter-cards__dots" aria-label="Starter card pages">
+                    <div className="widget-starter-cards__dots" aria-label={t("Starter card pages")}>
                       {starterCardPages.map((_, pageIndex) => (
                         <button
                           key={pageIndex}
@@ -1112,7 +1172,7 @@ export default function WidgetPreview({
                   </div>
                 </div>
               ) : showStarterCardList && activeConversationCard ? (
-                <div className="widget-starter-options widget-starter-options--panel" aria-label="Suggested next steps">
+                <div className="widget-starter-options widget-starter-options--panel" aria-label={t("Suggested next steps")}>
                   <div className="widget-starter-options__title">
                     <strong>{activeConversationCard.title}</strong>
                     <p>{activeConversationCard.description}</p>
@@ -1149,7 +1209,7 @@ export default function WidgetPreview({
                       key={msg.id}
                       className={`message ${getMessageSurfaceClasses(bodyStyle)} message-${getMessageRole(msg)} message--${getMessageRole(msg)} ${getMessageClassName(msg)}`}
                     >
-                      <div className="message-content">{msg.text}</div>
+                      <div className="message-content">{msg.id === 'initial-runtime-message' ? t("Hi! How can we help you?", "Hei! Hva kan vi hjelpe deg med?") : msg.text}</div>
                       {(bodyStyle.showTimestamps || (bodyStyle.showReadReceipts && !msg.isBot)) && (
                         <div className="message-meta">
                           {bodyStyle.showTimestamps && (
@@ -1161,7 +1221,7 @@ export default function WidgetPreview({
                             </span>
                           )}
                           {bodyStyle.showReadReceipts && !msg.isBot && (
-                            <span className="read-receipt">Read</span>
+                            <span className="read-receipt">{t("Read")}</span>
                           )}
                         </div>
                       )}
@@ -1173,16 +1233,16 @@ export default function WidgetPreview({
                     </div>
                   ))}
                   {showComposerSuggestions && (
-                    <div className="widget-faq-suggestions" aria-label="Suggested questions">
-                      <strong className="widget-faq-suggestions__title">{no ? 'Forslag til deg' : 'Suggestions for you'}</strong>
+                    <div className="widget-faq-suggestions" aria-label={t("Suggested questions")}>
+                      <strong className="widget-faq-suggestions__title">{t("Suggestions for you", "Forslag til deg")}</strong>
                       {helpSuggestions.map((suggestion) => (
                         <button
-                          key={suggestion}
+                          key={t(suggestion)}
                           type="button"
                           className="widget-faq-chip"
                           onClick={() => {
                             setFaqSuggestionsDismissed(true)
-                            void handleSend(suggestion)
+                            void handleSend(t(suggestion))
                           }}
                           disabled={disableInput}
                         >
@@ -1192,7 +1252,7 @@ export default function WidgetPreview({
                     </div>
                   )}
                   {showTypingIndicator && (
-                    <div className="message message-bot message--assistant message-typing" aria-live="polite" aria-label="Assistant is typing">
+                    <div className="message message-bot message--assistant message-typing" aria-live="polite" aria-label={t("Assistant is typing")}>
                       {effectiveAssistantIcons.aiIcon || effectiveAssistantIcons.heroIcon ? (
                         <span className="message-role-icon" aria-hidden="true">
                           {renderWidgetIcon(effectiveAssistantIcons.aiIcon || effectiveAssistantIcons.heroIcon, { 'aria-hidden': true })}
@@ -1206,7 +1266,7 @@ export default function WidgetPreview({
                     </div>
                   )}
                   {showSupportTypingIndicator ? (
-                    <div className="message message-support message--support message-typing" aria-live="polite" aria-label="Support is typing">
+                    <div className="message message-support message--support message-typing" aria-live="polite" aria-label={t("Support is typing")}>
                       {effectiveAssistantIcons.supportIcon ? (
                         <span className="message-role-icon" aria-hidden="true">
                           {renderWidgetIcon(effectiveAssistantIcons.supportIcon, { 'aria-hidden': true })}
@@ -1226,30 +1286,31 @@ export default function WidgetPreview({
               </div>
 
             {activeHumanHandoffOverlay.open ? (
-              <div className="widget-handoff-overlay" role="dialog" aria-modal="true" aria-label="Human support request">
+              <div className="widget-handoff-overlay" role="dialog" aria-modal="true" aria-label={t("Human support request")}>
                 <div className={`widget-handoff-card form-spacing-${flow.formStyle}`}>
                   <div className="widget-handoff-header">
                     <div>
                       <h4>{flow.contactTitle}</h4>
                       <p>{flow.contactDescription}</p>
                     </div>
-                    <button type="button" className="widget-handoff-close" onClick={activeHumanHandoffOverlay.onClose} aria-label="Close human handoff form">
+                    <button type="button" className="widget-handoff-close" onClick={activeHumanHandoffOverlay.onClose} aria-label={t("Close human handoff form")}>
                       <FiArrowLeft aria-hidden="true" />
                     </button>
                   </div>
                   <div className="widget-handoff-grid">
+                    {hasSavedContact ? <p>{t("Using your saved contact details.", "Bruker lagret kontaktinformasjon.")}</p> : <>
                     <label className="widget-handoff-field">
-                      <span>Name</span>
+                      <span>{t("Name")}</span>
                       <input
                         type="text"
                         value={activeHumanHandoffOverlay.name}
                         onChange={(event) => activeHumanHandoffOverlay.onNameChange(event.target.value)}
-                        placeholder="Your name"
+                        placeholder={t("Your name")}
                         autoComplete="name"
                       />
                     </label>
                     {flow.showEmail && (                    <label className="widget-handoff-field">
-                      <span>Email</span>
+                      <span>{t("Email")}</span>
                       <input
                         type="email"
                         value={activeHumanHandoffOverlay.email}
@@ -1259,7 +1320,7 @@ export default function WidgetPreview({
                       />
                     </label>)}
                     {flow.showPhone && (                    <label className="widget-handoff-field">
-                      <span>Phone</span>
+                      <span>{t("Phone")}</span>
                       <input
                         type="tel"
                         value={activeHumanHandoffOverlay.phone}
@@ -1268,6 +1329,7 @@ export default function WidgetPreview({
                         autoComplete="tel"
                       />
                     </label>)}
+                    </>}
                   </div>
                   <div className="widget-handoff-actions">
                     <button
@@ -1284,23 +1346,23 @@ export default function WidgetPreview({
             ) : activePortalPanel === 'chats' ? (
               <div className={`${footerClasses} ${flashSection === 'footer' ? 'preview-section-flash' : ''}`.trim()}>
               <div className="chat-footer-row">
-                {flow.allowVisitorCreation && (
+                {flow.allowVisitorCreation && humanSupportRequested && (
                   <button
                     type="button"
                     className="widget-ticket-open"
-                    aria-label={no ? 'Send en ticket' : 'Create a support ticket'}
-                    title={no ? 'Send en ticket' : 'Create a support ticket'}
+                    aria-label={t("Create a support ticket", "Send en ticket")}
+                    title={t("Create a support ticket", "Send en ticket")}
                     onClick={() => setActivePortalPanel('tasks')}
                   >
-                    <FiPlus aria-hidden="true" />
+                    <FiFileText aria-hidden="true" />
                   </button>
                 )}
                 <textarea
                   id={`${widgetId}-message`}
-                  aria-label={no ? 'Meldingen din' : 'Your message'}
+                  aria-label={t("Your message", "Meldingen din")}
                   name="widget-message-input"
                   ref={inputRef}
-                  placeholder={footerStyle.showPlaceholder ? (no ? 'Skriv en melding…' : 'Write a message…') : ''}
+                  placeholder={footerStyle.showPlaceholder ? (t("Write a message…", "Skriv en melding…")) : ''}
                   value={inputValue}
                   onFocus={() => setIsComposerFocused(true)}
                   onBlur={() => setIsComposerFocused(false)}
@@ -1324,12 +1386,12 @@ export default function WidgetPreview({
                       height={52}
                       onClick={() => handleSend()}
                       disabled={disableInput || disableSend || internalIsReplying}
-                      aria-label="Send message"
+                      aria-label={t("Send message")}
                     >
                       {renderWidgetIcon(effectiveAssistantIcons.sendIcon, { 'aria-hidden': true }) || <FiSend />}
                     </WebGLLiquidGlassSendButton>
                   ) : (
-                    <button type="button" onPointerDown={(event) => event.preventDefault()} onClick={() => handleSend()} disabled={disableInput || disableSend || internalIsReplying} aria-label="Send message">
+                    <button type="button" onPointerDown={(event) => event.preventDefault()} onClick={() => handleSend()} disabled={disableInput || disableSend || internalIsReplying} aria-label={t("Send message")}>
                       {renderWidgetIcon(effectiveAssistantIcons.sendIcon, { 'aria-hidden': true }) || <FiSend />}
                     </button>
                   )
@@ -1338,8 +1400,11 @@ export default function WidgetPreview({
               </div>
             ) : null}
 
+            {translationError && <button type="button" className="widget-inline-error" onClick={retryTranslation}>{no ? "Oversettelse utilgjengelig. Pr\u00f8v igjen." : "Translation unavailable. Try again."}</button>}
+            {translationLoading && <span role="status" className="widget-translation-status">{t("Loading...", "Laster...")}</span>}
             {visibleErrorMessage && <div className="widget-inline-error" role="alert">{visibleErrorMessage}</div>}
             <FeedbackFormOverlay
+              translate={t}
               title={flow.reviewTitle}
               description={flow.reviewDescription}
               open={Boolean(activeFeedbackOverlay.open)}
@@ -1356,6 +1421,7 @@ export default function WidgetPreview({
             </div>
           </div>
 
+          {showStartCard && <aside className="widget-start-card"><button type="button" className="widget-start-card-close" aria-label={t("Close", "Lukk")} onClick={() => setStartCardDismissed(true)}>&times;</button><button type="button" className="widget-start-card-message" onClick={() => setIsChatOpen(true)}>{t(startCard!.text)}<strong>{title}</strong></button></aside>}
           <div
             ref={launcherRef}
             className={`widget-icon launcher-custom ${bubbleClasses} ${bubbleStyle.iconChoice === 'orb' ? 'widget-icon--orb' : ''} ${bubbleStyle.iconChoice === 'orb' && orbPhase === 'reply' ? 'widget-icon--orb-replying' : ''} ${bubbleStyle.iconChoice === 'orb' && orbPhase === 'inactive' ? 'widget-icon--orb-idle' : ''} ${highlightedSection === 'bubble' ? 'preview-section-highlight' : ''} ${flashSection === 'bubble' ? 'preview-section-flash' : ''}`}
@@ -1371,7 +1437,7 @@ export default function WidgetPreview({
             }}
             onClick={() => setIsChatOpen((prev) => !prev)}
             role="button"
-            aria-label={isChatOpen ? (no ? 'Lukk chatten' : 'Close chat') : (no ? 'Åpne chatten' : 'Open chat')}
+            aria-label={isChatOpen ? (t("Close chat", "Lukk chatten")) : (t("Open chat", "Åpne chatten"))}
             aria-expanded={isChatOpen}
             aria-controls={`${widgetId}-chat`}
             onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setIsChatOpen((prev) => !prev); if (!isChatOpen) window.requestAnimationFrame(() => inputRef.current?.focus()) } }}

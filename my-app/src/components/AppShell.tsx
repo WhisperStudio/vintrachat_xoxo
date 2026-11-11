@@ -16,7 +16,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const isWidgetWorkspace = pathname === '/landings/auth/chatWidget' || pathname.startsWith('/widget/')
   return (
     <>
-      {!isWidgetWorkspace && !['/admin', '/auth/login', '/auth/signup', '/auth/forgot-password', '/auth/reset-password'].includes(pathname) && <Header />}
+      {!isWidgetWorkspace && !['/admin', '/auth/login', '/auth/signup', '/auth/forgot-password', '/auth/reset-password', '/auth/verify-email', '/auth/verify-email-sent'].includes(pathname) && <Header />}
       {protectedWorkspace && !loading && error ? (
         <main className="page narrow">
           <section className="infoCard">

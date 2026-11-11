@@ -4,6 +4,8 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { adminAuth, adminDb } from '@/lib/firebase-admin'
 import { normalizeConversationCards } from '@/lib/conversation-cards'
 
+import { normalizeLocalization } from '@/lib/widget-localization'
+
 type AssistantConfigBody = Record<string, any>
 
 function removeUndefinedValues<T>(value: T): T {
@@ -105,6 +107,8 @@ function normalizeAssistantConfig(body: AssistantConfigBody, businessName = '') 
   return {
     ...defaults,
     ...body,
+    localization: normalizeLocalization(body.localization),
+    startCard: { enabled: body.startCard?.enabled === true, text: String(body.startCard?.text || '').slice(0, 350) },
     businessProfile: {
       ...defaults.businessProfile,
       ...(body.businessProfile || {}),

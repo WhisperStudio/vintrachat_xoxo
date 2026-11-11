@@ -53,6 +53,7 @@ export default function WidgetFlowSettings({ settings, onChange, no = true, sect
         </select></label>
         {toggle(no ? 'Kunden kan opprette tickets selv' : 'Visitors can create tickets', settings.ticket?.allowVisitorCreation !== false, allowVisitorCreation => patch('ticket', { allowVisitorCreation }))}
         {toggle(no ? 'Vis ticket-fanen hele tiden' : 'Always show the tickets tab', settings.ticket?.showTabAlways ?? (settings.ticket?.mode === 'always'), showTabAlways => patch('ticket', { showTabAlways }))}
+        {toggle(no ? 'Vis tickets teamet oppretter for kunden' : 'Show tickets the team creates for visitors', settings.ticket?.showTeamTasksToVisitors === true, showTeamTasksToVisitors => patch('ticket', { showTeamTasksToVisitors }))}
         <p>{no ? 'Innsendte tickets vises som oppgaver hos bedriften. Når support er av, blokkeres også innsending og overføring til et menneske.' : 'Submitted tickets appear as tasks for the business. Turning support off also blocks submission and human handoff.'}</p>
       </>}
       {design && <>

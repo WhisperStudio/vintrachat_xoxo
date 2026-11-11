@@ -70,10 +70,15 @@ export async function GET(req: NextRequest) {
       .where('sessionId', '==', sessionId)
       .get()
 
+    const flow = resolveWidgetFlow(business.chatWidgetConfig?.settings, business.chatAssistantConfig)
     return NextResponse.json(
       {
         tasks: tasksSnap.docs
-          .filter((doc) => String(doc.data()?.widgetKey || '') === widgetKey)
+          .filter((doc) => {
+            const task = doc.data()
+            return String(task?.widgetKey || '') === widgetKey &&
+              (task?.createdBy === 'widget' || flow.showTeamTasksToVisitors)
+          })
           .map((doc) => mapTask(doc.id, doc.data()))
           .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()),
       },
@@ -134,6 +139,7 @@ export async function POST(req: NextRequest) {
       priority: 'medium',
       status: 'open',
       createdBy: 'widget',
+      visitorVisible: true,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     })

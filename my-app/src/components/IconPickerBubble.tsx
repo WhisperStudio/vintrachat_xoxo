@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { FiX } from 'react-icons/fi'
+import { useStudioCopy } from '@/components/chat/studio-copy'
+import { useVintraLanguage } from '@/lib/i18n'
 import { getWidgetIconOption, renderWidgetIcon, searchWidgetIcons } from '@/lib/widget-icons'
 
 type IconPickerBubbleProps = {
@@ -23,13 +25,28 @@ export default function IconPickerBubble({
   className = '',
   disabled = false,
 }: IconPickerBubbleProps) {
+  const copy = useStudioCopy()
+  const { language } = useVintraLanguage()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [showAll, setShowAll] = useState(false)
   const shellRef = useRef<HTMLDivElement | null>(null)
 
   const selected = getWidgetIconOption(value)
+  const allIcons = useMemo(() => searchWidgetIcons(''), [])
+  const recommendedKeys = useMemo(
+    () => new Set(['ColorChatIcon', 'FiMessageCircle', 'FiLifeBuoy', 'FiCpu', 'FiUser', 'FiPhone', 'FiShield', 'FiGlobe']),
+    []
+  )
 
-  const filteredIcons = useMemo(() => searchWidgetIcons(search), [search])
+  const filteredIcons = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    if (query) {
+      const matches = new Set(searchWidgetIcons(search).map(option => option.key))
+      return allIcons.filter(option => matches.has(option.key) || copy(option.label).toLowerCase().includes(query))
+    }
+    return showAll ? allIcons : allIcons.filter(option => recommendedKeys.has(option.key))
+  }, [allIcons, copy, recommendedKeys, search, showAll])
 
   useEffect(() => {
     if (!open) return
@@ -68,8 +85,8 @@ export default function IconPickerBubble({
             {renderWidgetIcon(value, { 'aria-hidden': true })}
           </span>
           <span className="widget-icon-picker__text">
-            <strong>{selected?.label || placeholder}</strong>
-            <small>{selected?.key || 'Empty'}</small>
+            <strong>{copy(selected?.label || placeholder)}</strong>
+            <small>{selected?.key || copy('Empty')}</small>
           </span>
         </button>
 
@@ -78,7 +95,7 @@ export default function IconPickerBubble({
           className="widget-icon-picker__clear"
           onClick={() => onChange('')}
           disabled={disabled || !value}
-          aria-label={`Clear ${label}`}
+          aria-label={`${language === 'no' ? 'Fjern' : 'Clear'} ${label}`}
         >
           <FiX />
         </button>
@@ -87,13 +104,14 @@ export default function IconPickerBubble({
       {helperText ? <p className="widget-icon-picker__helper">{helperText}</p> : null}
 
       {open ? (
-        <div className="widget-icon-picker__bubble" role="dialog" aria-label={`${label} icon gallery`}>
+        <div className="widget-icon-picker__bubble" role="dialog" aria-label={`${label} – ${language === 'no' ? 'ikongalleri' : 'icon gallery'}`}>
           <div className="widget-icon-picker__search">
             <input
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search icons..."
+              placeholder={copy('Search icons...')}
+              aria-label={copy('Search icons...')}
             />
           </div>
 
@@ -107,7 +125,7 @@ export default function IconPickerBubble({
               }}
             >
               <span className="widget-icon-picker__option-icon" aria-hidden="true" />
-              <span>None</span>
+              <span>{copy('None')}</span>
             </button>
 
             {filteredIcons.map((option) => {
@@ -127,11 +145,22 @@ export default function IconPickerBubble({
                   <span className="widget-icon-picker__option-icon" aria-hidden="true">
                     <Icon />
                   </span>
-                  <span>{option.label}</span>
+                  <span>{copy(option.label)}</span>
                 </button>
               )
             })}
           </div>
+          {!search.trim() ? (
+            <button
+              type="button"
+              className="widget-icon-picker__show-all"
+              onClick={() => setShowAll((previous) => !previous)}
+            >
+              {showAll
+                ? (language === 'no' ? 'Vis anbefalte ikoner' : 'Show recommended icons')
+                : (language === 'no' ? 'Vis alle ikoner' : 'Show all icons')}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>

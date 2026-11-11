@@ -22,6 +22,7 @@ import {
   writeAppThemePreference,
 } from '@/lib/theme-preference'
 import GlobeSwitcher from '@/components/langSwitch'
+import CompactLanguageSwitch from '@/components/CompactLanguageSwitch'
 import AdminDropdown from './components/AdminDropdown'
 import AdminAnalyticsPanel from './components/AdminAnalyticsPanel'
 import AdminChatsPanel from './components/AdminChatsPanel'
@@ -476,6 +477,7 @@ export default function AdminWorkspace({ billingConfigured, billingTestMode }: {
               <span>{business?.name || 'Vintra'}</span><FiChevronRight aria-hidden="true" /><strong>{activeTabTitle}</strong>
             </div>
             <div className="adminContentTopbarActions">
+              <CompactLanguageSwitch />
               {!['users', 'websites', 'settings', 'builder', 'subscriptions', 'vintra'].includes(activeTab) && <div className="adminContentWidgetPicker">
                 <FiLayers aria-hidden="true" />
                 <AdminDropdown value={resolvedWidgetKey} placeholder={text.overview.selectWidget}

@@ -11,6 +11,7 @@ export function resolveWidgetFlow(settings = {}, assistant = {}) {
     ticketsEnabled,
     allowVisitorCreation: ticketsEnabled && ticket.allowVisitorCreation !== false,
     alwaysShowTickets: ticketsEnabled && (ticket.showTabAlways === true || (ticket.showTabAlways !== false && mode === 'always')),
+    showTeamTasksToVisitors: ticket.showTeamTasksToVisitors === true,
     ticketTitle: String(ticket.title || 'Support tickets').slice(0, 100),
     ticketDescription: String(ticket.description || 'Send a request to the team and track it here.').slice(0, 500),
     ticketLayout: ticket.layout === 'compact' ? 'compact' : 'cards',

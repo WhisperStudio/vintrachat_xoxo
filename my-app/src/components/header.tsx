@@ -17,7 +17,7 @@ import {
 } from '@/lib/main-landing-theme'
 import { isVintraAdminEmail } from '@/lib/vintra-admin'
 import type { BusinessInvitation } from '@/types/database'
-import GlobeSwitcher from "./langSwitch";
+import CompactLanguageSwitch from "./CompactLanguageSwitch";
 import {
   FiArrowRight,
   FiBriefcase,
@@ -1054,7 +1054,7 @@ export default function Header() {
 
           <RightSide>
             <ActionRow>
-              {!isAdminRoute ? <GlobeSwitcher size={62} /> : null}
+              {!isAdminRoute ? <CompactLanguageSwitch /> : null}
               {isMainLandingRoute ? (
                 <ThemeModeButton type="button" onClick={toggleMainLandingThemeMode} aria-label={themeToggleLabel}>
                   {mainLandingThemeMode === 'night' ? <FiMoon style={{ color: 'white', fontSize: 20 }} /> : <FiSun style={{ color: 'darkgray', fontSize: 20 }} />}
@@ -1143,7 +1143,7 @@ export default function Header() {
               </MobileWidgetScope>
             ) : null}
 
-            {!isAdminRoute ? <GlobeSwitcher /> : null}
+            {!isAdminRoute ? <CompactLanguageSwitch /> : null}
             {isMainLandingRoute ? (
               <ThemeModeButton type="button" onClick={toggleMainLandingThemeMode} aria-label={themeToggleLabel}>
                 {mainLandingThemeMode === 'night' ? <FiMoon /> : <FiSun />}
