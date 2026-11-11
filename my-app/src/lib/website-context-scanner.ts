@@ -1,3 +1,4 @@
+import { cleanImportedKnowledge } from './website-knowledge.mjs'
 import * as cheerio from 'cheerio'
 import type {
   AssistantBusinessProfile,
@@ -397,7 +398,7 @@ function uniqueStrings(items: string[], maxItems = 80) {
 
   for (const item of items) {
     const cleaned = cleanText(item)
-    const key = normalizeForSearch(cleaned)
+    const key = normalizeForSearch(cleanImportedKnowledge(cleaned))
 
     if (!cleaned || seen.has(key)) continue
     seen.add(key)
@@ -2453,7 +2454,7 @@ function buildAutofillResult(pages: ExtractedPage[], rootUrl: URL, security: Web
 
   const knowledgeBase: WebsiteKnowledgeBaseAutofill = {
     offerings: selectLinesByKeywords(pages, SERVICE_KEYWORDS, 16).join('\n'),
-    pricing: uniqueStrings(pages.flatMap(page => page.pricingLines), 24).join('\n'),
+    pricing: cleanImportedKnowledge(pages.flatMap(page => page.pricingLines).filter(line => !/\|\s*Product not confirmed/i.test(line)).join('\n')),
     trialInfo: uniqueStrings(pages.flatMap(page => page.bodyLines.filter(line => /\b(?:gratis|free|trial|prøveperiode|prøvetid|betalingskort)\b/i.test(line)).map(line => `${line} | Source: ${page.url}`)), 12).join('\n'),
     bookingInfo: uniqueStrings(pages.flatMap(page => page.bookingUrls), 12).join('\n'),
     policies: uniqueStrings(pages.flatMap(page => page.legalLines), 12).join('\n'),

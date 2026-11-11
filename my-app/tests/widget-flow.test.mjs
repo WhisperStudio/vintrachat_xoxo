@@ -1,9 +1,10 @@
+import { getBuiltinWidgetTranslations } from '../src/lib/widget-builtin-translations.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
-import { getContextualWidgetSuggestions, resolveWidgetFlow, validateWidgetContact } from '../src/lib/widget-flow.mjs';
+import { getWidgetPageStyle, getContextualWidgetSuggestions, resolveWidgetFlow, validateWidgetContact } from '../src/lib/widget-flow.mjs';
 import { installWidgetMobileViewport, shouldAnimateWidgetLauncher, patchWidgetMarkup } from '../src/lib/widget-mobile.mjs';
 
 test('support off overrides tickets and handoff; old configurations retain their behavior', () => {
@@ -69,7 +70,7 @@ function exportedScript() {
     widgetKey: 'test-widget', origin: 'https://example.com', debugMode: false, forceOpen: false,
     serializeForJs: JSON.stringify, WIDGET_THEME_CLASS: {}, WIDGET_THEME_VARS: {}, WIDGET_ICON_MARKUP_BY_KEY: {}, WIDGET_ICON_ALIAS_MAP: {},
     widgetStyles: '', ORB_ICON_SVG: '', installWidgetMobileViewport, shouldAnimateWidgetLauncher, patchWidgetMarkup,
-    resolveWidgetFlow, validateWidgetContact, getContextualWidgetSuggestions,
+    getBuiltinWidgetTranslations, getWidgetPageStyle, resolveWidgetFlow, validateWidgetContact, getContextualWidgetSuggestions,
     ...loadFunctions('../src/lib/widget-motion.ts'), ...loadFunctions('../src/lib/surface-design.ts'), ...loadFunctions('../src/lib/launcher-design.ts'),
   });
 }
@@ -90,6 +91,7 @@ test('exported ticket form respects self-service and escapes editable copy', () 
   const context = {
     state: { tasks: [], tasksLoading: false, handoffName: '<script>bad</script>', handoffEmail: '', handoffPhone: '' },
     isTasksTabEnabled: () => true,
+    pageStyle: () => '', pageIcon: () => '', pageCopy: (_, __, fallback) => fallback,
     validateContact: validateWidgetContact,
     getFlow: () => resolveWidgetFlow({ ticket: { mode: 'always', allowVisitorCreation: false, title: '<script>bad</script>' } }),
     escapeHtml: value => String(value || '').replaceAll('<', '&lt;').replaceAll('>', '&gt;'),
@@ -101,6 +103,17 @@ test('exported ticket form respects self-service and escapes editable copy', () 
   assert.match(render(), /data-contact-field="name"/);
   assert.match(render(), /&lt;script&gt;bad&lt;\/script&gt;/);
   assert.doesNotMatch(render(), /data-task-field="(?:title|description)"/);
+  context.state.supportStatus = 'open';
+  assert.doesNotMatch(render(), /widget-task-submit|data-contact-field/);
+  assert.match(render(), /Open conversation/);
+  context.state.supportStatus = '';
+  context.state.ticketSubmitted = true;
+  assert.doesNotMatch(render(), /widget-task-submit|data-contact-field/);
+  context.state.ticketSubmitted = false;
+  context.state.tasks = [{ id: 'one', title: 'Request', status: 'open' }];
+  context.formatTime = () => '';
+  assert.doesNotMatch(render(), /widget-task-submit|data-contact-field/);
+  assert.match(render(), /Request/);
 });
 
 function route(name, settings, assistant = {}, writes = []) {
@@ -179,4 +192,51 @@ test('review form requires an explicit request or acceptance of the latest offer
   assert.equal(consent('Takk for hjelpen', []), false);
   assert.equal(consent('Yes', [{ role: 'assistant', text: 'Do you need more help?' }]), false);
   assert.equal(consent('I want to leave a review', []), true);
+});
+
+test('ticket submission and support navigation do not trigger feedback actions', () => {
+  const source = ts.createSourceFile('widget.js', exportedScript(), ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  let bind;
+  function visit(node) { if (ts.isFunctionDeclaration(node) && node.name?.text === 'bindWidgetActions') bind = node.getText(source); ts.forEachChild(node, visit); }
+  visit(source);
+  const listeners = {}; const calls = [];
+  const state = { activePanel: 'tasks', feedbackOpen: false };
+  const context = { widgetActionsBound: false, state,
+    mount: { addEventListener: (name, fn) => { listeners[name] = fn; } },
+    submitTask: () => calls.push('ticket'), submitFeedback: () => calls.push('feedback'), render: () => calls.push('render'),
+  };
+  vm.runInNewContext(`(${bind})()`, context);
+  function click(classes, panel) {
+    const button = { classList: { contains: name => classes.includes(name) }, hasAttribute: name => name === 'data-widget-panel' && !!panel, getAttribute: () => panel, closest: () => null };
+    listeners.click({ target: { closest: () => button } });
+  }
+  click(['widget-feedback-primary', 'widget-task-submit']);
+  assert.deepEqual(calls, ['ticket']);
+  click(['widget-feedback-secondary'], 'chats');
+  assert.equal(state.activePanel, 'chats');
+  assert.deepEqual(calls, ['ticket', 'render']);
+});
+
+test('the installed widget localizes fields and offers languages behind an icon', () => {
+  const source = ts.createSourceFile('widget.js', exportedScript(), ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  const functions = {};
+  function visit(node) { if (ts.isFunctionDeclaration(node) && node.name) functions[node.name.text] = node.getText(source); ts.forEachChild(node, visit); }
+  visit(source);
+  const textNode = { textContent: 'Contact information', parentElement: { closest: () => null } };
+  const mount = { querySelectorAll: () => [], lang: '' };
+  const context = {
+    state: { uiLanguage: 'no', translations: {} }, mount, NodeFilter: { SHOW_TEXT: 4 },
+    document: { createTreeWalker: () => { let seen = false; return { nextNode() { if (seen) return null; seen = true; return textNode; } }; } },
+    builtinTranslations: getBuiltinWidgetTranslations,
+    languageNames: { no: 'Norsk', en: 'English' },
+    getLanguages: () => ({ enabled: true, allowed: ['no', 'en'] }), escapeHtml: String,
+  };
+  context.uiText = vm.runInNewContext(`(${functions.uiText})`, context);
+  const translate = vm.runInNewContext(`(${functions.translateRenderedCopy})`, context);
+  translate(); assert.equal(textNode.textContent, 'Kontaktinformasjon');
+  translate(); assert.equal(textNode.textContent, 'Kontaktinformasjon');
+  context.state.uiLanguage = 'en'; translate(); assert.equal(textNode.textContent, 'Contact information');
+  const picker = vm.runInNewContext(`(${functions.languageSelectorMarkup})`, context)();
+  assert.match(picker, /widget-language-picker/); assert.match(picker, /<svg/);
+  assert.match(picker, /data-widget-language="no"/); assert.match(picker, /data-widget-language="en" aria-pressed="true"/);
 });

@@ -1,5 +1,7 @@
 'use client'
 
+import LoadingAnimation from '@/components/LoadingAnimation'
+
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -148,7 +150,7 @@ export default function SignupPage() {
           </div>
           <p className="nordicAuthHint">{no ? 'Vi sender deg en e-post for å bekrefte kontoen din.' : 'We’ll send you an email to verify your account.'}</p>
           {error && <div className="nordicAuthError" role="alert">{error}</div>}
-          <button className="nordicAuthSubmit" type="submit" disabled={loading}>{loading ? <><span className="nordicAuthSpinner" />{text.creating}</> : <>{text.create}<FiArrowRight aria-hidden="true" /></>}</button>
+          <button className="nordicAuthSubmit" type="submit" disabled={loading}>{loading ? <><LoadingAnimation compact />{text.creating}</> : <>{text.create}<FiArrowRight aria-hidden="true" /></>}</button>
           <button type="button" className="nordicAuthBack" disabled={loading} onClick={() => { setStep('choice'); setError('') }}><FiArrowLeft aria-hidden="true" />{text.back}</button>
         </form>
       )}

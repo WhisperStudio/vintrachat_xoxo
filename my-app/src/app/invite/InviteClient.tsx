@@ -1,5 +1,7 @@
 'use client'
 
+import LoadingAnimation from '@/components/LoadingAnimation'
+
 import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
@@ -266,7 +268,7 @@ export default function InviteClient() {
             </p>
 
             <div style={{ padding: '16px 0' }}>
-              <div className="loading-spinner" />
+              <LoadingAnimation />
             </div>
           </section>
         </div>

@@ -1,5 +1,7 @@
 'use client'
 
+import LoadingAnimation from '@/components/LoadingAnimation'
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import styled, { createGlobalStyle } from 'styled-components'
 import {
@@ -763,7 +765,7 @@ export default function AdminUserManagementPanel() {
               {language === 'no' ? 'TEAMET DITT' : 'YOUR TEAM'}
             </PageEyebrow>
             <PageTitle>{text.title}</PageTitle>
-            <PageDescription>{text.loading}</PageDescription>
+            <LoadingAnimation label={text.loading} />
           </PageTitleBlock>
         </PageHero>
       </PageShell>

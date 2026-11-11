@@ -1,3 +1,4 @@
+import { cleanImportedKnowledge } from '../src/lib/website-knowledge.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -12,7 +13,7 @@ const require = createRequire(import.meta.url);
 function scanner(fetch) {
   const exports = {};
   const js = ts.transpileModule(fs.readFileSync(new URL('../src/lib/website-context-scanner.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
-  vm.runInNewContext(js, { exports, require, URL, AbortController, setTimeout, clearTimeout, fetch });
+  vm.runInNewContext(js, { exports, require: name => name === './website-knowledge.mjs' ? { cleanImportedKnowledge } : require(name), URL, AbortController, setTimeout, clearTimeout, fetch });
   return exports;
 }
 

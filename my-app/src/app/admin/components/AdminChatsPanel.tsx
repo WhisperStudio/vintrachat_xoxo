@@ -1,5 +1,7 @@
 'use client'
 
+import LoadingAnimation from '@/components/LoadingAnimation'
+
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { deleteField, doc, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
@@ -884,7 +886,7 @@ export default function AdminChatsPanel({
     return (
       <div className="infoCard adminChatsPanel">
         <h1>{text.title}</h1>
-        <p>{text.loading}</p>
+        <LoadingAnimation label={text.loading} />
       </div>
     )
   }

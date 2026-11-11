@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       if (assistantConfig && (typeof assistantConfig !== 'object' || Array.isArray(assistantConfig))) throw new BillingError(400, 'Ugyldig assistentoppsett.')
       tx.create(ref.collection('chatWidgets').doc(widgetKey), {
         widgetKey, name, config: JSON.parse(JSON.stringify(config)),
-        ...(assistantConfig ? { assistantConfig } : {}),
+        assistantConfig: { ...(assistantConfig || {}), setupCompleted: false },
         isDefault: false, createdAt: new Date(), updatedAt: new Date(),
       })
       // Serialize concurrent creates even when both collection queries start empty.

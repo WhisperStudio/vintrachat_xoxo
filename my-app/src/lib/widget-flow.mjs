@@ -73,3 +73,16 @@ export function validateWidgetContact(flow, contact = {}) {
   if (flow.requirePhone && !phone) return 'Please enter your phone number.';
   return '';
 }
+
+// Restrict CSS values before using them in either renderer.
+export function getWidgetPageStyle(design = {}) {
+  const vars = {};
+  for (const [key, name] of Object.entries({ background: 'bg', textColor: 'text', accentColor: 'accent', fieldBackground: 'field-bg', borderColor: 'border' })) {
+    if (/^#[0-9a-f]{6}$/i.test(design[key] || '')) vars['--page-' + name] = design[key];
+  }
+  for (const [key, min, max] of [['radius', 0, 32], ['spacing', 4, 32], ['fontSize', 11, 22], ['buttonRadius', 0, 32]]) {
+    if (typeof design[key] === 'number') vars['--page-' + key] = Math.max(min, Math.min(max, design[key])) + 'px';
+  }
+  if (['none', 'solid', 'dashed', 'double'].includes(design.borderStyle)) vars['--page-border-style'] = design.borderStyle;
+  return vars;
+}

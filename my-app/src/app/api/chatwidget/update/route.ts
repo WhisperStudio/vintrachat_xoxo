@@ -108,6 +108,7 @@ function normalizeAssistantConfig(body: AssistantConfigBody, businessName = '') 
     ...defaults,
     ...body,
     localization: normalizeLocalization(body.localization),
+    ...(typeof body.setupCompleted === 'boolean' ? { setupCompleted: body.setupCompleted } : {}),
     startCard: { enabled: body.startCard?.enabled === true, text: String(body.startCard?.text || '').slice(0, 350) },
     businessProfile: {
       ...defaults.businessProfile,

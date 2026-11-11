@@ -13,7 +13,7 @@ export function normalizeLocalization(value?: Partial<WidgetLocalization> | null
 // Only visible copy is collected. Never send business knowledge, conversations or visitor data for UI translation.
 export function collectWidgetCopy(value: unknown): string[] {
   const strings: string[] = []
-  const fields = new Set(['title', 'description', 'label', 'prompt', 'text', 'handoffMessage', 'contactTitle', 'contactDescription', 'reviewTitle', 'reviewDescription', 'tasksTitle', 'tasksDescription', 'welcomeMessage', 'placeholder'])
+  const fields = new Set(['title', 'description', 'label', 'prompt', 'text', 'handoffMessage', 'contactTitle', 'contactDescription', 'reviewTitle', 'reviewDescription', 'tasksTitle', 'tasksDescription', 'welcomeMessage', 'placeholder', 'submitLabel', 'nameLabel', 'emailLabel', 'phoneLabel', 'chatsLabel', 'ticketsLabel'])
   function visit(node: unknown, key = '') {
     if (typeof node === 'string' && (fields.has(key) || key === 'faqSuggestions') && node.trim()) strings.push(node)
     else if (Array.isArray(node)) node.forEach(item => visit(item, key))

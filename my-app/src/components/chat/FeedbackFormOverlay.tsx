@@ -1,8 +1,15 @@
 'use client'
 
-import { FiArrowLeft, FiStar } from 'react-icons/fi'
+import type { ReactNode, CSSProperties } from 'react'
+import type { WidgetPageDesign } from '@/types/database'
+import { getWidgetPageStyle } from '@/lib/widget-flow.mjs'
+import { FiStar } from 'react-icons/fi'
 
 interface FeedbackFormOverlayProps {
+  design?: WidgetPageDesign
+  icon?: ReactNode
+  submitLabel?: string
+  placeholder?: string
   translate?: (text: string) => string
   open: boolean
   title?: string
@@ -18,6 +25,7 @@ interface FeedbackFormOverlayProps {
 
 export default function FeedbackFormOverlay({
   translate: t = (text: string) => text,
+  design, icon, submitLabel, placeholder,
   open,
   title = 'Leave feedback',
   description = 'Tell us what you think and give us a star rating.',
@@ -32,16 +40,13 @@ export default function FeedbackFormOverlay({
   if (!open) return null
 
   return (
-    <div className="widget-feedback-overlay" role="dialog" aria-modal="true" aria-label={title}>
+    <div className="widget-feedback-overlay widget-page-design" style={getWidgetPageStyle(design) as CSSProperties} role="region" aria-label={title}>
       <div className="widget-feedback-card">
         <div className="widget-feedback-header">
           <div>
-            <h4>{title}</h4>
+            <div className="widget-page-heading">{icon}<h4>{title}</h4></div>
             <p>{description}</p>
           </div>
-          <button type="button" className="widget-feedback-close" onClick={onClose} aria-label={t("Back to chat")}>
-            <FiArrowLeft />
-          </button>
         </div>
 
         <div className="widget-feedback-rating" aria-label={t("Rating selector")}>
@@ -69,7 +74,7 @@ export default function FeedbackFormOverlay({
             value={text}
             onChange={(event) => onTextChange(event.target.value)}
             rows={5}
-            placeholder={t('What went well, and what could be better?')}
+            placeholder={t(placeholder || 'What went well, and what could be better?')}
           />
         </label>
 
@@ -83,7 +88,7 @@ export default function FeedbackFormOverlay({
             onClick={onSubmit}
             disabled={submitting || rating < 1 || !text.trim()}
           >
-            {submitting ? t('Submitting...') : t('Submit feedback')}
+            {submitting ? t('Submitting...') : t(submitLabel || 'Submit feedback')}
           </button>
         </div>
       </div>

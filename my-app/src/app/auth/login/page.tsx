@@ -1,5 +1,7 @@
 'use client'
 
+import LoadingAnimation from '@/components/LoadingAnimation'
+
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -67,7 +69,7 @@ export default function LoginPage() {
         <p>{language === 'no' ? 'Logg inn og fortsett der du slapp.' : 'Sign in and pick up where you left off.'}</p>
       </div>
       {loading ? (
-        <div className="nordicAuthLoading" role="status"><span className="nordicAuthSpinner" />{text.loading}</div>
+        <div className="nordicAuthLoading" role="status"><LoadingAnimation label={text.loading} /></div>
       ) : (
         <>
           <form className="nordicAuthForm" onSubmit={handleSubmit} aria-busy={loginLoading}>
@@ -79,7 +81,7 @@ export default function LoginPage() {
             <div className="nordicAuthForgot"><Link href="/auth/forgot-password">{text.login.forgotPassword}</Link></div>
             {(error || accountError) && <div className="nordicAuthError" role="alert">{error || accountError}</div>}
             <button className="nordicAuthSubmit" type="submit" disabled={loginLoading}>
-              {loginLoading ? <><span className="nordicAuthSpinner" />{text.login.submitting}</> : <>{text.login.submit}<FiArrowRight aria-hidden="true" /></>}
+              {loginLoading ? <><LoadingAnimation compact />{text.login.submitting}</> : <>{text.login.submit}<FiArrowRight aria-hidden="true" /></>}
             </button>
           </form>
           {accountError && (

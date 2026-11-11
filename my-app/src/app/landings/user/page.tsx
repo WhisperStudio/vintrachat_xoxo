@@ -1,5 +1,7 @@
 'use client'
 
+import LoadingAnimation from '@/components/LoadingAnimation'
+
 import Link from 'next/link'
 import { useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
@@ -137,7 +139,7 @@ export default function UserLanding() {
   if (loading) {
     return (
       <main className="page userDashboardPage">
-        <div className="infoCard userDashboardLoading">{text.loading}</div>
+        <div className="infoCard userDashboardLoading"><LoadingAnimation label={text.loading} /></div>
       </main>
     )
   }

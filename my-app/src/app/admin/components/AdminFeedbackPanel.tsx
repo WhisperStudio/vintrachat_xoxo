@@ -1,5 +1,7 @@
 'use client'
 
+import LoadingAnimation from '@/components/LoadingAnimation'
+
 import { useEffect, useMemo, useState } from 'react'
 import { FiStar, FiMessageSquare, FiUser } from 'react-icons/fi'
 import { useAuth } from '@/context/AuthContext'
@@ -83,7 +85,7 @@ export default function AdminFeedbackPanel({ selectedWidgetKey = '' }: { selecte
     return (
       <div className="infoCard adminDataCard">
         <h1>{text.title}</h1>
-        <p>{text.loading}</p>
+        <LoadingAnimation label={text.loading} />
       </div>
     )
   }

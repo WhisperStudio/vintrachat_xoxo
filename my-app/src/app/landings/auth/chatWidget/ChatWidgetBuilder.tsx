@@ -1,5 +1,7 @@
 'use client'
 
+import LoadingAnimation from '@/components/LoadingAnimation'
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   FiCheck,
@@ -46,8 +48,8 @@ import './ChatWidget.css'
 import '@/components/chat/StudioSettings.css'
 
 import StudioKnowledgeSettings from '@/components/chat/StudioKnowledgeSettings'
-import WidgetLanguageSettings from '@/components/chat/WidgetLanguageSettings'
 import StudioFeatureSettings, { type StudioDecisions } from '@/components/chat/StudioFeatureSettings'
+import { cleanImportedKnowledge } from '@/lib/website-knowledge.mjs'
 import { hasAssistantKnowledge, setupDecisionsComplete } from '@/lib/studio-onboarding.mjs'
 import WidgetFlowSettings from '@/components/chat/WidgetFlowSettings'
 import PersonalitySettings from '@/components/chat/PersonalitySettings'
@@ -186,6 +188,7 @@ function mergeAssistantConfigDraft(config?: ChatAssistantConfig | null): ChatAss
     knowledgeBase: {
       ...defaultsKnowledgeBase,
       ...(config?.knowledgeBase || {}),
+      pricing: /\|\s*(?:Page|Source):/i.test(config?.knowledgeBase?.pricing || '') ? cleanImportedKnowledge(config?.knowledgeBase?.pricing) : config?.knowledgeBase?.pricing || '',
       websiteUrls: config?.knowledgeBase?.websiteUrls ?? defaultsKnowledgeBase.websiteUrls,
       uploadedDocuments: config?.knowledgeBase?.uploadedDocuments ?? defaultsKnowledgeBase.uploadedDocuments,
       manualNotes: config?.knowledgeBase?.manualNotes ?? defaultsKnowledgeBase.manualNotes,
@@ -384,13 +387,16 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
   const t = chatWidgetBuilderI18n[language]
   const builderExtraText = chatWidgetBuilderExtraI18n[language]
 
-  const [workspaceMode, setWorkspaceMode] = useState<'knowledge' | 'personality' | 'features' | 'design'>('knowledge')
+  const [workspaceMode, setWorkspaceMode] = useState<'knowledge' | 'personality' | 'features' | 'design'>('features')
+  const [setupFinished, setSetupFinished] = useState(false)
+  const [knowledgeReviewed, setKnowledgeReviewed] = useState(false)
   const [decisions, setDecisions] = useState<StudioDecisions>({})
   const [setupError, setSetupError] = useState('')
   const [inputs, setInputs] = useState<InputsState>(defaultInputs)
   const [assistantConfigDraft, setAssistantConfigDraft] = useState<ChatAssistantConfig>(createDefaultAssistantConfig())
+  const isSetup = !setupFinished && (setupMode || assistantConfigDraft.setupCompleted === false)
   const [hasLoadedDbConfig, setHasLoadedDbConfig] = useState(false)
-  const [previewScenario, setPreviewScenario] = useState<'welcome' | 'conversation' | 'start-card'>('welcome')
+  const [previewScenario, setPreviewScenario] = useState<'welcome' | 'conversation' | 'start-card' | 'tickets' | 'contact' | 'reviews'>('welcome')
   const [previewSession, setPreviewSession] = useState(0)
   const [presetNotice, setPresetNotice] = useState('')
   const [previewMode, setPreviewMode] = useState<PreviewMode>('desktop')
@@ -421,6 +427,13 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
     () => getEffectiveBusinessPlan(business, selectedWidget?.config),
     [business, selectedWidget?.config]
   )
+  useEffect(() => {
+    setSetupFinished(false)
+    setKnowledgeReviewed(false)
+    setDecisions({})
+    setWorkspaceMode('features')
+  }, [selectedWidgetKey])
+
   const widgetLimit = getPlanLimits(databasePlan).maxWidgets
   const canCreateWidget = widgetLimit === null || widgetList.length < widgetLimit
 
@@ -672,8 +685,10 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
 
       await setActiveChatWidget(dbUser.businessId, result.widgetKey)
       setSelectedWidgetKey(result.widgetKey)
+      setAssistantConfigDraft(previous => ({ ...previous, setupCompleted: false }))
       if (result.widgetKey) onWidgetSelected?.(result.widgetKey)
       await refreshBusiness()
+      setHasLoadedDbConfig(false)
       setSaveStatus('success')
       setTimeout(() => setSaveStatus('idle'), 1800)
     } catch (error) {
@@ -684,14 +699,24 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
     }
   }
 
+  const goToStep = (step: 'features' | 'knowledge' | 'personality' | 'design') => {
+    if (isSetup && step !== 'features' && !setupDecisionsComplete(decisions)) { setSetupError(no ? 'Svar på funksjonsspørsmålene før du fortsetter.' : 'Answer the feature questions before continuing.'); setWorkspaceMode('features'); return }
+    if (isSetup && (step === 'personality' || step === 'design') && !knowledgeReviewed) { setSetupError(no ? 'Kontroller bedriftsinformasjonen og bekreft gjennomgangen nederst.' : 'Check the business information and confirm your review below.'); setWorkspaceMode('knowledge'); return }
+    setSetupError(''); setWorkspaceMode(step)
+  }
+
   const saveConfig = async () => {
     setSetupError('')
-    if (setupMode && !setupDecisionsComplete(decisions)) {
-      setSetupError(no ? 'Velg AI, kontaktinfo, support, tickets og anmeldelser før du fullfører.' : 'Choose AI, contact sharing, support, tickets and reviews before finishing.')
+    if (isSetup && !setupDecisionsComplete(decisions)) {
+      setSetupError(no ? 'Velg språk, starthilsen, AI, kontaktinfo, support, tickets og anmeldelser før du fullfører.' : 'Choose AI, contact sharing, support, tickets and reviews before finishing.')
       setWorkspaceMode('features')
       return
     }
-    if (setupMode && assistantConfigDraft.enabled && !hasAssistantKnowledge(assistantConfigDraft)) {
+    if (isSetup && !knowledgeReviewed) {
+      setSetupError(no ? 'Kontroller bedriftsinformasjonen før du fullfører oppsettet.' : 'Review the business information before finishing setup.')
+      setWorkspaceMode('knowledge'); return
+    }
+    if (isSetup && assistantConfigDraft.enabled && !hasAssistantKnowledge(assistantConfigDraft)) {
       setSetupError(no ? 'Legg inn bedriftsinformasjon før du slår på AI-svar.' : 'Add business information before enabling AI replies.')
       setWorkspaceMode('knowledge')
       return
@@ -722,6 +747,7 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
       const planSafeConfig = sanitizeChatWidgetConfigForPlan(newConfig, databasePlan)
       const nextAssistantConfig: ChatAssistantConfig = {
         ...assistantConfigDraft,
+        setupCompleted: isSetup ? true : assistantConfigDraft.setupCompleted,
         conversationCardsEnabled: inputs.conversationCardsEnabled,
         conversationCardsLimit: inputs.conversationCardsLimit,
         conversationCards: normalizeConversationCards(inputs.conversationCards),
@@ -735,10 +761,10 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
         },
       }
 
-      const [result, assistantResult] = await Promise.all([
-        updateChatWidgetConfig(dbUser.businessId, planSafeConfig, selectedWidgetKey || undefined),
-        updateChatAssistantConfig(dbUser.businessId, nextAssistantConfig, selectedWidgetKey || undefined),
-      ])
+      const result = await updateChatWidgetConfig(dbUser.businessId, planSafeConfig, selectedWidgetKey || undefined)
+      const assistantResult = result.success
+        ? await updateChatAssistantConfig(dbUser.businessId, nextAssistantConfig, selectedWidgetKey || undefined)
+        : { success: false }
 
       if (result.success && assistantResult.success) {
         setAssistantConfigDraft(nextAssistantConfig)
@@ -761,7 +787,7 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
           )
         }
 
-        if (setupMode) await onSetupComplete?.()
+        if (isSetup) { setSetupFinished(true); if (setupMode) await onSetupComplete?.() }
         setSaveStatus('success')
         setTimeout(() => setSaveStatus('idle'), 2000)
       } else {
@@ -776,6 +802,16 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
   }
 
   const activeSection = builderSections.find((section) => openSections[section.key]) || builderSections[0]
+  useEffect(() => {
+    if (workspaceMode !== 'design') return
+    if (activeSection.key === 'contact' || activeSection.key === 'reviews' || activeSection.key === 'tickets') {
+      setPreviewScenario(activeSection.key)
+    } else if (activeSection.key === 'body' || activeSection.key === 'footer') {
+      setPreviewScenario('conversation')
+    } else {
+      setPreviewScenario('welcome')
+    }
+  }, [activeSection.key, workspaceMode])
   const sectionDescriptions = {
     contact: no ? 'Tilpass kontaktinformasjonen kunden sender til teamet.' : 'Configure the contact details visitors send to the team.',
     reviews: no ? 'La kunden gi en frivillig anmeldelse etter samtalen.' : 'Let visitors leave an optional review after their conversation.',
@@ -789,7 +825,7 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
     plan: no ? 'Se hva som er inkludert i de ulike abonnementene.' : 'Explore what’s included in each plan.',
   }
 
-  if (loading) return <main className="chatbuilder-page builder-loading" role="status">{no ? 'Laster arbeidsområdet…' : 'Loading your workspace…'}</main>
+  if (loading) return <main className="chatbuilder-page builder-loading"><LoadingAnimation label={no ? 'Laster arbeidsområdet…' : 'Loading your workspace…'} /></main>
 
   return (
     <div className={embedded ? "chatbuilder-page workspaceEmbeddedBuilder" : "chatbuilder-page"}>
@@ -880,7 +916,7 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
                   <button
                     className={`save-btn ${isSaving ? 'save-btn--saving' : ''} ${saveStatus === 'success' ? 'save-btn--success' : ''} ${saveStatus === 'error' ? 'save-btn--error' : ''}`}
                     onClick={saveConfig}
-                    disabled={isSaving || !isAuthenticated || !business}
+                    disabled={isSaving || isCreatingWidget || !isAuthenticated || !business || (isSetup && workspaceMode !== 'design')}
                     type="button"
                   >
                     <span className={`save-btn-icon ${isSaving ? 'is-saving' : ''} ${saveStatus === 'success' ? 'is-success' : ''}`}>
@@ -908,14 +944,14 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
               </div>
             </div>
 
-            {setupMode && <div className="studioSetupIntro"><span className="studioEyebrow">{no ? 'KOM I GANG' : 'GET STARTED'}</span><h2>{no ? 'Sett opp din første assistent' : 'Set up your first assistant'}</h2><p>{no ? 'Fire steg. Du kontrollerer innholdet og velger funksjonene. Etter lagring viser vi deg rundt i administrasjonen.' : 'Four steps. Review the information and choose your features. After saving, we will show you around the dashboard.'}</p></div>}
+            {isSetup && <div className="studioSetupIntro"><span className="studioEyebrow">{no ? 'KOM I GANG' : 'GET STARTED'}</span><h2>{no ? 'Sett opp assistenten' : 'Set up your first assistant'}</h2><p>{no ? 'Velg funksjoner først. Fyll deretter inn bedriftsinformasjon, kontroller autofyll, velg svarstil og tilpass designet.' : 'Choose features first. Add business information, review imported content, choose a response style, and customize the design.'}</p></div>}
             <nav className="studioWorkspaceTabs" aria-label={no ? 'Oppsett av assistenten' : 'Assistant setup'}>
-              {([{ id: 'knowledge', no: 'Bedriften', en: 'Business', icon: FiMonitor }, { id: 'personality', no: 'Svarstil', en: 'Response style', icon: FiMessageCircle }, { id: 'features', no: 'Funksjoner', en: 'Features', icon: FiSliders }, { id: 'design', no: 'Design', en: 'Design', icon: FiDroplet }] as const).map((step, index) => <button type="button" key={step.id} aria-current={workspaceMode === step.id ? 'step' : undefined} onClick={() => setWorkspaceMode(step.id)}><span className="studioStepNumber">{index + 1}</span><step.icon aria-hidden="true" /><strong>{no ? step.no : step.en}</strong></button>)}
+              {([{ id: 'features', no: 'Funksjoner', en: 'Features', icon: FiSliders }, { id: 'knowledge', no: 'Bedriften', en: 'Business', icon: FiMonitor }, { id: 'personality', no: 'Svarstil', en: 'Response style', icon: FiMessageCircle }, { id: 'design', no: 'Design', en: 'Design', icon: FiDroplet }] as const).map((step, index) => <button type="button" key={step.id} aria-current={workspaceMode === step.id ? 'step' : undefined} onClick={() => goToStep(step.id)}><span className="studioStepNumber">{index + 1}</span><step.icon aria-hidden="true" /><strong>{no ? step.no : step.en}</strong></button>)}
             </nav>
             {setupError && <p className="studioSetupError" role="alert">{setupError}</p>}
-            {workspaceMode === 'knowledge' && <div className="studioRules"><StudioKnowledgeSettings key={selectedWidgetKey || 'draft'} value={assistantConfigDraft} no={no} onChange={value => { setAssistantConfigDraft(value); setSaveStatus('idle') }} /></div>}
+            {workspaceMode === 'knowledge' && <div className="studioRules"><StudioKnowledgeSettings key={selectedWidgetKey || 'draft'} value={assistantConfigDraft} no={no} onChange={value => { setAssistantConfigDraft(value); setInputs(previous => ({ ...previous, conversationCards: value.conversationCards, conversationCardsEnabled: value.conversationCardsEnabled })); setKnowledgeReviewed(false); setSaveStatus('idle') }} />{isSetup && <label className="studioReviewConfirmation"><input type="checkbox" checked={knowledgeReviewed} onChange={event => setKnowledgeReviewed(event.target.checked)} /><span>{no ? 'Jeg har kontrollert opplysningene, særlig priser og vilkår. Tomme felt er enten irrelevante eller fylles ut senere.' : 'I have reviewed the information, especially prices and terms. Empty fields are irrelevant or will be completed later.'}</span></label>}</div>}
             {workspaceMode === 'personality' && <div className="studioRules"><PersonalitySettings value={assistantConfigDraft} no={no} onChange={value => { setAssistantConfigDraft(value); setSaveStatus('idle') }} /></div>}
-            {workspaceMode === 'features' && <div className="studioRules"><StudioFeatureSettings assistant={assistantConfigDraft} settings={inputs.settings} no={no} setup={setupMode} decisions={decisions} onDecision={setDecisions} onAssistantChange={setAssistantConfigDraft} onSettingsChange={updateFlowSettings} /></div>}
+            {workspaceMode === 'features' && <div className="studioRules"><StudioFeatureSettings assistant={assistantConfigDraft} settings={inputs.settings} no={no} setup={isSetup} decisions={decisions} onDecision={setDecisions} onAssistantChange={value => { setAssistantConfigDraft(value); setKnowledgeReviewed(false); setInputs(previous => ({ ...previous, conversationCardsEnabled: value.conversationCardsEnabled })); setSaveStatus('idle') }} onSettingsChange={updateFlowSettings} /></div>}
             {workspaceMode === 'design' && <>        <section className="studioPresets" aria-label={no ? 'Ferdige designstiler' : 'Design presets'}>
           <div className="studioPresetIntro"><span className="studioEyebrow">{no ? 'ET GODT UTGANGSPUNKT' : 'A GOOD STARTING POINT'}</span><h2>{no ? 'Finn din stil.' : 'Find your style.'}</h2><p>{no ? 'Velg et samlet uttrykk. Behold navn, innhold og logo.' : 'Start with a coordinated look. Keep your name, content and logo.'}</p></div>
           <div className="studioPresetChoices">
@@ -1012,10 +1048,10 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
                   onToggleSection={toggleSection}
                 />
               </section>
-            </div><div className="designExtras"><WidgetLanguageSettings value={assistantConfigDraft} no={no} onChange={value => { setAssistantConfigDraft(value); setSaveStatus('idle') }} /></div></>}
-            {setupMode && <div className="studioSetupActions">
-              <button type="button" disabled={workspaceMode === 'knowledge' || isSaving} onClick={() => setWorkspaceMode(({ personality: 'knowledge', features: 'personality', design: 'features', knowledge: 'knowledge' } as const)[workspaceMode])}>{no ? 'Tilbake' : 'Back'}</button>
-              {workspaceMode !== 'design' ? <button type="button" onClick={() => setWorkspaceMode(({ knowledge: 'personality', personality: 'features', features: 'design', design: 'design' } as const)[workspaceMode])}>{no ? 'Neste steg' : 'Next step'}</button> : <button type="button" disabled={isSaving} onClick={() => void saveConfig()}>{isSaving ? (no ? 'Lagrer...' : 'Saving...') : (no ? 'Lagre og start omvisning' : 'Save and start tour')}</button>}
+            </div></>}
+            {isSetup && <div className="studioSetupActions">
+              <button type="button" disabled={workspaceMode === 'features' || isSaving} onClick={() => setWorkspaceMode(({ features: 'features', knowledge: 'features', personality: 'knowledge', design: 'personality' } as const)[workspaceMode])}>{no ? 'Tilbake' : 'Back'}</button>
+              {workspaceMode !== 'design' ? <button type="button" onClick={() => goToStep(({ features: 'knowledge', knowledge: 'personality', personality: 'design', design: 'design' } as const)[workspaceMode])}>{no ? 'Neste steg' : 'Next step'}</button> : <button type="button" disabled={isSaving} onClick={() => void saveConfig()}>{isSaving ? (no ? 'Lagrer...' : 'Saving...') : (no ? 'Fullfør oppsett' : 'Finish setup')}</button>}
             </div>}
             <div className="studioEditorNote" role="status">{saveStatus === 'error' ? t.saveFailed : saveStatus === 'success' ? t.savedButton : (no ? 'Forhåndsvisningen oppdateres mens du jobber. Lagre når du er fornøyd.' : 'Your preview updates as you work. Save when you’re happy with it.')}</div>
           </div>
@@ -1047,16 +1083,17 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
             <div className="studioPreviewScenes" role="group" aria-label={no ? 'Visning i chatten' : 'Chat scene'}>
               <button type="button" aria-pressed={previewScenario === 'start-card'} onClick={() => { setPreviewScenario('start-card'); setPreviewSession(value => value + 1) }}>{no ? 'Startkort' : 'Welcome card'}</button>
               <button type="button" aria-pressed={previewScenario === 'welcome'} onClick={() => { setPreviewScenario('welcome'); setPreviewSession((value) => value + 1) }}>{no ? 'Velkomst' : 'Welcome'}</button>
-              <button type="button" aria-pressed={previewScenario === 'conversation'} onClick={() => { setPreviewScenario('conversation'); setPreviewSession((value) => value + 1) }}>{no ? 'Samtale' : 'Conversation'}</button>
+              <button type="button" aria-pressed={previewScenario === 'conversation'} onClick={() => { setPreviewScenario('conversation'); setPreviewSession((value) => value + 1) }}>{no ? 'Chat' : 'Chat'}</button>
+              {(['tickets', 'contact', 'reviews'] as const).map((scene, index) => <button key={scene} type="button" aria-pressed={previewScenario === scene} onClick={() => { setPreviewScenario(scene); setPreviewSession(value => value + 1) }}>{(no ? ['Tickets / support', 'Kontaktinfo', 'Anmeldelser'] : ['Tickets / support', 'Contact info', 'Reviews'])[index]}</button>) }
               <button type="button" className="studioPreviewRestart" onClick={() => setPreviewSession((value) => value + 1)} aria-label={no ? 'Start forhåndsvisningen på nytt' : 'Restart preview'} title={no ? 'Start på nytt' : 'Restart'}><FiRefreshCw aria-hidden="true" /></button>
             </div>
             <WidgetPreview
               key={`${previewScenario}-${previewSession}-${CHAT_PERSONALITIES.find((item) => item.style === assistantConfigDraft.responseStyle)?.id || 'custom'}`}
               localization={assistantConfigDraft.localization || { enabled: false, defaultLanguage: 'no', allowedLanguages: ['no'] }}
-              startCard={assistantConfigDraft.startCard}
+              startCard={previewScenario === 'start-card' ? { ...assistantConfigDraft.startCard, enabled: true, text: assistantConfigDraft.startCard?.text || (no ? 'Hei! Kan vi hjelpe deg med noe?' : 'Hi! Can we help you with anything?') } : assistantConfigDraft.startCard}
               previewScenario={previewScenario}
               supportEnabled={assistantConfigDraft.humanSupportEnabled}
-              designPage={workspaceMode === 'design' && (activeSection.key === 'contact' || activeSection.key === 'reviews' || activeSection.key === 'tickets') ? activeSection.key : undefined}
+              designPage={previewScenario === 'contact' || previewScenario === 'reviews' || previewScenario === 'tickets' ? previewScenario : undefined}
               billingCycle={inputs.billingCycle}
               plan={databasePlan}
               bubbleStyle={inputs.bubbleStyle}

@@ -1,3 +1,4 @@
+import { getBuiltinWidgetTranslations } from '../src/lib/widget-builtin-translations.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -31,8 +32,10 @@ test('website import proposes a welcome card without enabling it or replacing cu
   const result = { autofill: { businessProfile: { businessName: 'Ski shop', shortDescription: 'Ski rental' } } }
   const first = mergeWebsiteKnowledge({}, result)
   assert.equal(first.startCard.enabled, false)
-  assert.match(first.startCard.text, /Ski shop/)
-  assert.match(first.startCard.text, /Ski rental/)
+  assert.equal(first.startCard.text, '')
+  const enabled = mergeWebsiteKnowledge({ startCard: { enabled: true, text: '' } }, result)
+  assert.match(enabled.startCard.text, /Ski shop/)
+  assert.match(enabled.startCard.text, /Ski rental/)
   const next = mergeWebsiteKnowledge({ startCard: { enabled: true, text: 'My own welcome' } }, result)
   assert.deepEqual(next.startCard, { enabled: true, text: 'My own welcome' })
 })
@@ -88,3 +91,55 @@ test('translations are reused and long customer text is stored as field values, 
   assert.equal(second.body.translations.Close, 'SV: Close')
   assert.equal(generated, 1)
 })
+
+function hookHarness() {
+  const slots = []; let index = 0; const effects = []; const timers = new Map(); const requests = []; let timerId = 0
+  const react = {
+    useRef(value) { const i = index++; return slots[i] ||= { current: value } },
+    useState(value) { const i = index++; if (!(i in slots)) slots[i] = value; return [slots[i], next => { slots[i] = typeof next === 'function' ? next(slots[i]) : next }] },
+    useCallback(fn) { return fn },
+    useEffect(fn, deps) { const i = index++; const old = slots[i]; if (!old || deps.some((v, j) => v !== old.deps[j])) { old?.cleanup?.(); const entry = { deps }; slots[i] = entry; effects.push(() => { entry.cleanup = fn() }) } },
+  }
+  const { useWidgetTranslation } = compile('../src/components/chat/useWidgetTranslation.ts', {
+    '@/lib/widget-builtin-translations.mjs': { getBuiltinWidgetTranslations },
+    react, '@/lib/firebase': { auth: { currentUser: null } },
+  }, {
+    AbortController, setTimeout(fn) { timers.set(++timerId, fn); return timerId }, clearTimeout(id) { timers.delete(id) },
+    fetch(_, options) { return new Promise(resolve => requests.push({ resolve, options })) },
+  })
+  return {
+    render(language, copy, widget = 'one') { index = 0; return useWidgetTranslation(language, copy, widget, 'token') },
+    commit() { while (effects.length) effects.shift()() },
+    request() { for (const [id, fn] of timers) { timers.delete(id); fn() } return requests.at(-1) },
+    async respond(request, translations, ok = true) { request.resolve({ ok, json: async () => ({ translations }) }); await new Promise(resolve => setImmediate(resolve)) },
+  }
+}
+
+test('Norwegian copy survives edits and failed translation refreshes', async () => {
+  const h = hookHarness(); h.render('no', ['Hello']); h.commit()
+  await h.respond(h.request(), { Hello: 'Hei' })
+  assert.equal(h.render('no', ['Hello']).t('Hello'), 'Hei')
+  assert.equal(h.render('no', ['Hello', 'New title']).t('Hello'), 'Hei')
+  h.commit(); await h.respond(h.request(), {}, false)
+  assert.equal(h.render('no', ['Hello', 'New title']).t('Hello'), 'Hei')
+})
+
+test('late responses cannot change the selected language or share translations between widgets', async () => {
+  const h = hookHarness(); h.render('no', ['Hello']); h.commit(); const old = h.request()
+  h.render('de', ['Hello']); h.commit(); const current = h.request()
+  await h.respond(current, { Hello: 'Hallo' }); await h.respond(old, { Hello: 'Hei' })
+  assert.equal(h.render('de', ['Hello']).t('Hello'), 'Hallo')
+  assert.equal(h.render('de', ['Hello'], 'another-widget').t('Hello'), 'Hello')
+})
+
+test('Norwegian form labels work immediately without a translation response', async () => {
+  const h = hookHarness(); const initial = h.render('no', ['Contact information', 'Your name', 'Send request']);
+  assert.equal(initial.t('Contact information'), 'Kontaktinformasjon');
+  assert.equal(initial.t('Your name'), 'Navnet ditt');
+  assert.equal(initial.t('Send request'), 'Send forespørsel');
+  assert.equal(initial.t('How can the team reach you?'), 'Hvordan kan teamet kontakte deg?');
+  assert.equal(initial.t('Submit feedback'), 'Send tilbakemelding');
+  h.commit(); await h.respond(h.request(), {}, false);
+  assert.equal(h.render('no', ['Contact information']).t('Contact information'), 'Kontaktinformasjon');
+  assert.equal(h.render('en', ['Contact information']).t('Contact information'), 'Contact information');
+});

@@ -1,14 +1,20 @@
 'use client'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { getBuiltinWidgetTranslations } from '@/lib/widget-builtin-translations.mjs'
 import { auth } from '@/lib/firebase'
 import type { WidgetLanguage } from '@/types/database'
 
 export function useWidgetTranslation(language: WidgetLanguage, copy: string[], widgetKey?: string, embedToken?: string, enabled = true, fingerprint?: string) {
-  const [result, setResult] = useState<{ language: string; copyKey: string; translations: Record<string, string> } | null>(null)
+  const cache = useRef<Record<string, Record<string, string>>>({})
+  const [result, setResult] = useState<{ language: string; scope: string; copyKey: string; translations: Record<string, string> } | null>(null)
   const [error, setError] = useState(false)
   const [retry, setRetry] = useState(0)
-  const copyKey = JSON.stringify(copy)
+  const copyKey = JSON.stringify([...new Set(copy)].sort())
+  const scope = widgetKey || 'preview'
+  const cacheKey = scope + ':' + language
   useEffect(() => {
+    const cached = cache.current[cacheKey]
+    if (cached) setResult({ language, scope, copyKey, translations: cached })
     if (!enabled || (widgetKey && !embedToken)) return
     const controller = new AbortController()
     const timer = setTimeout(() => {
@@ -22,12 +28,15 @@ export function useWidgetTranslation(language: WidgetLanguage, copy: string[], w
         })
         if (!response.ok) throw new Error('Translation unavailable')
         const data = await response.json()
-        if (!controller.signal.aborted) setResult({ language, copyKey, translations: data.translations })
+        if (!controller.signal.aborted) {
+          cache.current[cacheKey] = { ...cache.current[cacheKey], ...data.translations }
+          setResult({ language, scope, copyKey, translations: cache.current[cacheKey] })
+        }
       })().catch(() => { if (!controller.signal.aborted) setError(true) })
     }, 450)
     return () => { clearTimeout(timer); controller.abort() }
-  }, [language, copyKey, widgetKey, embedToken, retry, enabled, fingerprint])
-  const translations = result?.language === language && result.copyKey === copyKey ? result.translations : null
-  const t = useCallback((text: string, norwegian?: string) => translations?.[text] || (language === 'no' && norwegian ? norwegian : text), [translations, language])
+  }, [language, copyKey, widgetKey, embedToken, retry, enabled, fingerprint, scope, cacheKey])
+  const translations = result?.language === language && result.scope === scope ? result.translations : cache.current[cacheKey] || null
+  const t = useCallback((text: string, norwegian?: string) => getBuiltinWidgetTranslations(language)[text] || translations?.[text] || (language === 'no' && norwegian ? norwegian : text), [translations, language])
   return { t, error: enabled && error, loading: enabled && !translations && !error, retry: () => setRetry(value => value + 1) }
 }

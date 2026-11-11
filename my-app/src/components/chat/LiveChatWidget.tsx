@@ -1,5 +1,7 @@
 'use client'
 
+import LoadingAnimation from '@/components/LoadingAnimation'
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import WidgetPreview from '@/app/landings/auth/chatWidget/components/WidgetPreview'
 import '@/app/landings/auth/chatWidget/ChatWidget.css'
@@ -193,7 +195,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   const [ticketOpenRequest, setTicketOpenRequest] = useState(0)
   const [tickets, setTickets] = useState<{ id: string; title: string; description: string; status: string }[]>([])
   const [feedbackOpen, setFeedbackOpen] = useState(false)
-  const [feedbackRating, setFeedbackRating] = useState(5)
+  const [feedbackRating, setFeedbackRating] = useState(0)
   const [feedbackText, setFeedbackText] = useState('')
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
   const [rateLimitUntil, setRateLimitUntil] = useState(0)
@@ -1033,7 +1035,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
 
       setFeedbackOpen(false)
       setFeedbackText('')
-      setFeedbackRating(5)
+      setFeedbackRating(0)
     } catch (err) {
       console.error(err)
       const message = err instanceof Error ? err.message : ''
@@ -1048,7 +1050,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   if (!config) {
     return (
       <div className="widget-frame-shell">
-        <div className="widget-frame-fallback">{error || 'Loading widget...'}</div>
+        <div className="widget-frame-fallback">{error || <LoadingAnimation label="Loading widget?" />}</div>
       </div>
     )
   }
@@ -1161,7 +1163,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
           onClose: () => {
             setFeedbackOpen(false)
             setFeedbackText('')
-            setFeedbackRating(5)
+            setFeedbackRating(0)
           },
         }}
         errorMessage={

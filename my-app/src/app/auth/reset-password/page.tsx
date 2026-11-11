@@ -1,3 +1,4 @@
+import LoadingAnimation from '@/components/LoadingAnimation'
 import { Suspense } from 'react'
 import ResetPasswordClient from './ResetPasswordClient'
 
@@ -5,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<div>Laster...</div>}>
+    <Suspense fallback={<LoadingAnimation label="Laster..." />}>
       <ResetPasswordClient />
     </Suspense>
   )

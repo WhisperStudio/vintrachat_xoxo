@@ -1,5 +1,7 @@
 'use client'
 
+import LoadingAnimation from '@/components/LoadingAnimation'
+
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { FiArrowLeft, FiArrowRight, FiCheckCircle, FiMail } from 'react-icons/fi'
@@ -51,7 +53,7 @@ export default function ForgotPasswordPage() {
         <form className="nordicAuthForm" onSubmit={handleSubmit} aria-busy={loading}>
           <div className="nordicAuthField"><label htmlFor="recovery-email">{no ? 'E-postadresse' : 'Email address'}</label><input id="recovery-email" name="email" type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} placeholder={no ? 'deg@bedrift.no' : 'you@company.com'} value={email} onChange={(event) => setEmail(event.target.value)} required /></div>
           {error && <div className="nordicAuthError" role="alert">{error}</div>}
-          <button className="nordicAuthSubmit" type="submit" disabled={loading}>{loading ? <><span className="nordicAuthSpinner" />{no ? 'Sender lenke…' : 'Sending link…'}</> : <>{no ? 'Send tilbakestillingslenke' : 'Send reset link'}<FiArrowRight aria-hidden="true" /></>}</button>
+          <button className="nordicAuthSubmit" type="submit" disabled={loading}>{loading ? <><LoadingAnimation compact />{no ? 'Sender lenke…' : 'Sending link…'}</> : <>{no ? 'Send tilbakestillingslenke' : 'Send reset link'}<FiArrowRight aria-hidden="true" /></>}</button>
           <Link href="/auth/login" className="nordicAuthBack"><FiArrowLeft aria-hidden="true" />{no ? 'Tilbake til innlogging' : 'Back to sign in'}</Link>
         </form>
       )}

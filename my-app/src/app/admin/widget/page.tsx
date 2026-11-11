@@ -1,5 +1,7 @@
 'use client'
 
+import LoadingAnimation from '@/components/LoadingAnimation'
+
 import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
 import { FiCheck, FiCode, FiCopy, FiDownload, FiGlobe, FiLayers, FiPlus, FiSettings, FiShield, FiTrash2 } from 'react-icons/fi'
@@ -11,7 +13,7 @@ import { parseAllowedDomainsInput } from '@/lib/widget-security'
 import '@/components/chat/WidgetFlowSettings.css'
 import './WidgetStudio.css'
 
-const ChatWidgetStudio = dynamic(() => import('@/app/landings/auth/chatWidget/ChatWidgetBuilder'), { loading: () => <p role="status">Laster studio…</p> })
+const ChatWidgetStudio = dynamic(() => import('@/app/landings/auth/chatWidget/ChatWidgetBuilder'), { loading: () => <LoadingAnimation label="Laster studio…" /> })
 const sections = [
   { id: 'studio', no: 'Assistenten', en: 'Assistant', hintNo: 'Innhold, funksjoner og design', hintEn: 'Knowledge, features and design', icon: FiSettings },
   { id: 'install', no: 'Installer', en: 'Install', hintNo: 'Legg chatten på nettsiden', hintEn: 'Add chat to your website', icon: FiCode },
@@ -39,6 +41,7 @@ export default function WidgetAdminPanel({ selectedWidgetKey, onWidgetSelected, 
   const widgets = business?.chatWidgets || []
   const key = selectedWidgetKey || localKey || business?.activeChatWidgetKey || business?.chatWidgetKey || ''
   const widget = widgets.find(item => item.widgetKey === key)
+  const needsSetup = setupMode || widget?.assistantConfig?.setupCompleted === false
   const config = widget?.config || business?.chatWidgetConfig
   const plan = getEffectiveBusinessPlan(business, config)
   const limit = getPlanLimits(plan).maxWidgets
@@ -51,7 +54,7 @@ export default function WidgetAdminPanel({ selectedWidgetKey, onWidgetSelected, 
     setHidePaths((config?.visibility?.hideOnPaths || []).join('\n'))
     setDeleteConfirmed(false)
   }, [key, config])
-  useEffect(() => { if (setupMode) setSection('studio') }, [setupMode])
+  useEffect(() => { if (needsSetup) setSection('studio') }, [needsSetup])
 
   const run = async (action: () => Promise<void>) => {
     if (busy) return
@@ -94,17 +97,17 @@ export default function WidgetAdminPanel({ selectedWidgetKey, onWidgetSelected, 
     setNotice(no ? 'Synligheten er lagret.' : 'Visibility saved.')
   })
 
-  if (loading) return <p role="status">{no ? 'Laster arbeidsområdet…' : 'Loading workspace…'}</p>
+  if (loading) return <LoadingAnimation label={no ? 'Laster arbeidsområdet…' : 'Loading workspace…'} />
   if (!business || !dbUser) return <p>{no ? 'Logg inn for å administrere assistenten.' : 'Sign in to manage your assistant.'}</p>
 
   return <div className="widgetAdminSimple">
-    {!setupMode && <nav className="widgetStudioNav" aria-label={no ? 'Widgetadministrasjon' : 'Widget administration'}>{sections.map(item => {
+    {!needsSetup && <nav className="widgetStudioNav" aria-label={no ? 'Widgetadministrasjon' : 'Widget administration'}>{sections.map(item => {
       const Icon = item.icon
       return <button key={item.id} type="button" aria-current={section === item.id ? 'page' : undefined} onClick={() => { setSection(item.id); setNotice(''); setError('') }}><Icon aria-hidden="true" /><span><strong>{no ? item.no : item.en}</strong><small>{no ? item.hintNo : item.hintEn}</small></span></button>
     })}</nav>}
     {error && <p className="widgetStudioAlert" role="alert">{error}</p>}
     {notice && <p className="widgetStudioNotice" role="status"><FiCheck aria-hidden="true" />{notice}</p>}
-    {section === 'studio' && <ChatWidgetStudio key={key} embedded widgetKey={key} onWidgetSelected={selectWidget} setupMode={setupMode} onSetupComplete={onSetupComplete} />}
+    {section === 'studio' && <ChatWidgetStudio key={key} embedded widgetKey={key} onWidgetSelected={selectWidget} setupMode={needsSetup} onSetupComplete={async () => { if (setupMode) await onSetupComplete?.(); await refreshBusiness() }} />}
     {section === 'install' && <section className="widgetStudioCard">
       <div className="widgetStudioCardHeading"><span className="widgetStudioIcon"><FiCode /></span><div><h2>{no ? 'Legg assistenten på nettsiden' : 'Add your assistant to your website'}</h2><p>{no ? 'Lagre oppsettet, tillat domenet under Synlighet, og lim inn koden før </body> på nettsiden.' : 'Save your setup, allow your domain under Visibility, and paste this before </body> on your website.'}</p></div></div>
       <pre className="widgetStudioCode"><code>{embedCode}</code></pre>

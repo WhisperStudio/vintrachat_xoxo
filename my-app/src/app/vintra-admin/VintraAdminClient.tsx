@@ -1,5 +1,7 @@
 'use client'
 
+import LoadingAnimation from '@/components/LoadingAnimation'
+
 import { useEffect, useMemo, useState, type ReactElement } from 'react'
 import Link from 'next/link'
 import { APP_THEME_EVENT, resolveAppThemePreference, writeAppThemePreference } from '@/lib/theme-preference'
@@ -667,7 +669,7 @@ export default function VintraAdminClient({ embedded = false }: { embedded?: boo
   if (loading) {
     return (
       <main className={`workspaceTheme vintraAdminShell ${embedded ? "vintraAdminEmbedded" : ""}`} data-admin-theme={theme}>
-        <div className="vintraAdminLoading">Loading Vintra admin...</div>
+        <div className="vintraAdminLoading"><LoadingAnimation label="Loading Vintra admin?" /></div>
       </main>
     )
   }

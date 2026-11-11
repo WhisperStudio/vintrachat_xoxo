@@ -1,5 +1,7 @@
 'use client'
 
+import LoadingAnimation from '@/components/LoadingAnimation'
+
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
@@ -389,7 +391,7 @@ export default function AdminWorkspace({ billingConfigured, billingTestMode }: {
     return () => document.removeEventListener('keydown', handleKey)
   }, [tutorialActive])
 
-  if (loading) return <main className="adminLoading" aria-busy="true"><FiLayers /><p>{text.loading}</p></main>
+  if (loading) return <main className="adminLoading" aria-busy="true"><LoadingAnimation label={text.loading} /></main>
   if (!isAuthenticated || !dbUser) return null
 
   const no = language === 'no'
@@ -440,14 +442,9 @@ export default function AdminWorkspace({ billingConfigured, billingTestMode }: {
                 {visibleFeedbackItems.map(item => renderNavItem(item.tab, item.label))}
               </div>
               <div className="adminSidebarGroup">
-                <div className="adminSidebarGroupLabel">{text.sidebar.administrative}</div>
-                {visibleAdminItems.map(item => renderNavItem(item.tab, item.label))}
-              </div>
-              <div className="adminSidebarGroup">
-                <div className="adminSidebarGroupLabel">{no ? 'Bygg og administrer' : 'Build and manage'}</div>
+                <div className="adminSidebarGroupLabel">{no ? 'Bygg og design' : 'Build and design'}</div>
                 {renderNavItem('websites', no ? 'Nettsidebygging' : 'Website builder')}
                 {renderNavItem('widgets', 'Widget studio')}
-                {renderNavItem('subscriptions', no ? 'Abonnementer' : 'Subscriptions')}
               </div>
               {firebaseUser?.emailVerified && isVintraAdminEmail(firebaseUser.email) && (
                 <div className="adminSidebarGroup">
@@ -455,6 +452,11 @@ export default function AdminWorkspace({ billingConfigured, billingTestMode }: {
                   {renderNavItem('vintra', 'Vintra-admin')}
                 </div>
               )}
+              <div className="adminSidebarGroup">
+                <div className="adminSidebarGroupLabel">{text.sidebar.administrative}</div>
+                {visibleAdminItems.map(item => renderNavItem(item.tab, item.label))}
+                {renderNavItem('subscriptions', no ? 'Abonnementer' : 'Subscriptions')}
+              </div>
             </nav>
             <div className="adminSidebarBottom">
               <button className="adminSidebarHelp" onClick={openTutorial} title={text.overview.tutorial}><FiHelpCircle /><span>{text.overview.tutorial}</span><FiArrowUpRight /></button>

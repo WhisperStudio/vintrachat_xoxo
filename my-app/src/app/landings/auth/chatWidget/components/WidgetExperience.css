@@ -289,3 +289,56 @@
 .widget-start-card button:focus-visible, .widget-language-select:focus-visible { outline: 2px solid var(--chat-primary, #285f86); outline-offset: -3px; }
 .widget-translation-status { display: block; padding: 4px 12px; font-size: 11px; color: var(--chat-text, #19354a); }
 .widget-start-card { pointer-events: auto; }
+/* The configured surfaces own the edge; wrappers never add a second frame. */
+.vintra-widget .chat-widget,
+.vintra-widget .chat-widget.open > .chat-content { border: 0; outline: 0; }
+.vintra-widget .chat-widget.open > .chat-content { position: relative; }
+.vintra-widget .close-btn { display: grid; place-items: center; padding: 4px; --widget-glyph-size: 24px; }
+.vintra-widget .close-btn :is(svg, .widget-svg-icon) { width: 24px !important; height: 24px !important; min-width: 24px; min-height: 24px; font-size: 26px; flex-shrink: 0; }
+.vintra-widget .chat-widget.open .chat-body { gap: 10px; }
+.vintra-widget .widget-panel-tabs { position: relative; top: auto; flex: 0 0 auto; min-height: 0; gap: 4px; margin: 0 auto 10px; padding: 3px; border-radius: 999px; }
+.vintra-widget .widget-panel-tabs + .widget-body-content { margin-top: 0; padding-top: 0; }
+.vintra-widget .widget-body-content { min-height: 0; }
+.vintra-widget .widget-body-content[hidden] { display: none; }
+.vintra-widget :is(.widget-handoff-overlay, .widget-feedback-overlay) { position: relative; inset: auto; z-index: auto; display: block; overflow: visible; width: 100%; flex: 1 0 auto; padding: 0; border-radius: 0; background: transparent; backdrop-filter: none; }
+.vintra-widget :is(.widget-handoff-card, .widget-feedback-card) { min-height: 0; padding: 4px 0; border: 0; border-radius: 0; background: transparent; }
+.vintra-widget .widget-panel-page { min-height: 0; }
+.vintra-widget .widget-page-design { color: var(--page-text, var(--chat-text)); background: var(--page-bg, var(--chat-bg)); font-size: var(--page-fontSize, 14px); gap: var(--page-spacing, 12px); }
+.vintra-widget .widget-page-design :is(.widget-handoff-card, .widget-feedback-card, .widget-handoff-grid) { gap: var(--page-spacing, 12px); color: inherit; }
+.vintra-widget .widget-page-heading { display: flex; align-items: center; gap: 10px; color: var(--page-accent, var(--chat-primary)); }
+.vintra-widget .widget-page-heading > svg { width: 26px; height: 26px; flex: 0 0 auto; }
+.vintra-widget .widget-page-heading :is(h4, p) { margin: 0; }
+.vintra-widget .widget-page-heading p { margin-top: 4px; color: var(--page-text, var(--chat-text)); }
+.vintra-widget .widget-page-design :is(h4, label, .widget-task-card, .widget-handoff-header p, .widget-feedback-header p) { color: inherit; font-size: inherit; }
+.vintra-widget .widget-page-design :is(input, textarea, .widget-task-card) { background: var(--page-field-bg, var(--chat-bg)); color: var(--page-text, var(--chat-text)); border: 1px var(--page-border-style, solid) var(--page-border, var(--chat-border)); border-radius: var(--page-radius, 12px); font-size: inherit; }
+.vintra-widget .widget-page-design :is(.widget-feedback-primary, .widget-handoff-submit) { background: var(--page-accent, var(--chat-primary)); border-radius: var(--page-buttonRadius, 20px); }
+.vintra-widget .widget-page-design .widget-feedback-star { color: var(--page-accent, var(--chat-primary)); }
+.vintra-widget .widget-page-design .widget-feedback-actions { margin-top: var(--page-spacing, 12px); }
+.vintra-widget .chat-widget.open .widget-form-footer { min-height: 12px; height: 12px; padding: 0; }
+.vintra-widget .chat-widget.open .chat-body { background: var(--page-bg, var(--chat-bg)); }
+.vintra-widget .widget-page-heading .widget-svg-icon, .vintra-widget .widget-page-design h4 > .widget-svg-icon { width: 26px; height: 26px; margin-right: 8px; vertical-align: middle; }
+.widgetFlowPageDesign { display: grid; gap: 12px; }
+
+.vintra-widget .widget-body-content--with-panel-tabs { flex: 0 0 auto; }
+.vintra-widget .widget-panel-tabs + .widget-message-thread { margin-top: 0; }
+.vintra-widget .widget-panel-tab { padding: 6px 12px !important; }
+.vintra-widget .widget-panel-page > p { margin: 0; }
+.vintra-widget .widget-ticket-conversation-example { display: grid; gap: 16px; padding-top: 12px; }
+.vintra-widget .widget-ticket-conversation-example .widget-message-thread { margin-top: 0; }
+/* Theme-aware language popover, shared by the studio and installed widget. */
+.vintra-widget .widget-language-picker { position: relative; flex: 0 0 36px; width: 36px; height: 36px; color: var(--chat-header-action-text); }
+.vintra-widget .widget-language-trigger { display: grid; place-items: center; width: 36px; height: 36px; padding: 7px; box-sizing: border-box; border: 1px solid var(--chat-header-action-border); border-radius: 12px; background: var(--chat-header-action-bg); color: inherit; cursor: pointer; list-style: none; transition: background .15s ease; }
+.vintra-widget .widget-language-trigger::-webkit-details-marker { display: none; }
+.vintra-widget .widget-language-trigger > svg { width: 21px; height: 21px; }
+.vintra-widget .widget-language-picker[open] .widget-language-trigger,
+.vintra-widget .widget-language-trigger:hover { background: color-mix(in srgb, currentColor 18%, transparent); }
+.vintra-widget .widget-language-trigger:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.vintra-widget .widget-language-menu { position: absolute; top: calc(100% + 10px); right: 0; z-index: 50; width: 224px; max-width: calc(100vw - 48px); max-height: min(360px, 55dvh); overflow-y: auto; box-sizing: border-box; padding: 7px; border: 1px solid var(--chat-border); border-radius: 16px; background: var(--chat-bg); color: var(--chat-text); box-shadow: 0 12px 36px #071c2b26, 0 2px 6px #071c2b0a; text-align: left; }
+.vintra-widget .widget-language-heading { display: block; padding: 8px 10px 10px; font-size: 11px; line-height: 1.4; font-weight: 600; color: var(--chat-text); opacity: .65; letter-spacing: .03em; }
+.vintra-widget .widget-language-option { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; margin: 2px 0; padding: 8px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--chat-text); font: inherit; font-size: 13px; line-height: 1.4; text-align: left; cursor: pointer; box-shadow: none; }
+.vintra-widget .widget-language-option:hover,
+.vintra-widget .widget-language-option:focus-visible { background: color-mix(in srgb, var(--chat-primary) 7%, var(--chat-bg)); outline: 2px solid var(--chat-primary); outline-offset: -2px; }
+.vintra-widget .widget-language-option[aria-pressed="true"] { color: var(--chat-primary); background: color-mix(in srgb, var(--chat-primary) 11%, var(--chat-bg)); font-weight: 650; }
+.vintra-widget .widget-language-code { display: grid; place-items: center; width: 30px; height: 28px; flex: 0 0 30px; border: 1px solid var(--chat-border); border-radius: 7px; background: var(--chat-bg); color: inherit; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
+.vintra-widget .widget-language-check { width: 17px; height: 17px; margin-left: auto; flex: 0 0 17px; }
+.vintra-widget .chat-header:has(.widget-language-picker[open]) { z-index: 30; overflow: visible; }

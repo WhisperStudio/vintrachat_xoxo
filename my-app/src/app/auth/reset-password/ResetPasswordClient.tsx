@@ -1,5 +1,7 @@
 'use client'
 
+import LoadingAnimation from '@/components/LoadingAnimation'
+
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
@@ -53,7 +55,7 @@ export default function ResetPasswordClient() {
           <PasswordField id="new-password" label={no ? 'Nytt passord' : 'New password'} placeholder={no ? 'Minst 6 tegn' : 'At least 6 characters'} value={password} onChange={setPassword} minLength={6} hint={no ? 'Bruk gjerne flere ord som er lette for deg å huske.' : 'Try several words that are easy for you to remember.'} />
           <PasswordField id="confirm-password" label={no ? 'Bekreft nytt passord' : 'Confirm new password'} placeholder={no ? 'Gjenta passordet' : 'Repeat your password'} value={confirmPassword} onChange={setConfirmPassword} minLength={6} />
           {error && <div className="nordicAuthError" role="alert">{error}</div>}
-          <button className="nordicAuthSubmit" type="submit" disabled={loading}>{loading ? <><span className="nordicAuthSpinner" />{no ? 'Lagrer passord…' : 'Saving password…'}</> : <>{no ? 'Lagre nytt passord' : 'Save new password'}<FiArrowRight aria-hidden="true" /></>}</button>
+          <button className="nordicAuthSubmit" type="submit" disabled={loading}>{loading ? <><LoadingAnimation compact />{no ? 'Lagrer passord…' : 'Saving password…'}</> : <>{no ? 'Lagre nytt passord' : 'Save new password'}<FiArrowRight aria-hidden="true" /></>}</button>
           {error && <Link href="/auth/forgot-password" className="nordicAuthBack">{no ? 'Be om en ny tilbakestillingslenke' : 'Request a new reset link'}</Link>}
         </form>
       )}

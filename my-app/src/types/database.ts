@@ -1,3 +1,7 @@
+export interface WidgetPageDesign {
+  icon?: string; background?: string; textColor?: string; accentColor?: string; fieldBackground?: string; borderColor?: string; borderStyle?: 'none' | 'solid' | 'dashed' | 'double'; radius?: number; spacing?: number; fontSize?: number; buttonRadius?: number;
+}
+
 // User role types
 export type UserRole = 'admin' | 'manager' | 'support' | 'viewer' | 'user';
 
@@ -128,6 +132,7 @@ export interface WidgetLocalization {
   allowedLanguages: WidgetLanguage[];
 }
 export interface ChatAssistantConfig {
+  setupCompleted?: boolean;
   localization?: WidgetLocalization;
   startCard?: { enabled: boolean; text: string };
   contactSharing?: { enabled: boolean; allowOnUncertainty?: boolean };
@@ -437,14 +442,14 @@ export interface ChatWidgetConfig {
     tasksEnabled?: boolean;
     reviewsEnabled?: boolean;
     contactForm?: {
-      title?: string; description?: string; showEmail?: boolean; showPhone?: boolean;
+      design?: WidgetPageDesign; submitLabel?: string; nameLabel?: string; emailLabel?: string; phoneLabel?: string; title?: string; description?: string; showEmail?: boolean; showPhone?: boolean;
       requireEmail?: boolean; requirePhone?: boolean; style?: 'comfortable' | 'compact';
     };
-    reviewPage?: { title?: string; description?: string; autoAsk?: boolean; showHeaderButton?: boolean };
+    reviewPage?: { design?: WidgetPageDesign; submitLabel?: string; placeholder?: string; title?: string; description?: string; autoAsk?: boolean; showHeaderButton?: boolean };
     ticket?: {
       mode?: 'off' | 'on-demand' | 'always'; allowVisitorCreation?: boolean; showTabAlways?: boolean;
       showTeamTasksToVisitors?: boolean;
-      title?: string; description?: string; layout?: 'cards' | 'compact';
+      design?: WidgetPageDesign; chatsLabel?: string; ticketsLabel?: string; submitLabel?: string; title?: string; description?: string; layout?: 'cards' | 'compact';
     };
   };
 

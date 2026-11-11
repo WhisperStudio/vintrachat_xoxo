@@ -1,3 +1,4 @@
+import LoadingAnimation from '@/components/LoadingAnimation'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import PricingClient from './PricingClient'
@@ -20,5 +21,5 @@ export default function PricingPage() {
       description: `${cycle === 'monthly' ? 'Faktureres per måned.' : 'Totalpris faktureres per år, ikke per måned.'} ${id === 'free' ? 'Gratisplan uten betalingskort; ikke en tidsbegrenset prøveperiode.' : ''} ${plan.conversations} samtaler og ${plan.messages} meldinger per dag er bruksgrenser, ikke priser. Nettsidebygging inngår ikke i denne prisen.`,
     }))),
   }
-  return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingData).replace(/</g, '\\u003c') }} /><Suspense fallback={<p>Laster abonnementer …</p>}><PricingClient configured={configured} testMode={testMode} /></Suspense></>
+  return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingData).replace(/</g, '\\u003c') }} /><Suspense fallback={<LoadingAnimation label="Laster abonnementer …" />}><PricingClient configured={configured} testMode={testMode} /></Suspense></>
 }

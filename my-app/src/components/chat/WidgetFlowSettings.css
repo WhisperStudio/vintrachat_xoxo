@@ -6,3 +6,7 @@
 .widgetFlowField :is(input, textarea, select) { width: 100%; min-width: 0; border: 1px solid var(--app-input-border); border-radius: 10px; padding: 10px 12px; color: var(--app-text); background: var(--app-surface); font: inherit; }
 .widgetFlowToggle { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 13px; }
 .widgetFlowToggle input { flex: 0 0 auto; width: 20px; height: 20px; accent-color: var(--app-primary); }
+
+.widgetFlowPageDesign { display: grid; gap: 12px; }
+.widgetFlowField input[type="color"] { height: 40px; padding: 4px; }
+.widgetFlowField input[type="range"] { padding: 0; accent-color: var(--app-accent, #00a67e); }

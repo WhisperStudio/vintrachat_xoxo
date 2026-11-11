@@ -1,4 +1,5 @@
-import { getContextualWidgetSuggestions, resolveWidgetFlow, validateWidgetContact } from '@/lib/widget-flow.mjs'
+import { getBuiltinWidgetTranslations } from '@/lib/widget-builtin-translations.mjs'
+import { getWidgetPageStyle, getContextualWidgetSuggestions, resolveWidgetFlow, validateWidgetContact } from '@/lib/widget-flow.mjs'
 import { getWidgetMotionClasses } from '@/lib/widget-motion'
 import { getMessageSurfaceClasses, getSurfaceClasses } from '@/lib/surface-design'
 import { createLauncherArtwork } from '@/lib/launcher-design'
@@ -1082,6 +1083,8 @@ export async function GET(
   var state = {
     uiLanguage: 'no',
     translations: {},
+    translationCache: {},
+    languageMenuOpen: false,
     translationLoading: false,
     translationError: false,
     translationRequest: 0,
@@ -1112,7 +1115,7 @@ export async function GET(
     hasUnreadWhileClosed: false,
     hovered: false,
     feedbackOpen: false,
-    feedbackRating: 5,
+    feedbackRating: 0,
     feedbackText: '',
     feedbackSubmitting: false,
     activePanel: 'chats',
@@ -1664,8 +1667,12 @@ export async function GET(
   }
 
   var resolveFlow = ${resolveWidgetFlow.toString()};
+  var pageStyleVars = ${getWidgetPageStyle.toString()};
+  function pageStyle(section) { return Object.entries(pageStyleVars((getWidgetSettings()[section] || {}).design || {})).map(function(entry) { return entry[0] + ":" + entry[1]; }).join(";"); }
   var validateContact = ${validateWidgetContact.toString()};
   var getContextualSuggestions = ${getContextualWidgetSuggestions.toString()};
+  function pageCopy(section, key, fallback) { return String((getWidgetSettings()[section] || {})[key] || fallback); }
+  function pageIcon(section, fallback) { var key = ((getWidgetSettings()[section] || {}).design || {}).icon; return key === 'none' ? '' : renderConfiguredWidgetIconSlot(key || fallback); }
   function getFlow() { return resolveFlow(getWidgetSettings(), getAssistantConfig()); }
   function getWidgetSettings() {
     var config = state.config || {};
@@ -1743,7 +1750,7 @@ export async function GET(
         panels.map(function (panel) {
           return (
             '<button type="button" class="widget-panel-tab' + (state.activePanel === panel.id ? ' is-active' : '') + '" data-widget-panel="' + panel.id + '" role="tab" aria-selected="' + (state.activePanel === panel.id ? 'true' : 'false') + '" style="flex:0 0 auto;padding:0.45rem 0.8rem;border:1px solid color-mix(in srgb,var(--chat-primary) ' + (state.activePanel === panel.id ? '28%' : '12%') + ',transparent);border-radius:999px;background:' + (state.activePanel === panel.id ? 'color-mix(in srgb,var(--chat-primary) 12%,var(--chat-bg))' : 'var(--chat-bg)') + ';color:' + (state.activePanel === panel.id ? 'var(--chat-primary)' : 'var(--chat-text)') + ';font-weight:700;">' +
-              escapeHtml(panel.label) +
+              escapeHtml(pageCopy('ticket', panel.id === 'tasks' ? 'ticketsLabel' : 'chatsLabel', panel.label)) +
             '</button>'
           );
         }).join('') +
@@ -1778,19 +1785,20 @@ export async function GET(
         escapeHtml(state.supportStatus === 'open' ? 'Connected' : state.supportStatus === 'ai-active' ? 'AI assistant active' : 'Waiting for support') +
         '</span></div><p>Your support conversation and updates are available in Chats.</p><button type="button" class="widget-feedback-secondary" data-widget-panel="chats">Open conversation</button></article>'
       : '';
-    var contactMarkup = getFlow().allowVisitorCreation
+    var contactMarkup = getFlow().allowVisitorCreation && !state.tasks.length && !state.supportStatus && !state.ticketSubmitted
       ? (state.contactSaved
             ? '<p class="widget-panel-empty">Using your saved contact details.</p>'
-            : '<label class="widget-feedback-field"><span>Name</span><input class="widget-ticket-contact" data-contact-field="name" autocomplete="name" value="' + escapeHtml(state.handoffName) + '" /></label>' +
-              (getFlow().showEmail ? '<label class="widget-feedback-field"><span>Email</span><input type="email" class="widget-ticket-contact" data-contact-field="email" autocomplete="email" value="' + escapeHtml(state.handoffEmail) + '" /></label>' : '') +
-              (getFlow().showPhone ? '<label class="widget-feedback-field"><span>Phone</span><input type="tel" class="widget-ticket-contact" data-contact-field="phone" autocomplete="tel" value="' + escapeHtml(state.handoffPhone) + '" /></label>' : '')) +
+            : '<label class="widget-feedback-field"><span>' + escapeHtml(pageCopy('contactForm', 'nameLabel', 'Name')) + '</span><input class="widget-ticket-contact" data-contact-field="name" autocomplete="name" value="' + escapeHtml(state.handoffName) + '" /></label>' +
+              (getFlow().showEmail ? '<label class="widget-feedback-field"><span>' + escapeHtml(pageCopy('contactForm', 'emailLabel', 'Email')) + '</span><input type="email" class="widget-ticket-contact" data-contact-field="email" autocomplete="email" value="' + escapeHtml(state.handoffEmail) + '" /></label>' : '') +
+              (getFlow().showPhone ? '<label class="widget-feedback-field"><span>' + escapeHtml(pageCopy('contactForm', 'phoneLabel', 'Phone')) + '</span><input type="tel" class="widget-ticket-contact" data-contact-field="phone" autocomplete="tel" value="' + escapeHtml(state.handoffPhone) + '" /></label>' : '')) +
           '<div class="widget-feedback-actions">' +
-            '<button type="button" class="widget-feedback-primary widget-task-submit" ' + ((state.taskSubmitting || validateContact(getFlow(), { name: state.handoffName, email: state.handoffEmail, phone: state.handoffPhone })) ? 'disabled' : '') + '>' + (state.taskSubmitting ? 'Submitting...' : 'Send request') + '</button>' +
+            '<button type="button" class="widget-feedback-primary widget-task-submit" ' + ((state.taskSubmitting || validateContact(getFlow(), { name: state.handoffName, email: state.handoffEmail, phone: state.handoffPhone })) ? 'disabled' : '') + '>' + (state.taskSubmitting ? 'Submitting...' : escapeHtml(pageCopy('ticket', 'submitLabel', 'Send request'))) + '</button>' +
           '</div>'
       : '';
 
     return (
-      '<div class="widget-panel-page widget-panel-page--tasks ticket-layout-' + getFlow().ticketLayout + '">' +
+      '<div class="widget-panel-page widget-panel-page--tasks widget-page-design ticket-layout-' + getFlow().ticketLayout + '" style="' + escapeHtml(pageStyle('ticket')) + '">' +
+          ('<div class="widget-page-heading">' + pageIcon('ticket', 'FiFileText') + '<div><h4>' + escapeHtml(getFlow().ticketTitle) + '</h4><p>' + escapeHtml(getFlow().ticketDescription) + '</p></div></div>') +
           contactMarkup +
           (state.taskNotice ? '<div class="widget-panel-inline-note">' + escapeHtml(state.taskNotice) + '</div>' : '') +
           supportConversationMarkup +
@@ -2036,25 +2044,22 @@ export async function GET(
     }).join('');
 
     return (
-      '<div class="widget-feedback-overlay" role="dialog" aria-modal="true" aria-label="Leave feedback">' +
+      '<div class="widget-feedback-overlay widget-page-design" style="' + escapeHtml(pageStyle('reviewPage')) + '" role="region" aria-label="Leave feedback">' +
         '<div class="widget-feedback-card">' +
           '<div class="widget-feedback-header">' +
             '<div>' +
-              '<h4>' + escapeHtml(getFlow().reviewTitle) + '</h4>' +
+              '<h4>' + pageIcon('reviewPage', 'FiStar') + escapeHtml(getFlow().reviewTitle) + '</h4>' +
               '<p>' + escapeHtml(getFlow().reviewDescription) + '</p>' +
             '</div>' +
-            '<button type="button" class="widget-feedback-close" aria-label="Close">' +
-              '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7"></path></svg>' +
-            '</button>' +
           '</div>' +
           '<div class="widget-feedback-rating" aria-label="Rating selector">' + stars + '</div>' +
           '<label class="widget-feedback-field">' +
             '<span>Your feedback</span>' +
-            '<textarea rows="5" class="widget-feedback-textarea" placeholder="What went well, and what could be better?">' + escapeHtml(state.feedbackText) + '</textarea>' +
+            '<textarea rows="5" class="widget-feedback-textarea" placeholder="' + escapeHtml(pageCopy('reviewPage', 'placeholder', 'What went well, and what could be better?')) + '">' + escapeHtml(state.feedbackText) + '</textarea>' +
           '</label>' +
           '<div class="widget-feedback-actions">' +
             '<button type="button" class="widget-feedback-secondary" ' + (state.feedbackSubmitting ? 'disabled' : '') + '>Cancel</button>' +
-            '<button type="button" class="widget-feedback-primary" ' + (state.feedbackSubmitting ? 'disabled' : '') + '>' + (state.feedbackSubmitting ? 'Submitting...' : 'Submit feedback') + '</button>' +
+            '<button type="button" class="widget-feedback-primary" ' + (state.feedbackSubmitting || state.feedbackRating < 1 || !String(state.feedbackText || '').trim() ? 'disabled' : '') + '>' + (state.feedbackSubmitting ? 'Submitting...' : escapeHtml(pageCopy('reviewPage', 'submitLabel', 'Submit feedback'))) + '</button>' +
           '</div>' +
         '</div>' +
       '</div>'
@@ -2066,25 +2071,22 @@ export async function GET(
 
     var contactMarkup = state.contactSaved
       ? '<p class="widget-panel-empty">Using your saved contact details.</p>'
-      : '<label class="widget-handoff-field"><span>Name</span><input type="text" class="widget-handoff-input" data-handoff-field="name" value="' + escapeHtml(state.handoffName) + '" placeholder="Your name" autocomplete="name" /></label>' +
-        (getFlow().showEmail ? '<label class="widget-handoff-field"><span>Email</span><input type="email" class="widget-handoff-input" data-handoff-field="email" value="' + escapeHtml(state.handoffEmail) + '" placeholder="you@example.com" autocomplete="email" /></label>' : '') +
-        (getFlow().showPhone ? '<label class="widget-handoff-field"><span>Phone</span><input type="tel" class="widget-handoff-input" data-handoff-field="phone" value="' + escapeHtml(state.handoffPhone) + '" placeholder="+47 123 45 678" autocomplete="tel" /></label>' : '');
+      : '<label class="widget-handoff-field"><span>' + escapeHtml(pageCopy('contactForm', 'nameLabel', 'Name')) + '</span><input type="text" class="widget-handoff-input" data-handoff-field="name" value="' + escapeHtml(state.handoffName) + '" placeholder="Your name" autocomplete="name" /></label>' +
+        (getFlow().showEmail ? '<label class="widget-handoff-field"><span>' + escapeHtml(pageCopy('contactForm', 'emailLabel', 'Email')) + '</span><input type="email" class="widget-handoff-input" data-handoff-field="email" value="' + escapeHtml(state.handoffEmail) + '" placeholder="you@example.com" autocomplete="email" /></label>' : '') +
+        (getFlow().showPhone ? '<label class="widget-handoff-field"><span>' + escapeHtml(pageCopy('contactForm', 'phoneLabel', 'Phone')) + '</span><input type="tel" class="widget-handoff-input" data-handoff-field="phone" value="' + escapeHtml(state.handoffPhone) + '" placeholder="+47 123 45 678" autocomplete="tel" /></label>' : '');
 
     return (
-      '<div class="widget-handoff-overlay" role="dialog" aria-modal="true" aria-label="Human support request">' +
+      '<div class="widget-handoff-overlay widget-page-design" style="' + escapeHtml(pageStyle('contactForm')) + '" role="region" aria-label="Human support request">' +
         '<div class="widget-handoff-card form-spacing-' + getFlow().formStyle + '">' +
           '<div class="widget-handoff-header">' +
             '<div>' +
-              '<h4>' + escapeHtml(getFlow().contactTitle) + '</h4>' +
+              '<h4>' + pageIcon('contactForm', 'FiUser') + escapeHtml(getFlow().contactTitle) + '</h4>' +
               '<p>' + escapeHtml(getFlow().contactDescription) + '</p>' +
             '</div>' +
-            '<button type="button" class="widget-handoff-close" aria-label="Back to chat">' +
-              '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7"></path></svg>' +
-            '</button>' +
           '</div>' +
           '<div class="widget-handoff-grid">' + contactMarkup + '</div>' +
           '<div class="widget-handoff-actions">' +
-            '<button type="button" class="widget-handoff-submit" ' + ((!String(state.handoffName || '').trim() || state.sending) ? 'disabled' : '') + '>Send request</button>' +
+            '<button type="button" class="widget-handoff-submit" ' + ((!String(state.handoffName || '').trim() || state.sending) ? 'disabled' : '') + '>' + escapeHtml(pageCopy('contactForm', 'submitLabel', 'Send request')) + '</button>' +
           '</div>' +
         '</div>' +
       '</div>'
@@ -2266,7 +2268,7 @@ export async function GET(
     if (!getFlow().allowVisitorCreation) return;
     var contactError = validateContact(getFlow(), { name: state.handoffName, email: state.handoffEmail, phone: state.handoffPhone });
     if (contactError) { state.taskNotice = contactError; render(); return; }
-    if (!state.sessionId || state.taskSubmitting) return;
+    if (!state.sessionId || state.taskSubmitting || state.ticketSubmitted || state.tasks.length || state.supportStatus) return;
     var transcript = state.messages.map(function (message) {
       return (message.role === 'user' ? 'Visitor: ' : message.role === 'support' ? 'Support: ' : 'Assistant: ') + String(message.text || '');
     }).join('\\n');
@@ -2306,6 +2308,7 @@ export async function GET(
         writeStoredContactValue({ name: state.handoffName, email: state.handoffEmail, phone: state.handoffPhone });
         state.contactSaved = true;
       }
+      state.ticketSubmitted = true;
       state.taskNotice = 'Ticket created successfully.';
     } catch (error) {
       state.taskNotice = error instanceof Error ? error.message : 'Failed to create task';
@@ -2532,8 +2535,9 @@ export async function GET(
   }
 
   var widgetActionsBound = false;
+  var builtinTranslations = ${getBuiltinWidgetTranslations.toString()};
   var languageNames = { no: 'Norsk', en: 'English', sv: 'Svenska', da: 'Dansk', de: 'Deutsch', fi: 'Suomi', is: 'Íslenska' };
-  function uiText(text) { return state.translations[text] || text; }
+  function uiText(text) { return builtinTranslations(state.uiLanguage)[text] || state.translations[text] || text; }
   function getLanguages() {
     var config = getAssistantConfig().localization || {};
     var primary = Object.prototype.hasOwnProperty.call(languageNames, config.defaultLanguage) ? config.defaultLanguage : 'no';
@@ -2542,7 +2546,8 @@ export async function GET(
   async function translateWidget(language) {
     var request = ++state.translationRequest;
     state.uiLanguage = language;
-    state.translations = {};
+    try { window.localStorage.setItem('vintra-widget-language:' + WIDGET_KEY, language); } catch (error) {}
+    state.translations = state.translationCache[language] || {};
     state.translationLoading = true;
     state.translationError = false;
     render();
@@ -2553,6 +2558,7 @@ export async function GET(
       var result = await response.json();
       if (request !== state.translationRequest) return;
       state.translations = result.translations || {};
+      state.translationCache[language] = state.translations;
       try { window.localStorage.setItem('vintra-widget-language:' + WIDGET_KEY, language); } catch (error) {}
     } catch (error) {
       if (request === state.translationRequest) state.translationError = true;
@@ -2562,7 +2568,12 @@ export async function GET(
   }
   function languageSelectorMarkup() {
     var config = getLanguages();
-    return config.enabled ? '<select class="widget-language-select" aria-label="Language / Språk">' + config.allowed.map(function(code) { return '<option value="' + code + '"' + (state.uiLanguage === code ? ' selected' : '') + '>' + languageNames[code] + '</option>'; }).join('') + '</select>' : '';
+    if (!config.enabled) return '';
+    var label = escapeHtml(uiText('Choose language'));
+    return '<details class="widget-language-picker"' + (state.languageMenuOpen ? ' open' : '') + '><summary class="widget-language-trigger" aria-label="' + label + '" title="' + label + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6m-7 0 6-6 2-3M2 5h12M7 2h1m14 20-5-11-5 11m2-4h6"/></svg></summary><div class="widget-language-menu" aria-label="' + label + '"><span class="widget-language-heading">' + label + '</span>' + config.allowed.map(function(code) {
+      var selected = state.uiLanguage === code;
+      return '<button type="button" class="widget-language-option" data-widget-language="' + code + '" aria-pressed="' + selected + '" lang="' + (code === 'no' ? 'nb' : code) + '"><span class="widget-language-code" aria-hidden="true">' + code.toUpperCase() + '</span><span>' + languageNames[code] + '</span>' + (selected ? '<svg class="widget-language-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>' : '') + '</button>';
+    }).join('') + '</div></details>';
   }
   function startCardMarkup() {
     var card = getAssistantConfig().startCard;
@@ -2575,22 +2586,47 @@ export async function GET(
     var node;
     while ((node = walker.nextNode())) {
       var parent = node.parentElement;
-      if (!parent || parent.closest('textarea, input, select, .message, .widget-task-card, script, style')) continue;
-      var original = node.textContent.trim();
-      if (original && state.translations[original]) node.textContent = node.textContent.replace(original, state.translations[original]);
+      if (!parent || parent.closest('textarea, input, select, .message, script, style')) continue;
+      var current = node.textContent.trim();
+      var original = node.__vintraSource && current === node.__vintraTranslated ? node.__vintraSource : current;
+      node.__vintraSource = original;
+      node.__vintraTranslated = uiText(original);
+      if (original) node.textContent = node.textContent.replace(current, node.__vintraTranslated);
     }
     mount.querySelectorAll('[placeholder], [aria-label], [title]').forEach(function(element) {
       ['placeholder', 'aria-label', 'title'].forEach(function(attribute) {
         var value = element.getAttribute(attribute);
-        if (value && state.translations[value]) element.setAttribute(attribute, state.translations[value]);
+        if (value) element.setAttribute(attribute, uiText(value));
       });
     });
+  }
+  function closeActiveForm() {
+    if (state.awaitingVisitorName) {
+        state.awaitingVisitorName = false;
+        state.handoffFormOpen = false;
+        state.sending = false;
+        state.error = '';
+        writeStoredHandoffValue({
+          open: false,
+          name: state.handoffName,
+          email: state.handoffEmail,
+          phone: state.handoffPhone,
+          pendingText: state.pendingHumanSupportText
+        });
+        render();
+
+
+    } else { state.feedbackOpen = false; state.feedbackText = ''; state.feedbackRating = 0; render(); }
   }
   function bindWidgetActions() {
     if (widgetActionsBound) return;
     widgetActionsBound = true;
-    mount.addEventListener('change', function(event) {
-      if (event.target && event.target.matches('.widget-language-select') && getLanguages().allowed.includes(event.target.value)) void translateWidget(event.target.value);
+    mount.addEventListener('toggle', function(event) {
+      if (event.target.matches?.('.widget-language-picker')) state.languageMenuOpen = event.target.open;
+    }, true);
+    if (typeof document !== 'undefined') document.addEventListener?.('pointerdown', function(event) {
+      var picker = mount.querySelector('.widget-language-picker');
+      if (picker && picker.open && !event.composedPath().includes(picker)) { picker.open = false; state.languageMenuOpen = false; }
     });
 
     mount.addEventListener('pointerdown', function (event) {
@@ -2614,6 +2650,11 @@ export async function GET(
       var button = target.closest('button');
       if (!button) return;
 
+      if (button.hasAttribute('data-widget-language')) {
+        var language = button.getAttribute('data-widget-language');
+        if (getLanguages().allowed.includes(language)) { state.languageMenuOpen = false; void translateWidget(language); mount.querySelector('.widget-language-trigger')?.focus(); }
+        return;
+      }
       if (button.classList.contains('widget-start-card-close')) { state.startCardDismissed = true; render(); return; }
       if (button.classList.contains('widget-start-card-message')) { state.open = true; state.hasOpenedOnce = true; render(); focusComposerInput(); return; }
       if (button.classList.contains('widget-translation-retry')) { void translateWidget(state.uiLanguage); return; }
@@ -2657,21 +2698,7 @@ export async function GET(
         render();
         return;
       }
-      if (button.classList.contains('widget-handoff-close')) {
-        state.awaitingVisitorName = false;
-        state.handoffFormOpen = false;
-        state.sending = false;
-        state.error = '';
-        writeStoredHandoffValue({
-          open: false,
-          name: state.handoffName,
-          email: state.handoffEmail,
-          phone: state.handoffPhone,
-          pendingText: state.pendingHumanSupportText
-        });
-        render();
-        return;
-      }
+
 
       if (button.classList.contains('widget-faq-chip')) {
         var suggestion = String(button.getAttribute('data-faq-suggestion') || button.textContent || '').trim();
@@ -2734,15 +2761,16 @@ export async function GET(
         return;
       }
 
-      if (button.classList.contains('widget-feedback-close') || button.classList.contains('widget-feedback-secondary')) {
+      if (button.classList.contains('widget-feedback-close') || (button.classList.contains('widget-feedback-secondary') && button.closest('.widget-feedback-overlay'))) {
         state.feedbackOpen = false;
         state.feedbackText = '';
-        state.feedbackRating = 5;
+        state.feedbackRating = 0;
         render();
         return;
       }
 
       if (button.hasAttribute('data-widget-panel')) {
+        if (state.awaitingVisitorName || state.feedbackOpen) { closeActiveForm(); return; }
         var nextPanel = String(button.getAttribute('data-widget-panel') || 'chats');
         state.activePanel = nextPanel;
         if (nextPanel === 'tasks') {
@@ -2765,7 +2793,7 @@ export async function GET(
         return;
       }
 
-      if (button.classList.contains('widget-feedback-primary')) {
+      if (button.classList.contains('widget-feedback-primary') && !button.classList.contains('widget-task-submit')) {
         submitFeedback();
         return;
       }
@@ -2792,6 +2820,8 @@ export async function GET(
 
       if (target.tagName === 'TEXTAREA' && target.classList && target.classList.contains('widget-feedback-textarea')) {
         state.feedbackText = target.value;
+        var feedbackSubmit = mount.querySelector('.widget-feedback-overlay .widget-feedback-primary');
+        if (feedbackSubmit) feedbackSubmit.disabled = state.feedbackSubmitting || state.feedbackRating < 1 || !String(state.feedbackText || '').trim();
         return;
       }
 
@@ -2854,6 +2884,7 @@ export async function GET(
     });
 
     mount.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && state.languageMenuOpen) { event.preventDefault(); event.stopPropagation(); state.languageMenuOpen = false; var picker = mount.querySelector('.widget-language-picker'); if (picker) picker.open = false; mount.querySelector('.widget-language-trigger')?.focus(); return; }
       if (event.key !== 'Escape' || !state.open || state.awaitingVisitorName || state.feedbackOpen) return;
       if (!state.config || !state.config.headerStyle || !state.config.headerStyle.showCloseButton) return;
       state.open = false;
@@ -2970,7 +3001,7 @@ export async function GET(
             showStarterCardList ? 'chat-header--starter-list' : ''
           ]) + '">' +
             '<div class="chat-header-left">' +
-              (state.activePanel === 'tasks' ? '<button type="button" class="chat-header-back" data-widget-panel="chats" aria-label="Back to chat">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('backIcon', 'FiArrowLeft')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">←</span>') + '</button>' : '') +
+              (state.activePanel === 'tasks' || state.awaitingVisitorName || state.feedbackOpen ? '<button type="button" class="chat-header-back" data-widget-panel="chats" aria-label="Back to chat">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('backIcon', 'FiArrowLeft')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">←</span>') + '</button>' : '') +
               (state.activePanel !== 'tasks' && headerStyle.showAvatar !== false ? headerAvatar : '') +
               '<div class="chat-header-copy">' +
                 (headerStyle.showTitle !== false ? '<h3>' + escapeHtml(state.activePanel === 'tasks' ? getFlow().ticketTitle : getTitle(config)) + '</h3>' : '') +
@@ -2983,12 +3014,11 @@ export async function GET(
               (state.open ? '<button type="button" class="close-btn' + (headerStyle.showCloseButton ? '' : ' widget-mobile-close-only') + '" aria-label="Close chat">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('closeIcon', 'FiX')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">×</span>') + '</button>' : '') +
             '</div>' +
           '</div>' +
-          '<div class="' + classes(['chat-body', getSurfaceClasses(bodyStyle), 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '" style="position:relative;">' +
-            (showPortalTabs ? getPanelTabsMarkup() : '') +
-            panelMarkup +
+          '<div class="' + classes(['chat-body', getSurfaceClasses(bodyStyle), 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '" style="position:relative;' + escapeHtml(pageStyle(state.awaitingVisitorName ? 'contactForm' : state.feedbackOpen ? 'reviewPage' : state.activePanel === 'tasks' ? 'ticket' : '')) + '">' +
+            (!state.awaitingVisitorName && !state.feedbackOpen && showPortalTabs ? getPanelTabsMarkup() : '') +
+            (state.awaitingVisitorName ? getHandoffOverlayMarkup() : state.feedbackOpen ? getFeedbackOverlayMarkup() : panelMarkup) +
           '</div>' +
-          getHandoffOverlayMarkup() +
-          (state.awaitingVisitorName || state.activePanel !== 'chats' ? '' : (
+          (state.awaitingVisitorName || state.feedbackOpen || state.activePanel !== 'chats' ? '<div class="' + classes(['chat-footer', getSurfaceClasses(footerStyle), 'widget-form-footer']) + '" aria-hidden="true"></div>' : (
             '<div class="' + classes([
               'chat-footer',
               'footer-corners-' + footerCornerStyle,
@@ -3057,7 +3087,8 @@ export async function GET(
     var input = mount.querySelector('.chat-footer textarea');
     var body = mount.querySelector('.chat-body');
 
-    if (body && state.activePanel === 'chats') {
+    if (body && (state.awaitingVisitorName || state.feedbackOpen)) body.scrollTop = 0;
+    if (body && state.activePanel === 'chats' && !state.awaitingVisitorName && !state.feedbackOpen) {
       window.requestAnimationFrame(function () {
         body.scrollTop = showStarterCards ? 0 : (pinned || sentNow ? body.scrollHeight : previousScroll);
       });
@@ -3328,7 +3359,7 @@ export async function GET(
         if (json.feedbackFormRequested) {
           state.feedbackOpen = true;
           state.feedbackText = '';
-          state.feedbackRating = 5;
+          state.feedbackRating = 0;
           state.activePanel = 'chats';
         }
 
@@ -3359,7 +3390,7 @@ export async function GET(
   async function submitFeedback() {
     if (!getFlow().reviewsEnabled) return;
     if (!state.sessionId) { state.sessionId = crypto.randomUUID(); writeStoredSessionId(state.sessionId); }
-    if (!state.sessionId || state.feedbackSubmitting || !String(state.feedbackText || '').trim()) {
+    if (!state.sessionId || state.feedbackSubmitting || state.feedbackRating < 1 || !String(state.feedbackText || '').trim()) {
       return;
     }
 
@@ -3408,7 +3439,7 @@ export async function GET(
 
       state.feedbackOpen = false;
       state.feedbackText = '';
-      state.feedbackRating = 5;
+      state.feedbackRating = 0;
     } catch (error) {
       state.error = error instanceof Error ? error.message : 'Failed to submit feedback';
     } finally {

@@ -1,5 +1,7 @@
 'use client'
 
+import LoadingAnimation from '@/components/LoadingAnimation'
+
 import AuthFrame from '../AuthFrame'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -89,7 +91,7 @@ export default function VerifyEmailClient() {
               </p>
 
               <div style={{ padding: '18px 0' }}>
-                <div className="loading-spinner" />
+                <LoadingAnimation />
               </div>
 
               <div className="authCallout">
@@ -120,7 +122,7 @@ export default function VerifyEmailClient() {
                     <span>We are refreshing your session. You may be asked to sign in before opening your workspace.</span>
                   </div>
                   <div style={{ padding: '10px 0 0' }}>
-                    <div className="loading-spinner" />
+                    <LoadingAnimation />
                   </div>
                 </>
               ) : (

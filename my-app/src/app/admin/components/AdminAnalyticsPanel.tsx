@@ -1,5 +1,7 @@
 'use client'
 
+import LoadingAnimation from '@/components/LoadingAnimation'
+
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import {
   FiActivity,
@@ -882,7 +884,7 @@ export default function AdminAnalyticsPanel({ selectedWidgetKey = '', theme = 'l
     return (
       <div className="infoCard adminDataCard">
         <h1>{text.title}</h1>
-        <p>{text.loading}</p>
+        <LoadingAnimation label={text.loading} />
       </div>
     )
   }

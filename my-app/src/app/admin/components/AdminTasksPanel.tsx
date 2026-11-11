@@ -1,5 +1,7 @@
 'use client'
 
+import LoadingAnimation from '@/components/LoadingAnimation'
+
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { FiArrowLeft, FiClock, FiFilter, FiMessageSquare, FiPlus, FiSettings, FiTag, FiUser } from 'react-icons/fi'
 import AdminDropdown from './AdminDropdown'
@@ -421,7 +423,7 @@ export default function AdminTasksPanel({ selectedWidgetKey = '', initialTaskId 
     return (
       <div className="infoCard adminDataCard">
         <h1>{text.title}</h1>
-        <p>{text.loading}</p>
+        <LoadingAnimation label={text.loading} />
       </div>
     )
   }
