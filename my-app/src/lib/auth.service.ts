@@ -1,3 +1,4 @@
+import { createFreshStudioAssistant } from '@/lib/studio-modules.mjs'
 import { accessRequest } from '@/lib/access-client';
 import { auth, db } from "@/lib/firebase";
 
@@ -256,7 +257,7 @@ function buildDefaultWidgetConfig(businessName: string): ChatWidgetConfig {
 }
 
 function buildDefaultAssistantConfig(): ChatAssistantConfig {
-  return {
+  return createFreshStudioAssistant({
     enabled: true,
     provider: 'gemini',
     model: 'gemini-2.5-flash-lite',
@@ -329,7 +330,7 @@ function buildDefaultAssistantConfig(): ChatAssistantConfig {
     responseStyle: 'Friendly, clear, and concise',
     extraInstructions: 'Always keep answers short unless the user asks for more detail.',
     forceSelectedModelOnly: false,
-  }
+  }) as ChatAssistantConfig
 }
 
 function mergeWidgetConfig(
@@ -420,6 +421,8 @@ function mergeAssistantConfig(
     ...defaults,
     ...baseConfig,
     ...overrideConfig,
+    ...((base || override) && !baseConfig.studio && !overrideConfig.studio ? { studio: undefined } : {}),
+    ...((base || override) && baseConfig.setupCompleted === undefined && overrideConfig.setupCompleted === undefined ? { setupCompleted: undefined } : {}),
     businessProfile: {
       ...(defaults.businessProfile || {}),
       ...(baseConfig.businessProfile || {}),

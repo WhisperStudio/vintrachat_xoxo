@@ -6,6 +6,7 @@ import { accessRole } from '@/lib/access/service.mjs'
 import { getEffectiveBusinessPlan, getPlanLimits, sanitizeChatWidgetConfigForPlan } from '@/lib/subscription'
 import { mergeWidgetConfig } from '@/lib/widget.server'
 import { BillingError } from '@/lib/billing/service.mjs'
+import { createFreshStudioAssistant } from '@/lib/studio-modules.mjs'
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,11 +33,12 @@ export async function POST(req: NextRequest) {
       const config = sanitizeChatWidgetConfigForPlan(mergeWidgetConfig(source?.config || data?.chatWidgetConfig, data?.name || 'Chat', plan), plan)
       config.billingCycle = data?.chatWidgetConfig?.billingCycle || 'monthly'
       config.customBranding = { ...config.customBranding, title: name }
+      config.settings = { ...config.settings, tasksEnabled: false, reviewsEnabled: false, ticket: { ...config.settings?.ticket, mode: 'off' } }
       const assistantConfig = body.assistantConfigOverride || source?.assistantConfig || data?.chatAssistantConfig
       if (assistantConfig && (typeof assistantConfig !== 'object' || Array.isArray(assistantConfig))) throw new BillingError(400, 'Ugyldig assistentoppsett.')
       tx.create(ref.collection('chatWidgets').doc(widgetKey), {
         widgetKey, name, config: JSON.parse(JSON.stringify(config)),
-        assistantConfig: { ...(assistantConfig || {}), setupCompleted: false },
+        assistantConfig: createFreshStudioAssistant(assistantConfig || {}),
         isDefault: false, createdAt: new Date(), updatedAt: new Date(),
       })
       // Serialize concurrent creates even when both collection queries start empty.

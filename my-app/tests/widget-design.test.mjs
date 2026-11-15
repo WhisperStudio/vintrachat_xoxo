@@ -8,6 +8,7 @@ import vm from 'node:vm'
 import ts from 'typescript'
 import * as widgetMobile from '../src/lib/widget-mobile.mjs'
 import * as widgetFlow from '../src/lib/widget-flow.mjs'
+import * as widgetBuiltinTranslations from '../src/lib/widget-builtin-translations.mjs'
 
 const appRoot = dirname(dirname(fileURLToPath(import.meta.url)))
 const require = createRequire(import.meta.url)
@@ -26,6 +27,7 @@ function loadModule(file, cache = new Map()) {
     require: name => {
       if (name === '@/lib/widget-mobile.mjs') return widgetMobile
       if (name === '@/lib/widget-flow.mjs') return widgetFlow
+      if (name === '@/lib/widget-builtin-translations.mjs') return widgetBuiltinTranslations
       if (name === '@/lib/widget.server') return { getBusinessByWidgetKey: async () => ({ id: 'fixture', chatWidgetConfig: { allowedDomains: [] } }) }
       if (name === '@/lib/widget-security') return { isWidgetOriginPermitted: () => ({ allowed: true }) }
       if (name.startsWith('@/')) {

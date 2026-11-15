@@ -1,3 +1,4 @@
+import { createFreshStudioAssistant } from '@/lib/studio-modules.mjs'
 import { validRecord } from '@/lib/auth-records.server'
 import crypto from 'node:crypto'
 import { adminAuth, adminDb } from '@/lib/firebase-admin'
@@ -123,7 +124,7 @@ function buildDefaultWidgetConfig(businessName: string): ChatWidgetConfig {
 }
 
 function buildDefaultAssistantConfig(businessName: string, email: string): ChatAssistantConfig {
-  return {
+  return createFreshStudioAssistant({
     enabled: true,
     provider: 'gemini',
     model: 'gemini-2.5-flash-lite',
@@ -196,7 +197,7 @@ function buildDefaultAssistantConfig(businessName: string, email: string): ChatA
     responseStyle: 'Friendly, clear, and concise',
     extraInstructions: 'Always keep answers short unless the user asks for more detail.',
     forceSelectedModelOnly: false,
-  }
+  }) as ChatAssistantConfig
 }
 
 function buildDefaultChatAnalytics(): ChatAnalytics {

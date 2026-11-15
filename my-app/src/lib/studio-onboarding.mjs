@@ -20,6 +20,8 @@ export function mergeWebsiteKnowledge(current, result) {
   for (const key of ['businessName', 'industry', 'shortDescription', 'fallbackContact']) {
     if (typeof profile[key] === 'string' && profile[key].trim()) allowedProfile[key] = profile[key];
   }
+  // An explicitly accepted replacement import must not retain an unrelated old industry.
+  if (Object.hasOwn(profile, 'industry')) allowedProfile.industry = typeof profile.industry === 'string' ? profile.industry.trim() : '';
   const field = (key) => cleanImportedKnowledge(Object.hasOwn(knowledge, key) ? knowledge[key] : current.knowledgeBase?.[key] || '');
   const contactEnabled = current.contactSharing?.enabled === true || current.humanSupportEnabled === true;
   if (!contactEnabled) delete allowedProfile.fallbackContact;

@@ -22,6 +22,42 @@ const prices = `<html><head><title>Chatbot plans</title></head><body><main><h1>A
 <article><h2>Pro chatbot</h2><div class="price"><span>299</span><span> kr / month</span></div><p>500 conversations, 2500 messages per day</p></article>
 <article><h2>Website development</h2><div class="price">15 150 kr one-off</div><p>Website project. Chatbot subscription is separate.</p></article></main></body></html>`;
 
+test('import separates branch contacts and hours, rejects social IDs and keeps privacy out of services', async () => {
+  const pages = {
+    'https://example.com/': `<title>Example Frisør</title><main><h1>Frisør og hårpleie</h1><a href="/avdelinger">Avdelinger</a><a href="/behandlinger">Behandlinger</a><a href="/personvern">Personvern</a><a href="https://instagram.com/p/18111486173360663">Instagram</a><p>18118399507966367</p></main>`,
+    'https://example.com/avdelinger': `<title>Avdelinger</title><main><p>Example Sentrum tlf. 22334455</p><p>Example Nord tlf. 66778899</p><section><h2>Example Sentrum</h2><p>Adresse: Storgata 1, 0123 Oslo</p><p>Mandag 09:00–17:00</p><a href="tel:22334455">Ring</a></section><section><h2>Example Nord</h2><p>Adresse: Nordgata 2, 0456 Oslo</p><p>Mandag 10:00–18:00</p><a href="tel:66778899">Ring</a></section></main>`,
+    'https://example.com/behandlinger': `<title>Behandlinger</title><main><h1>Våre behandlinger</h1><h2>Barneklipp</h2><p>Hårklipp for barn.</p><h2>Skjeggklipp</h2><p>Vi former skjegget.</p></main>`,
+    'https://example.com/personvern': `<title>Personvern</title><main><p>Vi beholder personopplysningene dine for å utføre tjenestene.</p><p>Vår daglige leder: privacy@example.com</p></main>`,
+  };
+  const result = await scanner(async url => ({ ok: Boolean(pages[url]), status: pages[url] ? 200 : 404, headers: { get: () => 'text/html' }, text: async () => pages[url] || '' })).scanWebsiteForAssistantContext('https://example.com', { maxPages: 4 });
+  const knowledge = result.autofill.knowledgeBase;
+  assert.match(knowledge.contactInfo, /\[Example Sentrum\] 22334455/);
+  assert.match(knowledge.contactInfo, /\[Example Nord\] 66778899/);
+  assert.doesNotMatch(knowledge.contactInfo, /18111486173360663|18118399507966367|privacy@example/);
+  assert.match(knowledge.openingHours, /\[Example Sentrum\] Mandag 09:00/);
+  assert.match(knowledge.openingHours, /\[Example Nord\] Mandag 10:00/);
+  assert.match(knowledge.addresses, /\[Example Nord\].*Nordgata/);
+  assert.match(knowledge.offerings, /Barneklipp/);
+  assert.doesNotMatch(knowledge.offerings, /personopplysning/);
+  assert.doesNotMatch(knowledge.policies, /personopplysning/);
+  assert.equal(result.autofill.businessProfile.industry, 'Frisør og hårpleie');
+  const merged = mergeWebsiteKnowledge({ businessProfile: { industry: 'Game dev studio' }, contactSharing: { enabled: true } }, result);
+  assert.equal(merged.businessProfile.industry, 'Frisør og hårpleie');
+  assert.match(merged.knowledgeBase.contactInfo, /Example Nord: 66778899/);
+  assert.match(buildAnswerPolicy({}), /ask which branch or department/);
+});
+
+test('structured department records retain their own address and hours', async () => {
+  const html = '<title>Hospital departments</title><script type="application/ld+json">' + JSON.stringify({ '@type': 'Hospital', name: 'Hospital', department: [
+    { '@type': 'MedicalClinic', name: 'Clinic West', telephone: '+4722334455', address: { streetAddress: 'West road 1', postalCode: '0123', addressLocality: 'Oslo' }, openingHoursSpecification: { dayOfWeek: ['Monday'], opens: '08:00', closes: '16:00' } },
+    { '@type': 'MedicalClinic', name: 'Clinic East', telephone: '+4766778899', address: { streetAddress: 'East road 2', postalCode: '0456', addressLocality: 'Oslo' }, openingHours: 'Monday 10:00–18:00' },
+  ] }) + '</script>';
+  const result = await scanner(async url => ({ ok: url === 'https://example.com/', headers: { get: () => 'text/html' }, text: async () => html })).scanWebsiteForAssistantContext('https://example.com', { maxPages: 1 });
+  assert.match(result.autofill.knowledgeBase.addresses, /\[Clinic West\] West road 1/);
+  assert.match(result.autofill.knowledgeBase.openingHours, /\[Clinic East\] Monday 10:00/);
+  assert.doesNotMatch(result.autofill.knowledgeBase.contactInfo, /\[Hospital\].*22334455/);
+});
+
 test('price extraction keeps product, interval, free-plan terms and source together without joining offer amounts', () => {
   const lines = scanner().extractPricingEvidence(cheerio.load(prices), 'https://example.com/priser');
   assert.equal(lines.length, 3);

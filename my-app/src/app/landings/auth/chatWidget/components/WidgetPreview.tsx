@@ -25,6 +25,8 @@ import type { AssistantConversationCard, AssistantWidgetIcons, ChatWidgetInterfa
 
 
 interface WidgetPreviewProps {
+  containedPreview?: boolean
+  previewTranslationEnabled?: boolean
   localization?: WidgetLocalization
   startCard?: ChatAssistantConfig['startCard']
   translationWidgetKey?: string
@@ -209,6 +211,8 @@ function resolveShowBorder(style: { borderType: 'none' | 'solid' | 'rounded' | '
 }
 
 export default function WidgetPreview({
+  containedPreview = false,
+  previewTranslationEnabled = true,
   localization, startCard, translationWidgetKey, translationEmbedToken, translationFingerprint, onStartCardVisibleChange,
   total,
   billingCycle,
@@ -266,7 +270,7 @@ export default function WidgetPreview({
     if (translationWidgetKey) try { window.localStorage.setItem('vintra-widget-language:' + translationWidgetKey, code) } catch { /* Storage is optional. */ }
   }
   const uiLanguage = languageConfig.enabled && chosenLanguage && languageConfig.allowedLanguages.includes(chosenLanguage) ? chosenLanguage : languageConfig.defaultLanguage
-  const { t, error: translationError, loading: translationLoading, retry: retryTranslation } = useWidgetTranslation(uiLanguage, collectWidgetCopy({ customBranding, settings, startCard, conversationCards, faqSuggestions, preview: { text: previewReply } }), translationWidgetKey, translationEmbedToken, Boolean(localization || translationWidgetKey), translationFingerprint)
+  const { t, error: translationError, loading: translationLoading, retry: retryTranslation } = useWidgetTranslation(uiLanguage, collectWidgetCopy({ customBranding, settings, startCard, conversationCards, faqSuggestions, preview: { text: previewReply } }), translationWidgetKey, translationEmbedToken, Boolean((localization || translationWidgetKey) && previewTranslationEnabled), translationFingerprint)
   const no = uiLanguage === 'no'
   const [startCardDismissed, setStartCardDismissed] = useState(false)
   const widgetId = useId()
@@ -355,20 +359,20 @@ export default function WidgetPreview({
   const waitingForReply = isReplying || supportTypingIndicator || bubbleAttentionPending
   useEffect(() => {
     const media = window.matchMedia('(max-width: 640px)')
-    const sync = () => setMobileViewport(media.matches)
+    const sync = () => setMobileViewport(media.matches && !containedPreview)
     sync()
     // Opening the builder on a phone should leave its controls reachable.
-    if (media.matches && variant !== 'embedded') setInternalIsChatOpen(false)
+    if (media.matches && variant !== 'embedded' && !containedPreview) setInternalIsChatOpen(false)
     media.addEventListener('change', sync)
     return () => media.removeEventListener('change', sync)
-  }, [variant])
+  }, [variant, containedPreview])
   useEffect(() => {
     const root = viewportRef.current
-    if (!root) return
+    if (!root || containedPreview) return
     const controller = installWidgetMobileViewport(root)
     controller.setOpen(isChatOpen)
     return () => controller.destroy()
-  }, [isChatOpen, mobileViewport])
+  }, [isChatOpen, mobileViewport, containedPreview])
   useEffect(() => {
     const last = messages[messages.length - 1]
     if (isChatOpen) { setHasOpened(true); setUnread(false) }

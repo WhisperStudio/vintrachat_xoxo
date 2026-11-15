@@ -1,5 +1,6 @@
 'use client'
 
+import ConfirmStudioAction from './ConfirmStudioAction'
 import type { ChatWidgetConfig } from '@/types/database'
 import { resolveWidgetFlow } from '@/lib/widget-flow.mjs'
 import './WidgetFlowSettings.css'
@@ -26,7 +27,7 @@ export default function WidgetFlowSettings({ settings, onChange, no = true, sect
       {(['background', 'textColor', 'accentColor', 'fieldBackground', 'borderColor'] as const).map((key, i) => <label className="widgetFlowField" key={key}><span>{(no ? ['Bakgrunn', 'Tekstfarge', 'Knapper og ikoner', 'Feltbakgrunn', 'Kantfarge'] : ['Background', 'Text color', 'Buttons and icons', 'Field background', 'Border color'])[i]}</span><input type="color" value={d[key] || (key === 'background' || key === 'fieldBackground' ? '#ffffff' : key === 'borderColor' ? '#dce6ed' : '#285f86')} onChange={e => update({ [key]: e.target.value })} /></label>)}
       <label className="widgetFlowField"><span>{no ? 'Kant på felt og kort' : 'Field and card border'}</span><select value={d.borderStyle || 'solid'} onChange={e => update({ borderStyle: e.target.value as WidgetPageDesign['borderStyle'] })}>{['none','solid','dashed','double'].map((v,i) => <option key={v} value={v}>{(no ? ['Ingen','Heltrukket','Stiplet','Dobbel'] : ['None','Solid','Dashed','Double'])[i]}</option>)}</select></label>
       {(['radius', 'spacing', 'fontSize', 'buttonRadius'] as const).map((key, i) => <label className="widgetFlowField" key={key}><span>{(no ? ['Hjørner', 'Avstand', 'Tekststørrelse', 'Knappehjørner'] : ['Corner radius', 'Spacing', 'Font size', 'Button radius'])[i]}: {d[key] ?? [12,12,14,20][i]} px</span><input type="range" min={key === 'fontSize' ? 11 : key === 'spacing' ? 4 : 0} max={key === 'fontSize' ? 22 : 32} value={d[key] ?? [12,12,14,20][i]} onChange={e => update({ [key]: Number(e.target.value) })} /></label>)}
-      <button type="button" onClick={() => patch(key, { design: {} })}>{no ? 'Bruk chattemaets design' : 'Use chat theme design'}</button>
+      <ConfirmStudioAction no={no} type="button" onConfirm={() => patch(key, { design: {} })}>{no ? 'Bruk chattemaets design' : 'Use chat theme design'}</ConfirmStudioAction>
     </div>
   }
   return <div className="widgetFlowSettings">

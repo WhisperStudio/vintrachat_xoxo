@@ -190,6 +190,8 @@ type ContactInfo = {
   phones: string[]
 }
 
+type LocationFacts = { name: string; phones: string[]; emails: string[]; addresses: string[]; hours: string[]; source: string }
+
 type SchemaFacts = {
   names: string[]
   descriptions: string[]
@@ -223,6 +225,7 @@ type ExtractedPage = {
   links: string[]
   structuredLinks: StructuredLink[]
   contactInfo: ContactInfo
+  locations: LocationFacts[]
   metaLines: string[]
   schemaLines: string[]
   schemaFacts: SchemaFacts
@@ -321,10 +324,10 @@ const PAGE_TYPE_KEYWORDS: Array<{
   type: Exclude<PageType, 'unknown' | 'home'>
   keywords: string[]
 }> = [
-  { type: 'about', keywords: ['about', 'about-us', 'om-oss', 'om oss', 'company'] },
-  { type: 'services', keywords: ['services', 'service', 'tjenester', 'tjeneste', 'solutions'] },
+  { type: 'about', keywords: ['about', 'about-us', 'om-', 'om oss', 'company'] },
+  { type: 'services', keywords: ['services', 'service', 'tjenester', 'tjeneste', 'solutions', 'behandling'] },
   { type: 'pricing', keywords: ['pricing', 'prices', 'priser', 'plan', 'plans'] },
-  { type: 'contact', keywords: ['contact', 'kontakt', 'kundeservice', 'customer-service'] },
+  { type: 'contact', keywords: ['contact', 'kontakt', 'kundeservice', 'customer-service', 'avdelinger', 'salonger', 'locations', 'branches', 'departments'] },
   { type: 'booking', keywords: ['booking', 'book', 'bestill', 'appointment', 'calendar', 'schedule'] },
   { type: 'faq', keywords: ['faq', 'questions', 'sporsmal', 'spørsmål', 'q-and-a'] },
   { type: 'support', keywords: ['support', 'help', 'kundeservice', 'help-center', 'docs'] },
@@ -595,6 +598,10 @@ function inferPageType(url: string, title: string, headings: string[]) {
   const combined = normalizeForSearch([parsed.pathname, title, headings.join(' ')].join(' '))
 
   if (parsed.pathname === '/' || parsed.pathname === '') return 'home'
+  if (/privacy|personvern|cookies?|vilk[aå]r|terms/i.test(parsed.pathname)) return 'legal'
+  for (const entry of PAGE_TYPE_KEYWORDS) {
+    if (entry.keywords.some(keyword => normalizeForSearch(parsed.pathname).includes(normalizeForSearch(keyword)))) return entry.type
+  }
 
   for (const entry of PAGE_TYPE_KEYWORDS) {
     if (entry.keywords.some((keyword) => combined.includes(normalizeForSearch(keyword)))) {
@@ -698,7 +705,7 @@ function extractStructuredLinks($: LoadedCheerio, currentUrl: string, rootUrl: U
 function extractContactInfo(text: string, structuredLinks: StructuredLink[]) {
   const emailMatches = text.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) ?? []
   const phoneMatches =
-    text.match(/(?:\+|00)?\d(?:[\d\s().-]{6,}\d)/g)?.filter((entry) => entry.replace(/\D/g, '').length >= 8) ??
+    text.replace(/https?:\/\/\S+/gi, '').match(/(?<![\w])(?:\+|00)?\d(?:[\d ().-]{6,}\d)(?![\w])/g)?.filter(isValidPhone) ??
     []
 
   const linkEmails = structuredLinks
@@ -711,8 +718,82 @@ function extractContactInfo(text: string, structuredLinks: StructuredLink[]) {
 
   return {
     emails: uniqueStrings([...emailMatches, ...linkEmails], 12),
-    phones: uniqueStrings([...phoneMatches, ...linkPhones], 12),
+    phones: uniqueStrings([...linkPhones, ...phoneMatches].filter(isValidPhone), 100),
   }
+}
+
+function isValidPhone(value: string) {
+  const digits = value.replace(/\D/g, '')
+  // Unprefixed local numbers must not be social-media IDs, dates or organisation numbers.
+  return /^(?:\+|00)/.test(value.trim())
+    ? digits.length >= 9 && digits.length <= (value.trim().startsWith('00') ? 17 : 15)
+    : digits.length === 8 && !/^(?:19|20)\d{2}[-.]\d/.test(value)
+}
+
+function isPrivacyText(value: string) {
+  return /personvern|privacy|cookies?|informasjonskaps|personopplys|personal data|data protection|behandlingsansvarlig|registrert informasjon|dine data|norsk lov/i.test(value)
+}
+
+function extractLocations($: LoadedCheerio, source: string): LocationFacts[] {
+  const locations: LocationFacts[] = []
+  const visitSchema = (node: unknown) => {
+    if (Array.isArray(node)) { node.forEach(visitSchema); return }
+    if (!node || typeof node !== 'object') return
+    const data = node as Record<string, unknown>
+    const types = String(data['@type'] || '')
+    if (typeof data.name === 'string' && /LocalBusiness|Store|Salon|Hospital|Department|Organization|Clinic|AutoRepair|Plumber/i.test(types)) {
+      const address = data.address && typeof data.address === 'object' ? data.address as Record<string, unknown> : {}
+      const addresses = typeof data.address === 'string' ? [data.address] : [
+        ['streetAddress', 'postalCode', 'addressLocality'].map(key => typeof address[key] === 'string' ? address[key] : '').filter(Boolean).join(', '),
+      ].filter(Boolean)
+      const hours = (Array.isArray(data.openingHours) ? data.openingHours : [data.openingHours]).filter((item): item is string => typeof item === 'string')
+      const specifications = Array.isArray(data.openingHoursSpecification) ? data.openingHoursSpecification : [data.openingHoursSpecification]
+      for (const item of specifications) {
+        if (!item || typeof item !== 'object') continue
+        const spec = item as Record<string, unknown>
+        if (typeof spec.opens === 'string' && typeof spec.closes === 'string') hours.push(`${[spec.dayOfWeek].flat().map(day => String(day).replace('https://schema.org/', '')).join(', ')} ${spec.opens}–${spec.closes}`)
+      }
+      const phones = typeof data.telephone === 'string' && isValidPhone(data.telephone) ? [data.telephone] : []
+      const emails = typeof data.email === 'string' ? [data.email] : []
+      if (phones.length || addresses.length || hours.length) locations.push({ name: data.name, phones, emails, addresses, hours, source })
+    }
+    Object.values(data).forEach(visitSchema)
+  }
+  $('script[type="application/ld+json"]').each((_, element) => {
+    try { visitSchema(JSON.parse($(element).text())) } catch { /* Ignore malformed structured data. */ }
+  })
+  // Work within a named card/section, never the whole document: neighbouring branches
+  // must not inherit each other's telephone, address or opening hours.
+  $('h1, h2, h3, h4, p, li, address').each((_, element) => {
+    if ($(element).closest('footer, header, nav').length) return
+    const text = getElementText($, element)
+    const inline = text.match(/^(.{3,100}?)\s+(?:tlf\.?|telefon|phone|tel\.?)\s*:?\s*(.+)$/i)
+    if (inline && !looksLikeAddress(inline[1])) {
+      const contact = extractContactInfo(inline[2], [])
+      if (contact.phones.length) locations.push({ name: inline[1], ...contact, addresses: [], hours: [], source })
+    }
+    if (!$(element).is('h1, h2, h3, h4')) return
+    let siblings = $(element).nextUntil('h1, h2, h3, h4')
+    if (!siblings.length) {
+      let container = $(element).parent()
+      for (let depth = 0; depth < 3; depth++, container = container.parent()) {
+        if (container.is('body, main, article') || container.find('h1, h2, h3, h4').length !== 1) break
+        if (container.find('p, address, a[href^="tel:"]').length) { siblings = container.children().not('h1, h2, h3, h4'); break }
+      }
+    }
+    const lines = siblings.toArray().flatMap(node => {
+      const scope = $(node)
+      return [getElementText($, node), ...scope.find('p, li, address').toArray().map(child => getElementText($, child))]
+    }).filter(line => line.length < 400 && !isPrivacyText(line))
+    const block = lines.join('\n')
+    if (!text || text.length > 100 || block.length > 1800 || isLikelyGenericUi(text)) return
+    const links: StructuredLink[] = siblings.find('a[href^="tel:"], a[href^="mailto:"]').toArray().map(node => ({ text: '', url: $(node).attr('href') || '', source: 'content' }))
+    const contact = extractContactInfo(block, links)
+    const addresses = uniqueStrings(lines.filter(looksLikeAddress))
+    const hours = uniqueStrings(lines.filter(looksLikeOpeningHours))
+    if (contact.phones.length <= 1 && (contact.phones.length || addresses.length || hours.length)) locations.push({ name: text, ...contact, addresses, hours, source })
+  })
+  return locations.filter((location, index) => !locations.slice(0, index).some(other => JSON.stringify(other) === JSON.stringify(location)))
 }
 
 function extractMetaLines($: LoadedCheerio) {
@@ -987,7 +1068,7 @@ export function extractPricingEvidence($: LoadedCheerio, url: string) {
 
 function isBookingLink(value: string) {
   const lowered = normalizeForSearch(value)
-  return BOOKING_KEYWORDS.some((keyword) => lowered.includes(keyword))
+  return BOOKING_KEYWORDS.some((keyword) => new RegExp(`(?:^|[^a-z])${keyword}(?:[^a-z]|$)`, 'i').test(lowered))
 }
 
 function extractUsefulPageData(html: string, url: string, rootUrl: URL, maxCharacters: number): ExtractedPage {
@@ -1022,9 +1103,10 @@ function extractUsefulPageData(html: string, url: string, rootUrl: URL, maxChara
   const bodyLines = collectTextLines($, bodyScope, 120)
   const footerLines = collectTextLines($, 'footer', 40)
   const navigationLines = collectTextLines($, 'header, nav', 30)
-  const legalLines = collectTextLines($, 'footer, body', 30).filter((line) =>
-    /\b(privacy|personvern|terms|vilkar|vilkår|cookies?|refund|policy)\b/i.test(line)
+  const legalLines = collectTextLines($, 'body', 120).filter((line) =>
+    !isPrivacyText(line) && /\b(refund|retur|avbestilling|angrerett|garanti|levering|cancellation|returns|warranty|delivery|bindingstid|bonuspoeng|medlemskap|utmelding)\b/i.test(line)
   )
+  const locations = pageType === 'legal' ? [] : extractLocations($, url)
 
   const allLines = uniqueStrings(
     [
@@ -1057,7 +1139,7 @@ function extractUsefulPageData(html: string, url: string, rootUrl: URL, maxChara
       bodyLines.join('\n'),
       footerLines.join('\n'),
       schemaLines.join('\n'),
-      structuredLinks.map((link) => `${link.text} ${link.url}`).join('\n'),
+      structuredLinks.map((link) => link.text).join('\n'),
     ].join('\n'),
     structuredLinks
   )
@@ -1097,6 +1179,7 @@ function extractUsefulPageData(html: string, url: string, rootUrl: URL, maxChara
     links: internalLinks,
     structuredLinks,
     contactInfo,
+    locations,
     metaLines,
     schemaLines,
     schemaFacts,
@@ -1113,6 +1196,8 @@ function scoreUrl(url: string, rootUrl: URL) {
 
   if (url === rootUrl.toString() || url === rootUrl.origin + '/') score += 100
   if (/\/(?:priser|prisliste|pricing|prices|plans|abonnement)(?:\/|$|\?)/i.test(new URL(url).pathname)) score += 55
+  if (/avdeling|salonger|locations|branches|departments|\/om-|\/about|behandlinger/i.test(new URL(url).pathname)) score += 40
+  if (/\/behandling\/|\/services\/|\/tjenester\//i.test(new URL(url).pathname)) score += 25
 
   for (const entry of PAGE_TYPE_KEYWORDS) {
     if (entry.keywords.some((keyword) => lowered.includes(normalizeForSearch(keyword)))) {
@@ -1127,8 +1212,8 @@ function scoreUrl(url: string, rootUrl: URL) {
 
   if (/\b(login|auth|register|admin|account)\b/.test(lowered)) score -= 25
   if (/\b(cart|checkout)\b/.test(lowered)) score -= 8
-  if (/\b(tag|category|archive)\b/.test(lowered)) score -= 12
-  if (/\b(cookie|privacy|terms|personvern|vilkar|vilkår)\b/.test(lowered)) score -= 4
+  if (/\b(tag|category|archive|kategori|blogg|blog|jobb|careers)\b/.test(lowered)) score -= 35
+  if (/cookie|privacy|personvern/.test(lowered)) score -= 60
   if (/(\/$)/.test(url)) score += 1
 
   return score
@@ -1211,7 +1296,9 @@ function formatNavigationLinks(pages: ExtractedPage[]) {
 function selectLinesByKeywords(pages: ExtractedPage[], keywords: string[], maxItems = 8) {
   return uniqueStrings(
     pages
-      .flatMap((page) => [...page.relevantLines, ...page.bodyLines, ...page.footerLines])
+      .filter(page => page.pageType !== 'legal')
+      .flatMap((page) => [...page.relevantLines, ...page.bodyLines])
+      .filter(line => !isPrivacyText(line))
       .filter((line) => keywords.some((keyword) => normalizeForSearch(line).includes(keyword))),
     maxItems
   )
@@ -1407,7 +1494,7 @@ function looksLikeOpeningHours(line: string) {
 }
 
 function looksLikeAddress(line: string) {
-  const streetPattern = /\b[a-zæøå0-9'’.\- ]+\s(?:vei|gate|gata|plass|road|street|st|avenue|ave|boulevard|blvd|lane|ln|drive|dr)\b/i
+  const streetPattern = /\b[a-zæøå0-9'’.\- ]*(?:veien|vegen|vei|gate|gata|plass|road|street|avenue|boulevard|lane|drive)\s+\d/i
   const postalCityPattern = /\b\d{4}\s+[A-ZÆØÅ][a-zæøå\- ]{2,}\b/
   const addressWord = /\b(address|adresse|visit us|besøk oss|location|lokasjon)\b/i
   return (streetPattern.test(line) && postalCityPattern.test(line)) || (addressWord.test(line) && (streetPattern.test(line) || postalCityPattern.test(line)))
@@ -1434,6 +1521,10 @@ function extractIndustryAssessment(pages: ExtractedPage[]): FieldAssessment<stri
     positive: string[]
     negative?: string[]
   }> = [
+    { label: 'Frisør og hårpleie', positive: ['frisor', 'frisør', 'hair salon', 'hairdresser', 'harklipp', 'barneklipp', 'harpleie', 'skjeggklipp'] },
+    { label: 'Rørlegger', positive: ['rorlegger', 'plumber', 'plumbing', 'vvs', 'rorservice'] },
+    { label: 'Bilverksted', positive: ['bilverksted', 'car repair', 'bilservice', 'eu-kontroll', 'dekkskift'] },
+    { label: 'Dagligvare', positive: ['dagligvare', 'matbutikk', 'grocery', 'supermarket'] },
     {
       label: 'Finance',
       positive: ['bank', 'finance', 'financial', 'investment', 'loan', 'mortgage'],
@@ -1449,7 +1540,7 @@ function extractIndustryAssessment(pages: ExtractedPage[]): FieldAssessment<stri
     },
     {
       label: 'Healthcare',
-      positive: ['clinic', 'doctor', 'health', 'helse', 'medical', 'patient'],
+      positive: ['clinic', 'doctor', 'health', 'helse', 'medical', 'patient', 'sykehus', 'lege', 'klinikk', 'pasient'],
     },
     {
       label: 'Public sector',
@@ -1474,7 +1565,7 @@ function extractIndustryAssessment(pages: ExtractedPage[]): FieldAssessment<stri
   ]
 
   const text = normalizeForSearch(
-    pages
+    pages.filter(page => page.pageType !== 'legal')
       .map((page) =>
         [
           page.title,
@@ -2417,12 +2508,12 @@ function buildAutofillResult(pages: ExtractedPage[], rootUrl: URL, security: Web
   const address = scoreSingleValue(evidence.addressEvidence)
 
   const emails = uniqueStrings(
-    pages.flatMap((page) => [...page.contactInfo.emails, ...page.schemaFacts.emails]),
+    pages.filter(page => page.pageType !== 'legal').flatMap((page) => [...page.contactInfo.emails, ...page.schemaFacts.emails]),
     10
   )
   const phones = uniqueStrings(
-    pages.flatMap((page) => [...page.contactInfo.phones, ...page.schemaFacts.phones]),
-    10
+    pages.filter(page => page.pageType !== 'legal').flatMap((page) => [...page.contactInfo.phones, ...page.schemaFacts.phones]).filter(isValidPhone),
+    100
   )
   const contact = scoreStringList([...emails, ...phones], ['Contact info came from mailto/tel, visible text, and schema.'], 2)
   const pricing = scoreStringList(
@@ -2453,7 +2544,12 @@ function buildAutofillResult(pages: ExtractedPage[], rootUrl: URL, security: Web
   }
 
   const knowledgeBase: WebsiteKnowledgeBaseAutofill = {
-    offerings: selectLinesByKeywords(pages, SERVICE_KEYWORDS, 16).join('\n'),
+    offerings: uniqueStrings([
+      ...pages.filter(page => page.pageType === 'services' || page.pageType === 'product').flatMap(page =>
+        uniqueStrings([...page.headings, ...page.bodyLines]).filter(line => !isPrivacyText(line) && !isLikelyGenericUi(line) && !/^les mer|^read more|^alle$/i.test(line)).map(line => `[${page.title}] ${line}`)
+      ),
+      ...selectLinesByKeywords(pages, SERVICE_KEYWORDS, 16),
+    ], 100).join('\n'),
     pricing: cleanImportedKnowledge(pages.flatMap(page => page.pricingLines).filter(line => !/\|\s*Product not confirmed/i.test(line)).join('\n')),
     trialInfo: uniqueStrings(pages.flatMap(page => page.bodyLines.filter(line => /\b(?:gratis|free|trial|prøveperiode|prøvetid|betalingskort)\b/i.test(line)).map(line => `${line} | Source: ${page.url}`)), 12).join('\n'),
     bookingInfo: uniqueStrings(pages.flatMap(page => page.bookingUrls), 12).join('\n'),
@@ -2461,9 +2557,12 @@ function buildAutofillResult(pages: ExtractedPage[], rootUrl: URL, security: Web
     websiteUrls: collectWebsiteUrls(pages, rootUrl),
     uploadedDocuments: [],
     manualNotes: '',
-    openingHours: openingHours.confidence === 'low' ? '' : openingHours.value,
-    contactInfo: contact.value.join(' • '),
-    addresses: address.confidence === 'low' ? '' : address.value,
+    openingHours: uniqueStrings(pages.flatMap(page => page.locations.flatMap(location => location.hours.map(line => `[${location.name}] ${line} | Source: ${location.source}`))), 100).join('\n') || (openingHours.confidence === 'low' ? '' : openingHours.value),
+    contactInfo: uniqueStrings([
+      ...pages.flatMap(page => page.locations.filter(location => location.phones.length || location.emails.length).map(location => `[${location.name}] ${[...location.phones, ...location.emails].join(' • ')} | Source: ${location.source}`)),
+      ...contact.value.filter(value => !pages.some(page => page.locations.some(location => [...location.phones, ...location.emails].some(item => item.replace(/\s/g, '') === value.replace(/\s/g, ''))))),
+    ], 100).join('\n'),
+    addresses: uniqueStrings(pages.flatMap(page => page.locations.flatMap(location => location.addresses.map(line => `[${location.name}] ${line} | Source: ${location.source}`))), 100).join('\n') || (address.confidence === 'low' ? '' : address.value),
     keyFAQs: [],
     navigationLinks: formatNavigationLinks(pages),
     pricingLines: pricing.value,

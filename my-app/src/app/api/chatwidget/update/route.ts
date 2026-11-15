@@ -5,6 +5,7 @@ import { adminAuth, adminDb } from '@/lib/firebase-admin'
 import { normalizeConversationCards } from '@/lib/conversation-cards'
 
 import { normalizeLocalization } from '@/lib/widget-localization'
+import { normalizeStudioModules } from '@/lib/studio-modules.mjs'
 
 type AssistantConfigBody = Record<string, any>
 
@@ -107,6 +108,7 @@ function normalizeAssistantConfig(body: AssistantConfigBody, businessName = '') 
   return {
     ...defaults,
     ...body,
+    ...(body.studio ? { studio: normalizeStudioModules(body.studio) } : {}),
     localization: normalizeLocalization(body.localization),
     ...(typeof body.setupCompleted === 'boolean' ? { setupCompleted: body.setupCompleted } : {}),
     startCard: { enabled: body.startCard?.enabled === true, text: String(body.startCard?.text || '').slice(0, 350) },

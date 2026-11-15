@@ -25,3 +25,6 @@
 .widgetAdminSimple .workspaceEmbeddedBuilder { min-height: 0; }
 @media (max-width: 900px) { .widgetStudioNav { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .widgetStudioColumns { grid-template-columns: 1fr; } .widgetStudioNav small { display: none; } .widgetStudioCardHeading h2 { font-size: 21px; } }
+
+.widgetStudioDelete h3 { margin: 0 0 14px; font-size: 15px; }
+.widgetStudioDelete .danger { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 10px 14px; border: 1px solid #c57f86; border-radius: 9px; background: #a33743; color: #fff; font-size: 12px; cursor: pointer; }

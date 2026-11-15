@@ -132,6 +132,7 @@ export interface WidgetLocalization {
   allowedLanguages: WidgetLanguage[];
 }
 export interface ChatAssistantConfig {
+  studio?: { version: 1; added: string[]; configured: string[]; designReviewed: string[] };
   setupCompleted?: boolean;
   localization?: WidgetLocalization;
   startCard?: { enabled: boolean; text: string };

@@ -217,6 +217,11 @@ export default function AdminWorkspace({ billingConfigured, billingTestMode }: {
     else if (section && visibleTabs.includes(section)) setActiveTab(section as AdminTab)
   }, [searchParams, visibleTabs])
 
+  useEffect(() => {
+    const focusWidget = searchParams.get('studioWidget')
+    if (focusWidget && focusWidget !== selectedWidgetKey && widgetList.some(widget => widget.widgetKey === focusWidget)) setSelectedWidgetKey(focusWidget)
+  }, [searchParams, selectedWidgetKey, widgetList, setSelectedWidgetKey])
+
   const activeTutorialStep = tutorialSteps[tutorialStepIndex] || tutorialSteps[0]
   const tutorialMaxStepIndex = tutorialSteps.length - 1
 

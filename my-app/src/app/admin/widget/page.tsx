@@ -12,6 +12,7 @@ import { getEffectiveBusinessPlan, getPlanLimits } from '@/lib/subscription'
 import { parseAllowedDomainsInput } from '@/lib/widget-security'
 import '@/components/chat/WidgetFlowSettings.css'
 import './WidgetStudio.css'
+import ConfirmStudioAction from '@/components/chat/ConfirmStudioAction'
 
 const ChatWidgetStudio = dynamic(() => import('@/app/landings/auth/chatWidget/ChatWidgetBuilder'), { loading: () => <LoadingAnimation label="Laster studio…" /> })
 const sections = [
@@ -34,7 +35,6 @@ export default function WidgetAdminPanel({ selectedWidgetKey, onWidgetSelected, 
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
-  const [deleteConfirmed, setDeleteConfirmed] = useState(false)
   const [domains, setDomains] = useState('')
   const [showPaths, setShowPaths] = useState('')
   const [hidePaths, setHidePaths] = useState('')
@@ -52,15 +52,14 @@ export default function WidgetAdminPanel({ selectedWidgetKey, onWidgetSelected, 
     setDomains((config?.allowedDomains || []).join('\n'))
     setShowPaths((config?.visibility?.showOnPaths || []).join('\n'))
     setHidePaths((config?.visibility?.hideOnPaths || []).join('\n'))
-    setDeleteConfirmed(false)
   }, [key, config])
   useEffect(() => { if (needsSetup) setSection('studio') }, [needsSetup])
 
   const run = async (action: () => Promise<void>) => {
-    if (busy) return
+    if (busy) return false
     setBusy(true); setError(''); setNotice('')
-    try { await action() }
-    catch (error) { setError(error instanceof Error ? error.message : (no ? 'Kunne ikke utføre handlingen.' : 'Unable to complete action.')) }
+    try { await action(); return true }
+    catch (error) { setError(error instanceof Error ? error.message : (no ? 'Kunne ikke utføre handlingen.' : 'Unable to complete action.')); return false }
     finally { setBusy(false) }
   }
   const selectWidget = (next: string) => {
@@ -77,7 +76,7 @@ export default function WidgetAdminPanel({ selectedWidgetKey, onWidgetSelected, 
     setSection('studio')
   })
   const removeWidget = () => run(async () => {
-    if (!dbUser?.businessId || !deleteConfirmed || !key) return
+    if (!dbUser?.businessId || !key) return
     const result = await deleteChatWidget(dbUser.businessId, key)
     if (!result.success) throw new Error(result.message)
     selectWidget('')
@@ -128,7 +127,7 @@ export default function WidgetAdminPanel({ selectedWidgetKey, onWidgetSelected, 
       <label className="widgetFlowField"><span>{no ? 'Velg widget' : 'Select widget'}</span><select value={key} onChange={e => selectWidget(e.target.value)}>{widgets.map(item => <option key={item.widgetKey} value={item.widgetKey}>{item.name}</option>)}</select></label>
       <div className="widgetStudioActions"><button type="button" onClick={() => setSection('studio')}><FiSettings />{no ? 'Rediger assistenten' : 'Edit assistant'}</button><button type="button" className="secondary" disabled={busy || !key || key === business.activeChatWidgetKey} onClick={() => void run(async () => { const result = await setActiveChatWidget(dbUser.businessId, key); if (!result.success) throw new Error(result.message); await refreshBusiness(); setNotice(no ? 'Widgeten er satt som aktiv.' : 'Widget set as active.') })}><FiCheck />{no ? 'Bruk som aktiv widget' : 'Use as active widget'}</button></div>
       <fieldset><legend>{no ? 'Opprett en widget' : 'Create a widget'}</legend><label className="widgetFlowField"><span>{no ? 'Navn' : 'Name'}</span><input value={name} onChange={e => setName(e.target.value)} placeholder={no ? 'For eksempel kundeservice' : 'For example customer service'} /></label><div className="widgetStudioActions"><button type="button" disabled={busy || !canCreate} onClick={() => void addWidget()}><FiPlus />{no ? 'Opprett og tilpass' : 'Create and customize'}</button></div>{!canCreate && <p>{no ? 'Du har nådd antallet widgeter i abonnementet ditt.' : 'You have reached your plan’s widget limit.'}</p>}</fieldset>
-      <details className="studioDetails"><summary><FiTrash2 />{no ? 'Slett valgt widget' : 'Delete selected widget'}</summary><label className="widgetFlowToggle"><span>{no ? 'Jeg vil slette denne widgeten og installasjonsnøkkelen.' : 'I want to delete this widget and its installation key.'}</span><input type="checkbox" checked={deleteConfirmed} onChange={e => setDeleteConfirmed(e.target.checked)} /></label><div className="widgetStudioActions"><button type="button" className="danger" disabled={busy || !deleteConfirmed} onClick={() => void removeWidget()}><FiTrash2 />{no ? 'Slett widget' : 'Delete widget'}</button></div></details>
+      <section className="widgetStudioDelete"><h3>{no ? 'Slett valgt widget' : 'Delete selected widget'}</h3><ConfirmStudioAction key={key} contextKey={key} no={no} requireCheck disabled={busy || !key} className="danger" confirmLabel={no ? 'Slett widgeten' : 'Delete widget'} message={no ? 'Er du sikker på at du vil slette denne widgeten og installasjonsnøkkelen? Dette kan ikke angres.' : 'Are you sure you want to delete this widget and its installation key? This cannot be undone.'} checkLabel={no ? 'Jeg forstår at widgeten og installasjonsnøkkelen slettes permanent.' : 'I understand the widget and its installation key are permanently deleted.'} onConfirm={removeWidget}><FiTrash2 aria-hidden="true" />{no ? 'Slett widget' : 'Delete widget'}</ConfirmStudioAction></section>
     </section>}
   </div>
 }

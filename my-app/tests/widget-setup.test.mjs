@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { createFreshStudioAssistant, getActiveStudioModules } from '../src/lib/studio-modules.mjs';
 
 test('creating a widget from a finished template always persists a fresh setup requirement', async () => {
   let created;
@@ -21,6 +22,7 @@ test('creating a widget from a finished template always persists a fresh setup r
     '@/lib/subscription': { getEffectiveBusinessPlan: () => 'pro', getPlanLimits: () => ({ maxWidgets: 10 }), sanitizeChatWidgetConfigForPlan: value => value },
     '@/lib/widget.server': { mergeWidgetConfig: () => ({ customBranding: {} }) },
     '@/lib/billing/service.mjs': { BillingError },
+    '@/lib/studio-modules.mjs': { createFreshStudioAssistant },
   };
   const exports = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(new URL('../src/app/api/widgets/route.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { exports, require: name => { if (!dependencies[name]) throw new Error(name); return dependencies[name]; } });
@@ -28,4 +30,7 @@ test('creating a widget from a finished template always persists a fresh setup r
   assert.equal(response.status, 200);
   assert.equal(created.assistantConfig.setupCompleted, false);
   assert.equal(created.assistantConfig.businessContext, 'Existing company facts');
+  assert.deepEqual(getActiveStudioModules(created.assistantConfig, created.config.settings), ['company', 'chat', 'personality']);
+  assert.equal(created.assistantConfig.humanSupportEnabled, false);
+  assert.equal(created.config.settings.reviewsEnabled, false);
 });

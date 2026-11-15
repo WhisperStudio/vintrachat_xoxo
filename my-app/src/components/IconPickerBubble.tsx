@@ -1,5 +1,6 @@
 'use client'
 
+import ConfirmStudioAction from '@/components/chat/ConfirmStudioAction'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { FiX } from 'react-icons/fi'
 import { useStudioCopy } from '@/components/chat/studio-copy'
@@ -90,15 +91,15 @@ export default function IconPickerBubble({
           </span>
         </button>
 
-        <button
+        <ConfirmStudioAction no={language === 'no'} contextKey={value}
           type="button"
           className="widget-icon-picker__clear"
-          onClick={() => onChange('')}
+          onConfirm={() => onChange('')}
           disabled={disabled || !value}
           aria-label={`${language === 'no' ? 'Fjern' : 'Clear'} ${label}`}
         >
           <FiX />
-        </button>
+        </ConfirmStudioAction>
       </div>
 
       {helperText ? <p className="widget-icon-picker__helper">{helperText}</p> : null}
@@ -116,17 +117,17 @@ export default function IconPickerBubble({
           </div>
 
           <div className="widget-icon-picker__grid">
-            <button
+            <ConfirmStudioAction no={language === 'no'} contextKey={value}
               type="button"
               className={`widget-icon-picker__option ${!value ? 'active' : ''}`}
-              onClick={() => {
+              onConfirm={() => {
                 onChange('')
                 setOpen(false)
               }}
             >
               <span className="widget-icon-picker__option-icon" aria-hidden="true" />
               <span>{copy('None')}</span>
-            </button>
+            </ConfirmStudioAction>
 
             {filteredIcons.map((option) => {
               const active = option.key === value

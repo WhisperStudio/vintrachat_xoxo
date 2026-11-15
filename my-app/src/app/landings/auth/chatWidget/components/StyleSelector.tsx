@@ -1,6 +1,8 @@
 'use client'
+import ConfirmStudioAction from '@/components/chat/ConfirmStudioAction'
 import { useStudioCopy } from '@/components/chat/studio-copy'
 import './DesignGroups.css'
+import { StudioGroup } from '@/components/chat/StudioControls'
 import type { WidgetMotion } from '@/lib/widget-motion'
 import { getMessageSurfaceClasses, getSurfaceClasses, type SurfaceBorder } from '@/lib/surface-design'
 import { createLauncherArtwork, type LauncherBorder, type LauncherShape } from '@/lib/launcher-design'
@@ -276,6 +278,7 @@ function GlassRadioRow<T extends string>({
   onChange: (value: T) => void
   renderPreview?: (value: T) => ReactNode
 }) {
+  const { language } = useVintraLanguage()
   const rowRef = useRef<HTMLDivElement | null>(null)
   const [indicator, setIndicator] = useState({ left: 0, top: 0, width: 0, height: 0 })
   useLayoutEffect(() => {
@@ -293,7 +296,7 @@ function GlassRadioRow<T extends string>({
     for (const button of row.querySelectorAll('button')) observer.observe(button)
     return () => observer.disconnect()
   }, [value, options])
-  return (
+  const row = (
     <div ref={rowRef} className={`glassRadioRow ${renderPreview ? 'glassRadioRow--visual' : ''}`} style={renderPreview ? { '--visual-options': Math.min(options.length, 4) } as CSSProperties : undefined} role="radiogroup" aria-label={name}>
       <span className="glassRadioIndicator" aria-hidden="true" style={{ transform: `translate3d(${indicator.left}px, ${indicator.top}px, 0)`, width: indicator.width, height: indicator.height, opacity: indicator.width ? 1 : 0 }} />
       {options.map((option, index) => {
@@ -331,6 +334,7 @@ function GlassRadioRow<T extends string>({
       })}
     </div>
   )
+  return renderPreview ? <details className="studioVisualOptions" data-option-name={name}><summary><span className="studioOptionSelectedPreview" aria-hidden="true">{renderPreview(value)}</span><strong>{options.find(option => option.value === value)?.label || value}</strong><span>{language === 'no' ? 'Endre' : 'Change'}<FiChevronDown aria-hidden="true" /></span></summary>{row}</details> : row
 }
 
 const defaultLogoStyle: LogoStyle = {
@@ -383,6 +387,7 @@ function LogoUploadEditor({
   onChange: (branding: CustomBranding) => void
 }) {
   const copy = useStudioCopy()
+  const { language } = useVintraLanguage()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const previewRef = useRef<HTMLDivElement | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
@@ -541,8 +546,8 @@ function LogoUploadEditor({
         </div>
 
         <div className="logoEditorActions">
-          <button type="button" className="logoEditorAction" onClick={() => updateBranding({ logo: undefined })} disabled={!branding.logo}>{copy("Remove logo")}</button>
-          <button type="button" className="logoEditorAction secondary" onClick={() => updateLogoStyle(defaultLogoStyle)} disabled={!branding.logo}>{copy("Reset crop")}</button>
+          <ConfirmStudioAction no={language === 'no'} type="button" contextKey={branding.logo} className="logoEditorAction" onConfirm={() => updateBranding({ logo: undefined })} disabled={!branding.logo}>{copy("Remove logo")}</ConfirmStudioAction>
+          <ConfirmStudioAction no={language === 'no'} type="button" contextKey={branding.logo} className="logoEditorAction secondary" onConfirm={() => updateLogoStyle(defaultLogoStyle)} disabled={!branding.logo}>{copy("Reset crop")}</ConfirmStudioAction>
         </div>
 
         <p className="logoEditorMeta">{copy("PNG only. Drop a file, then drag within the circle or adjust the sliders.")}</p>
@@ -599,8 +604,8 @@ function StarterCardEditor({
           <span className="starterCardEditor__eyebrow">{language === 'no' ? 'Kort' : 'Card'} {index + 1}</span>
           <strong>{card.title || `${language === 'no' ? 'Kort' : 'Card'} ${index + 1}`}</strong>
         </div>
-        <button type="button" className="starterCardEditor__remove" onClick={onRemove} disabled={disabled}>
-          <FiTrash2 aria-hidden="true" />{copy("Remove")}</button>
+        <ConfirmStudioAction no={language === 'no'} type="button" contextKey={card.id} className="starterCardEditor__remove" onConfirm={onRemove} disabled={disabled}>
+          <FiTrash2 aria-hidden="true" />{copy("Remove")}</ConfirmStudioAction>
       </div>
 
       <div className={`starterCardVisual starterCardVisual--${style}`}>
@@ -666,7 +671,7 @@ function StarterCardEditor({
                 <label><span><FiSend aria-hidden="true" />{copy("Message sent")}</span><input value={option.prompt} disabled={disabled} onChange={(event) => updateOption(optionIndex, { prompt: event.target.value })} /></label>
                 <label className="starterOptionRow__description"><span><FiMessageSquare aria-hidden="true" />{copy("Description")}</span><input value={option.description || ''} disabled={disabled} onChange={(event) => updateOption(optionIndex, { description: event.target.value || undefined })} placeholder={copy("Optional")} /></label>
               </div>
-              <button type="button" className="starterOptionRow__remove" onClick={() => onChange({ ...card, options: card.options.filter((_, currentIndex) => currentIndex !== optionIndex) })} disabled={disabled} aria-label={`${language === 'no' ? 'Fjern valg' : 'Remove option'} ${optionIndex + 1}`}><FiTrash2 aria-hidden="true" /></button>
+              <ConfirmStudioAction no={language === 'no'} type="button" contextKey={card.id + optionIndex + option.prompt} className="starterOptionRow__remove" onConfirm={() => onChange({ ...card, options: card.options.filter((_, currentIndex) => currentIndex !== optionIndex) })} disabled={disabled} aria-label={`${language === 'no' ? 'Fjern valg' : 'Remove option'} ${optionIndex + 1}`}><FiTrash2 aria-hidden="true" /></ConfirmStudioAction>
             </div>
           ))}
         </div>
@@ -904,7 +909,7 @@ export default function StyleSelector({
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.bubble ? 'open' : ''}`}>
-<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiLayout aria-hidden="true" /></span><div><h3>{language === 'no' ? "Chatknappens utseende" : "Surface and appearance"}</h3><p>{language === 'no' ? "Form, kant og visuelle detaljer." : "Shape, borders and visual details."}</p></div></div>
+<StudioGroup title={language === 'no' ? "Chatknappens utseende" : "Surface and appearance"} description={language === 'no' ? "Form, kant og visuelle detaljer." : "Shape, borders and visual details."} defaultOpen>
 <div className="option-card option-card--radio">
             <span className="option-title">{text.labels.borderType}</span>
             <GlassRadioRow name="bubble-border-type" renderPreview={(value) => renderLauncherPreview('border', value)} value={['rounded', 'shadow'].includes(bubbleStyle.borderType) ? (bubbleStyle.borderType === 'rounded' ? 'solid' : 'none') : bubbleStyle.borderType} options={[{ value: 'none', label: text.options.none }, { value: 'solid', label: language === 'no' ? 'Enkel linje' : 'Single line' }, { value: 'dashed', label: language === 'no' ? 'Stiplet' : 'Dashed' }, { value: 'wavy', label: language === 'no' ? 'Bølget' : 'Wavy' }, { value: 'double', label: language === 'no' ? 'Dobbel linje' : 'Double line' }]} onChange={(nextValue) => onBubbleStyleChange({ ...bubbleStyle, shape: bubbleStyle.shape || (bubbleStyle.borderType === 'solid' ? 'rounded-square' : 'circle'), borderType: nextValue as LauncherBorder })} />
@@ -925,7 +930,8 @@ export default function StyleSelector({
             <span className="option-title">{text.labels.size}</span>
             <GlassRadioRow name="bubble-size-type" renderPreview={(value) => renderLauncherPreview('size', value)} value={bubbleStyle.sizeType} options={[{ value: 'small', label: text.options.small }, { value: 'medium', label: text.options.medium }, { value: 'large', label: text.options.large }]} onChange={(nextValue) => onBubbleStyleChange({ ...bubbleStyle, sizeType: nextValue as SizeType })} />
           </div>
-<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiImage aria-hidden="true" /></span><div><h3>{language === 'no' ? "Ikoner" : "Icons"}</h3><p>{language === 'no' ? "Velg symbolene som forklarer funksjonene." : "Choose the symbols for each function."}</p></div></div>
+ </StudioGroup>
+<StudioGroup title={language === 'no' ? "Ikoner" : "Icons"} description={language === 'no' ? "Velg symbolene som forklarer funksjonene." : "Choose the symbols for each function."}>
 <div className="option-card option-card--radio option-card--wide">
             <span className="option-title">{text.labels.launcherMode}</span>
             <OptionDesc>{text.labels.launcherModeDesc}</OptionDesc>
@@ -975,7 +981,8 @@ export default function StyleSelector({
               />
             ))}
           </div>
-<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiPlus aria-hidden="true" /></span><div><h3>{language === 'no' ? "Tillegg" : "Extras"}</h3><p>{language === 'no' ? "Ekstra innhold og funksjoner." : "Additional content and features."}</p></div></div>
+ </StudioGroup>
+<StudioGroup title={language === 'no' ? "Tillegg" : "Extras"} description={language === 'no' ? "Ekstra innhold og funksjoner." : "Additional content and features."}>
 <div className={`option-card ${bubbleStyle.showStatus ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={bubbleStyle.showStatus} onClick={() => onBubbleStyleChange({ ...bubbleStyle, showStatus: !bubbleStyle.showStatus })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onBubbleStyleChange({ ...bubbleStyle, showStatus: !bubbleStyle.showStatus }))}>
             <span className="option-title">{text.labels.showStatusDot}</span>
             <OptionDesc>{text.labels.showStatusDotDesc}</OptionDesc>
@@ -996,6 +1003,7 @@ export default function StyleSelector({
               </div>
             </div>
           ) : null}
+</StudioGroup>
 </div>
       </div>
 
@@ -1006,12 +1014,13 @@ export default function StyleSelector({
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.header ? 'open' : ''}`}>
-<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiLayout aria-hidden="true" /></span><div><h3>{language === 'no' ? "Toppfeltets ramme" : "Surface and appearance"}</h3><p>{language === 'no' ? "Form, kant og visuelle detaljer." : "Shape, borders and visual details."}</p></div></div>
+<StudioGroup title={language === 'no' ? "Toppfeltets ramme" : "Surface and appearance"} description={language === 'no' ? "Form, kant og visuelle detaljer." : "Shape, borders and visual details."} defaultOpen>
 {renderMotionControl('openAnimation')}
 <div className="option-card option-card--radio"><span className="option-title">{language === 'no' ? 'Form' : 'Shape'}</span><GlassRadioRow name="header-corner-style" renderPreview={(value) => renderChatSurfacePreview('header', 'corner', value)} value={headerCornerStyle} options={[{ value: 'rounded', label: text.options.rounded }, { value: 'square', label: text.options.square }]} onChange={(nextValue) => onHeaderStyleChange({ ...headerStyle, cornerStyle: nextValue as CornerStyle, borderType: headerStyle.borderType })} /></div>
 <div className="option-card option-card--radio"><span className="option-title">{text.labels.borderType}</span><GlassRadioRow name="header-border-type" renderPreview={(value) => renderChatSurfacePreview('header', 'border', value)} value={surfaceValue(headerStyle)} options={surfaceBorders} onChange={(value) => onHeaderStyleChange({ ...headerStyle, borderLine: value as SurfaceBorder })} /></div>
 <div className="option-card option-card--radio"><span className="option-title">{text.labels.shadowType}</span><GlassRadioRow name="header-shadow-type" renderPreview={(value) => renderChatSurfacePreview('header', 'shadow', value)} value={headerStyle.shadowType} options={[{ value: 'none', label: text.options.none }, { value: 'light', label: text.options.light }, { value: 'medium', label: text.options.medium }, { value: 'heavy', label: text.options.heavy }]} onChange={(nextValue) => onHeaderStyleChange({ ...headerStyle, shadowType: nextValue as ShadowType })} /></div>
-<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiMessageSquare aria-hidden="true" /></span><div><h3>{language === 'no' ? "Innhold i toppfeltet" : "Content and controls"}</h3><p>{language === 'no' ? "Velg hva som skal vises i dette området." : "Choose what appears in this area."}</p></div></div>
+ </StudioGroup>
+<StudioGroup title={language === 'no' ? "Innhold i toppfeltet" : "Content and controls"} description={language === 'no' ? "Velg hva som skal vises i dette området." : "Choose what appears in this area."}>
 <div className={`option-card ${headerStyle.showStatus ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={headerStyle.showStatus} onClick={() => onHeaderStyleChange({ ...headerStyle, showStatus: !headerStyle.showStatus })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onHeaderStyleChange({ ...headerStyle, showStatus: !headerStyle.showStatus }))}><span className="option-title">{text.labels.showStatus}</span><OptionDesc>{text.labels.showStatusDesc}</OptionDesc></div>
 <div className={`option-card ${headerStyle.showCloseButton ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={headerStyle.showCloseButton} onClick={() => onHeaderStyleChange({ ...headerStyle, showCloseButton: !headerStyle.showCloseButton })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onHeaderStyleChange({ ...headerStyle, showCloseButton: !headerStyle.showCloseButton }))}><span className="option-title">{text.labels.showCloseButton}</span><OptionDesc>{text.labels.showCloseButtonDesc}</OptionDesc></div>
 <div className={`option-card ${headerStyle.showAvatar ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={headerStyle.showAvatar} onClick={() => onHeaderStyleChange({ ...headerStyle, showAvatar: !headerStyle.showAvatar })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onHeaderStyleChange({ ...headerStyle, showAvatar: !headerStyle.showAvatar }))}><span className="option-title">{text.labels.showAvatar}</span><OptionDesc>{text.labels.showAvatarDesc}</OptionDesc></div>
@@ -1019,7 +1028,8 @@ export default function StyleSelector({
 <label className="branding-field"><span>{language === 'no' ? 'Navn i chatten' : 'Chat name'}</span><input type="text" value={customBranding.title || ''} onChange={(event) => onCustomBrandingChange({ ...customBranding, title: event.target.value })} placeholder="Support Chat" /></label>
 <label className="branding-field"><span>{language === 'no' ? 'Kort velkomsttekst' : 'Short welcome message'}</span><input type="text" value={customBranding.description || ''} onChange={(event) => onCustomBrandingChange({ ...customBranding, description: event.target.value })} placeholder="We are here to help you!" /></label>
 <div className="branding-field branding-field--logo"><span>{language === 'no' ? 'Bedriftens logo' : 'Company logo'}</span><LogoUploadEditor branding={customBranding} onChange={onCustomBrandingChange} /></div>
-<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiImage aria-hidden="true" /></span><div><h3>{language === 'no' ? "Ikoner" : "Icons"}</h3><p>{language === 'no' ? "Velg symbolene som forklarer funksjonene." : "Choose the symbols for each function."}</p></div></div>
+ </StudioGroup>
+<StudioGroup title={language === 'no' ? "Ikoner" : "Icons"} description={language === 'no' ? "Velg symbolene som forklarer funksjonene." : "Choose the symbols for each function."}>
 <div className="sectionIconGrid">
             {sectionIconFields.header.map((item) => (
               <IconPickerBubble
@@ -1032,6 +1042,7 @@ export default function StyleSelector({
               />
             ))}
           </div>
+</StudioGroup>
 </div>
       </div>
 
@@ -1042,10 +1053,11 @@ export default function StyleSelector({
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.body ? 'open' : ''}`}>
-<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiLayout aria-hidden="true" /></span><div><h3>{language === 'no' ? "Meldingsområdet" : "Surface and appearance"}</h3><p>{language === 'no' ? "Form, kant og visuelle detaljer." : "Shape, borders and visual details."}</p></div></div>
+<StudioGroup title={language === 'no' ? "Meldingsområdet" : "Surface and appearance"} description={language === 'no' ? "Form, kant og visuelle detaljer." : "Shape, borders and visual details."} defaultOpen>
 <div className="option-card option-card--radio"><span className="option-title">{text.labels.borderType}</span><GlassRadioRow name="body-border-type" renderPreview={(value) => renderChatSurfacePreview('body', 'border', value)} value={surfaceValue(bodyStyle)} options={surfaceBorders} onChange={(value) => onBodyStyleChange({ ...bodyStyle, borderLine: value as SurfaceBorder })} /></div>
 <div className="option-card option-card--radio"><span className="option-title">{text.labels.shadowType}</span><GlassRadioRow name="body-shadow-type" renderPreview={(value) => renderChatSurfacePreview('body', 'shadow', value)} value={bodyStyle.shadowType} options={[{ value: 'none', label: text.options.none }, { value: 'light', label: text.options.light }, { value: 'medium', label: text.options.medium }, { value: 'heavy', label: text.options.heavy }]} onChange={(nextValue) => onBodyStyleChange({ ...bodyStyle, shadowType: nextValue as ShadowType })} /></div>
-<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiMessageSquare aria-hidden="true" /></span><div><h3>{language === 'no' ? "Chatmeldingene" : "Chat messages"}</h3><p>{language === 'no' ? "Stil, form, kant og animasjon for meldingene." : "Message style, shape, border and animation."}</p></div></div>
+ </StudioGroup>
+<StudioGroup title={language === 'no' ? "Chatmeldingene" : "Chat messages"} description={language === 'no' ? "Stil, form, kant og animasjon for meldingene." : "Message style, shape, border and animation."}>
 <div className="option-card option-card--radio"><span className="option-title">{language === 'no' ? 'Form p\u00e5 meldingsbobler' : 'Message bubble shape'}</span><GlassRadioRow name="message-corner-style" renderPreview={(value) => renderChatSurfacePreview('body', 'message-corner', value)} value={bodyStyle.messageCornerStyle || (bodyStyle.messageStyle === 'flat' ? 'square' : 'rounded')} options={[{ value: 'rounded', label: text.options.rounded }, { value: 'square', label: text.options.square }]} onChange={(value) => onBodyStyleChange({ ...bodyStyle, messageCornerStyle: value as CornerStyle })} /></div>
 <div className="option-card option-card--radio"><span className="option-title">{language === 'no' ? 'Kant p\u00e5 meldingsbobler' : 'Message bubble border'}</span><GlassRadioRow name="message-border-type" renderPreview={(value) => renderChatSurfacePreview('body', 'message-border', value)} value={bodyStyle.messageBorderLine || 'none'} options={surfaceBorders} onChange={(value) => onBodyStyleChange({ ...bodyStyle, messageBorderLine: value as SurfaceBorder })} /></div>
 <div className="option-card option-card--radio"><span className="option-title">{text.labels.messageStyle}</span><GlassRadioRow name="body-message-style" renderPreview={(value) => renderChatSurfacePreview('body', 'message', value)} value={bodyStyle.messageStyle} options={[{ value: 'bubble', label: text.options.bubble }, { value: 'flat', label: text.options.flat }, { value: 'card', label: text.options.card }]} onChange={(nextValue) => onBodyStyleChange({ ...bodyStyle, messageStyle: nextValue as MessageStyle })} /></div>
@@ -1053,7 +1065,8 @@ export default function StyleSelector({
 {renderMotionControl('receivedAnimation')}
 <div className={`option-card ${bodyStyle.showTimestamps ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={bodyStyle.showTimestamps} onClick={() => onBodyStyleChange({ ...bodyStyle, showTimestamps: !bodyStyle.showTimestamps })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onBodyStyleChange({ ...bodyStyle, showTimestamps: !bodyStyle.showTimestamps }))}><span className="option-title">{text.labels.showTimestamps}</span><OptionDesc>{text.labels.showTimestampsDesc}</OptionDesc></div>
 <div className={`option-card ${bodyStyle.showReadReceipts ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={bodyStyle.showReadReceipts} onClick={() => onBodyStyleChange({ ...bodyStyle, showReadReceipts: !bodyStyle.showReadReceipts })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onBodyStyleChange({ ...bodyStyle, showReadReceipts: !bodyStyle.showReadReceipts }))}><span className="option-title">{text.labels.showReadReceipts}</span><OptionDesc>{text.labels.showReadReceiptsDesc}</OptionDesc></div>
-<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiImage aria-hidden="true" /></span><div><h3>{language === 'no' ? "Ikoner" : "Icons"}</h3><p>{language === 'no' ? "Velg symbolene som forklarer funksjonene." : "Choose the symbols for each function."}</p></div></div>
+ </StudioGroup>
+<StudioGroup title={language === 'no' ? "Ikoner" : "Icons"} description={language === 'no' ? "Velg symbolene som forklarer funksjonene." : "Choose the symbols for each function."}>
 <div className="sectionIconGrid">
             {sectionIconFields.body.map((item) => (
               <IconPickerBubble
@@ -1066,7 +1079,8 @@ export default function StyleSelector({
               />
             ))}
           </div>
-<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiPlus aria-hidden="true" /></span><div><h3>{language === 'no' ? "Tillegg" : "Extras"}</h3><p>{language === 'no' ? "Ekstra innhold og funksjoner." : "Additional content and features."}</p></div></div>
+ </StudioGroup>
+<StudioGroup title={language === 'no' ? "Tillegg" : "Extras"} description={language === 'no' ? "Ekstra innhold og funksjoner." : "Additional content and features."}>
 <div className={`option-card ${bodyStyle.showConversationCards ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={bodyStyle.showConversationCards} onClick={() => onBodyStyleChange({ ...bodyStyle, showConversationCards: !bodyStyle.showConversationCards })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onBodyStyleChange({ ...bodyStyle, showConversationCards: !bodyStyle.showConversationCards }))}><span className="option-title">{text.labels.showStarterCards}</span><OptionDesc>{text.labels.showStarterCardsDesc}</OptionDesc></div>
 {bodyStyle.showConversationCards ? <div className="option-card option-card--radio"><span className="option-title">{text.labels.cardStyle}</span><GlassRadioRow name="body-conversation-cards-style" value={bodyStyle.conversationCardsStyle} options={[{ value: 'modern', label: text.options.modern }, { value: 'minimal', label: text.options.minimal }, { value: 'bubble', label: text.options.bubbleGlow }, { value: 'image', label: text.options.imageBased }, { value: 'chips', label: text.options.quickChips }]} onChange={(nextValue) => onBodyStyleChange({ ...bodyStyle, conversationCardsStyle: nextValue as StyleSelectorProps['bodyStyle']['conversationCardsStyle'] })} /></div> : null}
 {bodyStyle.showConversationCards ? (
@@ -1111,7 +1125,7 @@ export default function StyleSelector({
                     </label>
                     <div className="starterCardsPanel__actions">
                       <button type="button" className="starterCardsPanel__action" onClick={addConversationCard} disabled={!conversationCardsEnabled}><FiPlus aria-hidden="true" /> {language === 'no' ? 'Legg til kort' : 'Add card'}</button>
-                      <button type="button" className="starterCardsPanel__action secondary" onClick={() => { onConversationCardsChange(defaultConversationCards); setSelectedStarterCardId(null) }} disabled={!conversationCardsEnabled}>{language === 'no' ? 'Nullstill' : 'Reset'}</button>
+                      <ConfirmStudioAction no={language === 'no'} type="button" className="starterCardsPanel__action secondary" onConfirm={() => { onConversationCardsChange(defaultConversationCards); setSelectedStarterCardId(null) }} disabled={!conversationCardsEnabled}>{language === 'no' ? 'Nullstill' : 'Reset'}</ConfirmStudioAction>
                     </div>
                   </div>
 
@@ -1135,6 +1149,7 @@ export default function StyleSelector({
               )}
             </div>
           ) : null}
+</StudioGroup>
 </div>
       </div>
 
@@ -1145,15 +1160,17 @@ export default function StyleSelector({
         </button>
 
         <div className={`option-grid dropdown-content ${openSections.footer ? 'open' : ''}`}>
-<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiLayout aria-hidden="true" /></span><div><h3>{language === 'no' ? "Skrivefeltets ramme" : "Surface and appearance"}</h3><p>{language === 'no' ? "Form, kant og visuelle detaljer." : "Shape, borders and visual details."}</p></div></div>
+<StudioGroup title={language === 'no' ? "Skrivefeltets ramme" : "Surface and appearance"} description={language === 'no' ? "Form, kant og visuelle detaljer." : "Shape, borders and visual details."} defaultOpen>
 <div className="option-card option-card--radio"><span className="option-title">{language === 'no' ? 'Form' : 'Shape'}</span><GlassRadioRow name="footer-corner-style" renderPreview={(value) => renderChatSurfacePreview('footer', 'corner', value)} value={footerCornerStyle} options={[{ value: 'rounded', label: text.options.rounded }, { value: 'square', label: text.options.square }]} onChange={(nextValue) => onFooterStyleChange({ ...footerStyle, cornerStyle: nextValue as CornerStyle, borderType: footerStyle.borderType })} /></div>
 <div className="option-card option-card--radio"><span className="option-title">{text.labels.borderType}</span><GlassRadioRow name="footer-border-type" renderPreview={(value) => renderChatSurfacePreview('footer', 'border', value)} value={surfaceValue(footerStyle)} options={surfaceBorders} onChange={(value) => onFooterStyleChange({ ...footerStyle, borderLine: value as SurfaceBorder })} /></div>
 <div className="option-card option-card--radio"><span className="option-title">{text.labels.shadowType}</span><GlassRadioRow name="footer-shadow-type" renderPreview={(value) => renderChatSurfacePreview('footer', 'shadow', value)} value={footerStyle.shadowType} options={[{ value: 'none', label: text.options.none }, { value: 'light', label: text.options.light }, { value: 'medium', label: text.options.medium }, { value: 'heavy', label: text.options.heavy }]} onChange={(nextValue) => onFooterStyleChange({ ...footerStyle, shadowType: nextValue as ShadowType })} /></div>
-<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiMessageSquare aria-hidden="true" /></span><div><h3>{language === 'no' ? "Innhold og skrivefelt" : "Content and controls"}</h3><p>{language === 'no' ? "Velg hva som skal vises i dette området." : "Choose what appears in this area."}</p></div></div>
+ </StudioGroup>
+<StudioGroup title={language === 'no' ? "Innhold og skrivefelt" : "Content and controls"} description={language === 'no' ? "Velg hva som skal vises i dette området." : "Choose what appears in this area."}>
 <div className={`option-card ${footerStyle.showSendButton ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={footerStyle.showSendButton} onClick={() => onFooterStyleChange({ ...footerStyle, showSendButton: !footerStyle.showSendButton })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onFooterStyleChange({ ...footerStyle, showSendButton: !footerStyle.showSendButton }))}><span className="option-title">{text.labels.showSendButton}</span><OptionDesc>{text.labels.showSendButtonDesc}</OptionDesc></div>
 <div className="option-card option-card--radio"><span className="option-title">{text.labels.inputStyle}</span><GlassRadioRow name="footer-input-style" renderPreview={(value) => renderChatSurfacePreview('footer', 'input', value)} value={footerStyle.inputStyle} options={[{ value: 'flat', label: text.options.flat }, { value: 'rounded', label: text.options.rounded }, { value: 'outlined', label: text.options.outlined }]} onChange={(nextValue) => onFooterStyleChange({ ...footerStyle, inputStyle: nextValue as InputStyle })} /></div>
 <div className={`option-card ${footerStyle.showPlaceholder ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={footerStyle.showPlaceholder} onClick={() => onFooterStyleChange({ ...footerStyle, showPlaceholder: !footerStyle.showPlaceholder })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onFooterStyleChange({ ...footerStyle, showPlaceholder: !footerStyle.showPlaceholder }))}><span className="option-title">{text.labels.showPlaceholder}</span><OptionDesc>{text.labels.showPlaceholderDesc}</OptionDesc></div>
-<div className="designGroupHeading"><span className="designGroupHeading__icon"><FiImage aria-hidden="true" /></span><div><h3>{language === 'no' ? "Ikoner" : "Icons"}</h3><p>{language === 'no' ? "Velg symbolene som forklarer funksjonene." : "Choose the symbols for each function."}</p></div></div>
+ </StudioGroup>
+<StudioGroup title={language === 'no' ? "Ikoner" : "Icons"} description={language === 'no' ? "Velg symbolene som forklarer funksjonene." : "Choose the symbols for each function."}>
 <div className="sectionIconGrid">
             {sectionIconFields.footer.map((item) => (
               <IconPickerBubble
@@ -1166,6 +1183,7 @@ export default function StyleSelector({
               />
             ))}
           </div>
+</StudioGroup>
 </div>
       </div>
 
