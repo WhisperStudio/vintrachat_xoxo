@@ -26,26 +26,20 @@ import {
 import { FaRegLightbulb } from 'react-icons/fa'
 import {
   FiChevronDown,
-  FiChevronRight,
   FiCpu,
   FiDroplet,
   FiImage,
   FiLayout,
   FiLifeBuoy,
   FiLock,
-  FiArrowLeft,
-  FiEdit3,
   FiMessageCircle,
   FiMessageSquare,
   FiPhone,
-  FiPlus,
   FiSend,
   FiSliders,
-  FiTrash2,
 } from 'react-icons/fi'
 import IconPickerBubble from '@/components/IconPickerBubble'
 import { chatWidgetStyleI18n, useVintraLanguage } from '@/lib/i18n'
-import { defaultConversationCards } from '@/lib/conversation-cards'
 import { isPlanFeatureAvailable } from '@/lib/subscription'
 import { renderWidgetIcon } from '@/lib/widget-icons'
 import type { AssistantConversationCard, BubbleIconChoice, ChatWidgetInterfaceIcons, OrbStyleConfig } from '@/types/database'
@@ -334,7 +328,7 @@ function GlassRadioRow<T extends string>({
       })}
     </div>
   )
-  return renderPreview ? <details className="studioVisualOptions" data-option-name={name}><summary><span className="studioOptionSelectedPreview" aria-hidden="true">{renderPreview(value)}</span><strong>{options.find(option => option.value === value)?.label || value}</strong><span>{language === 'no' ? 'Endre' : 'Change'}<FiChevronDown aria-hidden="true" /></span></summary>{row}</details> : row
+  return renderPreview ? <details className="studioVisualOptions" data-option-name={name} open><summary><span className="studioOptionSelectedPreview" aria-hidden="true">{renderPreview(value)}</span><strong>{options.find(option => option.value === value)?.label || value}</strong><span>{language === 'no' ? 'Endre' : 'Change'}<FiChevronDown aria-hidden="true" /></span></summary>{row}</details> : row
 }
 
 const defaultLogoStyle: LogoStyle = {
@@ -557,129 +551,6 @@ function LogoUploadEditor({
   )
 }
 
-function StarterCardEditor({
-  card,
-  index,
-  disabled,
-  style,
-  onChange,
-  onRemove,
-}: {
-  card: AssistantConversationCard
-  index: number
-  disabled: boolean
-  style: StyleSelectorProps['bodyStyle']['conversationCardsStyle']
-  onChange: (nextCard: AssistantConversationCard) => void
-  onRemove: () => void
-}) {
-  const { language } = useVintraLanguage()
-  const copy = useStudioCopy()
-  const [activeField, setActiveField] = useState<'icon' | 'title' | 'description' | 'image' | null>(null)
-
-  const updateOption = (optionIndex: number, patch: Partial<AssistantConversationCard['options'][number]>) => {
-    onChange({
-      ...card,
-      options: card.options.map((option, index) => (index === optionIndex ? { ...option, ...patch } : option)),
-    })
-  }
-
-  const addOption = () => {
-    onChange({
-      ...card,
-      options: [
-        ...card.options,
-        {
-          label: `${language === 'no' ? 'Valg' : 'Option'} ${card.options.length + 1}`,
-          prompt: copy("How can you help me?"),
-          description: '',
-        },
-      ],
-    })
-  }
-
-  return (
-    <article className={`starterCardEditor ${disabled ? 'is-disabled' : ''}`}>
-      <div className="starterCardEditor__header">
-        <div>
-          <span className="starterCardEditor__eyebrow">{language === 'no' ? 'Kort' : 'Card'} {index + 1}</span>
-          <strong>{card.title || `${language === 'no' ? 'Kort' : 'Card'} ${index + 1}`}</strong>
-        </div>
-        <ConfirmStudioAction no={language === 'no'} type="button" contextKey={card.id} className="starterCardEditor__remove" onConfirm={onRemove} disabled={disabled}>
-          <FiTrash2 aria-hidden="true" />{copy("Remove")}</ConfirmStudioAction>
-      </div>
-
-      <div className={`starterCardVisual starterCardVisual--${style}`}>
-        <button type="button" className="starterCardVisual__field starterCardVisual__icon" onClick={() => setActiveField(activeField === 'icon' ? null : 'icon')} disabled={disabled || style === 'image'} aria-label={copy("Edit card icon")}>
-          {renderWidgetIcon(card.icon, { 'aria-hidden': true }) || <FiMessageCircle aria-hidden="true" />}
-          <span className="starterCardVisual__edit"><FiEdit3 aria-hidden="true" /></span>
-        </button>
-        <div className="starterCardVisual__copy">
-          <button type="button" className="starterCardVisual__field starterCardVisual__title" onClick={() => setActiveField(activeField === 'title' ? null : 'title')} disabled={disabled}>
-            <span>{card.title || copy("Untitled card")}</span><FiEdit3 aria-hidden="true" />
-          </button>
-          <button type="button" className="starterCardVisual__field starterCardVisual__description" onClick={() => setActiveField(activeField === 'description' ? null : 'description')} disabled={disabled}>
-            <span>{card.description || copy("Add a short description")}</span><FiEdit3 aria-hidden="true" />
-          </button>
-        </div>
-      </div>
-
-      {activeField === 'title' ? (
-        <label className="starterCardInlineEditor">
-          <span>{copy("Edit title")}</span>
-          <input autoFocus type="text" value={card.title} disabled={disabled} onChange={(event) => onChange({ ...card, title: event.target.value })} placeholder={copy("Opening hours")} />
-        </label>
-      ) : null}
-
-      {activeField === 'description' ? (
-        <label className="starterCardInlineEditor">
-          <span>{copy("Edit description")}</span>
-          <input autoFocus type="text" value={card.description} disabled={disabled} onChange={(event) => onChange({ ...card, description: event.target.value })} placeholder={copy("Help visitors choose the right topic.")} />
-        </label>
-      ) : null}
-
-      {activeField === 'icon' ? (
-        <IconPickerBubble
-          label={copy("Card icon")}
-          value={card.icon || ''}
-          onChange={(nextValue) => onChange({ ...card, icon: nextValue })}
-          helperText={copy("Shown on the starter card unless the card is image-first.")}
-          disabled={disabled || style === 'image'}
-        />
-      ) : null}
-
-      <button type="button" className="starterCardImageToggle" onClick={() => setActiveField(activeField === 'image' ? null : 'image')} disabled={disabled}>
-        <FiImage aria-hidden="true" /> {card.image ? copy("Edit card image") : copy("Add card image")} <FiChevronDown aria-hidden="true" />
-      </button>
-      {activeField === 'image' ? (
-        <label className="starterCardInlineEditor">
-          <span>{copy("Image URL")}</span>
-          <input autoFocus type="url" value={card.image || ''} disabled={disabled} onChange={(event) => onChange({ ...card, image: event.target.value })} placeholder="https://..." />
-        </label>
-      ) : null}
-
-      <div className="starterOptionsEditor">
-        <div className="starterOptionsEditor__header">
-          <div><strong>{copy("Options")}</strong><span>{card.options.length} {language === 'no' ? 'valg under dette kortet' : 'options under this card'}</span></div>
-          <button type="button" onClick={addOption} disabled={disabled}><FiPlus aria-hidden="true" />{copy("Add option")}</button>
-        </div>
-        <div className="starterOptionsEditor__list">
-          {card.options.map((option, optionIndex) => (
-            <div className="starterOptionRow" key={`${card.id}-option-${optionIndex}`}>
-              <span className="starterOptionRow__branch" aria-hidden="true" />
-              <div className="starterOptionRow__fields">
-                <label><span><FiEdit3 aria-hidden="true" />{copy("Label")}</span><input value={option.label} disabled={disabled} onChange={(event) => updateOption(optionIndex, { label: event.target.value })} /></label>
-                <label><span><FiSend aria-hidden="true" />{copy("Message sent")}</span><input value={option.prompt} disabled={disabled} onChange={(event) => updateOption(optionIndex, { prompt: event.target.value })} /></label>
-                <label className="starterOptionRow__description"><span><FiMessageSquare aria-hidden="true" />{copy("Description")}</span><input value={option.description || ''} disabled={disabled} onChange={(event) => updateOption(optionIndex, { description: event.target.value || undefined })} placeholder={copy("Optional")} /></label>
-              </div>
-              <ConfirmStudioAction no={language === 'no'} type="button" contextKey={card.id + optionIndex + option.prompt} className="starterOptionRow__remove" onConfirm={() => onChange({ ...card, options: card.options.filter((_, currentIndex) => currentIndex !== optionIndex) })} disabled={disabled} aria-label={`${language === 'no' ? 'Fjern valg' : 'Remove option'} ${optionIndex + 1}`}><FiTrash2 aria-hidden="true" /></ConfirmStudioAction>
-            </div>
-          ))}
-        </div>
-      </div>
-    </article>
-  )
-}
-
 export default function StyleSelector({
   bubbleStyle,
   headerStyle,
@@ -697,16 +568,13 @@ export default function StyleSelector({
   widgetIcons,
   customBranding,
   settings,
-  conversationCardsEnabled,
-  conversationCardsLimit,
   conversationCards,
+  conversationCardsEnabled,
   onColorThemeChange,
   onPositionChange,
   onWidgetIconsChange,
   onCustomBrandingChange,
   onSettingsChange,
-  onConversationCardsEnabledChange,
-  onConversationCardsLimitChange,
   onConversationCardsChange,
   onPreviewHoverChange,
   openSections,
@@ -787,7 +655,6 @@ export default function StyleSelector({
     height: number
     opacity: number
   } | null>(null)
-  const [selectedStarterCardId, setSelectedStarterCardId] = useState<string | null>(null)
 
   const activeIconChoice = useMemo(() => bubbleStyle.iconChoice, [bubbleStyle.iconChoice])
   const customInterfaceIconsAvailable = isPlanFeatureAvailable(plan, 'customInterfaceIcons')
@@ -830,27 +697,6 @@ export default function StyleSelector({
 
   const updateConversationCard = (index: number, nextCard: AssistantConversationCard) => {
     onConversationCardsChange(conversationCards.map((card, cardIndex) => (cardIndex === index ? nextCard : card)))
-  }
-
-  const addConversationCard = () => {
-    const id = crypto.randomUUID()
-    onConversationCardsChange([
-      ...conversationCards,
-      {
-        id,
-        title: `${language === 'no' ? 'Startkort' : 'Starter card'} ${conversationCards.length + 1}`,
-        description: copy("Help visitors choose the right topic quickly."),
-        icon: 'FiMessageCircle',
-        options: [
-          {
-            label: copy("Example question"),
-            prompt: copy("How can you help me?"),
-            description: copy("Replace this with a real next step."),
-          },
-        ],
-      },
-    ])
-    setSelectedStarterCardId(id)
   }
 
   const handleToggleCardKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>, onToggle: () => void) => {
@@ -1081,74 +927,17 @@ export default function StyleSelector({
           </div>
  </StudioGroup>
 <StudioGroup title={language === 'no' ? "Tillegg" : "Extras"} description={language === 'no' ? "Ekstra innhold og funksjoner." : "Additional content and features."}>
-<div className={`option-card ${bodyStyle.showConversationCards ? 'checked' : ''}`} role="button" tabIndex={0} aria-pressed={bodyStyle.showConversationCards} onClick={() => onBodyStyleChange({ ...bodyStyle, showConversationCards: !bodyStyle.showConversationCards })} onKeyDown={(event) => handleToggleCardKeyDown(event, () => onBodyStyleChange({ ...bodyStyle, showConversationCards: !bodyStyle.showConversationCards }))}><span className="option-title">{text.labels.showStarterCards}</span><OptionDesc>{text.labels.showStarterCardsDesc}</OptionDesc></div>
-{bodyStyle.showConversationCards ? <div className="option-card option-card--radio"><span className="option-title">{text.labels.cardStyle}</span><GlassRadioRow name="body-conversation-cards-style" value={bodyStyle.conversationCardsStyle} options={[{ value: 'modern', label: text.options.modern }, { value: 'minimal', label: text.options.minimal }, { value: 'bubble', label: text.options.bubbleGlow }, { value: 'image', label: text.options.imageBased }, { value: 'chips', label: text.options.quickChips }]} onChange={(nextValue) => onBodyStyleChange({ ...bodyStyle, conversationCardsStyle: nextValue as StyleSelectorProps['bodyStyle']['conversationCardsStyle'] })} /></div> : null}
-{bodyStyle.showConversationCards ? (
-            <div className="starterCardsPanel">
-              <div className="starterCardsPanel__header">
-                <div>
-                  <strong>{language === 'no' ? 'Startkort' : 'Starter cards'}</strong>
-                  <p>{language === 'no' ? 'Hjelp kundene videre med nyttige snarveier.' : 'Help customers find their way with useful shortcuts.'}</p>
-                </div>
-                <label className="starterCardsPanel__toggle">
-                  <input type="checkbox" checked={conversationCardsEnabled} onChange={(event) => onConversationCardsEnabledChange(event.target.checked)} />
-                  <span>{language === 'no' ? 'Aktivert' : 'Enabled'}</span>
-                </label>
-              </div>
-
-              {selectedStarterCardId && conversationCards.some((card) => card.id === selectedStarterCardId) ? (
-                <div className="starterCardsPanel__detail">
-                  <button type="button" className="starterCardsPanel__back" onClick={() => setSelectedStarterCardId(null)}>
-                    <FiArrowLeft aria-hidden="true" /> {language === 'no' ? 'Tilbake til kortene' : 'Back to cards'}
-                  </button>
-                  {conversationCards.map((card, index) => card.id === selectedStarterCardId ? (
-                    <StarterCardEditor
-                      key={card.id}
-                      card={card}
-                      index={index}
-                      disabled={!conversationCardsEnabled}
-                      style={bodyStyle.conversationCardsStyle}
-                      onChange={(nextCard) => updateConversationCard(index, nextCard)}
-                      onRemove={() => {
-                        onConversationCardsChange(conversationCards.filter((_, cardIndex) => cardIndex !== index))
-                        setSelectedStarterCardId(null)
-                      }}
-                    />
-                  ) : null)}
-                </div>
-              ) : (
-                <>
-                  <div className="starterCardsPanel__controls">
-                    <label className="branding-field">
-                      <span>{language === 'no' ? 'Antall synlige kort' : 'Cards shown'}</span>
-                      <input type="number" min="1" max="12" value={conversationCardsLimit} disabled={!conversationCardsEnabled} onChange={(event) => onConversationCardsLimitChange(Math.max(1, Math.min(12, Number(event.target.value) || 1)))} />
-                    </label>
-                    <div className="starterCardsPanel__actions">
-                      <button type="button" className="starterCardsPanel__action" onClick={addConversationCard} disabled={!conversationCardsEnabled}><FiPlus aria-hidden="true" /> {language === 'no' ? 'Legg til kort' : 'Add card'}</button>
-                      <ConfirmStudioAction no={language === 'no'} type="button" className="starterCardsPanel__action secondary" onConfirm={() => { onConversationCardsChange(defaultConversationCards); setSelectedStarterCardId(null) }} disabled={!conversationCardsEnabled}>{language === 'no' ? 'Nullstill' : 'Reset'}</ConfirmStudioAction>
-                    </div>
-                  </div>
-
-                  <div className="starterCardsTree" role="group" aria-label={language === 'no' ? 'Startkort' : 'Starter cards'}>
-                    {conversationCards.map((card, index) => (
-                      <button key={card.id} type="button" className="starterCardsTree__card" onClick={() => setSelectedStarterCardId(card.id)} disabled={!conversationCardsEnabled}>
-                        <span className="starterCardsTree__line" aria-hidden="true" />
-                        <span className="starterCardsTree__icon">{renderWidgetIcon(card.icon, { 'aria-hidden': true }) || <FiMessageCircle aria-hidden="true" />}</span>
-                        <span className="starterCardsTree__copy">
-                          <span className="starterCardsTree__eyebrow">{language === 'no' ? 'Kort' : 'Card'} {index + 1}</span>
-                          <strong>{card.title || `${language === 'no' ? 'Kort uten tittel' : 'Untitled card'} ${index + 1}`}</strong>
-                          <span>{card.description || copy("No description yet")}</span>
-                        </span>
-                        <span className="starterCardsTree__meta">{card.options.length} {language === 'no' ? 'valg' : 'options'}</span>
-                        <FiChevronRight className="starterCardsTree__chevron" aria-hidden="true" />
-                      </button>
-                    ))}
-                    <button type="button" className="starterCardsTree__add" onClick={addConversationCard} disabled={!conversationCardsEnabled}><FiPlus aria-hidden="true" /> {language === 'no' ? 'Legg til et kort' : 'Add another card'}</button>
-                  </div>
-                </>
-              )}
-            </div>
-          ) : null}
+{conversationCardsEnabled ? <div className="option-card option-card--radio"><span className="option-title">{text.labels.cardStyle}</span><GlassRadioRow name="body-conversation-cards-style" value={bodyStyle.conversationCardsStyle} options={[{ value: 'modern', label: text.options.modern }, { value: 'minimal', label: text.options.minimal }, { value: 'bubble', label: text.options.bubbleGlow }, { value: 'image', label: text.options.imageBased }, { value: 'chips', label: text.options.quickChips }]} onChange={(nextValue) => onBodyStyleChange({ ...bodyStyle, conversationCardsStyle: nextValue as StyleSelectorProps['bodyStyle']['conversationCardsStyle'] })} /></div> : null}
+{conversationCardsEnabled ? <div className="starterCardsPanel">
+  <div className="starterCardsPanel__header"><div><strong>{language === 'no' ? 'Hjelpekortenes utseende' : 'Help card appearance'}</strong><p>{language === 'no' ? 'Velg layout, ikoner og bilder. Tekster, spørsmål og nye kort endrer du under Funksjoner → Hjelpekort.' : 'Choose layout, icons and images. Edit text, questions and add cards under Features → Help cards.'}</p></div></div>
+  <div className="option-card option-card--radio"><span className="option-title">{language === 'no' ? 'Kortoppsett' : 'Card layout'}</span><GlassRadioRow name="body-conversation-cards-layout" value={bodyStyle.conversationCardsLayout} options={[{ value: 'list', label: language === 'no' ? 'Liste' : 'List' }, { value: 'grid', label: language === 'no' ? 'Rutenett' : 'Grid' }, { value: 'stack', label: language === 'no' ? 'Stablet' : 'Stack' }]} onChange={conversationCardsLayout => onBodyStyleChange({ ...bodyStyle, conversationCardsLayout })} /></div>
+  {conversationCards.map((card, index) => <article className="studioModuleCardEditor" key={card.id}>
+    <strong>{card.title || (language === 'no' ? 'Kort' : 'Card') + ' ' + (index + 1)}</strong>
+    <IconPickerBubble label={language === 'no' ? 'Kortikon' : 'Card icon'} value={card.icon || ''} onChange={icon => updateConversationCard(index, { ...card, icon })} helperText={language === 'no' ? 'Vises i kortets ikonfelt.' : 'Shown in the card icon area.'} />
+    <label className="widgetFlowField"><span>{language === 'no' ? 'Bildeadresse (valgfritt)' : 'Image URL (optional)'}</span><input type="url" value={card.image || ''} placeholder="https://..." onChange={event => updateConversationCard(index, { ...card, image: event.target.value })} /></label>
+  </article>)}
+  {conversationCards.length === 0 && <p>{language === 'no' ? 'Legg til hjelpekort under Funksjoner f?rst. Deretter kan du tilpasse ikonene her.' : 'Add help cards under Features first, then customize their icons here.'}</p>}
+</div> : null}
 </StudioGroup>
 </div>
       </div>

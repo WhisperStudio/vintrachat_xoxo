@@ -47,17 +47,14 @@ export default function AuthFrame({ children, signup = false, recovery = false }
       <main className="nordicAuthMain">
         <aside className="nordicAuthStory" aria-label={no ? 'Velkommen til Vintra' : 'Welcome to Vintra'}>
           <div className="nordicAuthStoryCopy">
-            <span className="nordicAuthEyebrow"><span />{no ? 'NÆRMERE KUNDENE DINE' : 'CLOSER TO YOUR CUSTOMERS'}</span>
-            <h2>{recovery ? (no ? 'Tilbake til' : 'Back to') : (no ? 'God dialog.' : 'Great conversations.')}<br /><em>{recovery ? (no ? 'det som teller.' : 'what matters.') : (no ? 'Starter her.' : 'Start here.')}</em></h2>
-            <p>{recovery ? (no ? 'Glemt passordet? Vi hjelper deg tilbake til samtalene, kundene og teamet ditt.' : 'Forgot your password? Let’s get you back to your conversations, customers and team.') : (no ? 'Et roligere sted å samle samtaler, følge opp kunder og få oversikt. Laget for deg og teamet ditt.' : 'A calmer place to bring conversations together, support your customers and see the bigger picture. Built for you and your team.')}</p>
-            <div className="nordicAuthStoryTags"><span>{no ? 'Samtaler' : 'Conversations'}</span><i /><span>{no ? 'Samarbeid' : 'Collaboration'}</span><i /><span>{no ? 'Oversikt' : 'Insights'}</span></div>
+            <h2>{recovery ? (no ? 'Få tilgang til' : 'Access') : (no ? 'Kundesamtaler.' : 'Customer conversations.')}<br /><em>{recovery ? (no ? 'kontoen din.' : 'your account.') : (no ? 'Samlet på ett sted.' : 'All in one place.')}</em></h2>
+            <p>{recovery ? (no ? 'Tilbakestill passordet for å få tilgang til arbeidsområdet ditt igjen.' : 'Reset your password to access your workspace again.') : signup ? (no ? 'Opprett et arbeidsområde for bedriften eller bli med i teamet ditt. Sett opp chatten, svar på henvendelser og følg opp kundene i Vintra.' : 'Create a business workspace or join your team. Set up your chat, reply to enquiries and follow up with customers in Vintra.') : (no ? 'Logg inn for å svare på henvendelser, administrere chatten og følge opp teamets oppgaver.' : 'Sign in to reply to enquiries, manage your chat and follow up on your team’s tasks.')}</p>
           </div>
           <div className="nordicAuthLandscape" aria-hidden="true"><div className="nordicAuthSunDisc" /><AuthLandscape className="nordicAuthMountains" /><NordicTrees className="nordicAuthTrees" />{season === 'winter' && <SeasonSnowfall />}</div>
-          <div className="nordicAuthStoryFooter"><span>{no ? 'Nordisk ro. Digital flyt.' : 'Nordic calm. Digital flow.'}</span><span>VINTRA ®</span></div>
         </aside>
 
         <section className="nordicAuthFormPanel" aria-labelledby="auth-title">
-          <div className="nordicAuthFormTop"><Link href="/"><FiArrowLeft aria-hidden="true" />{no ? 'Til forsiden' : 'Back to home'}</Link><span>{recovery ? (no ? 'KONTOHJELP' : 'ACCOUNT RECOVERY') : signup ? (no ? 'KOM I GANG' : 'GET STARTED') : (no ? 'DITT ARBEIDSOMRÅDE' : 'YOUR WORKSPACE')}</span></div>
+          <div className="nordicAuthFormTop"><Link href="/"><FiArrowLeft aria-hidden="true" />{no ? 'Til forsiden' : 'Back to home'}</Link></div>
           <div className="nordicAuthFormContent">{children}</div>
           <div className="nordicAuthFormFooter"><span>Vintra Nordic</span><Link href="/">{no ? 'Bli kjent med Vintra' : 'Discover Vintra'}<FiArrowUpRight aria-hidden="true" /></Link></div>
         </section>

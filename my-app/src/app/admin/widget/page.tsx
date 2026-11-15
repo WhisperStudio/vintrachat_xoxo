@@ -4,7 +4,7 @@ import LoadingAnimation from '@/components/LoadingAnimation'
 
 import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
-import { FiCheck, FiCode, FiCopy, FiDownload, FiGlobe, FiLayers, FiPlus, FiSettings, FiShield, FiTrash2 } from 'react-icons/fi'
+import { FiCheck, FiCode, FiGlobe, FiLayers, FiPlus, FiSettings, FiShield, FiTrash2 } from 'react-icons/fi'
 import { useAuth } from '@/context/AuthContext'
 import { useVintraLanguage } from '@/lib/i18n'
 import { createChatWidget, deleteChatWidget, setActiveChatWidget, updateChatWidgetConfig } from '@/lib/auth.service'
@@ -12,6 +12,7 @@ import { getEffectiveBusinessPlan, getPlanLimits } from '@/lib/subscription'
 import { parseAllowedDomainsInput } from '@/lib/widget-security'
 import '@/components/chat/WidgetFlowSettings.css'
 import './WidgetStudio.css'
+import WidgetInstallGuide from '@/components/chat/WidgetInstallGuide'
 import ConfirmStudioAction from '@/components/chat/ConfirmStudioAction'
 
 const ChatWidgetStudio = dynamic(() => import('@/app/landings/auth/chatWidget/ChatWidgetBuilder'), { loading: () => <LoadingAnimation label="Laster studio…" /> })
@@ -46,7 +47,6 @@ export default function WidgetAdminPanel({ selectedWidgetKey, onWidgetSelected, 
   const plan = getEffectiveBusinessPlan(business, config)
   const limit = getPlanLimits(plan).maxWidgets
   const canCreate = limit === null || widgets.length < limit
-  const embedCode = `<script src="https://chat.vintrastudio.com/widget/${encodeURIComponent(key)}.js" async></script>`
 
   useEffect(() => {
     setDomains((config?.allowedDomains || []).join('\n'))
@@ -107,15 +107,7 @@ export default function WidgetAdminPanel({ selectedWidgetKey, onWidgetSelected, 
     {error && <p className="widgetStudioAlert" role="alert">{error}</p>}
     {notice && <p className="widgetStudioNotice" role="status"><FiCheck aria-hidden="true" />{notice}</p>}
     {section === 'studio' && <ChatWidgetStudio key={key} embedded widgetKey={key} onWidgetSelected={selectWidget} setupMode={needsSetup} onSetupComplete={async () => { if (setupMode) await onSetupComplete?.(); await refreshBusiness() }} />}
-    {section === 'install' && <section className="widgetStudioCard">
-      <div className="widgetStudioCardHeading"><span className="widgetStudioIcon"><FiCode /></span><div><h2>{no ? 'Legg assistenten på nettsiden' : 'Add your assistant to your website'}</h2><p>{no ? 'Lagre oppsettet, tillat domenet under Synlighet, og lim inn koden før </body> på nettsiden.' : 'Save your setup, allow your domain under Visibility, and paste this before </body> on your website.'}</p></div></div>
-      <pre className="widgetStudioCode"><code>{embedCode}</code></pre>
-      <div className="widgetStudioActions"><button type="button" disabled={!key || busy} onClick={() => void run(async () => { await navigator.clipboard.writeText(embedCode); setNotice(no ? 'Koden er kopiert.' : 'Code copied.') })}><FiCopy />{no ? 'Kopier kode' : 'Copy code'}</button><button type="button" className="secondary" disabled={!key} onClick={() => {
-        const url = URL.createObjectURL(new Blob([embedCode], { type: 'text/html;charset=utf-8' }))
-        const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'vintra-chat-widget.html'; anchor.click()
-        window.setTimeout(() => URL.revokeObjectURL(url), 1000)
-      }}><FiDownload />{no ? 'Last ned' : 'Download'}</button></div>
-    </section>}
+    {section === 'install' && <WidgetInstallGuide widgetKey={key} no={no} busy={busy} run={run} onCopied={() => setNotice(no ? 'Koden er kopiert.' : 'Code copied.')} />}
     {section === 'security' && <section className="widgetStudioCard widgetFlowSettings">
       <div className="widgetStudioCardHeading"><span className="widgetStudioIcon"><FiGlobe /></span><div><h2>{no ? 'Hvor skal assistenten vises?' : 'Where should your assistant appear?'}</h2><p>{no ? 'Dette styrer plasseringen på nettsiden. Assistentens svar og funksjoner endrer du under Assistenten.' : 'This controls placement on your website. Edit replies and features under Assistant.'}</p></div></div>
       <label className="widgetFlowField"><span>{no ? 'Tillatte domener' : 'Allowed domains'}</span><textarea rows={4} value={domains} placeholder="din-bedrift.no" onChange={e => setDomains(e.target.value)} /><small>{no ? 'Ett domene eller én full nettsidelenke per linje. Mobilapper kan bruke en app-ID.' : 'One domain or full website URL per line. Mobile apps can use an app ID.'}</small></label>

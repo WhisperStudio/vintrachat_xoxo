@@ -79,6 +79,22 @@ test('the exported widget is valid JavaScript with its real serialized helpers',
   assert.doesNotThrow(() => new vm.Script(exportedScript()));
 });
 
+test('help card module controls visibility even when the old design flag is disabled', () => {
+  const source = ts.createSourceFile('widget.js', exportedScript(), ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  let declaration;
+  function visit(node) {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === 'getConversationCards') declaration = node.getText(source);
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  const assistant = { conversationCardsEnabled: true, conversationCardsLimit: 3, conversationCards: [{ id: 'hours', title: 'Opening hours', icon: 'FiClock', options: [{ label: 'Hours', prompt: 'When are you open?' }] }] };
+  const getCards = vm.runInNewContext(`(${declaration})`, { getAssistantConfig: () => assistant });
+  assert.equal(getCards({ bodyStyle: { showConversationCards: false } }).length, 1);
+  assert.equal(getCards({ bodyStyle: { showConversationCards: false } })[0].options[0].prompt, 'When are you open?');
+  assistant.conversationCardsEnabled = false;
+  assert.equal(getCards({ bodyStyle: { showConversationCards: true } }).length, 0);
+});
+
 test('exported ticket form respects self-service and escapes editable copy', () => {
   const script = exportedScript();
   const source = ts.createSourceFile('widget.js', script, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);

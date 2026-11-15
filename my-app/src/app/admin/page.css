@@ -1551,3 +1551,8 @@
 .adminSidebarHelp {
   text-decoration: none;
 }
+
+/* Quiet corner details echo the overview card without competing with content. */
+.adminQuickLinks button { position: relative; isolation: isolate; overflow: hidden; }
+.adminQuickLinks button::after { content: ''; position: absolute; z-index: -1; pointer-events: none; width: 140px; height: 140px; right: -60px; bottom: -85px; background: url('/images/quiet-arcs.svg') center / contain no-repeat; opacity: .24; }
+.adminQuickLinks button:nth-child(2)::after { left: -72px; right: auto; bottom: auto; top: -88px; transform: rotate(180deg); }

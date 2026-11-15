@@ -749,10 +749,9 @@ html[data-theme-switching='true'] *::after {
 html[data-theme='dark'] .badge.success, html[data-theme='dark'] .authCallout.success { color: #56edc6; background: #123c36; border-color: #247a66; }
 .loading-spinner { border-top-color: #00a67e; }
 .adminPage .adminMain,
-.billing-page:not(.workspaceBilling),
-.chatbuilder-page:not(.workspaceEmbeddedBuilder) {
-  background-image: url('/images/workspace-contours.svg');
+.billing-page:not(.workspaceBilling) {
+  background-image: linear-gradient(to bottom, color-mix(in srgb, var(--admin-bg, var(--app-bg, #edf2f5)) 80%, transparent), var(--admin-bg, var(--app-bg, #edf2f5))), url('/images/studio-mountains.svg');
   background-position: center 60px;
-  background-size: max(100%, 1100px) auto;
-  background-repeat: repeat-y;
+  background-size: 100% 600px;
+  background-repeat: no-repeat;
 }

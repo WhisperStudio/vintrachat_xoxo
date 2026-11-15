@@ -1517,7 +1517,7 @@ export async function GET(
     var assistantConfig = getAssistantConfig();
     var bodyStyle = (config && config.bodyStyle) || {};
 
-    if (!bodyStyle.showConversationCards || assistantConfig.conversationCardsEnabled === false) {
+    if (assistantConfig.conversationCardsEnabled === false) {
       return [];
     }
 
@@ -1890,7 +1890,7 @@ export async function GET(
       return message.role === 'user' || message.role === 'support';
     });
     var hasTypedMessage = countCharacters(String(state.inputValue || '').trim()) > 0;
-    var showStarterCards = Boolean(bodyStyle.showConversationCards && state.open && !hasUserMessage && !hasTypedMessage);
+    var showStarterCards = Boolean(assistantConfig.conversationCardsEnabled !== false && state.open && !hasUserMessage && !hasTypedMessage);
 
     if (!showStarterCards || !starterCards.length) {
       return {

@@ -28,3 +28,20 @@
 
 .widgetStudioDelete h3 { margin: 0 0 14px; font-size: 15px; }
 .widgetStudioDelete .danger { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 10px 14px; border: 1px solid #c57f86; border-radius: 9px; background: #a33743; color: #fff; font-size: 12px; cursor: pointer; }
+
+.widgetInstallGuide { gap: 28px; }
+.widgetInstallSteps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; margin: 0; padding: 24px 24px 24px 44px; border: 1px solid var(--admin-border, var(--app-border)); border-radius: 14px; background: var(--admin-surface-soft, var(--app-surface-soft)); }
+.widgetInstallSteps li { padding-left: 6px; font-size: 15px; line-height: 1.7; }
+.widgetInstallSteps li::marker { color: var(--admin-accent, #126b62); font-weight: 700; }
+.widgetInstallSteps p, .widgetInstallInstruction, .widgetInstallHelp p { margin: 8px 0 0; font-size: 14px; line-height: 1.8; color: var(--admin-muted, var(--app-muted)); }
+.widgetInstallFormats { display: flex; flex-wrap: wrap; gap: 10px; }
+.widgetInstallFormats button { min-height: 44px; padding: 10px 20px; border: 1px solid var(--admin-border, var(--app-border)); border-radius: 10px; background: var(--admin-surface-soft, var(--app-surface-soft)); color: inherit; font: inherit; font-size: 14px; cursor: pointer; }
+.widgetInstallFormats button[aria-pressed='true'] { color: var(--admin-accent, #126b62); background: var(--admin-accent-soft, #e0f0e9); border-color: var(--admin-accent, #126b62); }
+.widgetInstallInstruction { margin: -12px 0 0; max-width: 90ch; }
+.widgetInstallGuide .widgetStudioCode { margin: 0; font-size: 14px; }
+.widgetInstallHelp { padding: 24px; border: 1px solid var(--admin-border, var(--app-border)); border-radius: 14px; background: var(--admin-accent-soft, #e0f0e9); }
+.widgetInstallHelp h3 { margin: 0; font-size: 18px; }
+.widgetInstallHelp a { display: inline-block; margin-top: 14px; color: var(--admin-accent, #126b62); font-size: 14px; overflow-wrap: anywhere; }
+.widgetInstallGuide :is(button, a, pre):focus-visible { outline: 3px solid var(--admin-accent, #126b62); outline-offset: 3px; }
+@media (max-width: 800px) { .widgetInstallSteps { grid-template-columns: 1fr; gap: 20px; } }
+.widgetInstallHelp { background-image: url('/images/quiet-arcs.svg'); background-size: 190px; background-position: right -65px bottom -100px; background-repeat: no-repeat; }

@@ -368,7 +368,7 @@ html[data-theme='dark'] .chatbuilder-page {
   top: 76px;
   height: 440px;
   background: url('/images/studio-mountains.svg?v=gentle-ridge-2') center top / 100% 100% no-repeat;
-  opacity: .42;
+  opacity: .24;
 }
 .chatbuilder-page::after {
   top: 76px;

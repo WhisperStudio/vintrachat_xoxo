@@ -16,7 +16,7 @@ import { useActiveWidgetSelection } from '@/lib/active-widget'
 import { useRouter } from 'next/navigation'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore'
-import { FiArrowLeft, FiArrowRight, FiArrowUpRight, FiCheck, FiChevronLeft, FiChevronRight, FiMoon, FiSun, FiGrid, FiMessageSquare, FiCheckSquare, FiStar, FiBarChart2, FiUsers, FiLayers, FiGlobe, FiSettings, FiMenu, FiX, FiLogOut, FiHelpCircle } from 'react-icons/fi'
+import { FiArrowLeft, FiArrowRight, FiArrowUpRight, FiCheck, FiChevronLeft, FiChevronRight, FiMoon, FiSun, FiGrid, FiMessageSquare, FiCheckSquare, FiStar, FiBarChart2, FiUsers, FiLayers, FiSettings, FiMenu, FiX, FiLogOut, FiHelpCircle, FiSliders, FiCreditCard, FiLayout } from 'react-icons/fi'
 import { businessAdminI18n, useVintraLanguage } from '@/lib/i18n'
 import {
   APP_THEME_EVENT,
@@ -401,8 +401,8 @@ export default function AdminWorkspace({ billingConfigured, billingTestMode }: {
 
   const no = language === 'no'
   const navIcons = { overview: FiGrid, chats: FiMessageSquare, tasks: FiCheckSquare,
-    feedback: FiStar, analytics: FiBarChart2, users: FiUsers, widgets: FiLayers,
-    websites: FiGlobe, settings: FiSettings, builder: FiLayers, subscriptions: FiLayers, vintra: FiSettings }
+    feedback: FiStar, analytics: FiBarChart2, users: FiUsers, widgets: FiSliders,
+    websites: FiLayout, settings: FiSettings, builder: FiSliders, subscriptions: FiCreditCard, vintra: FiSettings }
   const renderNavItem = (tab: AdminTab, label: string) => {
     const Icon = navIcons[tab]
     return <button key={tab} type="button" title={label}

@@ -500,14 +500,14 @@ export default function WidgetPreview({
   const visibleErrorMessage = errorMessage || internalErrorMessage
   const hasTypedMessage = countChars(String(inputValue ?? '').trim()) > 0
   const starterCards = useMemo<AssistantConversationCard[]>(() => {
-    if (!bodyStyle.showConversationCards) return []
+
 
     if (!conversationCardsEnabled) return []
 
     const normalized = normalizeConversationCards(conversationCards)
     const limited = normalized.slice(0, Math.max(1, Number(conversationCardsLimit || 4)))
     return limited.map(card => ({ ...card, title: t(card.title), description: t(card.description), options: card.options.map(option => ({ ...option, label: t(option.label), description: option.description ? t(option.description) : undefined, prompt: t(option.prompt) })) }))
-  }, [conversationCardsLimit, bodyStyle.showConversationCards, conversationCards, conversationCardsEnabled, t])
+  }, [conversationCardsLimit, conversationCards, conversationCardsEnabled, t])
   const showStarterCards =
     starterCards.length > 0 &&
     isChatOpen &&

@@ -105,8 +105,8 @@ export default function SignupPage() {
         <li aria-current={step === 'form' ? 'step' : undefined}><span>2</span>{no ? 'Din konto' : 'Your account'}</li>
       </ol>
       <div className="nordicAuthIntro">
-        <h1 id="auth-title" ref={stepTitle} tabIndex={-1}>{step === 'choice' ? (no ? 'Her starter det.' : 'Your next chapter.') : (no ? 'Hyggelig å møte deg.' : 'Nice to meet you.')}</h1>
-        <p>{step === 'choice' ? (no ? 'Et eget sted for bedriften, eller en plass på laget?' : 'A workspace of your own, or a place on the team?') : (no ? 'Opprett kontoen din for å komme i gang.' : 'Create your account to get started.')}</p>
+        <h1 id="auth-title" ref={stepTitle} tabIndex={-1}>{step === 'choice' ? (no ? 'Velg arbeidsområde' : 'Choose your workspace') : (no ? 'Opprett kontoen din' : 'Create your account')}</h1>
+        <p>{step === 'choice' ? (no ? 'Opprett et arbeidsområde for bedriften, eller bli med i et eksisterende team.' : 'Create a business workspace or join an existing team.') : (no ? 'Fyll inn opplysningene dine for å få tilgang til arbeidsområdet.' : 'Enter your details to access your workspace.')}</p>
       </div>
 
       {step === 'choice' ? (

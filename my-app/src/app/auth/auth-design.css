@@ -194,3 +194,5 @@ html[data-theme='dark'] .nordicAuthTrees { --spruce-green: #255064; }
 .nordicAuthFormContent .authBody, .nordicAuthFormContent .authTinyNote, .nordicAuthFormContent .authChecklist span { color: var(--auth-muted); }
 .nordicAuthFormContent .authSecondarySurface, .nordicAuthFormContent .authNotice { background: var(--auth-soft); border-color: var(--auth-line); color: var(--auth-text); }
 .nordicAuthFormContent .authButtonStack .primaryBtn, .nordicAuthFormContent .authButtonStack .secondaryBtn { min-height: 46px; border-radius: 9px; }
+
+.nordicAuthStory::after { content: ''; position: absolute; z-index: -1; top: -110px; right: -125px; width: 330px; height: 330px; background: url('/images/quiet-arcs.svg') center / contain no-repeat; opacity: .2; pointer-events: none; }

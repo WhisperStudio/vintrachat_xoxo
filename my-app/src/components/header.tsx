@@ -23,7 +23,9 @@ import {
   FiBriefcase,
   FiGlobe,
   FiGrid,
-  FiLayers,
+  FiCreditCard,
+  FiLayout,
+  FiSliders,
   FiLogOut,
   FiMenu,
   FiMessageSquare,
@@ -493,13 +495,14 @@ const SecondaryAction = styled(Link)`
 
 const PrimaryAction = styled(Link)`
   ${BaseButtonStyles}
-  --button-bg: linear-gradient(135deg, #111827 0%, #1d4ed8 100%);
-  --button-border: transparent;
-  --button-shadow: 0 16px 28px rgba(29, 78, 216, 0.22);
+  --button-bg: #176f68;
+  --button-border: #176f68;
+  --button-shadow: 0 4px 12px rgba(23, 111, 104, 0.12);
   color: #f8fafc;
 
   &:hover {
-    box-shadow: 0 18px 30px rgba(29, 78, 216, 0.28);
+    background: #125e59;
+    box-shadow: 0 6px 16px rgba(23, 111, 104, 0.18);
   }
 `
 
@@ -935,9 +938,9 @@ export default function Header() {
   const navItems = useMemo<NavItem[]>(() => {
     if (showGuestLinks) {
       return [
-        { href: '/priser', label: language === 'no' ? 'Abonnementer' : 'Subscriptions', icon: <FiLayers /> },
-        { href: '/landings/guest/websites', label: text.nav.websites, icon: <FiLayers /> },
-        { href: '/landings/auth/chatWidget', label: text.nav.chatWidget, icon: <FiMessageSquare /> },
+        { href: '/priser', label: language === 'no' ? 'Abonnementer' : 'Subscriptions', icon: <FiCreditCard /> },
+        { href: '/landings/guest/websites', label: text.nav.websites, icon: <FiLayout /> },
+        { href: '/landings/auth/chatWidget', label: text.nav.chatWidget, icon: <FiSliders /> },
         ...(showInvitationCenter
           ? [
               {
@@ -1066,7 +1069,7 @@ export default function Header() {
                   <SecondaryAction href="/auth/login">{text.actions.login}</SecondaryAction>
                   <PrimaryAction href="/auth/signup">
                     <FiArrowRight />
-                    <span>{text.actions.startFree}</span>
+                    <span>{text.actions.createAccount}</span>
                   </PrimaryAction>
                 </>
               ) : showInvitationCenter ? (
@@ -1156,7 +1159,7 @@ export default function Header() {
                 <SecondaryAction href="/auth/login">{text.actions.login}</SecondaryAction>
                 <PrimaryAction href="/auth/signup">
                   <FiArrowRight />
-                  <span>{text.actions.startFree}</span>
+                  <span>{text.actions.createAccount}</span>
                 </PrimaryAction>
               </>
             ) : showInvitationCenter ? (

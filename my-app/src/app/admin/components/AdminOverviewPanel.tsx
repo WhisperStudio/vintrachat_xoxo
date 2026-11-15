@@ -8,6 +8,7 @@ import {
   FiCheckSquare,
   FiClock,
   FiLayers,
+  FiSliders,
   FiMessageSquare,
   FiRefreshCw,
   FiStar,
@@ -515,7 +516,7 @@ export default function AdminOverviewPanel({
       </div>
       <div className="adminQuickLinks">
         <button onClick={() => onNavigate('widgets')}>
-          <FiLayers />
+          <FiSliders />
           <span>
             <strong>
               {no ? 'Gjør widgeten til din' : 'Make your widget yours'}

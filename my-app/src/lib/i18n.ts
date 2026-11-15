@@ -110,7 +110,7 @@ export const headerI18n = {
     },
     actions: {
       login: 'Log In',
-      startFree: 'Start Free',
+      createAccount: 'Create account',
       createBusiness: 'Create Business',
       logout: 'Log Out',
     },
@@ -135,7 +135,7 @@ export const headerI18n = {
     },
     actions: {
       login: 'Logg inn',
-      startFree: 'Start gratis',
+      createAccount: 'Opprett konto',
       createBusiness: 'Opprett bedrift',
       logout: 'Logg ut',
     },

@@ -329,12 +329,10 @@ html[data-theme='dark'] .studioModuleArtwork { color: color-mix(in srgb, var(--m
 .studioModuleListRemove svg { width: 13px; height: 13px; }
 .studioModuleDialogHeader .studioModuleArtwork { flex-shrink: 0; }
 body[data-studio-focus='true'] > :not([data-studio-focus-root]):not(script):not(style):not(link) { display: none !important; }
-.chatbuilder-page.studioFocusPage, html[data-theme='dark'] .chatbuilder-page.studioFocusPage { --bg: #ffffff; --bg-2: #f4f7fa; --panel: #ffffff; --text: #162c40; --text-soft: #3c5368; --muted: #586d7e; --border: #c9d6df; --border-strong: #8aa2b6; --brand: #137368; --brand-2: #218d7e; --studio-selected: #e8f4ef; --studio-button: #137368; --studio-button-text: #ffffff; --studio-line: #e0e7ed; --studio-error: #ac3443; --studio-warning: #8a5b0e; --studio-control: #f3f6f9; --studio-choice-bg: #e7f0f7; --studio-choice-text: #173c58; --studio-glass: #f3f7fa; --studio-slider: #e5eff6; color-scheme: light; background: #fff !important; color: #162c40; min-height: 100dvh; }
-.studioFocusPage::before, .studioFocusPage::after { display: none !important; }
-.studioFocusHeader { display: flex; align-items: center; gap: 20px; width: min(100% - 48px, 1040px); margin: 0 auto; padding: 22px 0; border-bottom: 1px solid #e0e7ed; }
-.studioFocusHeader > span { font-size: 12px; color: #647586; }
-.studioFocusBack { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 8px 12px; border: 1px solid #d4dee5; border-radius: 8px; color: #294c66; background: #fff; font-size: 13px; cursor: pointer; }
-.studioFocusBack:hover { background: #f4f7fa; }
+.studioFocusHeader { display: flex; align-items: center; gap: 20px; width: min(100% - 48px, 1040px); margin: 0 auto; padding: 22px 0; border-bottom: 1px solid var(--studio-line); }
+.studioFocusHeader > span { font-size: 12px; color: var(--muted); }
+.studioFocusBack { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; color: var(--text); background: var(--panel); font-size: 13px; cursor: pointer; }
+.studioFocusBack:hover { background: var(--bg-2); }
 .studioFocusBack svg { width: 16px; height: 16px; }
 .studioFocusContent { width: min(100% - 48px, 920px); margin: 0 auto; padding: 32px 0 60px; }
 .studioFocusWithPreview .studioFocusHeader { width: min(100% - 64px, 1440px); }
@@ -347,22 +345,21 @@ body[data-studio-focus='true'] > :not([data-studio-focus-root]):not(script):not(
   .studioFocusWithPreview .studioFocusLayout { display: flex; flex-direction: column-reverse; gap: 20px; width: calc(100% - 32px); padding-top: 20px; }
   .studioFocusWithPreview .studioFocusHeader { width: calc(100% - 32px); }
   .studioFocusPreview { position: static; width: 100%; }
-  .studioFocusPreview .studioMobilePreviewButton { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; background: white; color: var(--text); cursor: pointer; }
+  .studioFocusPreview .studioMobilePreviewButton { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); color: var(--text); cursor: pointer; }
 }
 .studioFocusPage .studioModuleDialogHeader { position: static; align-items: center; justify-content: flex-start; padding: 0 0 24px; border: 0; }
 .studioFocusPage .studioModuleDialogHeader h1 { margin: 6px 0 0; font-size: clamp(25px, 3vw, 32px); font-weight: 600; letter-spacing: -.035em; }
 .studioFocusPage .studioModuleDialogBody { padding: 0; }
-.studioFocusPage .studioModuleDialogFooter { position: static; margin-top: 28px; padding: 18px 0; background: #fff; }
-.studioFocusPage .widgetFlowField textarea, .studioFocusPage .widgetFlowField input, .studioFocusPage .widgetFlowField select { background: #fff; }
-.studioFocusPage .studioModuleArtwork { color: var(--module-accent) !important; }
+.studioFocusPage .studioModuleDialogFooter { position: static; margin-top: 28px; padding: 18px 0; background: var(--panel); }
+.studioFocusPage .widgetFlowField textarea, .studioFocusPage .widgetFlowField input, .studioFocusPage .widgetFlowField select { background: var(--panel); }
 .studioFocusPage .builder-content-panel { padding: 0; }
 .studioFocusPage .studioPresets { padding: 0; border: 0; }
 .studioFocusPage .studioPresetChoices { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
 .studioFocusPage .studioDesignIndex { display: grid; gap: 24px; }
 .studioFocusPage .studioDesignIndex h1 { margin: 8px 0; font-size: 29px; font-weight: 600; letter-spacing: -.035em; }
-.studioFocusPage .studioDesignIndex .studioModuleRow { min-height: 88px; background: #f7f9fb; }
-.studioFocusPage .studioDesignIndex .studioModuleRow:hover { background: #edf3f8; }
-.studioFocusedDesignFooter { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; position: static; margin-top: 28px; padding: 18px 0; border-top: 1px solid #e0e7ed; background: #fff; font-size: 12px; color: #586d7e; }
+.studioFocusPage .studioDesignIndex .studioModuleRow { min-height: 88px; background: var(--panel); }
+.studioFocusPage .studioDesignIndex .studioModuleRow:hover { background: var(--bg-2); }
+.studioFocusedDesignFooter { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; position: static; margin-top: 28px; padding: 18px 0; border-top: 1px solid var(--studio-line); background: var(--panel); font-size: 12px; color: var(--muted); }
 .studioFocusedDesign .studioConfirmAction { vertical-align: middle; }
 @media (max-width: 600px) {
   .studioFocusHeader { width: calc(100% - 32px); padding: 15px 0; gap: 12px; }
@@ -373,4 +370,93 @@ body[data-studio-focus='true'] > :not([data-studio-focus-root]):not(script):not(
   .studioModuleArtwork { width: 38px; height: 38px; flex-basis: 38px; }
   .studioModuleArtwork svg { width: 21px; height: 21px; }
   .studioModuleDialogFooter > .studioConfirmAction[data-armed='true'] { flex: 1 1 100%; }
+}
+
+/* Focus pages inherit the studio palette and landscape in both themes. */
+.chatbuilder-page.studioFocusPage { min-height: 100dvh; }
+.studioFocusHeader, .studioFocusLayout, .studioFocusContent { position: relative; z-index: 1; }
+.studioFocusPage .studioModulePage, .studioFocusPage .studioFocusedDesign { padding: clamp(20px, 3vw, 36px); border: 1px solid var(--studio-line); border-radius: 20px; background: var(--panel); box-shadow: var(--shadow-md); }
+.studioFocusPage .widgetFlowSettings { gap: 26px; }
+.studioFocusPage .widgetFlowField { gap: 10px; font-size: 14px; line-height: 1.65; }
+.studioFocusPage .widgetFlowField :is(input, select, textarea) { font-size: 15px; line-height: 1.7; padding: 13px 15px; }
+.studioFocusPage .widgetFlowField textarea { min-height: 150px; }
+.studioFocusPage .widgetFlowField small, .studioFocusPage .studioModuleIntroduction { font-size: 13px; line-height: 1.8; }
+.studioFocusPage .studioGroup > summary { padding: 22px; background: var(--bg-2); }
+.studioFocusPage .studioGroupCopy strong { font-size: 16px; }
+.studioFocusPage .studioGroupBody { padding: 22px; gap: 26px; }
+.studioFocusPage .studioGroupBody > .group { margin: 0; }
+.studioFocusPage .studioVisualOptions > summary { min-height: 76px; }
+.studioFocusPage .glassRadioRow--visual { gap: 12px; }
+.studioFocusPage .glassRadioButton { min-height: 48px; }
+@media (min-width: 1101px) {
+  .chatbuilder-page .chatbuilder-grid { grid-template-columns: minmax(0, 1fr) minmax(440px, 480px); }
+  .studioFocusWithPreview .studioFocusLayout { grid-template-columns: minmax(0, 1fr) 480px; }
+}
+@media (max-width: 600px) {
+  .studioFocusPage .studioModulePage, .studioFocusPage .studioFocusedDesign { padding: 18px; border-radius: 14px; }
+  .studioFocusPage .studioGroupBody { padding: 16px; }
+}
+.studioFocusPage .studioVisualOptions > summary > strong { font-size: 14px; }
+.chatbuilder-page.studioFocusPage .builder-content-panel .studioVisualOptions .glassRadioButton { padding: 14px; min-height: 160px; font-size: 13px; }
+.chatbuilder-page.studioFocusPage .builder-content-panel .studioVisualOptions .widget-option-preview { height: 125px; }
+.studioFocusPage .studioModulePage { background-image: url('/images/quiet-arcs.svg'); background-size: 180px; background-position: right -95px top -105px; background-repeat: no-repeat; }
+
+.chatbuilder-page .helpCardsContent { border-color: var(--studio-line); border-radius: 16px; background: var(--bg-2); padding: clamp(16px, 2vw, 24px); }
+.chatbuilder-page .helpCardsContent .starterCardsTree__card { background: var(--panel); color: var(--text); border-color: var(--border); }
+.chatbuilder-page .helpCardsContent .starterCardsTree__icon { color: var(--brand); background: var(--studio-selected); }
+.chatbuilder-page .helpCardsContent .starterCardsTree__copy > span, .chatbuilder-page .helpCardsContent .starterCardsTree__meta { color: var(--muted); }
+.chatbuilder-page .helpCardsContent .starterCardsTree__copy > strong { color: var(--text); }
+.chatbuilder-page .helpCardsContent .starterCardsPanel__back { color: var(--brand); }
+.chatbuilder-page .helpCardsContent .starterCardsPanel__controls { align-items: end; gap: 16px; }
+.chatbuilder-page .helpCardsContent .starterCardsPanel__header p, .chatbuilder-page .helpCardsContent .starterOptionsEditor__header p { color: var(--muted); line-height: 1.7; font-size: 13px; }
+.chatbuilder-page .helpCardsContent .starterCardsTree__add { color: var(--brand); background: var(--panel); border-color: var(--border); }
+.chatbuilder-page .helpCardsContent .studioModuleCardEditor { background: var(--panel); }
+.chatbuilder-page .helpCardsContent .starterCardsTree__card:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
+@media (max-width: 600px) { .helpCardsContent .starterCardsTree__meta { display: none; } .helpCardsContent .starterCardsPanel__controls { flex-wrap: wrap; } }
+
+.chatbuilder-page .helpCardsContent .helpCardDetail { display: grid; gap: 22px; padding: 20px; border: 1px solid var(--studio-line); border-radius: 16px; background: var(--panel); }
+.chatbuilder-page .helpCardsContent .starterOptionsEditor { display: grid; gap: 14px; position: relative; padding: 18px; border: 1px solid color-mix(in srgb, #a394eb 30%, var(--border)); border-radius: 14px; background: var(--bg-2); }
+.chatbuilder-page .helpCardsContent .starterOptionRow { grid-template-columns: 16px minmax(0, 1fr) 36px; background: var(--panel); border-color: var(--studio-line); padding: 16px 12px; box-shadow: none; }
+.chatbuilder-page .helpCardsContent .starterOptionRow__fields { grid-template-columns: minmax(0, 1fr); gap: 15px; }
+.chatbuilder-page .helpCardsContent .starterOptionRow__branch { border-color: #a394eb88; }
+.chatbuilder-page .helpCardsContent .starterOptionRow__fields label { color: var(--text-soft); font-size: 13px; }
+.chatbuilder-page .helpCardsContent .studioEditableField > span { display: flex; align-items: center; gap: 8px; }
+.chatbuilder-page .helpCardsContent .studioEditableField > span svg { color: #9b8aef; flex: 0 0 15px; }
+.chatbuilder-page .helpCardsContent .starterOptionRow textarea { min-height: 48px; }
+.chatbuilder-page .helpCardsContent .starterOptionRow__remove { color: var(--muted); }
+@media (max-width: 600px) { .chatbuilder-page .helpCardsContent .helpCardDetail { padding: 12px; } .chatbuilder-page .helpCardsContent .starterOptionsEditor { padding: 10px; } }
+
+.chatbuilder-page .studioInlineEditable { min-width: 0; }
+.chatbuilder-page .studioInlineLabel { color: var(--muted); font-size: 12px; }
+.chatbuilder-page .studioInlineText { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; min-height: 46px; padding: 10px 14px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: var(--text); text-align: left; font: inherit; line-height: 1.7; cursor: pointer; }
+.chatbuilder-page .studioInlineText > span { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.chatbuilder-page .studioInlineText > svg { opacity: 1; color: #9b8aef; flex: 0 0 16px; width: 16px; height: 16px; }
+.chatbuilder-page .studioInlineText:hover, .chatbuilder-page .studioInlineText:focus-visible { border-color: #b6a9ff; background: var(--panel); box-shadow: 0 0 0 4px #a594f514; outline: none; }
+.chatbuilder-page .studioInlineText:hover > svg, .chatbuilder-page .studioInlineText:focus-visible > svg { opacity: 1; }
+.chatbuilder-page .helpCardsContent .starterOptionsEditor { border-color: var(--studio-line); }
+
+/* Shared editing affordance across module and design forms; never customer chat fields. */
+.chatbuilder-page :is(.studioModulePage, .studioFocusedDesign, .studioCategory) :is(
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']):not([type='hidden']):not([type='submit']):not([type='button']):not([type='reset']), textarea
+):not(:disabled):not([readonly]) {
+  padding-right: 46px;
+  background-image: url('/images/edit-pencil.svg');
+  background-position: right 14px top 14px;
+  background-size: 17px;
+  background-repeat: no-repeat;
+  border-color: var(--border);
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+.chatbuilder-page :is(.studioModulePage, .studioFocusedDesign, .studioCategory) input[type='number']:not(:disabled):not([readonly]) { background-position: right 28px top 14px; padding-right: 58px; }
+.chatbuilder-page :is(.studioModulePage, .studioFocusedDesign, .studioCategory) :is(input, textarea):not(:disabled):not([readonly]):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']):not([type='hidden']):not([type='submit']):not([type='button']):not([type='reset']):is(:hover, :focus-visible) {
+  border-color: #a79aee;
+  box-shadow: 0 0 0 4px #a594f514;
+}
+.chatbuilder-page :is(.studioModulePage, .studioFocusedDesign, .studioCategory) :is(input, textarea):not(:disabled):not([readonly]):focus-visible { outline: 2px solid #a594f570; outline-offset: 2px; }
+
+/* Give the 528px preview canvas room to render at its intended reading size. */
+@media (min-width: 1400px) {
+  .chatbuilder-page .chatbuilder-grid { grid-template-columns: minmax(0, 1fr) 560px; gap: 32px; }
+  .studioFocusWithPreview .studioFocusHeader, .studioFocusWithPreview .studioFocusLayout { width: min(100% - 64px, 1600px); }
+  .studioFocusWithPreview .studioFocusLayout { grid-template-columns: minmax(0, 1fr) 560px; gap: 40px; }
 }
