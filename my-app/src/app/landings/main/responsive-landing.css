@@ -1,0 +1,102 @@
+/* Full-width background through 3400px; the outer landscape appears only beyond it. */
+.productLanding {
+  --landing-canvas-width: min(100vw, 3400px);
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 3400px;
+  min-height: 100svh;
+  margin-inline: auto;
+}
+.landingSurround { display: none; }
+.productLanding .storyMountainIntro { width: var(--landing-canvas-width); min-height: clamp(640px, 52vw, 880px); }
+.productLanding .storyMountainIntro .storyIntro { width: min(650px, calc(var(--landing-canvas-width) - 48px)); }
+.productLanding .storyFooter { padding-inline: max(24px, calc((var(--landing-canvas-width) - 1184px) / 2)); }
+.storyHeroCopy, .storyHeroHost, .storyChapters, .storyVisual, .storyFooterGrid > *, .contactPanel > * { min-width: 0; }
+.productLanding img { max-width: 100%; }
+@media (min-width: 3401px) {
+  .landingSurround {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at 50% 0, #EAF1F5, transparent 70%), linear-gradient(180deg, #D9E5ED, #B6CAD8);
+  }
+  .landingSurround > svg { display: block; width: 100%; height: 100%; opacity: .75; }
+  .landingSurroundFar { fill: #A9C0D0; opacity: .42; }
+  .landingSurroundNear { fill: #8FAEBC; opacity: .25; }
+  .landingSurroundFront { fill: #789CA9; opacity: .18; }
+  .productLanding { box-shadow: 0 0 0 1px var(--brand-border), 0 18px 90px #0B1D2B1A; }
+  html[data-theme='dark'] .landingSurround { background: radial-gradient(ellipse at 50% 0, #10283A, transparent 65%), linear-gradient(180deg, #07131F, #0C2030); }
+  html[data-theme='dark'] .landingSurroundFar { fill: #173449; opacity: .7; }
+  html[data-theme='dark'] .landingSurroundNear { fill: #294456; opacity: .35; }
+  html[data-theme='dark'] .landingSurroundFront { fill: #39706C; opacity: .16; }
+}
+@media (max-width: 1100px) and (min-width: 901px) {
+  .storyHero { gap: 28px; padding-inline: 32px; }
+  .storyHero h1 { font-size: clamp(42px, 4.7vw, 52px); }
+  .storyLayout { gap: 28px; grid-template-columns: minmax(0,.85fr) minmax(0,1.15fr); }
+  .productStory { padding-inline: 32px; }
+  .storyChapter h2 { font-size: 32px; }
+  .storyChapter > p { font-size: 15px; }
+  .storyActualWidget .floating-chat-preview { width: min(94%,350px); }
+}
+@media (max-width: 600px) {
+  .storyHero { padding-inline: 20px; padding-bottom: 40px; min-height: auto; }
+  .storyHero h1 { font-size: clamp(32px, 9.3vw, 46px); }
+  .storyHeroCopy > p { font-size: 15px; line-height: 1.85; }
+  .storyHeroHost { max-width: 300px; }
+  .storyHeroGreeting { max-width: 100%; overflow-wrap: anywhere; text-align: center; }
+  .storyActions > a { max-width: 100%; }
+  .storyChapter h2 { font-size: clamp(28px, 7.8vw, 34px); }
+  .storyChapter li { font-size: 13px; }
+  .productLanding .storyMountainIntro { min-height: 580px; }
+  .productLanding .storyMountainIntro .storyIntro { width: calc(var(--landing-canvas-width) - 40px); }
+  .productLanding .storyMountainIntro .storyIntro h2 { font-size: clamp(29px, 8.7vw, 36px); }
+  .productLanding .storyFooter { padding-inline: 20px; }
+  .storyFooterGrid { gap: 26px 18px; }
+  .storyFooterContact > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+  .contactAccountActions > a { flex: 1 1 auto; }
+}
+@media (max-width: 360px) {
+  .storyHero { padding-inline: 16px; }
+  .storyHero .storyActions { gap: 8px; }
+  .storyHero .storyActions > a { flex: 1 1 auto; padding-inline: 12px; font-size: 13px; }
+  .storyFooterGrid { grid-template-columns: 1fr; }
+  .storyFooterTop .storyFooterBrand { gap: 8px; }
+  .storyFooterBrand .storyFooterWordmark { font-size: 19px; }
+  .contactPanel { padding: 22px 14px; }
+  .contactCard { gap: 8px; padding-inline: 10px; }
+  .contactCard strong { font-size: 13px; }
+}
+/* On short phones and landscape screens, keep text and examples in normal flow. */
+@media (max-width: 600px) and (max-height: 700px), (max-width: 1100px) and (max-height: 560px) {
+  .productLanding .storyVisual { display: none; }
+  .productLanding .storyChapter { min-height: 0; padding-block: 36px; scroll-margin-top: 90px; }
+  .productLanding .storyStaticPreview { display: block; position: relative; height: 360px; margin-top: 24px; border: 1px solid var(--brand-border); border-radius: 16px; overflow: hidden; }
+  .productLanding .storyStaticPreview:has(.adminStaticScenes) { height: auto; }
+  .adminStaticScenes > .exampleAdmin { min-height: 390px; margin-bottom: 16px; }
+  .storyStaticPreview > .storyActualWidget { height: 100%; }
+  .productLanding .storyMountainIntro { min-height: 510px; padding-bottom: 80px; }
+  .storyHeroHost { margin-block: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .productLanding .storyVisual { display: none; }
+  .productLanding .storyStaticPreview { position: relative; }
+}
+@media (min-width: 901px) {
+ .storyChapter { min-height: min(100svh, 1040px); }
+ .storyChapter:last-child { min-height: min(85svh, 940px); }
+ .storyVisual { top: clamp(100px, calc((100svh - 820px) / 2), 220px); }
+}
+
+@media (max-width: 900px) { html.vintra-story-scroll { scroll-padding-top: 0; } }
+
+/* Size the landscape from the actual page canvas, including scrollbar space. */
+@supports (width: 1cqw) {
+  main.productLanding { container-type: inline-size; --landing-canvas-width: 100cqw; }
+}
+
+/* Keep balanced heading lines inside the mountain face at intermediate widths. */
+.productLanding .storyMountainIntro .storyIntro h2 { max-width: 16ch; margin-inline: auto; }

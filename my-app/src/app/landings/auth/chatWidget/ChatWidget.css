@@ -1,16 +1,16 @@
 /* Editor theme is scoped so the chosen customer-facing widget keeps its own colors. */
 .chatbuilder-page {
-  --bg: #edf2f5; --bg-2: #e3ebf1; --panel: #fbfcfd;
-  --text: #132e45; --text-soft: #304f68; --muted: #496278;
-  --border: #bacbd9; --border-strong: #758fa5;
-  --brand: #126b62; --brand-2: #158b7d; --brand-grad: linear-gradient(115deg, #126b62, #158b7d);
-  --studio-selected: #e0f0e9; --studio-button: #126b62; --studio-button-text: #ffffff;
-  --studio-hover: #cedfeb;
+  --bg: var(--brand-bg); --bg-2: var(--brand-elevated); --panel: var(--brand-surface);
+  --text: var(--brand-text); --text-soft: var(--brand-secondary); --muted: var(--brand-secondary);
+  --border: var(--brand-border); --border-strong: var(--brand-border);
+  --brand: var(--brand-teal); --brand-2: var(--brand-blue); --brand-grad: var(--brand-teal);
+  --studio-selected: var(--brand-elevated); --studio-button: var(--brand-teal); --studio-button-text: var(--brand-on-teal);
+  --studio-hover: var(--brand-elevated);
   --studio-sweep: linear-gradient(100deg, #a8d4f4 0%, #dcecf9 65%, #dcecf900 100%);
   --studio-glow: #287fba24;
-  --studio-control: #e6eff6;
-  --studio-choice-bg: #193f5e;
-  --studio-choice-text: #ffffff;
+  --studio-control: var(--brand-elevated);
+  --studio-choice-bg: var(--brand-teal);
+  --studio-choice-text: var(--brand-on-teal);
   --studio-sunlight: #e5ddd024;
   --studio-skyglow: #789db726;
   --studio-mountain-far: #cfdeea;
@@ -24,26 +24,26 @@
   isolation: isolate;
   background: radial-gradient(ellipse 700px 380px at 8% 80px, var(--studio-sunlight), transparent), radial-gradient(ellipse 900px 460px at 90% 160px, var(--studio-skyglow), transparent), var(--bg);
   color: var(--text); min-height: 100svh; line-height: 1.5;
-  --studio-focus: #286b96;
+  --studio-focus: var(--brand-blue);
 }
 html[data-theme='dark'] .chatbuilder-page {
-  --bg: #081725; --bg-2: #172e43; --panel: #10263a;
-  --text: #f0f5fa; --text-soft: #d6e3ee; --muted: #adc2d4;
-  --border: #395872; --border-strong: #7394af;
-  --brand: #8dd9c4; --brand-2: #b2ebd9;
-  --studio-selected: #173e37; --studio-button: #8dd9c4; --studio-button-text: #0b2c25;
-  --studio-hover: #2a4c67;
+  --bg: var(--brand-bg); --bg-2: var(--brand-elevated); --panel: var(--brand-surface);
+  --text: var(--brand-text); --text-soft: var(--brand-secondary); --muted: var(--brand-secondary);
+  --border: var(--brand-border); --border-strong: var(--brand-border);
+  --brand: var(--brand-teal); --brand-2: var(--brand-blue);
+  --studio-selected: var(--brand-elevated); --studio-button: var(--brand-teal); --studio-button-text: var(--brand-on-teal);
+  --studio-hover: var(--brand-elevated);
   --studio-sweep: linear-gradient(100deg, #285d85 0%, #1d4262 65%, #1d426200 100%);
   --studio-glow: #7dc8ff26;
-  --studio-control: #091e31;
-  --studio-choice-bg: #aed3ee;
-  --studio-choice-text: #0a2b43;
+  --studio-control: var(--brand-elevated);
+  --studio-choice-bg: var(--brand-teal);
+  --studio-choice-text: var(--brand-on-teal);
   --studio-sunlight: #baaa8c0a;
   --studio-skyglow: #38688720;
   --studio-mountain-far: #18364f;
   --studio-mountain-near: #20435e;
   --studio-warm-accent: #e9bb87;
-  --studio-focus: #aed3ee;
+  --studio-focus: var(--brand-blue);
 }
 .chatbuilder-page button, .chatbuilder-page select, .chatbuilder-page input { font: inherit; }
 .chatbuilder-page :is(button, a, select, input, textarea):focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
@@ -473,14 +473,14 @@ html[data-theme='dark'] .chatbuilder-page {
 
 /* Frosted segmented controls: one shared marker moves beneath the labels. */
 .chatbuilder-page {
-  --studio-choice-bg: #194e78;
-  --studio-choice-text: #f5faff;
+  --studio-choice-bg: var(--brand-teal);
+  --studio-choice-text: var(--brand-on-teal);
   --studio-glass: #ffffff88;
   --studio-slider: linear-gradient(135deg, #28638fdd, #153e62ee);
 }
 html[data-theme='dark'] .chatbuilder-page {
-  --studio-choice-bg: #204463;
-  --studio-choice-text: #edf7ff;
+  --studio-choice-bg: var(--brand-teal);
+  --studio-choice-text: var(--brand-on-teal);
   --studio-glass: #b3d7ee0d;
   --studio-slider: linear-gradient(135deg, #315e7ddd, #173b59ee);
 }
@@ -599,7 +599,7 @@ html[data-theme='dark'] .chatbuilder-page { --option-demo-fill: #a2d4f4; --optio
 .chatbuilder-page .widget-option-chat-header > span:last-child { font-size: 12px; line-height: 1; }
 .chatbuilder-page .widget-option-chat-heading { flex: 1; max-width: 44px; height: 3px; border-radius: 9px; background: currentColor; opacity: .65; }
 .chatbuilder-page .widget-option-chat-messages { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 6px 9px; }
-.chatbuilder-page .widget-option-message { display: grid; gap: 3px; width: 65%; padding: 5px 6px; box-sizing: border-box; border-radius: 7px 7px 7px 2px; background: var(--option-demo-message); --border-strong: #5685a5; }
+.chatbuilder-page .widget-option-message { display: grid; gap: 3px; width: 65%; padding: 5px 6px; box-sizing: border-box; border-radius: 7px 7px 7px 2px; background: var(--option-demo-message); --border-strong: var(--brand-border); }
 .chatbuilder-page .widget-option-message i { display: block; height: 2px; border-radius: 9px; background: #356381; opacity: .65; }
 .chatbuilder-page .widget-option-message i:last-child { width: 70%; }
 .chatbuilder-page .widget-option-message--user { align-self: flex-end; width: 44%; border-radius: 7px 7px 2px 7px; background: var(--option-demo-fill); }
@@ -616,7 +616,7 @@ html[data-theme='dark'] .chatbuilder-page { --option-demo-fill: #a2d4f4; --optio
   .chatbuilder-page .builder-content-panel .glassRadioRow--visual { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .chatbuilder-page .builder-content-panel .glassRadioRow--visual[aria-label='bubble-size-type'] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
-.chatbuilder-page .widget-option-chat { --chat-border: #6b95b1; --border-strong: #6b95b1; }
+.chatbuilder-page .widget-option-chat { --chat-border: #6b95b1; --border-strong: var(--brand-border); }
 
 /* Emphasize the surface being edited; the remaining chat is only context. */
 .chatbuilder-page .widget-option-demo--surface { grid-template-rows: 94px 14px; row-gap: 4px; align-content: center; }

@@ -45,12 +45,12 @@
 }
 
 .heroShell--night {
-  --hero-title: #f8fbff;
-  --hero-copy: rgba(222, 232, 245, 0.82);
-  --hero-muted: rgba(198, 211, 227, 0.72);
-  --hero-accent: #66b8ff;
-  --hero-panel-border: rgba(148, 163, 184, 0.16);
-  --hero-outline: rgba(255, 255, 255, 0.16);
+  --hero-title: var(--brand-text);
+  --hero-copy: var(--brand-secondary);
+  --hero-muted: var(--brand-muted);
+  --hero-accent: var(--brand-teal);
+  --hero-panel-border: var(--brand-border);
+  --hero-outline: var(--brand-border);
   background:
     radial-gradient(circle at 18% 12%, rgba(56, 189, 248, 0.09), transparent 30%),
     radial-gradient(circle at 82% 18%, rgba(52, 211, 153, 0.08), transparent 28%),
@@ -58,12 +58,12 @@
 }
 
 .heroShell--day {
-  --hero-title: #13233d;
-  --hero-copy: rgba(31, 51, 79, 0.88);
-  --hero-muted: rgba(79, 95, 128, 0.72);
-  --hero-accent: #126b62;
-  --hero-panel-border: rgba(148, 163, 184, 0.18);
-  --hero-outline: rgba(255, 255, 255, 0.92);
+  --hero-title: var(--brand-text);
+  --hero-copy: var(--brand-secondary);
+  --hero-muted: var(--brand-muted);
+  --hero-accent: var(--brand-teal);
+  --hero-panel-border: var(--brand-border);
+  --hero-outline: var(--brand-border);
   background:
     linear-gradient(180deg, #f1f6fb 0%, #e5eef4 26%, #dfe9ef 52%, #e6eef2 76%, #edf3f8 100%);
 }
@@ -1209,10 +1209,10 @@ main[data-season='halloween'] .droidSeasonalTeeth { display: block; }
 }
 
 .solutionsSection--night {
-  --solutions-text: #f8fafc;
-  --solutions-sky: #081224;
-  --solutions-base: #09111f;
-  --solutions-floor: #0c1322;
+  --solutions-text: var(--brand-text);
+  --solutions-sky: var(--brand-bg);
+  --solutions-base: var(--brand-bg);
+  --solutions-floor: var(--brand-bg);
   --mountain-side-base: #26394c;
   --mountain-side-shade: #101c2a;
   --mountain-center-back: #31465b;
@@ -1221,10 +1221,10 @@ main[data-season='halloween'] .droidSeasonalTeeth { display: block; }
 }
 
 .solutionsSection--day {
-  --solutions-text: #24384c;
-  --solutions-sky: #d8e9f1;
-  --solutions-base: #dde7ea;
-  --solutions-floor: #e3e7eb;
+  --solutions-text: var(--brand-text);
+  --solutions-sky: var(--brand-bg);
+  --solutions-base: var(--brand-bg);
+  --solutions-floor: var(--brand-bg);
   --mountain-side-base: #b4cad5;
   --mountain-side-shade: #8faaba;
   --mountain-center-back: #c3d8e3;
@@ -1721,7 +1721,7 @@ main[data-season='halloween'] .droidSeasonalTeeth { display: block; }
 }
 
 .solutionFeature {
-  --feature-accent: #2563eb;
+  --feature-accent: var(--brand-blue);
   --feature-accent-2: #0ea5e9;
   position: relative;
   overflow: hidden;
@@ -1754,7 +1754,7 @@ main[data-season='halloween'] .droidSeasonalTeeth { display: block; }
 }
 
 .solutionFeature--chatbot {
-  --feature-accent: #7c3aed;
+  --feature-accent: var(--brand-blue);
   --feature-accent-2: #06b6d4;
   grid-template-columns: minmax(360px, 1.04fr) minmax(0, 0.96fr);
 }
@@ -2205,7 +2205,7 @@ main[data-season='halloween'] .droidSeasonalTeeth { display: block; }
   background: linear-gradient(145deg, #152238, #101a2b);
   border-color: #2a3a52;
   box-shadow: 0 20px 50px #00000020;
-  --basecamp-accent: #75aaff;
+  --basecamp-accent: var(--brand-teal);
 }
 
 .solutionsSection--night .solutionsBasecamp--refined .basecampCopy h3 {
@@ -2221,7 +2221,7 @@ main[data-season='halloween'] .droidSeasonalTeeth { display: block; }
 }
 
 .solutionsSection--night .solutionsBasecamp--refined .basecampChoice--chatbot {
-  --basecamp-accent: #79d8cc;
+  --basecamp-accent: var(--brand-teal);
 }
 
 .solutionsSection--night .solutionsBasecamp--refined .basecampAction--chatbot {
@@ -2239,7 +2239,7 @@ main[data-season='halloween'] .droidSeasonalTeeth { display: block; }
 }
 
 .basecampChoice {
-  --basecamp-accent: #2563eb;
+  --basecamp-accent: var(--brand-teal);
   position: relative;
   min-height: 220px;
   display: grid;
@@ -2271,13 +2271,13 @@ main[data-season='halloween'] .droidSeasonalTeeth { display: block; }
 }
 
 .basecampChoice--chatbot {
-  --basecamp-accent: #256f8f;
+  --basecamp-accent: var(--brand-teal);
   --basecamp-accent-2: #4fb3a3;
   gap: clamp(22px, 3vw, 34px);
 }
 
 .solutionsSection--night .basecampChoice--chatbot {
-  --basecamp-accent: #3e8dbf;
+  --basecamp-accent: var(--brand-teal);
   --basecamp-accent-2: #5fc2b2;
 }
 
@@ -2878,14 +2878,14 @@ main[data-season='halloween'] .droidSeasonalTeeth { display: block; }
 }
 
 .contactBand {
-  --contact-bg: #0c1826;
-  --contact-panel: #122335;
-  --contact-text: #eaf3fc;
-  --contact-muted: #abc0d3;
-  --contact-accent: #a4d4f5;
-  --contact-line: #2c4358;
-  --contact-soft: #193248;
-  --contact-highlight: #162c40;
+  --contact-bg: var(--brand-bg);
+  --contact-panel: var(--brand-surface);
+  --contact-text: var(--brand-text);
+  --contact-muted: var(--brand-secondary);
+  --contact-accent: var(--brand-teal);
+  --contact-line: var(--brand-border);
+  --contact-soft: var(--brand-elevated);
+  --contact-highlight: var(--brand-elevated);
   position: relative;
   z-index: 1;
   padding: clamp(64px, 8vw, 112px) 24px;
@@ -2893,14 +2893,14 @@ main[data-season='halloween'] .droidSeasonalTeeth { display: block; }
   color: var(--contact-text);
 }
 .mainFlow--day .contactBand {
-  --contact-bg: #edf3f6;
-  --contact-panel: #ffffff;
-  --contact-text: #172e44;
-  --contact-muted: #526b7e;
-  --contact-accent: #285f85;
-  --contact-line: #dbe6ed;
-  --contact-soft: #e9f2f7;
-  --contact-highlight: #f3f8fb;
+  --contact-bg: var(--brand-bg);
+  --contact-panel: var(--brand-surface);
+  --contact-text: var(--brand-text);
+  --contact-muted: var(--brand-secondary);
+  --contact-accent: var(--brand-teal);
+  --contact-line: var(--brand-border);
+  --contact-soft: var(--brand-elevated);
+  --contact-highlight: var(--brand-elevated);
 }
 .contactPanel {
   display: grid;
@@ -3798,8 +3798,8 @@ main[data-season='halloween'] .droidSeasonalTeeth { display: block; }
  .botStoryCard h3 { font-size: 18px; margin: 4px 0; }
  .botStoryCard p, .botStoryCard a { display: none; }
 }
-.heroShell--night { --hero-accent: #35dfb5; }
-.heroShell--day { --hero-accent: #007f70; }
+.heroShell--night { --hero-accent: var(--brand-teal); }
+.heroShell--day { --hero-accent: var(--brand-teal); }
 .heroShell--night .cta-primary, .mainFlow--night .cta-primary { background: linear-gradient(135deg, #56edc6, #28cfa5); color: #082b35; box-shadow: 0 8px 28px #00a67e25; }
 .heroShell--day .cta-primary { background: linear-gradient(135deg, #007e70, #00a085); }
 .heroBenefit svg, .featureCheck { color: #00a67e; }
@@ -3834,3 +3834,30 @@ main[data-season='summer'] svg.droidSeasonalGlasses, main[data-season='easter'] 
 @media (prefers-reduced-motion: reduce) { .droidAura span { animation: none; transform: rotate(var(--orbit-angle)) translateX(90px); } }
 main[data-season='halloween'] :is(.droidEyes, .siteDroidEyes) { fill: #ff4d63; filter: drop-shadow(0 0 5px #ff203f) drop-shadow(0 0 10px #d91c4655); }
 main[data-season='halloween'] .droidSeasonalTeeth { fill: #fffaf2; stroke: #d5dfed; stroke-width: .7; filter: drop-shadow(0 1px 1px #07152f); }
+
+/* Shared brand finishes; scene geometry and scroll behavior remain in their own rules. */
+.heroShell.heroShell--night, .heroShell.heroShell--day,
+.mainFlow.mainFlow--night, .mainFlow.mainFlow--day {
+  background: var(--brand-bg); color: var(--brand-text);
+}
+.heroShell .cta-primary, .mainFlow .cta-primary {
+  background: var(--brand-teal); color: var(--brand-on-teal);
+  border: 1px solid var(--brand-teal); border-radius: var(--radius-control);
+  box-shadow: none; min-height: 44px;
+}
+.heroShell .cta-secondary, .mainFlow .cta-secondary {
+  background: var(--brand-surface); color: var(--brand-text);
+  border: 1px solid var(--brand-border); border-radius: var(--radius-control);
+  min-height: 44px; box-shadow: none;
+}
+.heroShell :is(.cta-primary,.cta-secondary):hover,
+.mainFlow :is(.cta-primary,.cta-secondary):hover { filter: brightness(.96); }
+.chatbotTechnology, .chatbotUseCaseCard, .botStoryCard {
+  background: var(--brand-surface); border: 1px solid var(--brand-border);
+  border-radius: var(--radius-card); color: var(--brand-text);
+}
+.mainFlow .chatbotTechnology p, .mainFlow .chatbotUseCaseCard p { color: var(--brand-secondary); }
+.technologyBadge { background: var(--brand-teal); color: var(--brand-on-teal); }
+.mainFlow .technologyEyebrow, .heroBenefit svg, .featureCheck { color: var(--brand-teal); }
+.scrollDroidFloat > .droidOrb { overflow: visible; filter: drop-shadow(0 12px 16px #0B1D2B24); }
+.droidAura span { display: none; }

@@ -2,6 +2,7 @@
 
 import React from 'react'
 import Header from '@/components/header'
+import CustomerHost from '@/components/CustomerHost'
 import { usePathname } from 'next/navigation'
 import Script from 'next/script'
 import Link from 'next/link'
@@ -32,6 +33,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </section>
         </main>
       ) : children}
+      <CustomerHost />
       {isWidgetWorkspace ? (
         <style>{'[data-vintra-widget-key="GIN6CPbnBnbTOoEPU3wctBqr"] { display: none !important; pointer-events: none !important; }'}</style>
       ) : (

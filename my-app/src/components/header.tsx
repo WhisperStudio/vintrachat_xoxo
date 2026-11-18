@@ -114,21 +114,21 @@ function inferHeaderTone(element: Element | null): HeaderTone {
 }
 
 const StyledHeader = styled.header<{ $scrolled: boolean; $mobileHidden: boolean; $tone: HeaderTone; $mainLanding: boolean }>`
-  --vintra-header-text: ${({ $tone }) => ($tone === 'light' ? '#f8fafc' : '#0f172a')};
-  --vintra-header-muted: ${({ $tone }) => ($tone === 'light' ? 'rgba(226, 232, 240, 0.82)' : '#64748b')};
-  --vintra-header-panel-bg: ${({ $tone }) => ($tone === 'light' ? 'rgba(15, 23, 42, 0.58)' : 'rgba(255, 255, 255, 0.86)')};
-  --vintra-header-panel-border: ${({ $tone }) => ($tone === 'light' ? 'rgba(255, 255, 255, 0.14)' : 'rgba(203, 213, 225, 0.9)')};
+  --vintra-header-text: var(--brand-text);
+  --vintra-header-muted: var(--brand-secondary);
+  --vintra-header-panel-bg: var(--brand-surface);
+  --vintra-header-panel-border: var(--brand-border);
   --vintra-header-panel-shadow: ${({ $tone }) => ($tone === 'light' ? '0 14px 36px rgba(15, 23, 42, 0.24)' : '0 8px 24px rgba(15, 23, 42, 0.06)')};
   --vintra-header-panel-inner: ${({ $tone }) =>
     $tone === 'light'
       ? 'inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 -1px 0 rgba(255, 255, 255, 0.05)'
       : 'inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 rgba(255, 255, 255, 0.1)'};
-  --vintra-header-surface-soft: ${({ $tone }) => ($tone === 'light' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.88)')};
-  --vintra-header-border-soft: ${({ $tone }) => ($tone === 'light' ? 'rgba(255, 255, 255, 0.16)' : 'rgba(203, 213, 225, 0.95)')};
+  --vintra-header-surface-soft: var(--brand-elevated);
+  --vintra-header-border-soft: var(--brand-border);
   --vintra-header-shadow-soft: ${({ $tone }) => ($tone === 'light' ? '0 8px 24px rgba(15, 23, 42, 0.18)' : '0 8px 24px rgba(15, 23, 42, 0.06)')};
-  --vintra-header-button-bg: ${({ $tone }) => ($tone === 'light' ? 'rgba(15, 23, 42, 0.18)' : 'rgba(239, 68, 68, 0.14)')};
-  --vintra-header-button-border: ${({ $tone }) => ($tone === 'light' ? 'rgba(255, 255, 255, 0.18)' : 'rgba(239, 68, 68, 0.22)')};
-  --vintra-header-button-color: ${({ $tone }) => ($tone === 'light' ? '#e2e8f0' : '#475569')};
+  --vintra-header-button-bg: var(--brand-elevated);
+  --vintra-header-button-border: var(--brand-border);
+  --vintra-header-button-color: var(--brand-text);
   --vintra-header-nav-highlight: ${({ $tone }) =>
     $tone === 'light'
       ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(226, 232, 240, 0.1))'
@@ -495,8 +495,8 @@ const SecondaryAction = styled(Link)`
 
 const PrimaryAction = styled(Link)`
   ${BaseButtonStyles}
-  --button-bg: #176f68;
-  --button-border: #176f68;
+  --button-bg: var(--brand-teal);
+  --button-border: var(--brand-teal);
   --button-shadow: 0 4px 12px rgba(23, 111, 104, 0.12);
   color: #f8fafc;
 

@@ -1,29 +1,24 @@
 .websiteBuilder {
-  --bg: #f6f7fb;
-  --bg-2: #eef1f7;
+  --bg: var(--brand-bg);
+  --bg-2: var(--brand-elevated);
 
-  --text: #14213d;
-  --text-soft: #334155;
-  --muted: #64748b;
+  --text: var(--brand-text);
+  --text-soft: var(--brand-secondary);
+  --muted: var(--brand-secondary);
 
-  --panel: rgba(255, 255, 255, 0.82);
-  --panel-strong: #ffffff;
-  --panel-soft: rgba(255, 255, 255, 0.62);
+  --panel: var(--brand-surface);
+  --panel-strong: var(--brand-surface);
+  --panel-soft: var(--brand-elevated);
 
-  --brd: rgba(15, 23, 42, 0.08);
-  --brd-strong: rgba(15, 23, 42, 0.14);
+  --brd: var(--brand-border);
+  --brd-strong: var(--brand-border);
 
-  --brand1: #7c3aed;
-  --brand2: #d946ef;
-  --brand3: #3b82f6;
+  --brand1: var(--brand-teal);
+  --brand2: var(--brand-blue);
+  --brand3: var(--brand-blue);
 
-  --brandGrad: linear-gradient(135deg, #3b82f6, #7c3aed 55%, #d946ef);
-  --brandSoft: linear-gradient(
-    135deg,
-    rgba(59, 130, 246, 0.12),
-    rgba(124, 58, 237, 0.13),
-    rgba(217, 70, 239, 0.1)
-  );
+  --brandGrad: var(--brand-teal);
+  --brandSoft: var(--brand-elevated);
 
   --shadow-sm: 0 6px 18px rgba(15, 23, 42, 0.06);
   --shadow-md: 0 16px 40px rgba(15, 23, 42, 0.1);

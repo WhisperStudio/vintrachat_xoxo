@@ -2,37 +2,49 @@
   box-sizing: border-box;
 }
 
+/* Shared Vintra palette: all page themes consume these roles. */
 :root {
-  --app-bg: #eff3f6;
-  --app-text: #142d43;
-  --app-muted: #4c6479;
-  --app-surface: #ffffff;
-  --app-surface-soft: #e8eff4;
-  --app-border: #c1cfdc;
-  --app-input-border: #7c94aa;
-  --app-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
-  --app-shadow-lg: 0 18px 40px rgba(15, 23, 42, 0.06);
-  --app-primary: #183f60;
-  --app-primary-hover: #245779;
-  --app-primary-text: #ffffff;
-  --app-focus: #286b96;
+  --brand-bg: #F4F8FA;
+  --brand-surface: #FFFFFF;
+  --brand-elevated: #EAF1F5;
+  --brand-border: #D5E0E7;
+  --brand-text: #132A3A;
+  --brand-secondary: #526878;
+  --brand-muted: #718596;
+  --brand-teal: #087F70;
+  --brand-blue: #1767C5;
+  --brand-on-teal: #FFFFFF;
+  color-scheme: light;
+  --radius-control: 12px;
+  --radius-card: 20px;
 }
-
 html[data-theme='dark'] {
-  --app-bg: #081522;
-  --app-text: #edf4fa;
-  --app-muted: #b0c3d4;
-  --app-surface: #102439;
-  --app-surface-soft: #162e45;
-  --app-border: #36516b;
-  --app-input-border: #66849f;
-  --app-shadow: 0 16px 34px rgba(2, 6, 23, 0.34);
-  --app-shadow-lg: 0 24px 54px rgba(2, 6, 23, 0.42);
-  --app-primary: #acd2ee;
-  --app-primary-hover: #c9e3f5;
-  --app-primary-text: #102b42;
-  --app-focus: #acd2ee;
+  --brand-bg: #0B1D2B;
+  --brand-surface: #10283A;
+  --brand-elevated: #173449;
+  --brand-border: #294456;
+  --brand-text: #F3F7FA;
+  --brand-secondary: #B7C7D2;
+  --brand-muted: #8196A6;
+  --brand-teal: #35DFB5;
+  --brand-blue: #397FE6;
+  --brand-on-teal: #0B1D2B;
   color-scheme: dark;
+}
+:root, html[data-theme='dark'] {
+  --app-bg: var(--brand-bg);
+  --app-text: var(--brand-text);
+  --app-muted: var(--brand-secondary);
+  --app-surface: var(--brand-surface);
+  --app-surface-soft: var(--brand-elevated);
+  --app-border: var(--brand-border);
+  --app-input-border: var(--brand-border);
+  --app-primary: var(--brand-teal);
+  --app-primary-hover: var(--brand-teal);
+  --app-primary-text: var(--brand-on-teal);
+  --app-focus: var(--brand-blue);
+  --app-shadow: 0 8px 24px #0B1D2B08;
+  --app-shadow-lg: 0 20px 48px #0B1D2B18;
 }
 
 html,
@@ -755,3 +767,34 @@ html[data-theme='dark'] .badge.success, html[data-theme='dark'] .authCallout.suc
   background-size: 100% 600px;
   background-repeat: no-repeat;
 }
+
+/* Common interactive and surface language. */
+.primaryBtn, .secondaryBtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 11px 18px; border-radius: var(--radius-control);
+  font-weight: 600; border: 1px solid var(--app-border); line-height: 1.4;
+}
+.primaryBtn { background: var(--app-primary); color: var(--app-primary-text); border-color: var(--app-primary); }
+.secondaryBtn { background: var(--app-surface); color: var(--app-text); }
+.primaryBtn:disabled, .secondaryBtn:disabled { opacity: .45; cursor: not-allowed; }
+:is(a, button, input, select, textarea):focus-visible { outline: 3px solid var(--brand-blue); outline-offset: 3px; }
+.featureCard, .infoCard, .hero { border-radius: var(--radius-card); }
+.badge { background: var(--brand-elevated); color: var(--brand-blue); }
+.designHost { display: block; width: min(100%, 280px); height: auto; margin: 8px auto; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .primaryBtn, .secondaryBtn { transition: none; }
+}
+.customerHost { position: fixed; left: 20px; bottom: 20px; z-index: 45; max-width: calc(100vw - 100px); }
+.customerHostToggle { display: flex; align-items: center; gap: 6px; background: var(--brand-surface); border: 1px solid var(--brand-border); border-radius: 999px; color: var(--brand-text); padding: 3px 18px 3px 3px; box-shadow: var(--app-shadow-lg); cursor: pointer; font-size: 13px; font-weight: 600; }
+.customerHostToggle > svg { width: 52px; height: 52px; }
+.customerHostPanel { position: relative; width: 320px; max-width: 100%; padding: 24px; margin-bottom: 12px; border: 1px solid var(--brand-border); border-radius: var(--radius-card); background: var(--brand-surface); color: var(--brand-text); box-shadow: var(--app-shadow-lg); }
+.customerHostClose { position: absolute; right: 8px; top: 8px; width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: var(--brand-secondary); cursor: pointer; font-size: 24px; }
+.customerHostEyebrow { color: var(--brand-teal); font-size: 10px; letter-spacing: 2px; font-weight: 700; }
+.customerHostPanel h2 { font-size: 21px; line-height: 1.25; margin: 14px 0 12px; }
+.customerHostPanel p { color: var(--brand-secondary); font-size: 14px; line-height: 1.65; }
+.customerHostPanel nav { display: grid; gap: 8px; margin-top: 20px; }
+.customerHostPanel nav a { display: flex; justify-content: space-between; gap: 12px; align-items: center; min-height: 44px; border: 1px solid var(--brand-border); border-radius: var(--radius-control); padding: 12px; font-size: 13px; }
+.customerHostPanel nav a:hover { background: var(--brand-elevated); border-color: var(--brand-teal); }
+.customerHostPanel nav a span { color: var(--brand-blue); }
+@media (max-width: 600px) { .customerHost { left: 12px; bottom: 12px; } .customerHostToggle { padding: 3px; } .customerHostToggle > span { display: none; } }

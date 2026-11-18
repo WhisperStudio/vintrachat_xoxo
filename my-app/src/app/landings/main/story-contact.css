@@ -1,0 +1,31 @@
+.contactBand { padding: clamp(64px,8vw,112px) 24px; background: var(--brand-bg); color: var(--brand-text); }
+.contactBand > .page { padding: 0; }
+.contactPanel { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.12fr); gap: 36px clamp(30px,5vw,72px); padding: clamp(28px,4.5vw,64px); border: 1px solid var(--brand-border); border-radius: var(--radius-card); background: var(--brand-surface); box-shadow: var(--app-shadow); }
+.contactIntro { align-self: center; min-width: 0; }
+.contactIntro .sectionKicker { color: var(--brand-teal); font-size: 10px; letter-spacing: .16em; font-weight: 650; }
+.contactIntro h2 { font-size: clamp(32px,3.5vw,48px); font-weight: 600; line-height: 1.14; letter-spacing: -.045em; margin: 26px 0; max-width: 420px; }
+.contactIntro p { max-width: 420px; color: var(--brand-secondary); font-size: 15px; line-height: 1.85; }
+.contactSignature { display: grid; gap: 8px; margin-top: 32px; }
+.contactSignature > span:first-child { font-size: 10px; letter-spacing: .15em; font-weight: 700; }
+.contactSignature > span:last-child { font-size: 12px; color: var(--brand-secondary); }
+.contactGrid { display: grid; gap: 12px; min-width: 0; }
+.contactCard { display: grid; grid-template-columns: 38px minmax(0,1fr) 18px; gap: 14px; align-items: center; padding: 20px; border: 1px solid var(--brand-border); border-radius: 14px; background: var(--brand-surface); }
+.contactCard:hover { background: var(--brand-elevated); border-color: var(--brand-teal); }
+.contactIcon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; color: var(--brand-teal); background: var(--brand-elevated); }
+.contactCardCopy { display: grid; gap: 6px; min-width: 0; }
+.contactCardLabel { color: var(--brand-secondary); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; }
+.contactCard strong { font-size: clamp(15px,1.6vw,20px); line-height: 1.4; overflow-wrap: anywhere; }
+.contactCard p { margin: 0; font-size: 12px; line-height: 1.7; color: var(--brand-secondary); }
+.contactArrow { width: 17px; color: var(--brand-teal); }
+.contactGetStarted { margin-top: 6px; padding: 22px; background: var(--brand-elevated); border: 1px solid var(--brand-border); border-radius: 14px; }
+.contactGetStarted h3 { font-size: 20px; margin: 0 0 10px; letter-spacing: -.025em; font-weight: 600; }
+.contactGetStarted > p { color: var(--brand-secondary); font-size: 13px; line-height: 1.8; margin: 0 0 18px; }
+.contactAccountActions { display: flex; flex-wrap: wrap; gap: 10px; }
+.contactAccountActions a { font-size: 12px; }
+.contactTryLinks { display: grid; gap: 10px; margin-top: 20px; }
+.contactTryLinks a { display: flex; align-items: center; gap: 10px; color: var(--brand-blue); font-size: 12px; padding: 4px 0; }
+.contactDetails { grid-column: 1/-1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; padding-top: 24px; border-top: 1px solid var(--brand-border); color: var(--brand-secondary); font-size: 11px; }
+.contactDetails nav { display: flex; gap: 20px; }
+.contactDetails a { text-decoration: underline; text-underline-offset: 4px; }
+@media (max-width: 900px) { .contactPanel { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .contactBand { padding: 48px 16px; } .contactPanel { padding: 26px 18px; } .contactCard { grid-template-columns: 30px minmax(0,1fr) 16px; padding: 15px 12px; gap: 10px; } .contactIcon { width: 30px; height: 30px; } .contactCard strong { font-size: 15px; } .contactGetStarted { padding: 18px 14px; } }
