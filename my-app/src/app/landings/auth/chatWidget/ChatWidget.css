@@ -709,3 +709,28 @@ html[data-theme='dark'] .chatbuilder-page { color-scheme: dark; }
 .studioRules { display: grid; gap: 24px; padding: 24px; }
 .chatbuilder-page .preview-panel { position: sticky; top: 24px; align-self: start; }
 @media (max-width: 1000px) { .chatbuilder-page .preview-panel { position: relative; top: auto; } }
+.chatbuilder-content.studioGuestContent { padding-top: 120px; }
+.studioTour { display: flex; align-items: center; gap: 18px; padding: 20px 24px; margin: 0 0 24px; border: 1px solid var(--brand-border); border-radius: 18px; background: var(--brand-surface); box-shadow: 0 12px 36px #17344912; color: var(--brand-text); }
+.studioTour > svg { width: 126px; flex: 0 0 126px; }
+.studioTourCopy { flex: 1; min-width: 0; }
+.studioTourCopy small { color: var(--brand-teal); font-size: 12px; letter-spacing: .08em; }
+.studioTourCopy h2 { margin: 6px 0; font-size: 23px; }
+.studioTourCopy p { margin: 0; max-width: 780px; font-size: 16px; line-height: 1.6; }
+.studioTourActions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.studioTourActions button, .studioTourReplay { cursor: pointer; border: 1px solid var(--brand-border); border-radius: 9px; padding: 10px 16px; background: var(--brand-surface); color: var(--brand-text); font: inherit; }
+.studioTourActions .save-btn { background: var(--brand-teal); color: var(--brand-on-teal); }
+.studioTourReplay { margin-bottom: 20px; }
+.studioWorkspaceTabs button:disabled { opacity: .35; filter: grayscale(1); cursor: not-allowed; }
+.studioTour button:focus-visible { outline: 3px solid var(--brand-blue); outline-offset: 3px; }
+@media (max-width: 600px) {
+  .chatbuilder-content.studioGuestContent { padding-top: 100px; }
+  .studioTour { align-items: flex-start; gap: 8px; padding: 16px; }
+  .studioTour > svg { width: 64px; flex-basis: 64px; }
+  .studioTourCopy h2 { font-size: 20px; }
+}
+.studioTourProgress { display: flex; gap: 5px; margin-top: 16px; max-width: 280px; }
+.studioTourProgress i { flex: 1; height: 4px; border-radius: 4px; background: var(--brand-border); }
+.studioTourProgress i[data-complete='true'] { background: var(--brand-teal); }
+.chatbuilder-content.studioGuestContent { box-sizing: border-box; width: 100%; min-width: 0; max-width: 1440px; }
+.chatbuilder-page:has(.studioGuestContent) { max-width: 1920px; margin-inline: auto; }
+.studioGuestContent .chatbuilder-grid > * { min-width: 0; }

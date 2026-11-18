@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext'
 import { PLANS } from '@/lib/billing/catalog.mjs'
 import type { Business } from '@/types/database'
 import './pricing.css'
+import PricingGuide from './PricingGuide'
 
 type Plan = keyof typeof PLANS
 type Cycle = 'monthly' | 'yearly'
@@ -70,6 +71,7 @@ export default function PricingClient({ configured, testMode, embedded = false }
   }
 
   return <main className={embedded ? "billing-page workspaceBilling" : "billing-page"} data-header-tone="dark">
+    <PricingGuide no={no} autoStart={!embedded && !loading && !firebaseUser} hasAccount={Boolean(account)} />
     <div className="billing-wrap">
 
       <section className="billing-hero">
@@ -80,9 +82,7 @@ export default function PricingClient({ configured, testMode, embedded = false }
           <button onClick={() => setCycle('yearly')} aria-pressed={cycle === 'yearly'}>{t("Årlig")} <span>{t("2 mnd gratis")}</span></button>
         </div>
       </section>
-      {!loading && !isAuthenticated && <div className="billing-notice">{no ? 'Sammenlign abonnementene her. ' : 'Compare plans here. '}<Link href="/auth/login?next=%2Fpriser">{no ? 'Logg inn' : 'Sign in'}</Link>{no ? ' eller ' : ' or '}<Link href="/auth/signup">{no ? 'opprett en konto' : 'create an account'}</Link>{no ? ' for å velge abonnement.' : ' to choose a subscription.'}</div>}
       {testMode && configured && <div className="billing-notice">{t("Testmodus: Betalingene her er testbetalinger. Ingen ekte penger trekkes.")}</div>}
-      {!configured && <div className="billing-notice">{t("Betaling er ikke aktivert ennå. Du kan fortsatt opprette en gratis konto.")}</div>}
       {params.get('checkout') === 'canceled' && <div className="billing-notice">{t("Betalingen ble avbrutt. Abonnementet ditt er ikke endret.")}</div>}
       {notice && <div role="status" className="billing-notice billing-success">{notice}</div>}
       {error && <div role="alert" className="billing-error">{error} <button onClick={() => setRetry(n => n + 1)}>{t("Prøv igjen")}</button></div>}

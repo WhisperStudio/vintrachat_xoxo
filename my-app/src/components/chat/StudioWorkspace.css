@@ -460,3 +460,19 @@ body[data-studio-focus='true'] > :not([data-studio-focus-root]):not(script):not(
   .studioFocusWithPreview .studioFocusHeader, .studioFocusWithPreview .studioFocusLayout { width: min(100% - 64px, 1600px); }
   .studioFocusWithPreview .studioFocusLayout { grid-template-columns: minmax(0, 1fr) 560px; gap: 40px; }
 }
+.studioModuleAutofill[data-guest='true'] > .widgetFlowField,
+.studioModuleAutofill[data-guest='true'] > button { opacity: .45; filter: grayscale(1); }
+.chatbuilder-page .studioModuleAutofill > button:disabled { cursor: not-allowed; }
+.studioAutofillHelp { grid-column: 1 / -1; }
+.studioAutofillHelp > summary { display: inline-flex; align-items: center; gap: 7px; padding: 6px 0; color: var(--brand); font-size: 14px; cursor: pointer; list-style: none; }
+.studioAutofillHelp > summary::-webkit-details-marker { display: none; }
+.studioAutofillHelp > summary svg { width: 20px; height: 20px; }
+.studioAutofillHelp > summary:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; border-radius: 4px; }
+.studioAutofillHelp > div { position: relative; margin-top: 7px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); color: var(--text); font-size: 14px; line-height: 1.6; }
+.studioAutofillHelp > div::before { content: ''; position: absolute; top: -6px; left: 16px; width: 10px; height: 10px; transform: rotate(45deg); border-top: 1px solid var(--border); border-left: 1px solid var(--border); background: var(--panel); }
+.studioAutofillHelp p { margin: 8px 0 0; }
+.studioModuleCatalog button:disabled,
+.studioModuleRow:disabled { opacity: .35; filter: grayscale(1); cursor: not-allowed; }
+.studioTutorialPlan { min-width: 0; padding: 0; margin: 0; border: 0; }
+.studioTutorialPlan:disabled { opacity: .35; filter: grayscale(1); }
+.chatbuilder-page .dropbtn:disabled { opacity: .35; filter: grayscale(1); cursor: not-allowed; }

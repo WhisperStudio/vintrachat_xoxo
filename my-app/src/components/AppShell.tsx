@@ -15,6 +15,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const protectedWorkspace = pathname === '/admin' || pathname.startsWith('/admin/')
     || pathname === '/landings/user' || pathname === '/landings/auth/websites'
   const isWidgetWorkspace = pathname === '/landings/auth/chatWidget' || pathname.startsWith('/widget/')
+  const hideSiteSupport = isWidgetWorkspace || pathname === '/landings/guest/websites' || pathname === '/landings/auth/websites'
   return (
     <>
       {!isWidgetWorkspace && !['/admin', '/auth/login', '/auth/signup', '/auth/forgot-password', '/auth/reset-password', '/auth/verify-email', '/auth/verify-email-sent'].includes(pathname) && <Header />}
@@ -34,7 +35,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </main>
       ) : children}
       <CustomerHost />
-      {isWidgetWorkspace ? (
+      {hideSiteSupport ? (
         <style>{'[data-vintra-widget-key="GIN6CPbnBnbTOoEPU3wctBqr"] { display: none !important; pointer-events: none !important; }'}</style>
       ) : (
         <Script id="vintra-site-support" src="/widget/GIN6CPbnBnbTOoEPU3wctBqr.js" strategy="afterInteractive" />

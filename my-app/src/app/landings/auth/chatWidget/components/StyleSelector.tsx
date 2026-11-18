@@ -87,6 +87,7 @@ type GlassRadioOption<T extends string> = {
 }
 
 interface StyleSelectorProps {
+  tutorialOnlyBubble?: boolean
   bubbleStyle: {
     showStatus: boolean
     iconChoice: BubbleIconChoice
@@ -579,6 +580,7 @@ export default function StyleSelector({
   onPreviewHoverChange,
   openSections,
   onToggleSection,
+  tutorialOnlyBubble = false,
 }: StyleSelectorProps) {
   const { language } = useVintraLanguage()
   const copy = useStudioCopy()
@@ -854,7 +856,7 @@ export default function StyleSelector({
       </div>
 
       <div className="group">
-        <button type="button" className={`dropbtn ${openSections.header ? 'open' : ''}`} onClick={() => onToggleSection('header')} {...sectionHoverProps('header')}>
+        <button type="button" className={`dropbtn ${openSections.header ? 'open' : ''}`} disabled={tutorialOnlyBubble} onClick={() => onToggleSection('header')} {...sectionHoverProps('header')}>
           <SectionLabel icon={<FiLayout />} tone="gray">{text.sections.chatTopBar}</SectionLabel>
           <span className="dropbtn-icon"><FiChevronDown /></span>
         </button>
@@ -893,7 +895,7 @@ export default function StyleSelector({
       </div>
 
       <div className="group">
-        <button type="button" className={`dropbtn ${openSections.body ? 'open' : ''}`} onClick={() => onToggleSection('body')} {...sectionHoverProps('body')}>
+        <button type="button" className={`dropbtn ${openSections.body ? 'open' : ''}`} disabled={tutorialOnlyBubble} onClick={() => onToggleSection('body')} {...sectionHoverProps('body')}>
           <SectionLabel icon={<FiMessageSquare />} tone="gray">{text.sections.chatMessages}</SectionLabel>
           <span className="dropbtn-icon"><FiChevronDown /></span>
         </button>
@@ -943,7 +945,7 @@ export default function StyleSelector({
       </div>
 
       <div className="group">
-        <button type="button" className={`dropbtn ${openSections.footer ? 'open' : ''}`} onClick={() => onToggleSection('footer')} {...sectionHoverProps('footer')}>
+        <button type="button" className={`dropbtn ${openSections.footer ? 'open' : ''}`} disabled={tutorialOnlyBubble} onClick={() => onToggleSection('footer')} {...sectionHoverProps('footer')}>
           <SectionLabel icon={<FiSend />} tone="gray">{text.sections.messageBox}</SectionLabel>
           <span className="dropbtn-icon"><FiChevronDown /></span>
         </button>
@@ -977,7 +979,7 @@ export default function StyleSelector({
       </div>
 
       <div className="group">
-        <button type="button" className={`dropbtn ${openSections.colorTheme ? 'open' : ''}`} onClick={() => onToggleSection('colorTheme')}>
+        <button type="button" className={`dropbtn ${openSections.colorTheme ? 'open' : ''}`} disabled={tutorialOnlyBubble} onClick={() => onToggleSection('colorTheme')}>
           <SectionLabel icon={<FiDroplet />} tone="colorful">{text.sections.colors}</SectionLabel>
           <span className="dropbtn-icon"><FiChevronDown /></span>
         </button>
@@ -1001,7 +1003,7 @@ export default function StyleSelector({
       </div>
 
       <div className="group">
-        <button type="button" className={`dropbtn ${openSections.advanced ? 'open' : ''}`} onClick={() => onToggleSection('advanced')}>
+        <button type="button" className={`dropbtn ${openSections.advanced ? 'open' : ''}`} disabled={tutorialOnlyBubble} onClick={() => onToggleSection('advanced')}>
           <SectionLabel icon={<FiSliders />} tone="neutral">{text.sections.behavior}</SectionLabel>
           <span className="dropbtn-icon"><FiChevronDown /></span>
         </button>

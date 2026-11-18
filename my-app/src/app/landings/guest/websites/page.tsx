@@ -1,3 +1,3 @@
-import WebsiteBuilder from './WebsiteBuilder'
+import WebsiteConstructionCover from '@/components/WebsiteConstructionCover'
 
-export default function Page() { return <WebsiteBuilder /> }
+export default function Page() { return <WebsiteConstructionCover /> }

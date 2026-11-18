@@ -11,7 +11,7 @@ export default function CustomerHost() {
   const pathname = usePathname()
   const { language } = useVintraLanguage()
   const no = language === 'no'
-  if (pathname === '/' || pathname === '/landings/main' || pathname.startsWith('/auth') || pathname.startsWith('/admin') || pathname.startsWith('/vintra-admin') || pathname.startsWith('/widget') || pathname.startsWith('/landings/auth') || pathname.startsWith('/landings/user')) return null
+  if (pathname === '/' || pathname === '/priser' || pathname === '/landings/guest/websites' || pathname === '/landings/main' || pathname.startsWith('/auth') || pathname.startsWith('/admin') || pathname.startsWith('/vintra-admin') || pathname.startsWith('/widget') || pathname.startsWith('/landings/auth') || pathname.startsWith('/landings/user')) return null
   const links = [
     { href: '/landings/guest/websites', label: no ? 'Jeg trenger en nettside' : 'I need a website' },
     { href: '/landings/auth/chatWidget', label: no ? 'Jeg vil lage en chatbot' : 'I want to create a chatbot' },

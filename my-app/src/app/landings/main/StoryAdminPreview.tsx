@@ -1,6 +1,7 @@
 'use client'
 
-﻿import { FiArrowLeft, FiBarChart2, FiCheckSquare, FiCreditCard, FiGrid, FiLayout, FiMessageSquare, FiSettings, FiSliders, FiStar, FiUsers } from 'react-icons/fi'
+﻿import { FiArrowLeft, FiChevronLeft, FiChevronRight, FiBarChart2, FiCheckSquare, FiCreditCard, FiGrid, FiLayout, FiMessageSquare, FiSettings, FiSliders, FiStar, FiUsers } from 'react-icons/fi'
+import VintraHost from '@/svgs/VintraHost'
 import { businessAdminI18n } from '@/lib/i18n'
 import { useEffect, useState } from 'react'
 
@@ -28,7 +29,7 @@ function AdminScene({ language, view }: { language: 'no' | 'en'; view: View }) {
         <h3>{view === 'chats' ? labels.chats : view === 'tasks' ? labels.tasks : (no ? 'Hei, Fjord Studio.' : 'Hello, Fjord Studio.')}</h3>
         {view === 'chats' ? <>
           <p className="adminSceneIntro">{no ? 'Hele kundesamtalen, klar for teamet ditt.' : 'The whole conversation, ready for your team.'}</p>
-          <div className="adminConversation"><div className="adminConversationTop"><strong>{no ? 'Hjelp med et lite kontor' : 'Help with a small office'}</strong><span>{no ? 'Til oppfølging' : 'Follow-up'}</span></div><div className="adminConversationMessage adminConversationMessageUser">{no ? 'Kan dere hjelpe oss med å innrede et lite kontor?' : 'Can you help us design a small office?'}</div><div className="adminConversationMessage">{no ? 'Ja! Vi hjelper med planløsning og interiør. Vil du at teamet følger opp?' : 'Yes! We help with layouts and interiors. Would you like the team to follow up?'}</div><div className="adminConversationMessage adminConversationMessageUser">{no ? 'Ja takk, kan noen kontakte meg?' : 'Yes please, can someone contact me?'}</div><div className="adminConversationSummary"><FiMessageSquare/>{no ? 'Sammenhengen følger med videre.' : 'The context stays with the conversation.'}</div></div>
+          <div className="adminConversation"><div className="adminConversationTop"><strong>{no ? 'Hjelp med et lite kontor' : 'Help with a small office'}</strong><span>{no ? 'Til oppfølging' : 'Follow-up'}</span></div><div className="adminConversationMessage adminConversationMessageUser">{no ? 'Kan dere hjelpe oss med å innrede et lite kontor?' : 'Can you help us design a small office?'}</div><div className="adminConversationMessage adminReplyHost"><VintraHost expression="explaining"/>{no ? 'Ja! Vi hjelper med planløsning og interiør. Vil du at teamet følger opp?' : 'Yes! We help with layouts and interiors. Would you like the team to follow up?'}</div><div className="adminConversationMessage adminConversationMessageUser">{no ? 'Ja takk, kan noen kontakte meg?' : 'Yes please, can someone contact me?'}</div><div className="adminConversationSummary"><FiMessageSquare/>{no ? 'Sammenhengen følger med videre.' : 'The context stays with the conversation.'}</div></div>
         </> : view === 'tasks' ? <>
           <p className="adminSceneIntro">{no ? 'Gjør henvendelser til tydelige neste steg.' : 'Turn enquiries into clear next steps.'}</p>
           <div className="adminTaskFilters"><span>{no ? 'Alle oppgaver' : 'All tasks'}</span><span>{no ? 'Åpne' : 'Open'} · 2</span></div>
@@ -46,13 +47,19 @@ function AdminScene({ language, view }: { language: 'no' | 'en'; view: View }) {
 
 export default function StoryAdminPreview({ language, playing = false, staticViews = false }: { language: 'no' | 'en'; playing?: boolean; staticViews?: boolean }) {
   const [phase, setPhase] = useState(0)
+  const [paused, setPaused] = useState(false)
   useEffect(() => {
-    setPhase(0)
-    if (!playing || staticViews || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (!playing || paused || staticViews || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     const timer = window.setInterval(() => { if (!document.hidden) setPhase(current => (current + 1) % views.length) }, 6500)
     return () => window.clearInterval(timer)
-  }, [playing, staticViews])
+  }, [playing, staticViews, paused, phase])
   if (staticViews) return <div className="adminStaticScenes">{views.map(view => <AdminScene key={view} language={language} view={view}/>)}</div>
   const labels = businessAdminI18n[language].sidebar
-  return <div className="adminPresentation"><div className="adminPresentationSteps">{views.map((view,i) => <span data-current={i === phase} key={view}>{labels[view]}<i/></span>)}</div><AdminScene language={language} view={views[phase]}/></div>
+  const no = language === 'no'
+  const select = (index: number) => { setPhase(index); setPaused(true) }
+  return <div className="adminPresentation">
+    <nav className="adminPresentationSteps" aria-label={no ? 'Visninger i adminpanelet' : 'Admin presentation views'}>{views.map((view,i) => <button type="button" aria-current={i === phase ? 'step' : undefined} data-current={i === phase} key={view} onClick={() => select(i)}><span>{i + 1}</span>{labels[view]}<i key={String(phase) + String(paused)} data-playing={playing && !paused}/></button>)}</nav>
+    <div className="adminPresentationControls"><span aria-live="polite">{phase + 1} / {views.length} &middot; {phase < views.length - 1 ? (no ? 'Neste: ' : 'Next: ') + labels[views[phase + 1]] : (no ? 'Tilbake til samtalene' : 'Back to conversations')}</span><div><button type="button" aria-label={no ? 'Forrige visning' : 'Previous view'} onClick={() => select((phase + views.length - 1) % views.length)}><FiChevronLeft aria-hidden="true"/></button><button type="button" onClick={() => setPaused(value => !value)}>{paused ? (no ? 'Spill av' : 'Play') : (no ? 'Pause' : 'Pause')}</button><button type="button" aria-label={no ? 'Neste visning' : 'Next view'} onClick={() => select((phase + 1) % views.length)}><FiChevronRight aria-hidden="true"/></button></div></div>
+    <AdminScene language={language} view={views[phase]}/>
+  </div>
 }

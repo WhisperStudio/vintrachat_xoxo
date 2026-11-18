@@ -23,7 +23,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (loading || accountError || !firebaseUser?.emailVerified) return
-    router.replace(isAuthenticated ? '/admin' : '/invite')
+    router.replace(isAuthenticated ? (new URLSearchParams(window.location.search).get('from') === 'widget-studio' ? '/landings/auth/chatWidget' : '/admin') : '/invite')
   }, [firebaseUser, isAuthenticated, loading, accountError, router])
 
   const handleSubmit = async (e: React.FormEvent) => {

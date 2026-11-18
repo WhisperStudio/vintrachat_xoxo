@@ -1,0 +1,17 @@
+.pricingGuide { display: flex; align-items: flex-start; gap: 16px; padding: 20px; border: 2px solid var(--brand-teal); border-radius: 18px; background: var(--brand-surface); color: var(--brand-text); box-shadow: 0 10px 30px #1734490b; }
+.pricingGuide > svg { width: 80px; height: 80px; flex-shrink: 0; }
+.pricingGuide > div { flex: 1; min-width: 0; }
+.pricingGuide small { color: var(--brand-teal); font-size: 12px; letter-spacing: .1em; }
+.pricingGuide h2 { margin: 7px 0; font-size: 22px; letter-spacing: -.03em; }
+.pricingGuide p { margin: 0; color: var(--brand-secondary); font-size: 16px; line-height: 1.65; }
+.pricingGuideProgress { display: flex; gap: 5px; margin-top: 16px; max-width: 240px; }
+.pricingGuideProgress i { height: 4px; flex: 1; background: var(--brand-border); border-radius: 4px; }
+.pricingGuideProgress i[data-complete='true'] { background: var(--brand-teal); }
+.pricingGuideActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.pricingGuideActions button { padding: 9px 14px; border: 1px solid var(--brand-border); border-radius: 8px; background: var(--brand-surface); color: var(--brand-text); font: inherit; font-size: 14px; cursor: pointer; }
+.pricingGuideActions .pricingGuideNext { background: var(--brand-teal); color: var(--brand-on-teal); }
+.pricingGuideActions button:focus-visible { outline: 3px solid var(--brand-blue); outline-offset: 3px; }
+@media (max-width: 600px) { .pricingGuide { gap: 8px; padding: 14px; } .pricingGuide > svg { width: 48px; height: 48px; } .pricingGuide h2 { font-size: 19px; } .pricingGuide p { font-size: 15px; } }
+.billing-hero .studioTourInlineSlot { text-align: left; margin: 0 auto 20px; }
+.pricingGuide { box-sizing: border-box; width: 100%; min-width: 0; }
+.pricingGuide h2, .pricingGuide p { overflow-wrap: anywhere; }

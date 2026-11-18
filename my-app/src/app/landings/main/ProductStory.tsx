@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import VintraHost from '@/svgs/VintraHost'
+import VintraHost, { type HostExpression } from '@/svgs/VintraHost'
 import StoryMountain from '@/svgs/StoryMountain'
 import StoryWidget from './StoryWidget'
 import StoryAdminPreview from './StoryAdminPreview'
@@ -41,6 +41,7 @@ function ChatPreview({ language, step }: { language: Language; step: number }) {
 export default function ProductStory({ language }: { language: Language }) {
   const no = language === 'no'
   const steps = chapters[language]
+  const expressions: HostExpression[] = ['guiding', 'curious', 'explaining', 'attentive', 'celebrating']
   const [active, setActive] = useState(0)
   const [guideVisible, setGuideVisible] = useState(false)
   const rootRef = useRef<HTMLElement>(null)
@@ -87,12 +88,14 @@ export default function ProductStory({ language }: { language: Language }) {
   return <section ref={rootRef} className="productStory" id="solutions" aria-label={no ? 'Fra nettside til oppfølging' : 'From website to follow-up'}>
     <div className="storyMountainIntro" id="story-mountain"><div className="storyMountainArt" aria-hidden="true"><StoryMountain /></div><div className="storyIntro"><span className="storyEyebrow">{no ? 'FØLG EN KUNDEREISE' : 'FOLLOW A CUSTOMER JOURNEY'}</span><h2>{no ? 'Se hvordan det henger sammen.' : 'See how it all connects.'}</h2><p>{no ? 'Én eksempelbedrift. Ett spørsmål. Hele veien fra første besøk til teamets oversikt.' : 'One example business. One question. All the way from the first visit to your team’s overview.'}</p></div></div>
     <div className="storyLayout"><div className="storyChapters">{steps.map((step,i)=><article id={'story-step-'+i} data-chapter={i} data-active={active===i} className="storyChapter" key={step.label}><span className="storyChapterNumber">0{i+1} / 05 <span>{step.label}</span></span><h2>{step.title}</h2><p>{step.body}</p><ul>{step.points.map(point=><li key={point}><span aria-hidden="true">✓</span>{point}</li>)}</ul><div className="storyStaticPreview" inert>{i===0 ? <WebsitePreview language={language} onOpen={()=>goTo(1)}/> : i===4 ? <StoryAdminPreview language={language} staticViews/> : <ChatPreview language={language} step={i}/>}</div><a className="storyNext" href={i < 4 ? '#story-step-'+(i+1) : '#contact'}>{i < 4 ? (no ? 'Neste steg' : 'Next step') : (no ? 'La oss finne din løsning' : 'Let’s find your solution')} <span aria-hidden="true">↓</span></a></article>)}</div>
-    <div className="storyVisual" data-guide-visible={guideVisible}><nav className="storySteps" aria-label={no ? 'Trinn i demonstrasjonen' : 'Demo steps'}>{steps.map((step,i)=><button type="button" key={step.label} aria-label={step.label} aria-current={active===i?'step':undefined} onClick={()=>goTo(i)}><span>0{i+1}</span><i/></button>)}</nav>
-      <div className="storyBrowser" data-scene={active} role="img" aria-label={no ? 'Visning av nettside, chatbot og adminpanel' : 'Presentation of the website, chatbot and admin workspace'}>
+    <div className="storyVisual" data-guide-visible={guideVisible}><nav className="storySteps" aria-label={no ? 'Trinn i demonstrasjonen' : 'Demo steps'}>{steps.map((step,i)=><button type="button" key={step.label} aria-label={step.label} aria-current={active===i?'step':undefined} onClick={()=>goTo(i)}><span>0{i+1} <b>{step.label}</b></span><i/></button>)}</nav>
+      <div className="storySlideHint"><span>{active + 1} / {steps.length} &middot; {steps[active].label}</span><span>{active < steps.length - 1 ? (no ? 'Rull videre for neste steg' : 'Scroll for the next step') : (no ? 'Hele reisen samlet' : 'The full journey')}</span></div>
+      <div className="storyHostCaption"><div className="storyGuideFigure" data-expression={expressions[active]}><VintraHost expression={expressions[active]}/></div><div key={active} className="storyHostWords"><small>{no ? 'VERTEN DIN' : 'YOUR GUIDE'}</small><p>{steps[active].host}</p></div></div>
+      <div className="storyBrowser" data-scene={active} role="region" aria-label={no ? 'Visning av nettside, chatbot og adminpanel' : 'Presentation of the website, chatbot and admin workspace'}>
         <div className="storyBrowserBar"><span className="storyBrowserDots" aria-hidden="true"><i/><i/><i/></span><span>{active===4 ? 'vintra / fjord studio' : 'fjordstudio.no'}</span></div>
-        <div className="storyBrowserCanvas" inert><div className="storyWebsiteLayer" inert={active===4}><WebsitePreview language={language} onOpen={()=>goTo(1)}/></div>{active<4 && <div className="storyWidgetLayer"><StoryWidget language={language} step={active} onOpen={()=>goTo(1)} onClose={()=>goTo(0)}/></div>}{active===4 && <div className="storyAdminLayer"><StoryAdminPreview language={language} playing={guideVisible}/></div>}</div>
+        <div className="storyBrowserCanvas"><div className="storyWebsiteLayer" inert><WebsitePreview language={language} onOpen={()=>goTo(1)}/></div>{active<4 && <div className="storyWidgetLayer"><StoryWidget language={language} step={active} onOpen={()=>goTo(1)} onClose={()=>goTo(0)}/></div>}{active===4 && <div className="storyAdminLayer"><StoryAdminPreview language={language} playing={guideVisible}/></div>}</div>
       </div>
-      <div className="storyHostCaption"><div className="storyGuideFigure" data-expression={active===3?'attentive':active===4?'happy':'guiding'}><VintraHost expression={active===3?'attentive':active===4?'happy':'guiding'}/></div><div key={active} className="storyHostWords"><small>{no ? 'VERTEN DIN' : 'YOUR GUIDE'}</small><p>{steps[active].host}</p></div></div>
+
 
     </div></div>
   </section>

@@ -1,5 +1,8 @@
 'use client'
 
+import TourLauncher from '@/components/TourLauncher'
+import Header from '@/components/header'
+import VintraHost from '@/svgs/VintraHost'
 import LoadingAnimation from '@/components/LoadingAnimation'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -52,6 +55,8 @@ import type {
 import './ChatWidget.css'
 import '@/components/chat/StudioSettings.css'
 
+import { createStudioTourProgress, canContinueStudioTour, recordStudioTourAction, getStudioTourSaveAdvance, isStudioTourChoiceAllowed } from '@/lib/studio-tour.mjs'
+import StudioTourAnchor from '@/components/chat/StudioTourAnchor'
 import StudioModuleList from '@/components/chat/StudioModuleList'
 import StudioModuleEditor from '@/components/chat/StudioModuleEditor'
 import StudioModuleIcon from '@/components/chat/StudioModuleIcon'
@@ -387,9 +392,9 @@ const defaultInputs: InputsState = {
     autoOpen: false,
     delayMs: 3000,
   },
-  conversationCardsEnabled: true,
+  conversationCardsEnabled: false,
   conversationCardsLimit: defaultConversationCards.length,
-  conversationCards: defaultConversationCards,
+  conversationCards: [],
 }
 
 export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidgetSelected, setupMode = false, onSetupComplete }: { embedded?: boolean; widgetKey?: string; onWidgetSelected?: (key: string) => void; setupMode?: boolean; onSetupComplete?: () => Promise<void> }) {
@@ -401,18 +406,56 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
   const t = chatWidgetBuilderI18n[language]
   const builderExtraText = chatWidgetBuilderExtraI18n[language]
 
+  const [tourStep, setTourStep] = useState<number | null>(null)
+  const [tourProgress, setTourProgress] = useState<{ completed: number[]; moduleId: string | null; designChanged: boolean }>(createStudioTourProgress)
+  const [pendingTourAdvance, setPendingTourAdvance] = useState<number | null>(null)
+  const guestTour = !signedIn && !embedded && tourStep !== null
+  useEffect(() => {
+    if (loading || signedIn || embedded) return
+    try { if (localStorage.getItem('vintra:studio-tour:v1') !== 'seen') setTourStep(0) }
+    catch { setTourStep(0) }
+  }, [loading, signedIn, embedded])
+  const finishTour = () => {
+    try { localStorage.setItem('vintra:studio-tour:v1', 'seen') } catch { /* Storage is optional. */ }
+    setTourStep(null)
+  }
   const [workspaceMode, setWorkspaceMode] = useState<'knowledge' | 'personality' | 'features' | 'design'>('features')
   const [setupFinished, setSetupFinished] = useState(false)
   const [knowledgeReviewed, setKnowledgeReviewed] = useState(false)
   const [setupError, setSetupError] = useState('')
   const { page: studioPage, open: navigateStudioPage, back: backFromStudioPage } = useStudioPage()
   const editingModule = studioPage?.kind === 'module' ? studioPage.id : null
+  useEffect(() => {
+    if (pendingTourAdvance === null || studioPage) return
+    const next = pendingTourAdvance
+    setPendingTourAdvance(null)
+    if (!guestTour) return
+    setTourStep(next)
+    setWorkspaceMode(next >= 5 ? 'design' : next === 4 ? 'personality' : 'knowledge')
+  }, [pendingTourAdvance, studioPage, guestTour])
+  const recordTourAction = (action: string, id?: string) => {
+    if (!guestTour) return
+    setTourProgress(previous => recordStudioTourAction(previous, tourStep, action, id))
+  }
   const [inputs, setInputs] = useState<InputsState>(defaultInputs)
   const [assistantConfigDraft, setAssistantConfigDraft] = useState<ChatAssistantConfig>(createDefaultAssistantConfig())
   const isSetup = !setupFinished && (setupMode || assistantConfigDraft.setupCompleted === false)
   const [hasLoadedDbConfig, setHasLoadedDbConfig] = useState(false)
   const [previewScenario, setPreviewScenario] = useState<'welcome' | 'conversation' | 'start-card' | 'tickets' | 'contact' | 'reviews'>('welcome')
   const [previewSession, setPreviewSession] = useState(0)
+  useEffect(() => {
+    if (signedIn) return
+    const resetRestoredPage = (event: PageTransitionEvent) => {
+      if (!event.persisted) return
+      setInputs(defaultInputs)
+      setAssistantConfigDraft(createDefaultAssistantConfig())
+      setPreviewSession(value => value + 1)
+      setPreviewScenario('welcome')
+      setWorkspaceMode('features')
+    }
+    window.addEventListener('pageshow', resetRestoredPage)
+    return () => window.removeEventListener('pageshow', resetRestoredPage)
+  }, [signedIn])
   const [presetNotice, setPresetNotice] = useState('')
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null)
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false)
@@ -545,6 +588,17 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
     const config = widget?.config || business?.chatWidgetConfig
     if (!config) return
     applyWidgetConfig(config, widget?.assistantConfig || business?.chatAssistantConfig || null)
+    try {
+      const raw = sessionStorage.getItem('vintra:studio-login-draft')
+      sessionStorage.removeItem('vintra:studio-login-draft')
+      if (raw) {
+        const draft = JSON.parse(raw)
+        if (Date.now() - draft.createdAt < 30 * 60 * 1000 && draft.inputs && draft.assistant) {
+          setInputs({ ...draft.inputs, plan: databasePlan })
+          setAssistantConfigDraft(mergeAssistantConfigDraft(draft.assistant))
+        }
+      }
+    } catch { /* Ignore invalid temporary drafts. */ }
 
     setSelectedWidgetKey(widget?.widgetKey || business?.activeChatWidgetKey || business?.chatWidgetKey || '')
 
@@ -568,6 +622,7 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
   }, [databasePlan, hasLoadedDbConfig])
 
   const applyDesignPreset = (preset: 'nordic' | 'minimal' | 'welcoming' | 'boutique' | 'playful') => {
+    recordTourAction('change-design')
     setSelectedPreset(preset)
     setInputs((prev) => ({
       ...prev,
@@ -583,6 +638,7 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
   }
 
   const updateInput = <K extends keyof InputsState>(key: K, value: InputsState[K]) => {
+    if (['bubbleStyle', 'headerStyle', 'bodyStyle', 'footerStyle', 'colorTheme', 'appearance', 'customBranding', 'position', 'widgetIcons'].includes(key)) recordTourAction('change-design')
     setInputs((prev) => ({ ...prev, [key]: value }))
     if (['bubbleStyle', 'headerStyle', 'bodyStyle', 'footerStyle', 'colorTheme', 'appearance'].includes(key)) setSelectedPreset(null)
     setSaveStatus('idle')
@@ -616,6 +672,7 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
     }
   }
   const toggleSection = (section: BuilderSectionKey) => {
+    if (guestTour && section !== 'bubble') return
     setHoveredDesignSection(null)
     navigateStudioPage('design', section, selectedWidgetKey)
     // A click should not leave the hover outline behind after the pointer moves
@@ -740,10 +797,15 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
     if (step === 'design') navigateStudioPage('design', 'overview', selectedWidgetKey)
   }
 
+  const continueWithAccount = () => {
+    try { sessionStorage.setItem('vintra:studio-login-draft', JSON.stringify({ inputs, assistant: assistantConfigDraft, createdAt: Date.now() })) } catch { /* Sign-in remains available without storage. */ }
+    router.push('/auth/login?from=widget-studio')
+  }
   const saveConfig = async (options?: { assistant?: ChatAssistantConfig; inputs?: InputsState; finalize?: boolean }) => {
     const draftAssistant = options?.assistant || assistantConfigDraft
     const draftInputs = options?.inputs || inputs
     const finalize = options?.finalize !== false
+    if (!isAuthenticated) { continueWithAccount(); return false }
     setSetupError('')
     if (finalize && draftAssistant.studio?.version === 1) {
       const missing = MANDATORY_STUDIO_MODULES.find(id => getStudioModuleStatus(id, draftAssistant, draftInputs.settings, { editing: true }).required.length)
@@ -847,8 +909,12 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
     return false
   }
 
-  const openModule = (id: string) => { setSetupError(''); navigateStudioPage('module', id, selectedWidgetKey) }
-  const addModule = (id: string) => { setAssistantConfigDraft(previous => addStudioModule(previous, inputs.settings, id) as ChatAssistantConfig); setSaveStatus('idle'); navigateStudioPage('module', id, selectedWidgetKey) }
+  const openModule = (id: string) => { if (guestTour && !isStudioTourChoiceAllowed(STUDIO_MODULES.find(item => item.id === id)?.category, id)) return; if (guestTour && tourStep === 1 && id === 'support') { recordTourAction('add-module', id); setTourStep(2) } else recordTourAction('open-module', id); setSetupError(''); navigateStudioPage('module', id, selectedWidgetKey) }
+  const addModule = (id: string) => {
+    if (guestTour && id !== 'support') return
+    recordTourAction('add-module', id)
+    if (guestTour && tourStep === 1 && !tourProgress.completed.includes(1)) setTourStep(2)
+    setAssistantConfigDraft(previous => addStudioModule(previous, inputs.settings, id) as ChatAssistantConfig); setSaveStatus('idle'); navigateStudioPage('module', id, selectedWidgetKey) }
   const closeModule = () => {
     const id = editingModule
     backFromStudioPage()
@@ -856,10 +922,26 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
   }
   const saveModule = async (assistant: ChatAssistantConfig, settings: ChatWidgetConfig['settings']) => {
     const nextInputs = { ...inputs, settings, conversationCards: assistant.conversationCards, conversationCardsEnabled: assistant.conversationCardsEnabled, conversationCardsLimit: assistant.conversationCardsLimit }
-    if (!signedIn) { setAssistantConfigDraft(assistant); setInputs(nextInputs); setSaveStatus('idle'); return true }
+    if (!signedIn) {
+      setAssistantConfigDraft(assistant); setInputs(nextInputs); setSaveStatus('idle')
+      if (guestTour && editingModule && assistant.studio?.configured.includes(editingModule)) {
+        recordTourAction('save-module', editingModule)
+        const next = getStudioTourSaveAdvance(tourStep, editingModule)
+        if (next !== null) setPendingTourAdvance(next)
+      }
+      return true
+    }
     const saved = await saveConfig({ assistant, inputs: nextInputs, finalize: false })
     if (saved) setInputs(nextInputs)
     return saved
+  }
+  const saveDesignDraft = async () => {
+    if (signedIn && !await saveConfig({ finalize: false })) return
+    if (guestTour && tourStep === 5 && tourProgress.designChanged && studioPage?.id === 'bubble') {
+      recordTourAction('save-design', 'bubble')
+      setPendingTourAdvance(6)
+    }
+    backFromStudioPage()
   }
   const activeModules = getActiveStudioModules(assistantConfigDraft, inputs.settings)
   const pendingDesign = getPendingStudioDesign(assistantConfigDraft, inputs.settings)
@@ -923,7 +1005,7 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
                 <div className="studioSectionIntro"><span className="studioEyebrow">{activeSection.eyebrow}</span><h2 id="studio-section-title">{activeSection.label}</h2><p>{sectionDescriptions[activeSection.key]}</p></div>
                 {(activeSection.key === 'contact' || activeSection.key === 'reviews' || activeSection.key === 'tickets') && <WidgetFlowSettings settings={inputs.settings} section={activeSection.key} mode="design" no={no} onChange={updateFlowSettings} />}
                 {activeSection.key === 'header' && inputs.settings.reviewsEnabled && <label className="widgetFlowToggle"><span>{no ? 'Vis anmeldelsesknapp i chat-toppen' : 'Show review button in the chat header'}</span><input type="checkbox" checked={inputs.settings.reviewPage?.showHeaderButton === true} onChange={e => updateInput('settings', { ...inputs.settings, reviewPage: { ...inputs.settings.reviewPage, showHeaderButton: e.target.checked } })} /></label>}
-                <PlanSelector
+                <fieldset className="studioTutorialPlan" disabled={guestTour}><PlanSelector
                   plan={inputs.plan}
                   billingCycle={inputs.billingCycle}
                   lockedPlan={databasePlan}
@@ -931,9 +1013,10 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
                   onBillingCycleChange={(cycle) => updateInput('billingCycle', cycle)}
                   isOpen={displayedOpenSections.plan}
                   onToggle={() => toggleSection('plan')}
-                />
+                /></fieldset>
 
                 <StyleSelector
+                  tutorialOnlyBubble={guestTour}
                   bubbleStyle={inputs.bubbleStyle}
                   plan={databasePlan}
                   headerStyle={inputs.headerStyle}
@@ -949,7 +1032,7 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
                   widgetIcons={inputs.widgetIcons}
                   customBranding={inputs.customBranding}
                   settings={inputs.settings}
-                  conversationCardsEnabled={inputs.conversationCardsEnabled}
+                  conversationCardsEnabled={activeModules.includes('cards') && assistantConfigDraft.conversationCardsEnabled}
                   conversationCardsLimit={inputs.conversationCardsLimit}
                   conversationCards={inputs.conversationCards}
                   onColorThemeChange={(theme) => updateInput('colorTheme', theme)}
@@ -1025,7 +1108,7 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
               showConditionalFeaturePreview={false}
               previewReply={(() => { const personality = CHAT_PERSONALITIES.find((item) => item.style === assistantConfigDraft.responseStyle); return personality ? (no ? personality.sampleNo : personality.sampleEn) : (no ? 'Dette er et eksempelsvar. Egen svarstil brukes av AI-en etter lagring.' : 'This is a sample reply. The AI uses your custom response style after saving.') })()}
               previewMode={previewMode}
-              conversationCardsEnabled={inputs.conversationCardsEnabled}
+              conversationCardsEnabled={activeModules.includes('cards') && assistantConfigDraft.conversationCardsEnabled}
               conversationCardsLimit={inputs.conversationCardsLimit}
               conversationCards={inputs.conversationCards}
               highlightedSection={previewHighlightTarget || (previewDesignSection && ['bubble', 'header', 'body', 'footer', 'contact', 'reviews', 'tickets'].includes(previewDesignSection) ? (['contact', 'reviews', 'tickets'].includes(previewDesignSection) ? 'body' : previewDesignSection) as PreviewHighlightTarget : null)}
@@ -1034,19 +1117,90 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
           </StudioPreviewPanel>)
   const designIndex = <div className="studioDesignIndex"><div className="studioModuleListIntro"><div><span className="studioEyebrow">DESIGN</span><h1>{no ? 'Velg delen du vil tilpasse' : 'Choose what to customize'}</h1><p>{no ? 'Hvert område åpnes på en egen side. Velg én del og fokuser på den.' : 'Each area opens on its own page. Choose one part and focus on it.'}</p></div></div>
     {pendingDesign.length > 0 && <p className="studioModuleWarning">{no ? 'Nye deler trenger en designsjekk: ' : 'New modules need a design review: '}{pendingDesign.map(item => no ? item.no : item.en).join(', ')}</p>}
-    <div className="studioModuleRows"><button type="button" className="studioModuleRow" data-design="presets" onClick={() => navigateStudioPage('design', 'presets', selectedWidgetKey)}><StudioModuleIcon id="presets" /><span className="studioModuleRowCopy"><strong>{no ? 'Ferdige designstiler' : 'Design presets'}</strong><span>{no ? 'Velg et samlet uttrykk for chatten.' : 'Choose a coordinated look for your chat.'}</span></span><FiArrowRight aria-hidden="true" /></button>
-    {visibleBuilderSections.map(section => <button type="button" className="studioModuleRow" data-design={section.key} key={section.key} onMouseEnter={() => setHoveredDesignSection(section.key)} onMouseLeave={() => setHoveredDesignSection(null)} onFocus={() => setPreviewHighlightTarget(['bubble', 'header', 'body', 'footer'].includes(section.key) ? section.key as PreviewHighlightTarget : null)} onBlur={() => setHoveredDesignSection(null)} onClick={() => toggleSection(section.key)}><StudioModuleIcon id={section.key === 'contact' ? 'designContact' : section.key} /><span className="studioModuleRowCopy"><strong>{section.label}</strong><span>{sectionDescriptions[section.key]}</span>{pendingDesign.some(item => item.design === section.key) && <small className="studioModuleRowStatus studioModuleRowStatus--warning"><FiAlertTriangle aria-hidden="true" />{no ? 'Nytt design – ikke gjennomgått' : 'New design – not reviewed'}</small>}</span><FiArrowRight aria-hidden="true" /></button>)}</div></div>
+    <div className="studioModuleRows"><button type="button" className="studioModuleRow" data-design="presets" disabled={guestTour} onClick={() => navigateStudioPage('design', 'presets', selectedWidgetKey)}><StudioModuleIcon id="presets" /><span className="studioModuleRowCopy"><strong>{no ? 'Ferdige designstiler' : 'Design presets'}</strong><span>{no ? 'Velg et samlet uttrykk for chatten.' : 'Choose a coordinated look for your chat.'}</span></span><FiArrowRight aria-hidden="true" /></button>
+    {visibleBuilderSections.map(section => <button type="button" className="studioModuleRow" data-design={section.key} key={section.key} disabled={guestTour && !isStudioTourChoiceAllowed('design', section.key)} onMouseEnter={() => setHoveredDesignSection(section.key)} onMouseLeave={() => setHoveredDesignSection(null)} onFocus={() => setPreviewHighlightTarget(['bubble', 'header', 'body', 'footer'].includes(section.key) ? section.key as PreviewHighlightTarget : null)} onBlur={() => setHoveredDesignSection(null)} onClick={() => toggleSection(section.key)}><StudioModuleIcon id={section.key === 'contact' ? 'designContact' : section.key} /><span className="studioModuleRowCopy"><strong>{section.label}</strong><span>{sectionDescriptions[section.key]}</span>{pendingDesign.some(item => item.design === section.key) && <small className="studioModuleRowStatus studioModuleRowStatus--warning"><FiAlertTriangle aria-hidden="true" />{no ? 'Nytt design – ikke gjennomgått' : 'New design – not reviewed'}</small>}</span><FiArrowRight aria-hidden="true" /></button>)}</div></div>
+  const tourCopy = no ? [
+  [
+    "Hei! Skal vi lage en chat?",
+    "Jeg viser deg rundt på et lite minutt. Funksjoner først, finstasen til slutt!"
+  ],
+  [
+    "Små moduler, mange muligheter",
+    "Trykk «Legg til» og velg Menneskelig support. De andre modulene hviler mens vi tar denne lille runden."
+  ],
+  [
+    "Åpne. Tilpass. Behold.",
+    "Her velger du når kunden kan be om et menneske, og hva chatten skal svare. Prøv innstillingene og trykk «Lagre i utkast». Jeg tar deg automatisk videre!"
+  ],
+  [
+    "La meg bli kjent med bedriften",
+    "Åpne Min bedrift og legg inn hvem dere er og hva dere tilbyr. Lagre utkastet når du er klar, så viser jeg deg svarstilen."
+  ],
+  [
+    "Litt personlighet gjør susen!",
+    "Åpne Svarstil og regler. Velg hvordan assistenten skal svare, og lagre utkastet. Etterpå pynter vi chatknappen!"
+  ],
+  [
+    "Tid for finstasen!",
+    "Åpne Chatknapp, endre en detalj og se den i forhåndsvisningen. Trykk «Lagre i utkast» for å fullføre. Resten av designet kan du utforske etterpå."
+  ],
+  [
+    "Din tur! Jeg heier på deg.",
+    "Test i vei! Oppsett og samtale nullstilles når du forlater testsiden. Velg «Logg inn for å lagre» for å ta utkastet med videre, og lagre etter innlogging."
+  ]
+] : [
+    ['Hi! Shall we build a chat?', 'Let me show you around in a minute. Features first, a little style at the end!'],
+    ['Small modules, big possibilities', 'Click Add and choose Human support. The other modules are paused while we take this short tour.'],
+    ['Open. Customize. Keep.', 'Choose when a customer can ask for a human and what the chat should say. Try the settings and save the draft. I will take you to the next step automatically!'],
+    ['Teach me about your business', 'Open My business, add who you are and what you offer, then save the draft. Next up: response style.'],
+    ['A little personality!', 'Open Response style and rules, choose the tone and save the draft. Then we will customize the chat button!'],
+    ['Time to dress up!', 'Open Chat button, change a detail and watch the preview. Save the draft to finish. Explore the rest of the design after the tour.'],
+    ['Your turn!', 'Leaving resets the setup and conversation. Choose Sign in to save to carry your draft into your account, then save after signing in.'],
+  ]
+  if (activeModules.includes('support')) tourCopy[1][1] = no
+    ? 'Menneskelig support er allerede lagt til. Trykk på modulen for å prøve innstillingene.'
+    : 'Human support is already added. Open the module to try its settings.'
+  const moveTour = (step: number) => {
+    const url = new URL(window.location.href)
+    url.searchParams.delete('studioPage')
+    window.history.replaceState(window.history.state, '', url)
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    setTourStep(step)
+    setWorkspaceMode(step >= 5 ? 'design' : step === 4 ? 'personality' : step === 3 ? 'knowledge' : 'features')
+    if (step === 2 && tourProgress.moduleId && activeModules.includes(tourProgress.moduleId)) navigateStudioPage('module', tourProgress.moduleId)
+  }
+  const tourTargets = [
+    '.studioWorkspaceTabs button[aria-controls="studio-category-features"]',
+    activeModules.includes('support') ? '[data-module="support"]' : '#studio-category-features .studioModuleAdd[aria-expanded="false"], #studio-category-features .studioModuleCatalog button[data-module-option="support"]',
+    tourProgress.moduleId ? '[data-module="' + tourProgress.moduleId + '"]' : '#studio-category-features .studioModuleAdd',
+    '[data-module="company"]',
+    '[data-module="personality"]',
+    '[data-design="bubble"]',
+    '.studioSaveBar > .save-btn',
+  ]
+  const tourTarget = studioPage?.kind === 'module' ? '.studioModuleDialogBody .studioModuleFields input:not([type="file"]), .studioModuleDialogBody .studioModuleFields textarea, .studioModuleDialogBody .studioModuleFields select, .studioModuleDialogFooter .save-btn'
+    : studioPage?.kind === 'design' && studioPage.id !== 'overview' ? (tourProgress.designChanged ? '.studioFocusedDesignFooter .save-btn' : studioPage.id === 'presets' ? '.studioPreset' : '.studioFocusedDesign button[role="radio"]:not(:disabled), .studioFocusedDesign input:not(:disabled):not([type="file"]), .studioFocusedDesign select:not(:disabled)')
+    : tourTargets[tourStep ?? 0]
+  const tourPanel = guestTour && <StudioTourAnchor selector={tourTarget} inline><aside className="studioTour" aria-label={no ? 'Omvisning med Vintra' : 'Vintra guided tour'} onKeyDown={event => { if (event.key === 'Escape') finishTour() }}>
+    <VintraHost expression={tourStep === 6 ? 'celebrating' : tourStep === 0 ? 'curious' : tourStep === 3 ? 'attentive' : 'explaining'} />
+    <div className="studioTourCopy" aria-live="polite"><small>VINTRA &middot; {(tourStep ?? 0) + 1}/{tourCopy.length}</small><h2>{tourCopy[tourStep ?? 0][0]}</h2><p>{tourCopy[tourStep ?? 0][1]}</p>
+    <div className="studioTourProgress" aria-hidden="true">{tourCopy.map((_, index) => <i key={index} data-complete={index <= (tourStep ?? 0)} />)}</div>
+    <div className="studioTourActions"><button type="button" onClick={finishTour}>{no ? 'Hopp over' : 'Skip tour'}</button>{tourStep! > 0 && <button type="button" onClick={() => moveTour(tourStep! - 1)}>{no ? 'Forrige' : 'Previous'}</button>}{canContinueStudioTour(tourStep, tourProgress) && <button type="button" className="save-btn" onClick={() => tourStep === 6 ? finishTour() : moveTour(tourStep! + 1)}>{tourStep === 6 ? (no ? 'La meg prøve!' : 'Let me try!') : tourStep === 0 ? (no ? 'Vis meg rundt' : 'Show me around') : (no ? 'Neste' : 'Next')}</button>}</div></div>
+  </aside></StudioTourAnchor>
   if (loading) return <main className="chatbuilder-page builder-loading"><LoadingAnimation label={no ? 'Laster arbeidsområdet…' : 'Loading your workspace…'} /></main>
   if (studioPage) {
     const title = studioPage.kind === 'module' ? (selectedModule ? (no ? selectedModule.no : selectedModule.en) : (no ? 'Modulen er ikke lagt til' : 'Module not added')) : studioPage.id === 'overview' ? 'Design' : studioPage.id === 'presets' ? (no ? 'Ferdige designstiler' : 'Design presets') : activeSection.label
     return <StudioFocusPage title={title} no={no} onBack={backFromStudioPage} backDisabled={isSaving} aside={studioPage.kind === 'design' ? <><button type="button" className="studioMobilePreviewButton" onClick={() => setMobilePreviewOpen(true)} aria-haspopup="dialog"><FiEye aria-hidden="true" />{no ? 'Vis chatten' : 'Show chat'}</button>{studioPreview}</> : undefined}>
-      {studioPage.kind === 'module' ? selectedModule ? <StudioModuleEditor key={selectedModule.id + selectedWidgetKey} module={selectedModule} assistant={assistantConfigDraft} settings={inputs.settings} no={no} saving={isSaving} onClose={closeModule} onSave={saveModule} /> : <p>{no ? 'Legg til modulen fra oversikten før du konfigurerer den.' : 'Add this module from the overview before configuring it.'}</p> : studioPage.id === 'overview' ? designIndex : <div className="studioFocusedDesign">{studioPage.id === 'presets' ? designPresets : designControls}<footer className="studioFocusedDesignFooter"><span role="status">{savingText}</span><button className="save-btn" type="button" disabled={isSaving} onClick={async () => { if (!signedIn || await saveConfig({ finalize: false })) backFromStudioPage() }}>{isSaving ? (no ? 'Lagrer…' : 'Saving…') : signedIn ? (no ? 'Lagre design' : 'Save design') : (no ? 'Behold i utkast' : 'Keep in draft')}</button></footer></div>}
+      {tourPanel}
+      {studioPage.kind === 'module' ? selectedModule ? <StudioModuleEditor key={selectedModule.id + selectedWidgetKey} module={selectedModule} assistant={assistantConfigDraft} settings={inputs.settings} no={no} saving={isSaving} onClose={closeModule} onSave={saveModule} /> : <p>{no ? 'Legg til modulen fra oversikten før du konfigurerer den.' : 'Add this module from the overview before configuring it.'}</p> : studioPage.id === 'overview' ? designIndex : <div className="studioFocusedDesign">{studioPage.id === 'presets' ? designPresets : designControls}<footer className="studioFocusedDesignFooter"><span role="status">{savingText}</span><button className="save-btn" type="button" disabled={isSaving} onClick={() => void saveDesignDraft()}>{isSaving ? (no ? 'Lagrer…' : 'Saving…') : signedIn ? (no ? 'Lagre design' : 'Save design') : (no ? 'Lagre i utkast' : 'Save to draft')}</button></footer></div>}
     </StudioFocusPage>
   }
 
   return (
+    <>
+      {!embedded && !signedIn && <Header />}
     <div className={embedded ? "chatbuilder-page workspaceEmbeddedBuilder" : "chatbuilder-page"}>
-      {!embedded && <header className="studioHeader">
+      {!embedded && signedIn && <header className="studioHeader">
         <Link href="/" className="studioBrand"><img src="/image/logo.png" width="32" height="32" alt="" /><strong>Vintra</strong><span>Widget studio</span></Link>
         <div className="studioHeaderTools">
           <select aria-label={no ? 'Språk' : 'Language'} value={language} onChange={(event) => setLanguage(event.target.value as 'no' | 'en')}><option value="no">Norsk</option><option value="en">English</option></select>
@@ -1054,7 +1208,11 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
           <Link href={signedIn ? '/admin' : '/auth/login'} className="studioAccountLink">{signedIn ? (no ? 'Til oversikten' : 'Dashboard') : (no ? 'Logg inn' : 'Sign in')}<FiArrowRight aria-hidden="true" /></Link>
         </div>
       </header>}
-      <main className="chatbuilder-content">
+      <main className={'chatbuilder-content' + (!signedIn && !embedded ? ' studioGuestContent' : '')} onClickCapture={event => {
+        if (!signedIn && (event.target as HTMLElement).closest('a[href="/auth/login"]')) { event.preventDefault(); event.stopPropagation(); continueWithAccount() }
+      }}>
+        {tourPanel}
+        {!signedIn && !embedded && !guestTour && <TourLauncher no={no} onClick={() => moveTour(0)} />}
         {signedIn && (accountError || !dbUser || !business) && (
           <div className="studioAccountNotice" role="alert">
             <strong>{no ? 'Du er logget inn, men arbeidsområdet kunne ikke lastes.' : 'You are signed in, but your workspace could not be loaded.'}</strong>
@@ -1169,11 +1327,11 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
                 { id: 'knowledge', no: 'Bedriften', en: 'Business', hintNo: 'Kunnskap og kilder', hintEn: 'Knowledge and sources', icon: FiMonitor },
                 { id: 'personality', no: 'Svarstil', en: 'Response style', hintNo: 'Personlighet og grenser', hintEn: 'Personality and boundaries', icon: FiMessageCircle },
                 { id: 'design', no: 'Design', en: 'Design', hintNo: 'Utseende og innhold', hintEn: 'Appearance and content', icon: FiDroplet },
-              ] as const).map(item => <button type="button" key={item.id} aria-current={workspaceMode === item.id ? 'page' : undefined} aria-controls={'studio-category-' + item.id} onClick={() => goToStep(item.id)}><item.icon aria-hidden="true" /><span className="studioNavCopy"><strong>{no ? item.no : item.en}</strong><small>{no ? item.hintNo : item.hintEn}</small></span><span className={'studioNavStatus studioNavStatus--' + readiness[item.id]} title={statusText(readiness[item.id])}>{readiness[item.id] === 'ready' ? <FiCheck aria-hidden="true" /> : readiness[item.id] === 'optional' ? <FiCircle aria-hidden="true" /> : readiness[item.id] === 'missing' ? <FiAlertCircle aria-hidden="true" /> : <FiAlertTriangle aria-hidden="true" />}<span className="studioSrOnly">{statusText(readiness[item.id])}</span></span></button>)}
+              ] as const).map(item => <button type="button" key={item.id} disabled={guestTour && item.id !== workspaceMode} aria-current={workspaceMode === item.id ? 'page' : undefined} aria-controls={'studio-category-' + item.id} onClick={() => goToStep(item.id)}><item.icon aria-hidden="true" /><span className="studioNavCopy"><strong>{no ? item.no : item.en}</strong><small>{no ? item.hintNo : item.hintEn}</small></span><span className={'studioNavStatus studioNavStatus--' + readiness[item.id]} title={statusText(readiness[item.id])}>{readiness[item.id] === 'ready' ? <FiCheck aria-hidden="true" /> : readiness[item.id] === 'optional' ? <FiCircle aria-hidden="true" /> : readiness[item.id] === 'missing' ? <FiAlertCircle aria-hidden="true" /> : <FiAlertTriangle aria-hidden="true" />}<span className="studioSrOnly">{statusText(readiness[item.id])}</span></span></button>)}
             </nav>
             {setupError && <p className="studioSetupError" role="alert">{setupError}</p>}
             <fieldset className="studioEditingSurface" disabled={isSaving} aria-label={no ? 'Widgetinnstillinger' : 'Widget settings'}>
-            {(['features', 'knowledge', 'personality'] as const).map(category => <div className="studioCategory studioRules" id={'studio-category-' + category} key={category} hidden={workspaceMode !== category}><StudioModuleList category={category} assistant={assistantConfigDraft} settings={inputs.settings} no={no} onOpen={openModule} onAdd={addModule} onRemove={async id => { const next = removeStudioModule(assistantConfigDraft, inputs.settings, id); return saveModule(next.assistant as ChatAssistantConfig, next.settings) }} /></div>)}
+            {(['features', 'knowledge', 'personality'] as const).map(category => <div className="studioCategory studioRules" id={'studio-category-' + category} key={category} hidden={workspaceMode !== category}><StudioModuleList category={category} tutorialModule={guestTour ? category === 'features' ? 'support' : category === 'knowledge' ? 'company' : 'personality' : undefined} assistant={assistantConfigDraft} settings={inputs.settings} no={no} onOpen={openModule} onAdd={addModule} onRemove={async id => { const next = removeStudioModule(assistantConfigDraft, inputs.settings, id); return saveModule(next.assistant as ChatAssistantConfig, next.settings) }} /></div>)}
             <div className="studioCategory studioRules" id="studio-category-design" hidden={workspaceMode !== 'design'}>{designIndex}</div>
             </fieldset>
             <div className="studioSaveBar"><span className={'studioSaveStatus' + (hasUnsavedChanges ? ' isDirty' : '')} role="status">{!hasUnsavedChanges && saveStatus === 'success' ? <FiCheck aria-hidden="true" /> : <FiCircle aria-hidden="true" />}{savingText}</span><button type="button" className="save-btn" disabled={isSaving || isCreatingWidget || (signedIn && (!isAuthenticated || !business))} onClick={() => void saveConfig()}>{isSaving ? (no ? 'Lagrer…' : 'Saving…') : !signedIn ? (no ? 'Logg inn for å lagre' : 'Sign in to save') : isSetup ? (no ? 'Lagre og fullfør' : 'Save and finish') : (no ? 'Lagre endringer' : 'Save changes')}</button></div>
@@ -1185,5 +1343,6 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
         </div>
       </main>
     </div>
+    </>
   )
 }

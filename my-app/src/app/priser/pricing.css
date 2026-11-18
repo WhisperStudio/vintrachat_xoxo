@@ -435,3 +435,14 @@
 .billing-featured .billing-cta, .billing-featured-label { color: var(--brand-on-teal); }
 .billing-card, .billing-account { border-radius: var(--radius-card); }
 .billing-cta, .billing-account button { border-radius: var(--radius-control); min-height: 44px; }
+.billing-page:not(.workspaceBilling) { box-sizing: border-box; width: 100%; max-width: 1920px; margin-inline: auto; }
+.billing-wrap { width: 100%; min-width: 0; }
+.billing-card, .billing-account > *, .billing-faq > * { min-width: 0; }
+.billing-hero .studioTourInlineSlot { width: 100%; }
+@media (max-width: 480px) {
+  .billing-page { padding-inline: 16px; }
+  .billing-card { padding: 24px 20px; }
+  .billing-cycle { max-width: 100%; box-sizing: border-box; }
+  .billing-cycle button { padding-inline: 11px; }
+  .billing-account-actions { grid-template-columns: 1fr; }
+}

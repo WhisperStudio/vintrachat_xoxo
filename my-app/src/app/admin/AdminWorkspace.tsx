@@ -6,7 +6,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
 import PricingClient from '../priser/PricingClient'
-const WebsiteBuilder = dynamic(() => import('../landings/guest/websites/WebsiteBuilder'))
+const WebsiteConstructionCover = dynamic(() => import('@/components/WebsiteConstructionCover'))
 const VintraAdminClient = dynamic(() => import('../vintra-admin/VintraAdminClient'))
 import { useAuth } from '@/context/AuthContext'
 import { needsStudioSetup } from '@/lib/studio-onboarding.mjs'
@@ -537,7 +537,7 @@ export default function AdminWorkspace({ billingConfigured, billingTestMode }: {
             </div>
           )}
 
-          {activeTab === 'websites' && <WebsiteBuilder embedded />}
+          {activeTab === 'websites' && <WebsiteConstructionCover embedded />}
           {activeTab === 'subscriptions' && <PricingClient configured={billingConfigured} testMode={billingTestMode} embedded />}
           {activeTab === 'vintra' && firebaseUser?.emailVerified && isVintraAdminEmail(firebaseUser.email) && <VintraAdminClient embedded />}
 

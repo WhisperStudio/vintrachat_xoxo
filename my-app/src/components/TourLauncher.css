@@ -1,0 +1,3 @@
+.vintraTourLauncher { position: fixed; z-index: 90; left: max(18px, env(safe-area-inset-left)); bottom: max(18px, env(safe-area-inset-bottom)); display: inline-flex; align-items: center; gap: 9px; min-height: 58px; padding: 5px 20px 5px 8px; border: 1px solid var(--brand-border); border-radius: 999px; background: var(--brand-surface); color: var(--brand-text); box-shadow: 0 10px 35px #17344914; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.vintraTourLauncher > svg { display: block; width: 43px; height: 43px; }
+.vintraTourLauncher:focus-visible { outline: 3px solid var(--brand-teal); outline-offset: 4px; }

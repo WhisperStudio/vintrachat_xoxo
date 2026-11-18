@@ -1,0 +1,12 @@
+.vintraHostLeftHand { transform-origin: 76px 135px; }
+.vintraHost[data-expression='happy'] .vintraHostLeftHand,
+.vintraHost[data-expression='guiding'] .vintraHostLeftHand,
+.vintraHost[data-expression='celebrating'] .vintraHostLeftHand { animation: vintraLeftWave 6s ease-in-out infinite; }
+@keyframes vintraLeftWave {
+  0%, 15%, 45%, 100% { transform: rotate(0); }
+  24%, 36% { transform: rotate(-12deg); }
+  30% { transform: rotate(7deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vintraHost .vintraHostLeftHand { animation: none; }
+}

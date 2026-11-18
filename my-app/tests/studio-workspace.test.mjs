@@ -43,14 +43,39 @@ function harness({ failAssistant = false } = {}) {
     updateChatWidgetConfig: async (...args) => { writes.push(['widget', ...args]); return { success: true }; },
     updateChatAssistantConfig: async (...args) => { writes.push(['assistant', ...args]); return { success: !failAssistant }; },
     refreshBusiness: async () => {}, localStorage: { setItem() {} }, window: { dispatchEvent() {} },
+    sessionStorage: { setItem: (key, value) => { state.temporaryDraft = { key, value }; } },
     CustomEvent: class { constructor(name, value) { this.name = name; this.value = value; } },
     router: { push: value => { state.redirect = value; } }, console,
   });
-  vm.runInContext(compile(['defaultOrbStyle', 'defaultInputs', 'launcherIconChoiceMap', 'createDefaultAssistantConfig', 'mergeAssistantConfigDraft', 'applyWidgetConfig', 'saveConfig', 'goToStep'].map(declaration).join('\n')) + '\nthis.api = { applyWidgetConfig, saveConfig, goToStep, defaultInputs, createDefaultAssistantConfig };', context);
+  vm.runInContext(compile(['defaultOrbStyle', 'defaultInputs', 'launcherIconChoiceMap', 'createDefaultAssistantConfig', 'mergeAssistantConfigDraft', 'applyWidgetConfig', 'continueWithAccount', 'saveConfig', 'goToStep'].map(declaration).join('\n')) + '\nthis.api = { applyWidgetConfig, saveConfig, goToStep, defaultInputs, createDefaultAssistantConfig };', context);
   context.inputs = context.api.defaultInputs;
   context.assistantConfigDraft = context.api.createDefaultAssistantConfig();
   return { context, state, writes, api: context.api };
 }
+
+test('guest preview starts without optional help cards or a welcome card', () => {
+  const { api } = harness();
+  assert.equal(api.defaultInputs.conversationCardsEnabled, false);
+  assert.equal(api.defaultInputs.conversationCards.length, 0);
+  const assistant = api.createDefaultAssistantConfig();
+  assert.equal(assistant.conversationCardsEnabled, false);
+  assert.equal(assistant.startCard.enabled, false);
+});
+
+test('guest save carries the draft into login before account validation without writing to a business', async () => {
+  const { api, context, state, writes } = harness();
+  context.isAuthenticated = false;
+  context.isSetup = true;
+  context.inputs = { ...context.inputs, colorTheme: 'luxury' };
+  assert.equal(await api.saveConfig(), false);
+  assert.equal(state.redirect, '/auth/login?from=widget-studio');
+  assert.equal(state.temporaryDraft.key, 'vintra:studio-login-draft');
+  const draft = JSON.parse(state.temporaryDraft.value);
+  assert.equal(draft.inputs.colorTheme, 'luxury');
+  assert.ok(draft.createdAt > 0);
+  assert.equal(writes.length, 0);
+  assert.equal(state.module, undefined);
+});
 
 test('dirty tracking compares values and recognizes undo and reordered keys', () => {
   const saved = createStudioSnapshot({ settings: { enabled: true, label: 'Send' } }, { enabled: false });
