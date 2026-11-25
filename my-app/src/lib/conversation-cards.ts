@@ -1,86 +1,62 @@
 import type { AssistantConversationCard } from '@/types/database'
 
-const DEFAULT_CARD_OPTIONS = [
-  { label: 'Opening hours', prompt: 'What are your opening hours?' },
-  { label: 'Prices', prompt: 'Can you tell me your prices?' },
-  { label: 'Contact', prompt: 'How can I contact you?' },
-]
-
-export const defaultConversationCards: AssistantConversationCard[] = [
-  {
-    id: 'faq',
-    title: 'Vanlige spørsmål',
-    description: 'Svar på ofte stilte spørsmål om det viktigste.',
-    icon: '❔',
-    options: DEFAULT_CARD_OPTIONS,
-  },
-  {
-    id: 'services',
-    title: 'Produkter og tjenester',
-    description: 'Vis frem det du tilbyr på en enkel måte.',
-    icon: '🧭',
-    options: [
-      { label: 'See services', prompt: 'What services do you offer?' },
-      { label: 'Product help', prompt: 'Can you help me find the right product?' },
-      { label: 'Compare options', prompt: 'Which option should I choose?' },
-    ],
-  },
-  {
-    id: 'booking',
-    title: 'Bestilling og booking',
-    description: 'La kunder booke tid eller spørre om tilgjengelighet.',
-    icon: '🗓️',
-    options: [
-      { label: 'Book a time', prompt: 'I want to book an appointment.' },
-      { label: 'Availability', prompt: 'When are you available?' },
-      { label: 'Reschedule', prompt: 'Can I change my booking?' },
-    ],
-  },
-  {
-    id: 'support',
-    title: 'Kundeservice',
-    description: 'Hjelp med ordre, levering og oppfølging.',
-    icon: '🎧',
-    options: [
-      { label: 'Order status', prompt: 'Can you check my order status?' },
-      { label: 'Delivery', prompt: 'How does delivery work?' },
-      { label: 'Return', prompt: 'What is your return policy?' },
-    ],
-  },
-]
+// Starting or resetting a widget must not publish sample customer content.
+export const defaultConversationCards: AssistantConversationCard[] = []
 
 export function normalizeConversationCards(
   cards: AssistantConversationCard[] | null | undefined
 ): AssistantConversationCard[] {
-  const cleaned = (Array.isArray(cards) ? cards : [])
+  // Exact signatures of the old generated examples. Edited options are preserved.
+  const legacyOptions = [
+    [['Opening hours', 'What are your opening hours?'], ['Prices', 'Can you tell me your prices?'], ['Contact', 'How can I contact you?']],
+    [['See services', 'What services do you offer?'], ['Product help', 'Can you help me find the right product?'], ['Compare options', 'Which option should I choose?']],
+    [['Book a time', 'I want to book an appointment.'], ['Availability', 'When are you available?'], ['Reschedule', 'Can I change my booking?']],
+    [['Order status', 'Can you check my order status?'], ['Delivery', 'How does delivery work?'], ['Return', 'What is your return policy?']],
+  ]
+  const legacyDescriptions: Record<string, string> = {
+    faq: 'Svar på ofte stilte spørsmål om det viktigste.',
+    services: 'Vis frem det du tilbyr på en enkel måte.',
+    booking: 'La kunder booke tid eller spørre om tilgjengelighet.',
+    support: 'Hjelp med ordre, levering og oppfølging.',
+  }
+  return (Array.isArray(cards) ? cards : [])
+    .filter(card => card && typeof card === 'object')
     .map((card, index) => {
-      const options = Array.isArray(card.options)
-        ? card.options
-            .map((option, optionIndex) => ({
-              label: String(option?.label || '').trim(),
-              prompt: String(option?.prompt || '').trim(),
-              description: String(option?.description || '').trim() || undefined,
-              id: `${card.id || index}-${optionIndex}`,
-            }))
-            .filter((option) => option.label || option.prompt)
-            .map(({ id: _id, ...option }) => option)
-        : []
-
+      let options = (Array.isArray(card.options) ? card.options : [])
+        .filter(option => option && typeof option === 'object')
+        .map(option => {
+          const label = String(option.label || '').trim()
+          const prompt = String(option.prompt || '').trim()
+          return { label: label || prompt, prompt: prompt || label, description: String(option.description || '').trim() || undefined }
+        })
+        .filter(option => option.label && option.prompt)
+      let description = String(card.description || '').trim()
+      const oldExampleContext = description === 'Common' || description === legacyDescriptions[card.id]
+      const untouchedExamples = oldExampleContext && legacyOptions.some(group =>
+        group.length === options.length && group.every(([label, prompt], i) =>
+          options[i].label === label && options[i].prompt === prompt && !options[i].description))
+      if (untouchedExamples) {
+        options = []
+        description = ''
+      }
       return {
         id: String(card.id || `card-${index}`).trim(),
-        title: String(card.title || '').trim(),
-        description: String(card.description || '').trim(),
+        title: String(card.title || '').trim() || options[0]?.label || description,
+        description,
         icon: String(card.icon || '').trim() || undefined,
         image: String(card.image || '').trim() || undefined,
         options,
       }
     })
-    .filter((card) => card.title || card.description || card.options.length > 0)
+    .filter(card => card.title)
+}
 
-  return cleaned.length ? cleaned : []
+// A submenu is useful only when the owner has configured multiple choices.
+export function getConversationCardAction(card: AssistantConversationCard): { type: 'message'; prompt: string } | { type: 'menu' } {
+  if (card.options.length > 1) return { type: 'menu' }
+  return { type: 'message', prompt: card.options[0]?.prompt || card.title }
 }
 
 export function getPreviewConversationCards(cards: AssistantConversationCard[] | null | undefined): AssistantConversationCard[] {
-  const cleaned = normalizeConversationCards(cards)
-  return cleaned.length ? cleaned : defaultConversationCards
+  return normalizeConversationCards(cards)
 }

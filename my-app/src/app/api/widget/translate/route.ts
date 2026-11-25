@@ -6,6 +6,7 @@ import { verifyActiveUserToken } from '@/lib/verified-auth.server'
 import { consumeServerRateLimit } from '@/lib/server-rate-limit'
 import { adminDb } from '@/lib/firebase-admin'
 import { collectWidgetCopy, normalizeLocalization, WIDGET_LANGUAGES } from '@/lib/widget-localization'
+import { getBuiltinWidgetTranslations } from '@/lib/widget-builtin-translations.mjs'
 import { WIDGET_UI_COPY } from '@/lib/widget-ui-copy'
 import type { WidgetLanguage } from '@/types/database'
 
@@ -22,6 +23,7 @@ export async function POST(req: NextRequest) {
     if (!Object.hasOwn(WIDGET_LANGUAGES, language)) return NextResponse.json({ error: 'Unsupported language' }, { status: 400, headers })
     let copy: string[]
     let rateKey: string
+    let sourceLanguage = Object.hasOwn(WIDGET_LANGUAGES, body.sourceLanguage) ? body.sourceLanguage : 'no'
     if (body.widgetKey) {
       const business = await getBusinessByWidgetKey(String(body.widgetKey))
       if (!business) return NextResponse.json({ error: 'Widget not found' }, { status: 404, headers })
@@ -29,6 +31,7 @@ export async function POST(req: NextRequest) {
       if (!access.allowed) return NextResponse.json({ error: access.reason }, { status: 403, headers })
       const config = normalizeLocalization(business.chatAssistantConfig?.localization)
       if (language !== config.defaultLanguage && (!config.enabled || !config.allowedLanguages.includes(language))) return NextResponse.json({ error: 'Language not allowed' }, { status: 403, headers })
+      sourceLanguage = config.defaultLanguage
       copy = collectWidgetCopy({ widget: toPublicWidgetConfig(business.chatWidgetConfig), assistant: toPublicAssistantConfig(business.chatAssistantConfig) })
       rateKey = business.id
     } else {
@@ -38,9 +41,16 @@ export async function POST(req: NextRequest) {
       rateKey = user.uid
       copy = Array.isArray(body.copy) ? body.copy.filter((item: unknown): item is string => typeof item === 'string' && item.length <= 4000).slice(0, 250) : []
     }
-    const strings = [...new Set([...WIDGET_UI_COPY, ...copy])].sort()
+    const builtin = getBuiltinWidgetTranslations(language)
+    const bundled = language === 'no' || language === 'en'
+    const strings = [...new Set([...(bundled ? [] : WIDGET_UI_COPY), ...(language === sourceLanguage ? [] : copy)])].filter(text => !Object.hasOwn(builtin, text)).sort()
+    if (!strings.length) return NextResponse.json({ translations: builtin }, { headers })
+    if (!process.env.GEMINI_API_KEY) {
+      console.error('[widget-translation] GEMINI_API_KEY is not configured')
+      return NextResponse.json({ error: 'Translation is not configured', code: 'translation_not_configured' }, { status: 503, headers })
+    }
     if (JSON.stringify(strings).length > 65000) return NextResponse.json({ error: 'Too much copy' }, { status: 413, headers })
-    const key = createHash('sha256').update(JSON.stringify([language, strings])).digest('hex')
+    const key = createHash('sha256').update(JSON.stringify(['v2', language, strings])).digest('hex')
     const ref = adminDb.collection('_widget_translations').doc(key)
     const cached = await ref.get()
     if (cached.exists && Array.isArray(cached.data()?.entries)) return NextResponse.json({ translations: Object.fromEntries(cached.data()!.entries.map((entry: { source: string; target: string }) => [entry.source, entry.target])) }, { headers })
@@ -58,13 +68,18 @@ export async function POST(req: NextRequest) {
             generationConfig: { responseMimeType: 'application/json', temperature: 0, maxOutputTokens: 16000 },
           }),
         })
-        if (!response.ok) throw new Error('Translation unavailable')
+        if (!response.ok) {
+          console.error('[widget-translation] Provider request failed', { status: response.status })
+          throw new Error('Translation unavailable')
+        }
         const payload = await response.json()
         const translated: unknown = JSON.parse(payload.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || '').join('') || 'null')
         if (!Array.isArray(translated) || translated.length !== strings.length || translated.some(item => typeof item !== 'string' || item.length > 12000 || !item.trim())) throw new Error('Incomplete translation')
         const translations = Object.fromEntries(strings.map((text, index) => [text, translated[index]])) as Record<string, string>
         // Store source strings as values: Firestore field names have a much smaller byte limit.
-        await ref.set({ entries: strings.map(text => ({ source: text, target: translations[text] })), createdAt: new Date() })
+        await ref.set({ entries: strings.map(text => ({ source: text, target: translations[text] })), createdAt: new Date() }).catch(() => {
+          console.warn('[widget-translation] Could not cache completed translation')
+        })
         return translations
       })()
       pending.set(key, work)

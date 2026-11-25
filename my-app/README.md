@@ -20,6 +20,14 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Widget translation in local development
+
+Norwegian and English interface labels are bundled with the widget. Custom content is treated as being in the default language selected in the panel. Translating that content to another language, or translating the interface to other supported languages, uses Gemini.
+
+Set `GEMINI_API_KEY` in the ignored `.env.development.local` file and restart the development server. Never use a `NEXT_PUBLIC_` prefix for this key. A secret configured only for Vercel Production/Preview does not configure localhost. The translation route also requires the existing Firebase Admin connection for widget authorization, caching and rate limiting.
+
+Run `npm run test:widget` for the translation and widget regression tests, and `npm run typecheck` for TypeScript validation. Provider responses are simulated in the automated translation tests; live translation requires a configured key and Firebase access.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

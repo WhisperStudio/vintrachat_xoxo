@@ -1,5 +1,6 @@
+import { getConversationCardAction, normalizeConversationCards } from '@/lib/conversation-cards'
 import { getBuiltinWidgetTranslations } from '@/lib/widget-builtin-translations.mjs'
-import { getWidgetPageStyle, getContextualWidgetSuggestions, resolveWidgetFlow, validateWidgetContact } from '@/lib/widget-flow.mjs'
+import { getWidgetPageStyle, getContextualWidgetSuggestions, resolveWidgetFlow, showWidgetSupportShortcut, validateWidgetContact } from '@/lib/widget-flow.mjs'
 import { getWidgetMotionClasses } from '@/lib/widget-motion'
 import { getMessageSurfaceClasses, getSurfaceClasses } from '@/lib/surface-design'
 import { createLauncherArtwork } from '@/lib/launcher-design'
@@ -1120,6 +1121,7 @@ export async function GET(
     feedbackSubmitting: false,
     activePanel: 'chats',
     tasks: [],
+    expandedTaskIds: [],
     tasksLoading: false,
     taskSubmitting: false,
     taskNotice: '',
@@ -1329,7 +1331,7 @@ export async function GET(
 
   function formatTime(value) {
     try {
-      return new Date(value || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return new Date(value || Date.now()).toLocaleTimeString(state.uiLanguage === 'no' ? 'nb-NO' : state.uiLanguage, { hour: '2-digit', minute: '2-digit' });
     } catch (error) {
       return '';
     }
@@ -1513,56 +1515,13 @@ export async function GET(
     return state.assistantConfig || {};
   }
 
+  var normalizeCards = ${normalizeConversationCards.toString()};
+  var cardAction = ${getConversationCardAction.toString()};
   function getConversationCards(config) {
     var assistantConfig = getAssistantConfig();
-    var bodyStyle = (config && config.bodyStyle) || {};
-
-    if (assistantConfig.conversationCardsEnabled === false) {
-      return [];
-    }
-
-    var cards = Array.isArray(assistantConfig.conversationCards)
-      ? assistantConfig.conversationCards
-      : [];
+    if (!assistantConfig.conversationCardsEnabled) return [];
     var limit = Math.max(1, Number(assistantConfig.conversationCardsLimit || 4));
-
-    var cleaned = cards
-      .map(function (card, index) {
-        var title = String(card && card.title ? card.title : '').trim();
-        var description = String(card && card.description ? card.description : '').trim();
-        var icon = String(card && card.icon ? card.icon : '').trim();
-        var image = String(card && card.image ? card.image : '').trim();
-        var options = Array.isArray(card && card.options) ? card.options : [];
-
-        return {
-          id: String(card && card.id ? card.id : 'card-' + index),
-          title: title || 'Starter card',
-          description: description || 'Tap to see more options.',
-          icon: icon,
-          image: image,
-          options: options
-            .map(function (option, optionIndex) {
-              var label = String(option && option.label ? option.label : '').trim();
-              var prompt = String(option && option.prompt ? option.prompt : '').trim();
-              var optionDescription = String(option && option.description ? option.description : '').trim();
-
-              return {
-                label: label || prompt || ('Option ' + (optionIndex + 1)),
-                prompt: prompt || label || ('Option ' + (optionIndex + 1)),
-                description: optionDescription || '',
-              };
-            })
-            .filter(function (option) {
-              return Boolean(option.label || option.prompt);
-            }),
-        };
-      })
-      .filter(function (card) {
-        return Boolean(card.title || card.description);
-      })
-      .slice(0, limit);
-
-    return cleaned;
+    return normalizeCards(assistantConfig.conversationCards).slice(0, limit);
   }
 
   function refreshFaqSuggestions() {
@@ -1683,20 +1642,13 @@ export async function GET(
     return getFlow().ticketsEnabled;
   }
 
-  function shouldShowPortalTabs() {
-    return isTasksTabEnabled() && (
-      getFlow().alwaysShowTickets ||
-      state.tasks.length > 0 ||
-      state.activePanel === 'tasks' ||
-      ((state.supportStatus === 'needs-human' || state.supportStatus === 'open' || state.supportStatus === 'ai-active') &&
-        (getFlow().allowVisitorCreation || getFlow().showTeamTasksToVisitors))
-    );
-  }
-
-  function getAvailablePanels() {
-    var panels = [{ id: 'chats', label: 'Chats' }];
-    if (isTasksTabEnabled()) panels.push({ id: 'tasks', label: 'Tickets' });
-    return panels;
+  var showSupportShortcut = ${showWidgetSupportShortcut.toString()};
+  function shouldShowSupportShortcut() {
+    return showSupportShortcut(getFlow(), {
+      taskCount: state.tasks.length,
+      supportStatus: state.supportStatus,
+      hasConversation: state.messages.some(function (message) { return message.role === 'user'; })
+    });
   }
 
   function shouldShowSupportGate() {
@@ -1740,38 +1692,20 @@ export async function GET(
     );
   }
 
-  function getPanelTabsMarkup() {
-    if (!shouldShowPortalTabs()) return '';
-
-    var panels = getAvailablePanels();
-
-    return (
-      '<div class="widget-panel-tabs" role="tablist" aria-label="Widget pages" style="position:sticky;top:0;z-index:4;display:inline-flex;justify-content:center;align-items:center;gap:0.45rem;min-height:40px;max-width:calc(100% - 1rem);margin:0 auto;padding:0.25rem;border:1px solid color-mix(in srgb,var(--chat-primary) 16%,transparent);border-radius:999px;background:color-mix(in srgb,var(--chat-bg) 88%,transparent);box-shadow:0 8px 18px rgba(15,23,42,0.06);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none;">' +
-        panels.map(function (panel) {
-          return (
-            '<button type="button" class="widget-panel-tab' + (state.activePanel === panel.id ? ' is-active' : '') + '" data-widget-panel="' + panel.id + '" role="tab" aria-selected="' + (state.activePanel === panel.id ? 'true' : 'false') + '" style="flex:0 0 auto;padding:0.45rem 0.8rem;border:1px solid color-mix(in srgb,var(--chat-primary) ' + (state.activePanel === panel.id ? '28%' : '12%') + ',transparent);border-radius:999px;background:' + (state.activePanel === panel.id ? 'color-mix(in srgb,var(--chat-primary) 12%,var(--chat-bg))' : 'var(--chat-bg)') + ';color:' + (state.activePanel === panel.id ? 'var(--chat-primary)' : 'var(--chat-text)') + ';font-weight:700;">' +
-              escapeHtml(pageCopy('ticket', panel.id === 'tasks' ? 'ticketsLabel' : 'chatsLabel', panel.label)) +
-            '</button>'
-          );
-        }).join('') +
-      '</div>'
-    );
-  }
-
   function getTaskPanelMarkup() {
     if (!isTasksTabEnabled()) return '';
 
     var tasksMarkup = state.tasksLoading
-      ? '<div class="widget-panel-empty">Loading tickets...</div>'
+      ? '<div class="widget-panel-empty">Loading updates...</div>'
       : state.tasks.length
         ? '<div class="widget-task-list">' + state.tasks.map(function (task) {
             return (
               '<article class="widget-task-card">' +
                 '<div class="widget-task-card__top">' +
-                  '<strong>' + escapeHtml(task.title || 'Untitled ticket') + '</strong>' +
+                  '<strong>' + escapeHtml(task.title || 'Contact request') + '</strong>' +
                   '<span class="widget-task-badge widget-task-badge--' + escapeHtml(String(task.status || 'open').toLowerCase()) + '">' + escapeHtml(task.status || 'open') + '</span>' +
                 '</div>' +
-                '<p>' + escapeHtml(task.description || '') + '</p>' +
+                (task.description ? '<details class="widget-support-details" data-task-details="' + escapeHtml(task.id) + '"' + ((state.expandedTaskIds || []).includes(String(task.id)) ? ' open' : '') + '><summary>View details</summary><p>' + escapeHtml(task.description) + '</p></details>' : '') +
                 '<div class="widget-task-card__meta">' +
                   '<span>' + escapeHtml(task.categoryName || 'General') + '</span>' +
                   '<span>' + escapeHtml(formatTime(task.createdAt)) + '</span>' +
@@ -1779,11 +1713,11 @@ export async function GET(
               '</article>'
             );
           }).join('') + '</div>'
-        : '<div class="widget-panel-empty">' + (getFlow().allowVisitorCreation ? 'No tickets yet. Use the form below to create one.' : 'No tickets to show yet.') + '</div>';
+        : (getFlow().allowVisitorCreation || state.supportStatus ? '' : '<div class="widget-panel-empty">Updates from the team will appear here.</div>');
     var supportConversationMarkup = state.supportStatus && state.supportStatus !== 'closed'
       ? '<article class="widget-task-card"><div class="widget-task-card__top"><strong>Human support</strong><span class="widget-task-badge">' +
         escapeHtml(state.supportStatus === 'open' ? 'Connected' : state.supportStatus === 'ai-active' ? 'AI assistant active' : 'Waiting for support') +
-        '</span></div><p>Your support conversation and updates are available in Chats.</p><button type="button" class="widget-feedback-secondary" data-widget-panel="chats">Open conversation</button></article>'
+        '</span></div><p>Replies from the team arrive in this conversation.</p><button type="button" class="widget-feedback-secondary" data-widget-panel="chats">Open conversation</button></article>'
       : '';
     var contactMarkup = getFlow().allowVisitorCreation && !state.tasks.length && !state.supportStatus && !state.ticketSubmitted
       ? (state.contactSaved
@@ -1792,13 +1726,13 @@ export async function GET(
               (getFlow().showEmail ? '<label class="widget-feedback-field"><span>' + escapeHtml(pageCopy('contactForm', 'emailLabel', 'Email')) + '</span><input type="email" class="widget-ticket-contact" data-contact-field="email" autocomplete="email" value="' + escapeHtml(state.handoffEmail) + '" /></label>' : '') +
               (getFlow().showPhone ? '<label class="widget-feedback-field"><span>' + escapeHtml(pageCopy('contactForm', 'phoneLabel', 'Phone')) + '</span><input type="tel" class="widget-ticket-contact" data-contact-field="phone" autocomplete="tel" value="' + escapeHtml(state.handoffPhone) + '" /></label>' : '')) +
           '<div class="widget-feedback-actions">' +
-            '<button type="button" class="widget-feedback-primary widget-task-submit" ' + ((state.taskSubmitting || validateContact(getFlow(), { name: state.handoffName, email: state.handoffEmail, phone: state.handoffPhone })) ? 'disabled' : '') + '>' + (state.taskSubmitting ? 'Submitting...' : escapeHtml(pageCopy('ticket', 'submitLabel', 'Send request'))) + '</button>' +
+            '<button type="button" class="widget-feedback-primary widget-task-submit" ' + ((state.taskSubmitting || validateContact(getFlow(), { name: state.handoffName, email: state.handoffEmail, phone: state.handoffPhone })) ? 'disabled' : '') + '>' + (state.taskSubmitting ? 'Submitting...' : escapeHtml(pageCopy('ticket', 'submitLabel', 'Send to team'))) + '</button>' +
           '</div>'
       : '';
 
     return (
       '<div class="widget-panel-page widget-panel-page--tasks widget-page-design ticket-layout-' + getFlow().ticketLayout + '" style="' + escapeHtml(pageStyle('ticket')) + '">' +
-          ('<div class="widget-page-heading">' + pageIcon('ticket', 'FiFileText') + '<div><h4>' + escapeHtml(getFlow().ticketTitle) + '</h4><p>' + escapeHtml(getFlow().ticketDescription) + '</p></div></div>') +
+          ('<div class="widget-page-heading">' + pageIcon('ticket', 'FiLifeBuoy') + '<div><h4>' + escapeHtml(getFlow().ticketTitle) + '</h4><p>' + escapeHtml(getFlow().ticketDescription) + '</p></div></div>') +
           contactMarkup +
           (state.taskNotice ? '<div class="widget-panel-inline-note">' + escapeHtml(state.taskNotice) + '</div>' : '') +
           supportConversationMarkup +
@@ -2309,7 +2243,7 @@ export async function GET(
         state.contactSaved = true;
       }
       state.ticketSubmitted = true;
-      state.taskNotice = 'Ticket created successfully.';
+      state.taskNotice = 'Message sent to the team.';
     } catch (error) {
       state.taskNotice = error instanceof Error ? error.message : 'Failed to create task';
     } finally {
@@ -2537,7 +2471,11 @@ export async function GET(
   var widgetActionsBound = false;
   var builtinTranslations = ${getBuiltinWidgetTranslations.toString()};
   var languageNames = { no: 'Norsk', en: 'English', sv: 'Svenska', da: 'Dansk', de: 'Deutsch', fi: 'Suomi', is: 'Íslenska' };
-  function uiText(text) { return builtinTranslations(state.uiLanguage)[text] || state.translations[text] || text; }
+  var builtinTranslationCache = {};
+  function uiText(text) {
+    var builtin = builtinTranslationCache[state.uiLanguage] || (builtinTranslationCache[state.uiLanguage] = builtinTranslations(state.uiLanguage));
+    return builtin[text] || state.translations[text] || text;
+  }
   function getLanguages() {
     var config = getAssistantConfig().localization || {};
     var primary = Object.prototype.hasOwnProperty.call(languageNames, config.defaultLanguage) ? config.defaultLanguage : 'no';
@@ -2548,12 +2486,12 @@ export async function GET(
     state.uiLanguage = language;
     try { window.localStorage.setItem('vintra-widget-language:' + WIDGET_KEY, language); } catch (error) {}
     state.translations = state.translationCache[language] || {};
-    state.translationLoading = true;
+    state.translationLoading = !(state.translationCache[language] || (language === getLanguages().primary && ['no', 'en'].includes(language)));
     state.translationError = false;
     render();
+    if (!state.translationLoading) return;
     try {
-      await loadEmbedToken();
-      var response = await fetch(ORIGIN + '/api/widget/translate', { method: 'POST', mode: 'cors', headers: widgetHeaders(), body: JSON.stringify({ widgetKey: WIDGET_KEY, language: language }) });
+      var response = await fetchWithEmbedToken(ORIGIN + '/api/widget/translate', { method: 'POST', mode: 'cors', body: JSON.stringify({ widgetKey: WIDGET_KEY, language: language }) });
       if (!response.ok) throw new Error('Translation unavailable');
       var result = await response.json();
       if (request !== state.translationRequest) return;
@@ -2565,6 +2503,11 @@ export async function GET(
     } finally {
       if (request === state.translationRequest) { state.translationLoading = false; render(); }
     }
+  }
+  function translationNoticeMarkup() {
+    return (state.translationLoading ? '<span class="widget-translation-status" role="status">' + escapeHtml(uiText('Loading...')) + '</span>' : '') +
+      (state.translationError ? '<div class="widget-translation-notice" role="status"><span>' + escapeHtml(uiText('Could not translate this content.')) + '</span><button type="button" class="widget-translation-retry">' + escapeHtml(uiText('Try again')) + '</button></div>' : '') +
+      (state.error ? '<div class="widget-inline-error" role="alert">' + escapeHtml(state.error) + '</div>' : '');
   }
   function languageSelectorMarkup() {
     var config = getLanguages();
@@ -2623,6 +2566,11 @@ export async function GET(
     widgetActionsBound = true;
     mount.addEventListener('toggle', function(event) {
       if (event.target.matches?.('.widget-language-picker')) state.languageMenuOpen = event.target.open;
+      if (event.target.matches?.('.widget-support-details')) {
+        var id = event.target.getAttribute('data-task-details');
+        state.expandedTaskIds = state.expandedTaskIds.filter(function (item) { return item !== id; });
+        if (event.target.open) state.expandedTaskIds.push(id);
+      }
     }, true);
     if (typeof document !== 'undefined') document.addEventListener?.('pointerdown', function(event) {
       var picker = mount.querySelector('.widget-language-picker');
@@ -2716,9 +2664,20 @@ export async function GET(
 
       if (button.classList.contains('widget-starter-card')) {
         var cardId = String(button.getAttribute('data-starter-card-id') || '').trim();
-        if (cardId) {
-          state.activeConversationCardId = cardId;
-          render();
+        var card = getConversationCards(state.config).find(function(item) { return item.id === cardId; });
+        if (card) {
+          var action = cardAction(card);
+          if (action.type === 'menu') {
+            state.activeConversationCardId = cardId;
+            render();
+          } else {
+            state.inputValue = uiText(action.prompt);
+            state.activeConversationCardId = '';
+            state.faqSuggestionsDismissed = true;
+            state.faqSuggestions = [];
+            render();
+            sendMessage();
+          }
         }
         return;
       }
@@ -2773,10 +2732,14 @@ export async function GET(
         if (state.awaitingVisitorName || state.feedbackOpen) { closeActiveForm(); return; }
         var nextPanel = String(button.getAttribute('data-widget-panel') || 'chats');
         state.activePanel = nextPanel;
+        render();
+        var body = mount.querySelector('.chat-body');
+        if (body) body.scrollTop = nextPanel === 'tasks' ? 0 : body.scrollHeight;
         if (nextPanel === 'tasks') {
+          mount.querySelector('.chat-header-back')?.focus();
           void loadTasks();
         } else {
-          render();
+          focusComposerInput();
         }
         return;
       }
@@ -2967,7 +2930,6 @@ export async function GET(
     var starterCardsMarkup = starterCardsMarkupState.html;
     var showStarterCards = starterCardsMarkupState.showStarterCards && state.activePanel === 'chats';
     var showStarterCardList = starterCardsMarkupState.showStarterCardList && state.activePanel === 'chats';
-    var showPortalTabs = shouldShowPortalTabs();
     var panelMarkup = state.activePanel === 'tasks'
       ? getTaskPanelMarkup()
       : (showStarterCards ? starterCardsMarkup : '<div class="widget-message-thread" role="log" aria-live="polite">' + getMessagesMarkup(config) + '</div>' + getFaqSuggestionsMarkup());
@@ -3004,21 +2966,19 @@ export async function GET(
               (state.activePanel === 'tasks' || state.awaitingVisitorName || state.feedbackOpen ? '<button type="button" class="chat-header-back" data-widget-panel="chats" aria-label="Back to chat">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('backIcon', 'FiArrowLeft')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">←</span>') + '</button>' : '') +
               (state.activePanel !== 'tasks' && headerStyle.showAvatar !== false ? headerAvatar : '') +
               '<div class="chat-header-copy">' +
-                (headerStyle.showTitle !== false ? '<h3>' + escapeHtml(state.activePanel === 'tasks' ? getFlow().ticketTitle : getTitle(config)) + '</h3>' : '') +
-                '<p>' + escapeHtml(state.activePanel === 'tasks' ? getFlow().ticketDescription : getDescription(config)) + '</p>' +
+                (headerStyle.showTitle !== false ? '<h3>' + escapeHtml(getTitle(config)) + '</h3>' : '') +
+                '<p>' + escapeHtml(getDescription(config)) + '</p>' +
               '</div>' +
             '</div>' +
             '<div class="chat-header-actions">' + languageSelectorMarkup() +
               (state.activePanel === 'chats' && getFlow().reviewHeaderButton ? '<button type="button" class="widget-review-open" aria-label="Leave a review" title="Leave a review">&#9734;</button>' : '') +
-              (state.activePanel === 'chats' && headerStyle.showStatus ? '<span class="status-pill">' + renderIconSlot(icons.check) + ' ' + escapeHtml(getStatusLabel()) + '</span><span class="header-status-dot" aria-hidden="true"></span>' : '') +
               (state.open ? '<button type="button" class="close-btn' + (headerStyle.showCloseButton ? '' : ' widget-mobile-close-only') + '" aria-label="Close chat">' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('closeIcon', 'FiX')) || '<span class="widget-svg-icon widget-svg-icon--text" aria-hidden="true">×</span>') + '</button>' : '') +
             '</div>' +
           '</div>' +
           '<div class="' + classes(['chat-body', getSurfaceClasses(bodyStyle), 'border-' + (bodyStyle.borderType || 'none'), 'shadow-' + (bodyStyle.shadowType || 'none')]) + '" style="position:relative;' + escapeHtml(pageStyle(state.awaitingVisitorName ? 'contactForm' : state.feedbackOpen ? 'reviewPage' : state.activePanel === 'tasks' ? 'ticket' : '')) + '">' +
-            (!state.awaitingVisitorName && !state.feedbackOpen && showPortalTabs ? getPanelTabsMarkup() : '') +
             (state.awaitingVisitorName ? getHandoffOverlayMarkup() : state.feedbackOpen ? getFeedbackOverlayMarkup() : panelMarkup) +
           '</div>' +
-          (state.awaitingVisitorName || state.feedbackOpen || state.activePanel !== 'chats' ? '<div class="' + classes(['chat-footer', getSurfaceClasses(footerStyle), 'widget-form-footer']) + '" aria-hidden="true"></div>' : (
+          (state.awaitingVisitorName || state.feedbackOpen || state.activePanel !== 'chats' ? '<div class="' + classes(['chat-footer', getSurfaceClasses(footerStyle), 'widget-form-footer']) + '">' + translationNoticeMarkup() + '</div>' : (
             '<div class="' + classes([
               'chat-footer',
               'footer-corners-' + footerCornerStyle,
@@ -3027,20 +2987,20 @@ export async function GET(
               'footer-shadow-' + (footerStyle.shadowType || 'none'),
               'input-' + (footerStyle.inputStyle || 'flat')
             ]) + '">' +
+              (headerStyle.showStatus || shouldShowSupportShortcut() ? '<div class="widget-conversation-tools">' +
+                (headerStyle.showStatus ? '<span class="widget-conversation-status" role="status"><span aria-hidden="true"></span>' + escapeHtml(getStatusLabel()) + '</span>' : '') +
+                (shouldShowSupportShortcut() ? '<button type="button" class="widget-support-link" data-widget-panel="tasks">' + renderConfiguredWidgetIconSlot('FiLifeBuoy') + escapeHtml(pageCopy('ticket', 'ticketsLabel', 'Contact the team')) + '</button>' : '') +
+              '</div>' : '') +
               '<div class="chat-footer-row">' +
-              (getFlow().allowVisitorCreation && (state.supportStatus === 'needs-human' || state.supportStatus === 'open' || state.supportStatus === 'ai-active') ? '<button type="button" data-widget-panel="tasks" class="widget-ticket-open" aria-label="Create a support ticket" title="Create a support ticket"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3.75h9l5 5v11.5H5z"/><path d="M14 3.75v5h5M8 13h8M8 16.5h8"/></svg></button>' : '') +
-              '<textarea rows="1" ' +
+              '<textarea rows="1" aria-label="Your message" ' +
                   (state.feedbackOpen ? 'disabled ' : '') +
                   'placeholder="' + escapeHtml(footerStyle.showPlaceholder === false ? '' : ((state.supportStatus === 'needs-human' || state.supportStatus === 'open') ? 'Write a message for human support...' : 'Write a message...')) + '">' +
                   escapeHtml(truncateTextByCharacters(String(state.inputValue || ''), MAX_WIDGET_MESSAGE_CHARS)) +
                 '</textarea>' +
                 (footerStyle.showSendButton === false ? '' : '<button type="button" class="send-btn" aria-label="Send message" ' + ((state.sending || state.feedbackOpen) ? 'disabled' : '') + '>' + (renderConfiguredWidgetIconSlot(getInterfaceIcon('sendIcon', 'FiSend')) || renderIconSlot(icons.send)) + '</button>') +
-              '</div>' +
+              '</div>' + translationNoticeMarkup() +
             '</div>'
           )) +
-          (state.translationLoading ? '<span class="widget-translation-status" role="status">Loading...</span>' : '') +
-          (state.translationError ? '<button type="button" class="widget-translation-retry">Translation unavailable. Try again.</button>' : '') +
-          (state.error ? '<div class="widget-inline-error" role="alert">' + escapeHtml(state.error) + '</div>' : '') +
           getImageLightboxMarkup() +
           '</div>' +
           (shouldShowSupportGate() ? (
@@ -3371,7 +3331,6 @@ export async function GET(
 
         if (json.supportRequested || json.humanRequestQueued) {
           setSupportStatus('needs-human');
-          if (json.humanAvailable) state.activePanel = 'tasks';
           startSupportPolling();
           if (json.humanAvailable) void loadTasks();
         } else if (state.supportStatus === 'ai-active') {

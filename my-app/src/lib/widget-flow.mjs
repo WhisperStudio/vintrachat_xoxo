@@ -12,8 +12,8 @@ export function resolveWidgetFlow(settings = {}, assistant = {}) {
     allowVisitorCreation: ticketsEnabled && ticket.allowVisitorCreation !== false,
     alwaysShowTickets: ticketsEnabled && (ticket.showTabAlways === true || (ticket.showTabAlways !== false && mode === 'always')),
     showTeamTasksToVisitors: ticket.showTeamTasksToVisitors === true,
-    ticketTitle: String(ticket.title || 'Support tickets').slice(0, 100),
-    ticketDescription: String(ticket.description || 'Send a request to the team and track it here.').slice(0, 500),
+    ticketTitle: String(ticket.title || 'Contact the team').slice(0, 100),
+    ticketDescription: String(ticket.description || 'Leave your details and we will help you from here.').slice(0, 500),
     ticketLayout: ticket.layout === 'compact' ? 'compact' : 'cards',
     reviewsEnabled: settings.reviewsEnabled === true,
     autoAskReview: settings.reviewsEnabled === true && review.autoAsk !== false,
@@ -28,6 +28,16 @@ export function resolveWidgetFlow(settings = {}, assistant = {}) {
     requirePhone: contact.requirePhone === true,
     formStyle: contact.style === 'compact' ? 'compact' : 'comfortable',
   };
+}
+
+// One navigation policy for the studio, live React widget and exported script.
+// On-demand help becomes available during a conversation without taking it over.
+export function showWidgetSupportShortcut(flow, { taskCount = 0, supportStatus = '', hasConversation = false, preview = false } = {}) {
+  return flow.ticketsEnabled && (
+    preview || flow.alwaysShowTickets || taskCount > 0 ||
+    ((hasConversation || ['needs-human', 'open', 'ai-active'].includes(supportStatus)) &&
+      (flow.allowVisitorCreation || flow.showTeamTasksToVisitors))
+  );
 }
 
 export function getContextualWidgetSuggestions(query, candidates = [], fallback = []) {

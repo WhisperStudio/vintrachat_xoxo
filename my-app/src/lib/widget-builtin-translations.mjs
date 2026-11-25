@@ -1,8 +1,46 @@
 // Standard interface copy must work before, and independently of, remote translation.
 /** @returns {Record<string, string>} */
 export function getBuiltinWidgetTranslations(language) {
-  if (language !== 'no') return {};
-  return {
+  const norwegian = {
+    'Translation unavailable. Please try again.': 'Oversettelse utilgjengelig. Prøv igjen.',
+    'We’d be happy to help. Tell us a little about what you need, and we’ll find the right solution together.': 'Det hjelper vi deg gjerne med. Fortell litt om hva du trenger, så finner vi riktig løsning sammen.',
+    'The visitor asked to be contacted.': 'Kunden ønsker å bli kontaktet.',
+    'Message is too long. Max 300 characters.': 'Meldingen er for lang. Maks 300 tegn.',
+    'Widget pages': 'Widgetsider', 'Starter card pages': 'Startsider',
+    'Suggested next steps': 'Foreslåtte neste steg',
+    'Assistant is typing': 'Assistenten skriver', 'Support is typing': 'Kundeservice skriver',
+    'Human support request': 'Forespørsel til kundeservice', 'Close human handoff form': 'Lukk kontaktskjemaet',
+    'Waiting for a support assistant': 'Venter på kundeservice', 'Waiting for human support': 'Venter på kundeservice',
+    'Chat is ready. Send a message to start.': 'Chatten er klar. Send en melding for å starte.',
+    'Missing widget key': 'Widgetnøkkel mangler', 'Widget not found': 'Fant ikke widgeten',
+    'Widget origin not allowed': 'Widgeten er ikke tillatt på dette nettstedet',
+    'Document is not ready for widget mount': 'Siden er ikke klar for widgeten',
+    'Usually replies in a few minutes': 'Svarer vanligvis innen noen minutter',
+    'Starter card': 'Startkort', 'Tap to see more options.': 'Trykk for å se flere valg.',
+    'Option ': 'Valg ', 'Image attachment': 'Bildevedlegg', 'Untitled ticket': 'Forespørsel uten tittel',
+    'Failed to verify captcha': 'Kunne ikke bekrefte sikkerhetssjekken', 'Please wait ': 'Vent ',
+    'Failed to sync support chat': 'Kunne ikke oppdatere supportsamtalen',
+    'Failed to load tasks': 'Kunne ikke hente oppdateringer',
+    'Visitor: ': 'Besøkende: ', 'Support: ': 'Kundeservice: ', 'Assistant: ': 'Assistent: ',
+    'Failed to create task': 'Kunne ikke sende forespørselen', 'Failed to process chat': 'Kunne ikke behandle meldingen',
+    'Failed to load widget token': 'Kunne ikke koble til chatten', 'Missing widget token': 'Tilkobling til chatten mangler',
+    'Translation unavailable': 'Oversettelse utilgjengelig', 'Failed to load widget config': 'Kunne ikke laste widgeten',
+    'Message is too long. Max ': 'Meldingen er for lang. Maks ', 'I could not generate a reply.': 'Jeg klarte ikke å lage et svar.',
+    'Failed to submit feedback': 'Kunne ikke sende tilbakemeldingen', 'Script loaded': 'Skriptet er lastet',
+    'Open image': 'Åpne bildet', 'Image preview': 'Forhåndsvisning av bilde',
+    'Close image preview': 'Lukk bildet', 'Back to cards': 'Tilbake til oversikten',
+
+    'Contact the team': 'Kontakt teamet',
+    'Leave your details and we will help you from here.': 'Legg igjen kontaktinfo, så hjelper vi deg videre.',
+    'Send to team': 'Send til teamet', 'Message sent to the team.': 'Meldingen er sendt til teamet.',
+    'Replies from the team arrive in this conversation.': 'Svar fra teamet kommer i denne samtalen.',
+    'View details': 'Vis detaljer', 'Loading updates...': 'Laster oppdateringer…',
+    'Updates from the team will appear here.': 'Oppdateringer fra teamet vises her.',
+    'Human support live': 'Du snakker med teamet', 'AI resumed': 'AI-assistenten er tilbake', 'Offline': 'Frakoblet',
+    'done': 'Ferdig', 'todo': 'Mottatt', 'resolved': 'Løst',
+
+    'Could not translate this content.': 'Kunne ikke oversette innholdet.',
+    'Try again': 'Prøv igjen',
     'Language': 'Språk', 'Choose language': 'Velg språk', 'Close': 'Lukk',
     'Online': 'På nett', 'AI live': 'AI er aktiv', 'AI off': 'AI er av',
     'Support Chat': 'Kundeservice', 'Support tickets': 'Supportforespørsler',
@@ -25,7 +63,7 @@ export function getBuiltinWidgetTranslations(language) {
     'Hello, and welcome.': 'Hei, og velkommen.',
     'Choose a topic, or send us a message.': 'Velg et tema, eller skriv til oss.',
     'We are here to help you!': 'Vi er her for å hjelpe deg!',
-    'I?d like to learn more about your services.': 'Jeg vil gjerne vite mer om tjenestene deres.',
+    'I’d like to learn more about your services.': 'Jeg vil gjerne vite mer om tjenestene deres.',
     'Opening hours': 'Åpningstider', 'Products and services': 'Produkter og tjenester',
     'Customer service': 'Kundeservice', 'Read': 'Lest', 'Support': 'Kundeservice',
     'Human support': 'Menneskelig support', 'Connected': 'Tilkoblet',
@@ -51,4 +89,7 @@ export function getBuiltinWidgetTranslations(language) {
     'Rating selector': 'Velg vurdering', 'stars': 'stjerner',
     'Translation unavailable. Try again.': 'Oversettelse utilgjengelig. Prøv igjen.',
   };
+  if (language === 'no') return { 'Ticketen er sendt.': 'Forespørselen er sendt.', 'Sender...': 'Sender…', 'Send en ticket': 'Send en forespørsel', ...Object.fromEntries(Object.values(norwegian).map(text => [text, text])), ...norwegian };
+  if (language === 'en') return { 'Ticketen er sendt.': 'Request sent.', 'Sender...': 'Sending...', 'Send en ticket': 'Send request', ...Object.fromEntries(Object.keys(norwegian).map(text => [text, text])), ...Object.fromEntries(Object.entries(norwegian).map(([source, target]) => [target, source])) };
+  return {};
 }

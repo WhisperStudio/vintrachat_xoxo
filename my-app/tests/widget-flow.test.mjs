@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
-import { getWidgetPageStyle, getContextualWidgetSuggestions, resolveWidgetFlow, validateWidgetContact } from '../src/lib/widget-flow.mjs';
+import { getWidgetPageStyle, getContextualWidgetSuggestions, resolveWidgetFlow, showWidgetSupportShortcut, validateWidgetContact } from '../src/lib/widget-flow.mjs';
 import { installWidgetMobileViewport, shouldAnimateWidgetLauncher, patchWidgetMarkup } from '../src/lib/widget-mobile.mjs';
 
 test('support off overrides tickets and handoff; old configurations retain their behavior', () => {
@@ -70,8 +70,8 @@ function exportedScript() {
     widgetKey: 'test-widget', origin: 'https://example.com', debugMode: false, forceOpen: false,
     serializeForJs: JSON.stringify, WIDGET_THEME_CLASS: {}, WIDGET_THEME_VARS: {}, WIDGET_ICON_MARKUP_BY_KEY: {}, WIDGET_ICON_ALIAS_MAP: {},
     widgetStyles: '', ORB_ICON_SVG: '', installWidgetMobileViewport, shouldAnimateWidgetLauncher, patchWidgetMarkup,
-    getBuiltinWidgetTranslations, getWidgetPageStyle, resolveWidgetFlow, validateWidgetContact, getContextualWidgetSuggestions,
-    ...loadFunctions('../src/lib/widget-motion.ts'), ...loadFunctions('../src/lib/surface-design.ts'), ...loadFunctions('../src/lib/launcher-design.ts'),
+    getBuiltinWidgetTranslations, getWidgetPageStyle, resolveWidgetFlow, showWidgetSupportShortcut, validateWidgetContact, getContextualWidgetSuggestions,
+    ...loadFunctions('../src/lib/conversation-cards.ts'), ...loadFunctions('../src/lib/widget-motion.ts'), ...loadFunctions('../src/lib/surface-design.ts'), ...loadFunctions('../src/lib/launcher-design.ts'),
   });
 }
 
@@ -88,7 +88,7 @@ test('help card module controls visibility even when the old design flag is disa
   }
   visit(source);
   const assistant = { conversationCardsEnabled: true, conversationCardsLimit: 3, conversationCards: [{ id: 'hours', title: 'Opening hours', icon: 'FiClock', options: [{ label: 'Hours', prompt: 'When are you open?' }] }] };
-  const getCards = vm.runInNewContext(`(${declaration})`, { getAssistantConfig: () => assistant });
+  const getCards = vm.runInNewContext(`(${declaration})`, { getAssistantConfig: () => assistant, normalizeCards: loadFunctions('../src/lib/conversation-cards.ts').normalizeConversationCards });
   assert.equal(getCards({ bodyStyle: { showConversationCards: false } }).length, 1);
   assert.equal(getCards({ bodyStyle: { showConversationCards: false } })[0].options[0].prompt, 'When are you open?');
   assistant.conversationCardsEnabled = false;
@@ -126,10 +126,15 @@ test('exported ticket form respects self-service and escapes editable copy', () 
   context.state.ticketSubmitted = true;
   assert.doesNotMatch(render(), /widget-task-submit|data-contact-field/);
   context.state.ticketSubmitted = false;
-  context.state.tasks = [{ id: 'one', title: 'Request', status: 'open' }];
+  context.state.tasks = [{ id: 'one', title: 'Request', status: 'open', description: '<script>private transcript</script>' }];
   context.formatTime = () => '';
   assert.doesNotMatch(render(), /widget-task-submit|data-contact-field/);
   assert.match(render(), /Request/);
+  assert.match(render(), /<details class="widget-support-details"[^>]*><summary>View details<\/summary>/);
+  assert.doesNotMatch(render(), /<details[^>]* open|<script>/);
+  assert.match(render(), /&lt;script&gt;private transcript/);
+  context.state.expandedTaskIds = ['one'];
+  assert.match(render(), /data-task-details="one" open/);
 });
 
 function route(name, settings, assistant = {}, writes = []) {
@@ -141,7 +146,7 @@ function route(name, settings, assistant = {}, writes = []) {
     console,
     require: name => {
       if (name === 'next/server') return { NextResponse: { json: (body, init) => ({ body, ...init }) } };
-      if (name.endsWith('widget-flow.mjs')) return { resolveWidgetFlow, validateWidgetContact };
+      if (name.endsWith('widget-flow.mjs')) return { resolveWidgetFlow, showWidgetSupportShortcut, validateWidgetContact };
       if (name.endsWith('widget.server')) return { getBusinessByWidgetKey: async () => ({ id: 'business', chatWidgetConfig: { settings }, chatAssistantConfig: assistant }) };
       if (name.endsWith('widget-embed-token.server')) return { authorizeWidgetRequest: async () => ({ allowed: true }) };
       if (name.endsWith('widget-rate-limit.server')) return { enforceWidgetRateLimit: async () => ({ allowed: true }) };
@@ -218,7 +223,8 @@ test('ticket submission and support navigation do not trigger feedback actions',
   const listeners = {}; const calls = [];
   const state = { activePanel: 'tasks', feedbackOpen: false };
   const context = { widgetActionsBound: false, state,
-    mount: { addEventListener: (name, fn) => { listeners[name] = fn; } },
+    mount: { addEventListener: (name, fn) => { listeners[name] = fn; }, querySelector: () => null },
+    focusComposerInput: () => calls.push('focus'), loadTasks: () => calls.push('load'),
     submitTask: () => calls.push('ticket'), submitFeedback: () => calls.push('feedback'), render: () => calls.push('render'),
   };
   vm.runInNewContext(`(${bind})()`, context);
@@ -230,7 +236,11 @@ test('ticket submission and support navigation do not trigger feedback actions',
   assert.deepEqual(calls, ['ticket']);
   click(['widget-feedback-secondary'], 'chats');
   assert.equal(state.activePanel, 'chats');
-  assert.deepEqual(calls, ['ticket', 'render']);
+  assert.deepEqual(calls, ['ticket', 'render', 'focus']);
+  // Help must open even before a visitor has a stored session to load.
+  click(['widget-support-link'], 'tasks');
+  assert.equal(state.activePanel, 'tasks');
+  assert.deepEqual(calls.slice(-2), ['render', 'load']);
 });
 
 test('the installed widget localizes fields and offers languages behind an icon', () => {
@@ -243,7 +253,7 @@ test('the installed widget localizes fields and offers languages behind an icon'
   const context = {
     state: { uiLanguage: 'no', translations: {} }, mount, NodeFilter: { SHOW_TEXT: 4 },
     document: { createTreeWalker: () => { let seen = false; return { nextNode() { if (seen) return null; seen = true; return textNode; } }; } },
-    builtinTranslations: getBuiltinWidgetTranslations,
+    builtinTranslations: getBuiltinWidgetTranslations, builtinTranslationCache: {},
     languageNames: { no: 'Norsk', en: 'English' },
     getLanguages: () => ({ enabled: true, allowed: ['no', 'en'] }), escapeHtml: String,
   };
@@ -255,4 +265,99 @@ test('the installed widget localizes fields and offers languages behind an icon'
   const picker = vm.runInNewContext(`(${functions.languageSelectorMarkup})`, context)();
   assert.match(picker, /widget-language-picker/); assert.match(picker, /<svg/);
   assert.match(picker, /data-widget-language="no"/); assert.match(picker, /data-widget-language="en" aria-pressed="true"/);
+});
+
+
+test('contact navigation follows support settings without exposing a second chat tab', () => {
+  const onDemand = resolveWidgetFlow({ ticket: { mode: 'on-demand' } });
+  assert.equal(showWidgetSupportShortcut(onDemand), false);
+  assert.equal(showWidgetSupportShortcut(onDemand, { hasConversation: true }), true);
+  assert.equal(showWidgetSupportShortcut(onDemand, { supportStatus: 'needs-human' }), true);
+  assert.equal(showWidgetSupportShortcut(onDemand, { taskCount: 1 }), true);
+  assert.equal(showWidgetSupportShortcut(resolveWidgetFlow({ ticket: { mode: 'always' } })), true);
+  for (const disabled of [resolveWidgetFlow({ ticket: { mode: 'off' } }), resolveWidgetFlow({ ticket: { mode: 'always' } }, { humanSupportEnabled: false })]) {
+    assert.equal(showWidgetSupportShortcut(disabled, { hasConversation: true, taskCount: 1, supportStatus: 'open', preview: true }), false);
+  }
+  const teamOnly = resolveWidgetFlow({ ticket: { mode: 'on-demand', allowVisitorCreation: false } });
+  assert.equal(showWidgetSupportShortcut(teamOnly, { hasConversation: true }), false);
+  assert.equal(showWidgetSupportShortcut(teamOnly, { taskCount: 1 }), true);
+});
+
+test('missing human-support records preserve AI messages in the React widget', async () => {
+  const source = ts.createSourceFile('LiveChatWidget.tsx', fs.readFileSync(new URL('../src/components/chat/LiveChatWidget.tsx', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let sync;
+  function visit(node) { if (ts.isFunctionDeclaration(node) && node.name?.text === 'syncSupportChat') sync = node.getText(source); ts.forEachChild(node, visit); }
+  visit(source);
+  let messages = [{ id: 'ai', text: 'Existing answer' }];
+  let response = { status: 'none', messages: [] };
+  const context = {
+    active: true, sendLockRef: { current: false }, supportSnapshotRef: { current: '' },
+    widgetKey: 'widget', sessionId: 'session', fingerprintLight: '', console,
+    ensureEmbedToken: async () => 'token', fetch: async () => ({ ok: true, json: async () => response }),
+    setSupportChatStatus: () => {}, setSupportTypingAt: () => {},
+    setMessages: value => { messages = value; }, toWidgetMessage: value => value,
+  };
+  const js = ts.transpileModule(`(${sync})`, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText;
+  const run = vm.runInNewContext(js, context);
+  await run(); assert.equal(messages[0].text, 'Existing answer');
+  response = { status: 'open', messages: [{ id: 'human', role: 'support', text: 'Team reply' }] };
+  await run(); assert.equal(messages[0].text, 'Team reply');
+});
+
+test('help cards never inject examples, and empty draft options stay empty', () => {
+  const { defaultConversationCards, getPreviewConversationCards, normalizeConversationCards } = loadFunctions('../src/lib/conversation-cards.ts');
+  assert.equal(defaultConversationCards.length, 0);
+  for (const input of [null, undefined, []]) assert.equal(getPreviewConversationCards(input).length, 0);
+  const cards = normalizeConversationCards([{ id: 'hours', title: 'Åpningstider', description: '', options: [{ label: '', prompt: '' }] }]);
+  assert.equal(cards[0].options.length, 0);
+  assert.equal(cards[0].description, '');
+  assert.equal(normalizeConversationCards([null, { title: '', description: '', options: [] }]).length, 0);
+});
+
+test('old Common examples are removed without discarding configured questions', () => {
+  const { normalizeConversationCards, getConversationCardAction } = loadFunctions('../src/lib/conversation-cards.ts');
+  const legacy = { id: 'hours', title: 'Åpningstider', description: 'Common', options: [
+    { label: 'Opening hours', prompt: 'What are your opening hours?' },
+    { label: 'Prices', prompt: 'Can you tell me your prices?' },
+    { label: 'Contact', prompt: 'How can I contact you?' },
+  ] };
+  const cleaned = normalizeConversationCards([legacy])[0];
+  assert.equal(cleaned.description, ''); assert.equal(cleaned.options.length, 0);
+  assert.equal(getConversationCardAction(cleaned).prompt, 'Åpningstider');
+  assert.deepEqual(JSON.parse(JSON.stringify(normalizeConversationCards([cleaned])[0])), JSON.parse(JSON.stringify(cleaned)));
+  assert.equal(legacy.options.length, 3, 'normalization must not mutate stored or editor data');
+  legacy.options[1].prompt = 'Hva koster en hårklipp hos oss?';
+  assert.equal(normalizeConversationCards([legacy])[0].options.length, 3);
+});
+
+test('simple cards send the configured question and multi-choice cards open only their own menu', () => {
+  const { normalizeConversationCards, getConversationCardAction } = loadFunctions('../src/lib/conversation-cards.ts');
+  const [direct, single, menu] = normalizeConversationCards([
+    { title: 'Åpningstider', options: [] },
+    { title: 'Priser', options: [{ label: 'Se priser', prompt: 'Hva koster en hårklipp?' }] },
+    { title: 'Avdelinger', options: [{ label: 'Oslo', prompt: 'Åpningstider i Oslo?' }, { label: 'Bergen', prompt: 'Åpningstider i Bergen?' }] },
+  ]);
+  assert.equal(getConversationCardAction(direct).prompt, 'Åpningstider');
+  assert.equal(getConversationCardAction(single).prompt, 'Hva koster en hårklipp?');
+  assert.equal(getConversationCardAction(menu).type, 'menu');
+  assert.equal(menu.options.length, 2);
+});
+
+test('public config and the installed widget use the same normalized cards as the panel', () => {
+  const helpers = loadFunctions('../src/lib/conversation-cards.ts');
+  const config = { conversationCardsEnabled: true, conversationCardsLimit: 4, conversationCards: [{ id: 'hours', title: 'Åpningstider', description: '', options: [] }, { id: 'blank', title: '', options: [] }] };
+  const source = ts.createSourceFile('widget.ts', fs.readFileSync(new URL('../src/lib/widget.server.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
+  const fn = source.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'toPublicAssistantConfig');
+  const context = { ...helpers };
+  vm.runInNewContext(ts.transpileModule(fn.getText(source).replace('export ', '') + '\nthis.toPublic = toPublicAssistantConfig;', { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, context);
+  const publicConfig = context.toPublic(config);
+  assert.deepEqual(JSON.parse(JSON.stringify(publicConfig.conversationCards)), JSON.parse(JSON.stringify(helpers.normalizeConversationCards(config.conversationCards))));
+  const script = ts.createSourceFile('widget.js', exportedScript(), ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  let getCards;
+  function visit(node) { if (ts.isFunctionDeclaration(node) && node.name?.text === 'getConversationCards') getCards = node.getText(script); ts.forEachChild(node, visit); }
+  visit(script);
+  const embedded = vm.runInNewContext(`(${getCards})`, { getAssistantConfig: () => publicConfig, normalizeCards: helpers.normalizeConversationCards });
+  assert.deepEqual(JSON.parse(JSON.stringify(embedded({}))), JSON.parse(JSON.stringify(publicConfig.conversationCards)));
+  publicConfig.conversationCardsEnabled = false;
+  assert.equal(embedded({}).length, 0);
 });

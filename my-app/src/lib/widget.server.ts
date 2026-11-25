@@ -1,3 +1,4 @@
+import { normalizeConversationCards } from '@/lib/conversation-cards'
 import { adminDb } from '@/lib/firebase-admin'
 import type {
   ChatAnalytics,
@@ -223,7 +224,7 @@ export function toPublicAssistantConfig(
     faqSuggestions: Array.isArray(config.faqSuggestions) ? config.faqSuggestions : [],
     conversationCardsEnabled: config.conversationCardsEnabled,
     conversationCardsLimit: config.conversationCardsLimit,
-    conversationCards: Array.isArray(config.conversationCards) ? config.conversationCards : [],
+    conversationCards: normalizeConversationCards(config.conversationCards),
     widgetIcons: config.widgetIcons || {},
     startLanguage: config.startLanguage,
     replyInUserLanguage: config.replyInUserLanguage,

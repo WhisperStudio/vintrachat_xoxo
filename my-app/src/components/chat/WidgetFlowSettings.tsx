@@ -63,26 +63,26 @@ export default function WidgetFlowSettings({ settings, onChange, no = true, sect
         {text(no ? 'Beskrivelse' : 'Description', flow.reviewDescription, description => patch('reviewPage', { description }), true)}
       </>}
     </fieldset>}
-    {(!section || section === 'tickets') && <fieldset><legend>Tickets / support</legend>
+    {(!section || section === 'tickets') && <fieldset><legend>{no ? 'Kontakt og oppfølging' : 'Contact and follow-up'}</legend>
       {rules && <>
         <label className="widgetFlowField"><span>{no ? 'Hvordan skal support fungere?' : 'How should support work?'}</span><select value={settings.ticket?.mode || (settings.tasksEnabled ? 'on-demand' : '')} onChange={e => onChange({ ...settings, tasksEnabled: e.target.value !== 'off', ticket: { ...settings.ticket, mode: e.target.value as 'off' | 'on-demand' | 'always' } })}>
           <option value="" disabled>{no ? 'Velg supportmodus' : 'Choose support mode'}</option>
-          <option value="off">{no ? 'Av – ingen tickets eller menneskelig support' : 'Off – no tickets or human support'}</option>
-          <option value="on-demand">{no ? 'Ved behov – åpnes på forespørsel eller når en ticket finnes' : 'On demand – on request or when a ticket exists'}</option>
-          <option value="always">{no ? 'Vis chat og tickets hele tiden' : 'Always show chat and tickets'}</option>
+          <option value="off">{no ? 'Av – ingen henvendelser eller menneskelig support' : 'Off – no requests or human support'}</option>
+          <option value="on-demand">{no ? 'Ved behov – vis kontaktknappen under samtalen' : 'On demand – show the contact shortcut during a conversation'}</option>
+          <option value="always">{no ? 'Vis kontaktknappen hele tiden' : 'Always show the contact shortcut'}</option>
         </select></label>
-        {toggle(no ? 'Kunden kan opprette tickets selv' : 'Visitors can create tickets', settings.ticket?.allowVisitorCreation !== false, allowVisitorCreation => patch('ticket', { allowVisitorCreation }))}
-        {toggle(no ? 'Vis ticket-fanen hele tiden' : 'Always show the tickets tab', settings.ticket?.showTabAlways ?? (settings.ticket?.mode === 'always'), showTabAlways => patch('ticket', { showTabAlways }))}
-        {toggle(no ? 'Vis tickets teamet oppretter for kunden' : 'Show tickets the team creates for visitors', settings.ticket?.showTeamTasksToVisitors === true, showTeamTasksToVisitors => patch('ticket', { showTeamTasksToVisitors }))}
-        <p>{no ? 'Innsendte tickets vises som oppgaver hos bedriften. Når support er av, blokkeres også innsending og overføring til et menneske.' : 'Submitted tickets appear as tasks for the business. Turning support off also blocks submission and human handoff.'}</p>
+        {toggle(no ? 'Kunden kan kontakte teamet' : 'Visitors can contact the team', settings.ticket?.allowVisitorCreation !== false, allowVisitorCreation => patch('ticket', { allowVisitorCreation }))}
+        {toggle(no ? 'Vis kontaktknappen fra starten' : 'Show the contact shortcut from the start', settings.ticket?.showTabAlways ?? (settings.ticket?.mode === 'always'), showTabAlways => patch('ticket', { showTabAlways }))}
+        {toggle(no ? 'Vis oppfølging fra teamet' : 'Show follow-ups created by the team', settings.ticket?.showTeamTasksToVisitors === true, showTeamTasksToVisitors => patch('ticket', { showTeamTasksToVisitors }))}
+        <p>{no ? 'Henvendelser vises som oppgaver i panelet. Svar fra teamet kommer i chatten. Når support er av, blokkeres også innsending og overføring til et menneske.' : 'Requests appear as tasks in the dashboard. Replies from the team arrive in the chat. Turning support off also blocks submission and human handoff.'}</p>
       </>}
       {design && <>
         {pageDesign('ticket')}
         {text(no ? 'Tittel' : 'Title', flow.ticketTitle, title => patch('ticket', { title }))}
         {text(no ? 'Beskrivelse' : 'Description', flow.ticketDescription, description => patch('ticket', { description }), true)}
-        {(['chatsLabel','ticketsLabel','submitLabel'] as const).map((key,i) => text((no ? ['Chatfane','Ticketfane','Knappetekst'] : ['Chats tab','Tickets tab','Button label'])[i], settings.ticket?.[key] || ['Chats','Tickets','Send request'][i], value => patch('ticket', { [key]: value })))}
+        {(['ticketsLabel','submitLabel'] as const).map((key,i) => text((no ? ['Kontaktknapp','Send-knapp'] : ['Contact shortcut','Send button'])[i], settings.ticket?.[key] || ['Contact the team','Send to team'][i], value => patch('ticket', { [key]: value })))}
         <p>{no ? 'Forespørselsskjemaet bruker kontaktfeltene fra Kontaktinfo.' : 'The request form uses the contact fields from Contact information.'}</p>
-        <label className="widgetFlowField"><span>{no ? 'Visning av ticketlisten' : 'Ticket list layout'}</span><select value={flow.ticketLayout} onChange={e => patch('ticket', { layout: e.target.value })}><option value="cards">{no ? 'Kort' : 'Cards'}</option><option value="compact">{no ? 'Kompakt liste' : 'Compact list'}</option></select></label>
+        <label className="widgetFlowField"><span>{no ? 'Visning av oppfølging' : 'Follow-up layout'}</span><select value={flow.ticketLayout} onChange={e => patch('ticket', { layout: e.target.value })}><option value="cards">{no ? 'Kort' : 'Cards'}</option><option value="compact">{no ? 'Kompakt liste' : 'Compact list'}</option></select></label>
       </>}
     </fieldset>}
   </div>

@@ -130,3 +130,12 @@ test('loading a legacy account does not inject fresh module metadata or restart 
   assert.equal(loaded.knowledgeBase.pricing, 'Approved prices');
   assert.ok(getActiveStudioModules(loaded, {}).includes('support'));
 });
+
+test('help card setup accepts direct questions and validates explicit choices', () => {
+  const base = { conversationCardsEnabled: true, conversationCards: [{ id: 'hours', title: 'Åpningstider', options: [] }] };
+  assert.equal(getStudioModuleStatus('cards', base, {}).required.includes('cardQuestions'), false);
+  base.conversationCards[0].options = [{ label: '', prompt: '' }];
+  assert.equal(getStudioModuleStatus('cards', base, {}).required.includes('cardQuestions'), true);
+  base.conversationCards[0].options = [{ label: 'Helg', prompt: 'Når er dere åpne i helgen?' }];
+  assert.equal(getStudioModuleStatus('cards', base, {}).required.includes('cardQuestions'), false);
+});

@@ -393,7 +393,7 @@ const defaultInputs: InputsState = {
     delayMs: 3000,
   },
   conversationCardsEnabled: false,
-  conversationCardsLimit: defaultConversationCards.length,
+  conversationCardsLimit: 4,
   conversationCards: [],
 }
 
@@ -978,7 +978,7 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
   const sectionDescriptions = {
     contact: no ? 'Tilpass kontaktinformasjonen kunden sender til teamet.' : 'Configure the contact details visitors send to the team.',
     reviews: no ? 'La kunden gi en frivillig anmeldelse etter samtalen.' : 'Let visitors leave an optional review after their conversation.',
-    tickets: no ? 'Bestem hvordan kunden får hjelp og sender inn oppgaver.' : 'Choose how visitors get help and submit requests.',
+    tickets: no ? 'Tilpass kontaktknappen og oppfølgingen kunden ser.' : 'Customize the contact shortcut and visitor follow-up.',
     bubble: no ? 'Velg hvordan kundene åpner chatten på nettsiden din.' : 'Choose how customers open the chat on your website.',
     header: no ? 'Gi samtalen en tydelig avsender og et personlig uttrykk.' : 'Give every conversation a clear identity and a personal touch.',
     body: no ? 'Tilpass meldinger og snarveier som hjelper kundene videre.' : 'Customize messages and shortcuts that help customers find their way.',
@@ -1077,7 +1077,7 @@ export default function ChatWidgetBuilder({ embedded = false, widgetKey, onWidge
               {assistantConfigDraft.startCard?.enabled && <button type="button" aria-pressed={previewScenario === 'start-card'} onClick={() => { setPreviewScenario('start-card'); setPreviewSession(value => value + 1) }}>{no ? 'Startkort' : 'Welcome card'}</button>}
               <button type="button" aria-pressed={previewScenario === 'welcome'} onClick={() => { setPreviewScenario('welcome'); setPreviewSession((value) => value + 1) }}>{no ? 'Velkomst' : 'Welcome'}</button>
               <button type="button" aria-pressed={previewScenario === 'conversation'} onClick={() => { setPreviewScenario('conversation'); setPreviewSession((value) => value + 1) }}>{no ? 'Chat' : 'Chat'}</button>
-              {(['tickets', 'contact', 'reviews'] as const).map((scene, index) => (scene === 'reviews' ? inputs.settings.reviewsEnabled : assistantConfigDraft.humanSupportEnabled) && <button key={scene} type="button" aria-pressed={previewScenario === scene} onClick={() => { setPreviewScenario(scene); setPreviewSession(value => value + 1) }}>{(no ? ['Tickets / support', 'Kontaktinfo', 'Anmeldelser'] : ['Tickets / support', 'Contact info', 'Reviews'])[index]}</button>) }
+              {(['tickets', 'contact', 'reviews'] as const).map((scene, index) => (scene === 'reviews' ? inputs.settings.reviewsEnabled : assistantConfigDraft.humanSupportEnabled) && <button key={scene} type="button" aria-pressed={previewScenario === scene} onClick={() => { setPreviewScenario(scene); setPreviewSession(value => value + 1) }}>{(no ? ['Kontakt og oppfølging', 'Kontaktinfo', 'Anmeldelser'] : ['Contact and follow-up', 'Contact info', 'Reviews'])[index]}</button>) }
               <button type="button" className="studioPreviewRestart" onClick={() => setPreviewSession((value) => value + 1)} aria-label={no ? 'Start forhåndsvisningen på nytt' : 'Restart preview'} title={no ? 'Start på nytt' : 'Restart'}><FiRefreshCw aria-hidden="true" /></button>
             </div>
             <WidgetPreview

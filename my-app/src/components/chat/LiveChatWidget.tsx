@@ -192,6 +192,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
   const [supportTypingAt, setSupportTypingAt] = useState<string | null>(null)
   const [contactInfoSaved, setContactInfoSaved] = useState(() => Boolean(readStoredVisitorContact(widgetKey).name))
   const [error, setError] = useState<string | null>(null)
+  const [ticketRefreshNonce, setTicketRefreshNonce] = useState(0)
   const [ticketOpenRequest, setTicketOpenRequest] = useState(0)
   const [tickets, setTickets] = useState<{ id: string; title: string; description: string; status: string }[]>([])
   const [feedbackOpen, setFeedbackOpen] = useState(false)
@@ -396,6 +397,10 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         const status = String(data.status || 'none') as SupportChatState
         setSupportChatStatus(status)
         setSupportTypingAt(data.supportTypingAt ? String(data.supportTypingAt) : null)
+
+        // A session without human support returns { status: 'none', messages: [] }.
+        // That response must not replace the visitor's ongoing AI conversation.
+        if (status === 'none') return
 
         const nextMessages = Array.isArray(data.messages) ? data.messages.map((message: any) => toWidgetMessage(message)) : []
         const nextSnapshot = JSON.stringify({
@@ -728,7 +733,6 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
 
         if (data.supportRequested) {
           setSupportChatStatus('needs-human')
-          if (data.humanAvailable) setTicketOpenRequest(value => value + 1)
         }
         if (data.humanRequestQueued) setSupportChatStatus('needs-human')
 
@@ -885,7 +889,6 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
       setSupportChatStatus((String(data.status || 'needs-human') as SupportChatState) || 'needs-human')
       writeStoredVisitorContact(widgetKey, { name, email: handoffEmail.trim(), phone: handoffPhone.trim() })
       setContactInfoSaved(true)
-      if (data.humanAvailable) setTicketOpenRequest(value => value + 1)
       setHandoffFormOpen(false)
       setPendingHumanSupportText('')
       setInputValue('')
@@ -937,7 +940,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     }
     void load()
     return () => { cancelled = true }
-  }, [sessionId, widgetKey, configResponse])
+  }, [sessionId, widgetKey, configResponse, ticketRefreshNonce])
 
   const handleCreateTicket = async (ticket: { title: string; description: string; visitorName: string; visitorEmail: string; visitorPhone: string }) => {
     const ticketSessionId = sessionId || crypto.randomUUID()
@@ -1064,6 +1067,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
     ? messages.map((message) => ({
         id: message.id,
         text: message.text,
+        createdAt: message.createdAt,
         isBot: message.role === 'assistant',
         role: message.role,
       }))
@@ -1091,6 +1095,7 @@ export default function LiveChatWidget({ widgetKey }: { widgetKey: string }) {
         settings={config.settings}
         supportEnabled={configResponse.assistantConfig?.humanSupportEnabled !== false}
         onOpenReview={() => setFeedbackOpen(true)}
+        onOpenSupport={() => setTicketRefreshNonce(value => value + 1)}
         tickets={tickets}
         ticketOpenRequest={ticketOpenRequest}
         humanSupportRequested={supportChatStatus === 'needs-human' || supportChatStatus === 'open' || supportChatStatus === 'ai-active'}

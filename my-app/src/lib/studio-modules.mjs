@@ -143,7 +143,7 @@ export function getStudioModuleStatus(id, assistant, settings = {}, { editing = 
   if (id === 'suggestions') check(required, 'suggestions', assistant.faqSuggestions);
   if (id === 'cards') {
     check(required, 'cards', assistant.conversationCards?.length);
-    if (assistant.conversationCards?.some(card => !filled(card.title) || !card.options?.some(option => filled(option.prompt)))) required.push('cardQuestions');
+    if (assistant.conversationCards?.some(card => !filled(card.title) || card.options?.some(option => !filled(option.label) && !filled(option.prompt)))) required.push('cardQuestions');
   }
   if (id === 'languages') check(required, 'extraLanguage', assistant.localization?.allowedLanguages?.some(code => code !== (assistant.localization?.defaultLanguage || 'no')));
   if (id === 'support') { check(required, 'handoffMessage', assistant.handoffMessage); check(optional, 'contactInfo', knowledge.contactInfo); }

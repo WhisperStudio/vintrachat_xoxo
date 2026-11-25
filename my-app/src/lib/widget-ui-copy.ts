@@ -1,6 +1,10 @@
 // Shared interface copy translated together with the published customer content.
 export const WIDGET_UI_COPY: string[] = [
-  "Language",
+  "Contact the team", "Leave your details and we will help you from here.",
+  "Send to team", "Message sent to the team.", "Replies from the team arrive in this conversation.",
+  "View details", "Loading updates...", "Updates from the team will appear here.",
+  "Human support live", "AI resumed", "Offline", "done", "todo", "resolved",
+  "Language", "Choose language", "Could not translate this content.", "Try again",
   "Translation unavailable. Please try again.",
   "Loading...",
   "Close",
