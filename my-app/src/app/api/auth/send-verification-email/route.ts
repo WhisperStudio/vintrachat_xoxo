@@ -1,3 +1,4 @@
+import { authLinkOrigin } from '@/lib/auth-link-origin'
 import { signRecord } from '@/lib/auth-records.server'
 import crypto from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
@@ -23,7 +24,10 @@ export async function POST(req: NextRequest) {
     }
 
     const decoded = await adminAuth.verifyIdToken(idToken, true)
-    const { displayName, accountType, businessName } = await req.json()
+    const account = await adminAuth.getUser(decoded.uid)
+    if (account.disabled) return NextResponse.json({ success: false }, { status: 403 })
+    if (account.emailVerified) return NextResponse.json({ success: true, alreadyVerified: true })
+    const { displayName, accountType, businessName, language } = await req.json()
     const email = normalizeEmail(decoded.email || '')
 
     if (!decoded.uid || !email) {
@@ -59,6 +63,7 @@ export async function POST(req: NextRequest) {
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
 
     const record = {
+      language: language === 'no' ? 'no' as const : 'en' as const,
       email, normalizedEmail: email,
       displayName: typeof displayName === 'string' ? displayName.trim() : '',
       tokenHash, accountType: accountType === 'business' ? 'business' : 'user',
@@ -69,18 +74,22 @@ export async function POST(req: NextRequest) {
       ...record, signature: signRecord('verify', decoded.uid, record),
     })
 
-    const link = `${process.env.NEXT_PUBLIC_APP_URL}/auth/verify-email?token=${token}`
+    const link = `${authLinkOrigin(req.url)}/auth/verify-email?token=${token}`
     const message = buildVerificationEmail({
       verificationLink: link,
+      language: record.language,
       recipientName: displayName,
     })
 
-    await resend.emails.send({
+    const delivery = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL!,
       to: email,
       subject: message.subject,
       html: message.html,
+      text: message.text,
     })
+
+    if (delivery.error) throw new Error('Verification email delivery failed')
 
     return NextResponse.json({ success: true })
   } catch (err: any) {

@@ -556,7 +556,8 @@ export async function signUpWithEmail(
   password: string,
   displayName: string,
   accountType?: 'business' | 'user',
-  businessName?: string
+  businessName?: string,
+  language: 'no' | 'en' = 'en'
 ) {
   try {
     const normalizedEmail = normalizeEmail(email)
@@ -584,6 +585,7 @@ export async function signUpWithEmail(
         displayName,
         accountType: normalizedAccountType,
         businessName: normalizedBusinessName,
+        language,
       }),
     });
 
@@ -657,9 +659,9 @@ export async function signInWithEmail(email: string, password: string) {
       }
     }
 
+    await cred.user.reload();
     if (!cred.user.emailVerified) {
-      await firebaseSignOut(auth);
-      return { success: false, message: 'Verifiser emailen din først.' };
+      return { success: true, message: '', redirectTo: `/auth/verify-email-sent?email=${encodeURIComponent(cred.user.email || email)}` };
     }
 
     return {

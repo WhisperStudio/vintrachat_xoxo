@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { auth } from '@/lib/firebase';
 import { User as FirebaseUser } from "firebase/auth";
 
 import {
@@ -53,6 +54,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await withTimeout(authUser.reload(), ACCOUNT_LOAD_TIMEOUT_MS, ACCOUNT_TIMEOUT_MESSAGE);
       if (request !== accountRequest.current) return;
       if (!authUser.emailVerified) throw new Error('Verifiser e-postadressen din før du åpner arbeidsområdet.');
+      await withTimeout(authUser.getIdToken(true), ACCOUNT_LOAD_TIMEOUT_MS, ACCOUNT_TIMEOUT_MESSAGE);
+      if (request !== accountRequest.current) return;
       await withTimeout((async () => {
         const user = await getCurrentUser(authUser);
         if (request !== accountRequest.current) return;
@@ -86,9 +89,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [dbUser?.businessId]);
 
   const refreshCurrentUser = useCallback(async () => {
-    if (!firebaseUser) return;
-    await loadAccount(firebaseUser);
-  }, [firebaseUser, loadAccount]);
+    await loadAccount(auth.currentUser);
+  }, [loadAccount]);
 
   useEffect(() => {
     let active = true;

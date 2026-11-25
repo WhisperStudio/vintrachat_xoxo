@@ -199,3 +199,8 @@ html[data-theme='dark'] .nordicAuthTrees { --spruce-green: #255064; }
 
 .nordicAuthSubmit { border-radius: var(--radius-control); min-height: 44px; }
 .nordicAuthMain { border-radius: var(--radius-card); }
+
+.verificationEmail { overflow-wrap: anywhere; font-weight: 600; }
+.verificationResend { width: 100%; background: none; border: 0; cursor: pointer; font: inherit; }
+.verificationResend:disabled { opacity: .6; cursor: wait; }
+.verificationNotice { font-size: 14px; line-height: 1.6; }

@@ -36,16 +36,19 @@ const LanguageContext = createContext<LanguageContextValue | null>(null)
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguageState] = useState<Language>('en')
+  const [initialized, setInitialized] = useState(false)
 
   useEffect(() => {
     setLanguageState(detectPreferredLanguage())
+    setInitialized(true)
   }, [])
 
   useEffect(() => {
+    if (!initialized) return
     document.documentElement.lang = language
     window.localStorage.setItem(STORAGE_KEY, language)
     window.localStorage.setItem('vintra-main-language', language)
-  }, [language])
+  }, [language, initialized])
 
   const value = useMemo(
     () => ({

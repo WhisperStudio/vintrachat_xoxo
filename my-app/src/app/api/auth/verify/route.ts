@@ -1,3 +1,4 @@
+import { authLinkOrigin } from '@/lib/auth-link-origin'
 import { NextRequest, NextResponse } from 'next/server'
 import { activatePendingAuthToken } from '@/lib/pending-auth.server'
 import { consumeServerRateLimit } from '@/lib/server-rate-limit'
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
     const result = await activatePendingAuthToken(trimmedToken)
     return NextResponse.json(result, {
       status: result.success ? 200 : 400,
+      headers: { 'Cache-Control': 'no-store' },
     })
   } catch (error) {
     console.error('Verify route error:', error)
@@ -43,5 +45,5 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/auth/verify-email${req.nextUrl.search}`)
+  return NextResponse.redirect(`${authLinkOrigin(req.url)}/auth/verify-email${req.nextUrl.search}`)
 }

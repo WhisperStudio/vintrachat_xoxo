@@ -1,179 +1,64 @@
 'use client'
 
-import LoadingAnimation from '@/components/LoadingAnimation'
-
 import AuthFrame from '../AuthFrame'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
-import { FiArrowRight, FiCheckCircle, FiMail, FiShield, FiXCircle } from 'react-icons/fi'
-import { auth } from '@/lib/firebase'
-import { refreshVerificationSession } from '@/lib/verification-session.mjs'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { FiCheckCircle, FiMail, FiAlertCircle } from 'react-icons/fi'
+import { useVintraLanguage } from '@/lib/i18n'
+import { useVerifiedAccount } from '../useVerifiedAccount'
 
 export default function VerifyEmailClient() {
-  const searchParams = useSearchParams()
-  const token = searchParams.get('token')
-  const hasStartedRef = useRef(false)
-
+  const router = useRouter()
+  const token = useSearchParams().get('token')
+  const { language } = useVintraLanguage()
+  const no = language === 'no'
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
-  const [message, setMessage] = useState('')
-  const [isRedirecting, setIsRedirecting] = useState(false)
+  const [userId, setUserId] = useState<string>()
+  const [attempt, setAttempt] = useState(0)
+  const { check, checking } = useVerifiedAccount(status === 'success' && !!userId, userId)
 
   useEffect(() => {
-    if (hasStartedRef.current) return
-    hasStartedRef.current = true
-
-    if (!token) {
-      setStatus('error')
-      setMessage('This verification link is missing the token it needs.')
-      return
-    }
-
-    const runVerification = async () => {
+    const controller = new AbortController()
+    let active = true
+    const timer = setTimeout(() => controller.abort(), 20000)
+    setStatus('loading')
+    setUserId(undefined)
+    async function verify() {
+      if (!token) throw new Error('Missing token')
       const response = await fetch('/api/auth/verify', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }), signal: controller.signal,
       })
-      const result = await response.json().catch(() => ({
-        success: false,
-        message: 'Verification failed.',
-      }))
-
-      if (response.ok && result.success) {
+      const result = await response.json()
+      if (!response.ok || !result.success) throw new Error('Verification failed')
+      if (active) {
+        setUserId(result.userId)
         setStatus('success')
-        setMessage(result.message)
-
-        if (result.businessId) {
-          // Never navigate into a protected workspace with a stale unverified
-          // session. A full navigation also reloads the account provider.
-          const ready = await refreshVerificationSession(auth).catch(() => false)
-          setIsRedirecting(true)
-          setTimeout(() => {
-            window.location.assign(ready ? '/admin' : '/auth/login')
-          }, 2000)
-        } else {
-          await refreshVerificationSession(auth).catch(() => false)
-        }
-
-        return
       }
-
-      setStatus('error')
-      setMessage(result.message)
     }
-
-    void runVerification().catch(() => {
-      setStatus('error')
-      setMessage('Could not verify your email right now. Check your connection and reload this page to try again.')
-    })
-  }, [token])
+    void verify().catch(() => { if (active) setStatus('error') }).finally(() => clearTimeout(timer))
+    return () => { active = false; clearTimeout(timer); controller.abort() }
+  }, [token, attempt])
 
   return (
     <AuthFrame>
-        <section className="authCard authCardElevated">
-          {status === 'loading' && (
-            <>
-              <div className="authCardHeader">
-                <div className="authIconBadge">
-                  <FiMail size={24} />
-                </div>
-                <div>
-                  <p className="authKicker">In progress</p>
-                  <h2 className="authHeadline" id="auth-title">Verifying your email</h2>
-                </div>
-              </div>
-
-              <p className="authBody">
-                Hold tight while we confirm the verification link and prepare your next step.
-              </p>
-
-              <div style={{ padding: '18px 0' }}>
-                <LoadingAnimation />
-              </div>
-
-              <div className="authCallout">
-                <strong>Tip</strong>
-                You can keep this tab open. We will update the page as soon as the verification check is complete.
-              </div>
-            </>
-          )}
-
-          {status === 'success' && (
-            <>
-              <div className="authCardHeader">
-                <div className="authIconBadge">
-                  <FiCheckCircle size={24} />
-                </div>
-                <div>
-                  <p className="authKicker">Verified</p>
-                  <h2 className="authHeadline">Your email is confirmed</h2>
-                </div>
-              </div>
-
-              <p className="authBody">{message}</p>
-
-              {isRedirecting ? (
-                <>
-                  <div className="authCallout success">
-                    <strong>Email confirmed</strong>
-                    <span>We are refreshing your session. You may be asked to sign in before opening your workspace.</span>
-                  </div>
-                  <div style={{ padding: '10px 0 0' }}>
-                    <LoadingAnimation />
-                  </div>
-                </>
-              ) : (
-                <div className="authButtonStack">
-                  <Link href="/auth/login" className="primaryBtn buttonLink fullWidth">
-                    Continue to login
-                  </Link>
-                  <Link href="/auth/signup" className="secondaryBtn buttonLink fullWidth">
-                    Create another account
-                  </Link>
-                </div>
-              )}
-            </>
-          )}
-
-          {status === 'error' && (
-            <>
-              <div className="authCardHeader">
-                <div className="authIconBadge" style={{ color: '#b91c1c', background: 'linear-gradient(135deg, #fee2e2 0%, #fff1f2 100%)' }}>
-                  <FiXCircle size={24} />
-                </div>
-                <div>
-                  <p className="authKicker" style={{ color: '#b91c1c' }}>Verification failed</p>
-                  <h2 className="authHeadline">This link could not be used</h2>
-                </div>
-              </div>
-
-              <div className="authCallout error">
-                <strong>What happened</strong>
-                <span>{message}</span>
-              </div>
-
-              <p className="authBody">
-                The link may already have been used, expired, or may not match an active signup anymore.
-              </p>
-
-              <div className="authButtonStack">
-                <Link href="/auth/signup" className="primaryBtn buttonLink fullWidth">
-                  Create a new account
-                </Link>
-                <Link href="/auth/login" className="secondaryBtn buttonLink fullWidth">
-                  Go to login
-                </Link>
-              </div>
-            </>
-          )}
-
-          <Link href="/auth/login" className="authTextLink" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            Back to login <FiArrowRight size={16} />
-          </Link>
-        </section>
+      <div className="nordicAuthIntro" aria-live="polite">
+        <div className="nordicAuthFormIcon" aria-hidden="true">
+          {status === 'success' ? <FiCheckCircle /> : status === 'error' ? <FiAlertCircle /> : <FiMail />}
+        </div>
+        <h1 id="auth-title">{status === 'success' ? (no ? 'E-posten er bekreftet.' : 'Email confirmed.') : status === 'error' ? (no ? 'Vi kunne ikke bekrefte lenken.' : 'We could not confirm this link.') : (no ? 'Bekrefter e-posten din …' : 'Confirming your email …')}</h1>
+        <p>{status === 'success'
+          ? (no ? 'Vi åpner kontoen din automatisk hvis du fortsatt er innlogget. Åpnet du lenken i en annen nettleser, logger du inn der først.' : 'We’ll open your account automatically if you’re still signed in. If you opened the link in another browser, sign in there first.')
+          : status === 'error'
+            ? (no ? 'Prøv igjen, eller logg inn for å få en ny lenke. Bruk den nyeste e-posten; lenken er gyldig i 24 timer.' : 'Try again, or sign in to request a new link. Use the latest email; the link is valid for 24 hours.')
+            : (no ? 'Dette tar vanligvis bare noen sekunder.' : 'This usually takes just a few seconds.')}</p>
+      </div>
+      {status === 'success' && <button type="button" className="nordicAuthSubmit" onClick={async () => { if (!await check()) router.push('/auth/login') }} disabled={checking}>
+        {checking ? (no ? 'Åpner kontoen …' : 'Opening your account …') : (no ? 'Fortsett til kontoen' : 'Continue to your account')}
+      </button>}
+      {status === 'error' && token && <button type="button" className="nordicAuthSubmit" onClick={() => setAttempt(value => value + 1)}>{no ? 'Prøv igjen' : 'Try again'}</button>}
+      <Link href="/auth/login" className="nordicAuthBack">{no ? 'Fortsett til innlogging' : 'Continue to sign in'}</Link>
     </AuthFrame>
   )
 }

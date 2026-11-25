@@ -15,9 +15,10 @@ const deferred = () => {
   return { promise, resolve };
 };
 const settle = () => new Promise(resolve => setImmediate(resolve));
-const user = uid => ({ uid, emailVerified: true, reload: async () => {} });
+const user = uid => ({ uid, emailVerified: true, reload: async () => {}, getIdToken: async () => 'fresh-token' });
 function provider({ profile = async u => ({ id: u.uid, businessId: u.uid }), business = async id => ({ id }) } = {}) {
   const slots = [];
+  const auth = { currentUser: null };
   let index = 0, listener;
   const React = {
     createContext: () => ({ Provider: 'Provider' }),
@@ -43,6 +44,7 @@ function provider({ profile = async u => ({ id: u.uid, businessId: u.uid }), bus
   const context = { exports: {}, console, Error, setTimeout: () => 1, clearTimeout: () => {},
     require: name => {
       if (name === 'react') return { ...React, default: React };
+      if (name === '@/lib/firebase') return { auth };
       if (name === '@/lib/auth.service') return service;
       if (name === '@/lib/with-timeout') return { withTimeout: promise => promise };
       throw new Error(`Unexpected dependency: ${name}`);
@@ -50,7 +52,7 @@ function provider({ profile = async u => ({ id: u.uid, businessId: u.uid }), bus
   vm.runInNewContext(source, context);
   const read = () => { index = 0; return context.exports.AuthProvider({ children: null }).props.value; };
   read();
-  return { read, emit: u => listener(u) };
+  return { read, emit: u => { auth.currentUser = u; listener(u); } };
 }
 
 test('profile server failure retains the session, denies workspace access, and supports retry', async () => {
@@ -134,4 +136,23 @@ test('localhost ports work in development without allowing spoofed hosts or weak
     }
     assert.equal(checked, development ? 3 : 0);
   }
+});
+
+test('verification refresh renews claims before protected profile reads without a second sign-in', async () => {
+  let fresh = false;
+  const account = { ...user('alice'), emailVerified: false,
+    getIdToken: async force => { assert.equal(force, true); fresh = true; return 'verified-token'; },
+  };
+  const session = provider({ profile: async u => {
+    assert.equal(fresh, true, 'profile reads require refreshed claims');
+    return { id: u.uid, businessId: 'workspace' };
+  } });
+  session.emit(account);
+  await settle();
+  assert.equal(session.read().isAuthenticated, false);
+  account.reload = async () => { account.emailVerified = true; };
+  await session.read().refreshCurrentUser();
+  assert.equal(session.read().isAuthenticated, true);
+  assert.equal(session.read().error, null);
+  assert.equal(session.read().business.id, 'workspace');
 });

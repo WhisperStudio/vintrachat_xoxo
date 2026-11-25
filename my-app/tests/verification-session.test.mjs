@@ -29,3 +29,9 @@ test('failed refresh and an unverified token cannot be treated as verified', asy
   auth.currentUser.reload = async () => { throw new Error('network'); };
   await assert.rejects(refreshVerificationSession(auth), /network/);
 });
+test('a verification link for a different account cannot refresh the signed-in account', async () => {
+  const auth = { authStateReady: async () => {}, currentUser: {
+    uid: 'other', emailVerified: true, reload: async () => { throw new Error('Must not refresh another account'); },
+  } };
+  assert.equal(await refreshVerificationSession(auth, 'owner'), false);
+});

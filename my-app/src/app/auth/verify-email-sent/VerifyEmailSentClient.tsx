@@ -4,158 +4,61 @@ import AuthFrame from '../AuthFrame'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import {
-  FiArrowRight,
-  FiCheckCircle,
-  FiClock,
-  FiMail,
-  FiShield,
-} from 'react-icons/fi'
+import { FiMail } from 'react-icons/fi'
 import { auth } from '@/lib/firebase'
+import { useVintraLanguage } from '@/lib/i18n'
+import { useVerifiedAccount } from '../useVerifiedAccount'
+import { withTimeout } from '@/lib/with-timeout'
 
 export default function VerifyEmailSentClient() {
-  const searchParams = useSearchParams()
-  const email = searchParams.get('email') || 'your email address'
-
-  const [resendLoading, setResendLoading] = useState(false)
-  const [resendMessage, setResendMessage] = useState('')
-  const [resendStatus, setResendStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const email = useSearchParams().get('email') || ''
+  const { language } = useVintraLanguage()
+  const no = language === 'no'
+  const { check, checking } = useVerifiedAccount(true, undefined, email)
+  const [sending, setSending] = useState(false)
+  const [notice, setNotice] = useState<'sent' | 'error' | 'waiting' | 'signin' | null>(null)
   const [cooldown, setCooldown] = useState(0)
-
   useEffect(() => {
     if (cooldown <= 0) return
-
-    const timer = setTimeout(() => {
-      setCooldown((prev) => prev - 1)
-    }, 1000)
-
+    const timer = setTimeout(() => setCooldown(value => value - 1), 1000)
     return () => clearTimeout(timer)
   }, [cooldown])
 
-  const handleResendEmail = async () => {
-    setResendLoading(true)
-    setResendMessage('')
-    setResendStatus('idle')
-
+  async function resend() {
+    setSending(true)
+    setNotice(null)
     try {
-      const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : ''
+      await withTimeout(auth.authStateReady(), 12000, 'Timeout')
+      const user = auth.currentUser
+      if (!user || (email && user.email?.toLowerCase() !== email.toLowerCase())) { setNotice('signin'); return }
+      const idToken = await withTimeout(user.getIdToken(), 12000, 'Timeout')
       const response = await fetch('/api/auth/resend-verification-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
-        },
-        body: JSON.stringify({ email }),
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ language }), signal: AbortSignal.timeout(20000),
       })
-
       const payload = await response.json()
-
-      if (response.ok && payload.success) {
-        setResendStatus('success')
-        setResendMessage('A fresh verification email is on the way. Check your inbox in a minute or two.')
-        setCooldown(60)
-      } else {
-        setResendStatus('error')
-        setResendMessage(payload.message || 'We could not resend the verification email right now.')
-      }
-    } catch (error: any) {
-      setResendStatus('error')
-      setResendMessage(error.message || 'We could not resend the verification email right now.')
-    } finally {
-      setResendLoading(false)
-    }
+      if (!response.ok || !payload.success) { if (response.status === 429) setCooldown(60); throw new Error('Send failed') }
+      if (payload.alreadyVerified) { await check(); return }
+      setNotice('sent')
+      setCooldown(60)
+    } catch { setNotice('error') } finally { setSending(false) }
   }
 
-  return (
-    <AuthFrame>
-        <section className="authCard authCardElevated">
-          <div className="authCardHeader">
-            <div className="authIconBadge">
-              <FiCheckCircle size={24} />
-            </div>
-            <div>
-              <p className="authKicker">Verification sent</p>
-              <h2 className="authHeadline" id="auth-title">Check your inbox</h2>
-            </div>
-          </div>
-
-          <p className="authBody">
-            Your activation link has been sent to the email address below. Once you confirm it, your Vintra account can continue into login or workspace setup.
-          </p>
-
-          <div className="authEmailChip">
-            <FiMail size={16} />
-            <span>{email}</span>
-          </div>
-
-          <div className="authCallout">
-            <strong>Delivery tip</strong>
-            If you do not see the email shortly, check spam, promotions, and any shared mailbox filters before requesting another one.
-          </div>
-
-          <ul className="authSteps">
-            <li>
-              <span className="authStepIndex">1</span>
-              <div className="authStepText">
-                <strong>Open the Vintra email</strong>
-                <span>Look for the verification message with the Vintra branding and confirmation button.</span>
-              </div>
-            </li>
-            <li>
-              <span className="authStepIndex">2</span>
-              <div className="authStepText">
-                <strong>Verify your email address</strong>
-                <span>Click the button inside the email to activate your account securely.</span>
-              </div>
-            </li>
-            <li>
-              <span className="authStepIndex">3</span>
-              <div className="authStepText">
-                <strong>Continue into your account</strong>
-                <span>After verification, head to login or continue into your new workspace if your session is still active.</span>
-              </div>
-            </li>
-          </ul>
-
-          {resendMessage && (
-            <div className={`authCallout ${resendStatus === 'success' ? 'success' : 'error'}`}>
-              <strong>{resendStatus === 'success' ? 'Email sent again' : 'Resend failed'}</strong>
-              <span>{resendMessage}</span>
-            </div>
-          )}
-
-          <div className="authButtonStack">
-            <button
-              className="primaryBtn fullWidth"
-              onClick={handleResendEmail}
-              disabled={resendLoading || cooldown > 0}
-            >
-              {resendLoading ? 'Sending...' : cooldown > 0 ? `Resend available in ${cooldown}s` : 'Resend verification email'}
-            </button>
-
-            <Link href="/auth/login" className="secondaryBtn buttonLink fullWidth">
-              Go to login
-            </Link>
-          </div>
-
-          <div className="authSecondarySurface">
-            <div className="authInlineLinks">
-              <FiClock size={16} color="#64748b" />
-              <span className="authBody">Still waiting? Give the mailbox a minute before sending again.</span>
-            </div>
-          </div>
-
-          <div className="authInlineLinks">
-            <Link href="/auth/signup" className="authTextLink">
-              Start over
-            </Link>
-            <span className="authTinyNote">Need a different address or made a typo? Create the account again with the correct email.</span>
-          </div>
-
-          <Link href="/auth/login" className="authTextLink" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            Continue to login <FiArrowRight size={16} />
-          </Link>
-        </section>
-    </AuthFrame>
-  )
+  return <AuthFrame>
+    <div className="nordicAuthIntro">
+      <div className="nordicAuthFormIcon" aria-hidden="true"><FiMail /></div>
+      <h1 id="auth-title">{no ? 'Sjekk innboksen din.' : 'Check your inbox.'}</h1>
+      <p>{no ? 'Åpne e-posten fra Vintra og trykk på «Bekreft e-postadresse».' : 'Open the email from Vintra and select “Verify email address”.'}</p>
+      {email && <p className="verificationEmail">{email}</p>}
+      <p>{no ? 'Denne siden går videre automatisk når e-posten er bekreftet. Sjekk søppelpost hvis du ikke finner meldingen.' : 'This page continues automatically once your email is confirmed. Check spam if you cannot find the message.'}</p>
+    </div>
+    <button type="button" className="nordicAuthSubmit" disabled={checking} onClick={async () => { if (!await check()) setNotice(auth.currentUser ? 'waiting' : 'signin') }}>
+      {checking ? (no ? 'Sjekker …' : 'Checking …') : (no ? 'Jeg har bekreftet e-posten' : 'I’ve confirmed my email')}
+    </button>
+    <button type="button" className="nordicAuthBack verificationResend" onClick={() => void resend()} disabled={sending || cooldown > 0}>
+      {sending ? (no ? 'Sender …' : 'Sending …') : cooldown > 0 ? (no ? `Send på nytt om ${cooldown} s` : `Resend in ${cooldown}s`) : (no ? 'Send ny bekreftelseslenke' : 'Send a new verification link')}
+    </button>
+    <p role="status" className="verificationNotice">{notice === 'sent' ? (no ? 'Ny lenke er sendt. Bruk den nyeste e-posten.' : 'A new link has been sent. Use the latest email.') : notice === 'error' ? (no ? 'Kunne ikke sende nå. Vent litt og prøv igjen.' : 'Could not send right now. Wait a little and try again.') : notice === 'waiting' ? (no ? 'Ikke bekreftet ennå. Åpne lenken i e-posten og prøv igjen.' : 'Not confirmed yet. Open the email link and try again.') : notice === 'signin' ? (no ? 'Logg inn med kontoen du vil bekrefte for å fortsette.' : 'Sign in with the account you want to verify to continue.') : ''}</p>
+    <Link href="/auth/login" className="nordicAuthBack">{no ? 'Til innlogging' : 'Go to sign in'}</Link>
+  </AuthFrame>
 }

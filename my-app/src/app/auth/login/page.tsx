@@ -50,6 +50,8 @@ export default function LoginPage() {
         // protected admin page can render. Its effect above handles that move.
         if (result.redirectTo && result.redirectTo !== '/admin') {
           router.push(result.redirectTo)
+        } else {
+          await refreshCurrentUser()
         }
       } else {
         setError(result.message)

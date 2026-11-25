@@ -268,7 +268,13 @@ async function createBusinessWithWidgetsServer(userId: string, businessName: str
     updatedAt: new Date(),
   })
 
-  await batch.commit()
+  try {
+    await batch.commit()
+  } catch (error) {
+    // Concurrent clicks may have completed the same atomic provisioning batch.
+    const existing = await businessRef.get()
+    if (!existing.exists || existing.data()?.ownerId !== userId) throw error
+  }
   return businessId
 }
 
@@ -279,7 +285,7 @@ export async function activatePendingAuthToken(rawToken: string) {
   }
 
   const tokenHash = hashOpaqueToken(token)
-  let snap = await adminDb
+  const snap = await adminDb
     .collection('pending_auth')
     .where('tokenHash', '==', tokenHash)
     .limit(1)
@@ -316,7 +322,6 @@ export async function activatePendingAuthToken(rawToken: string) {
   }
 
   try {
-    await adminAuth.updateUser(userId, { emailVerified: true })
     if (data.accountType === 'business' && typeof data.businessName === 'string' && data.businessName.trim()) {
       const existingBusiness = await adminDb
         .collection('businesses')
@@ -325,35 +330,39 @@ export async function activatePendingAuthToken(rawToken: string) {
         .get()
 
       if (!existingBusiness.empty) {
-        await docSnap.ref.delete().catch(() => undefined)
+        await adminAuth.updateUser(userId, { emailVerified: true })
         return {
           success: true as const,
+          userId,
           message: `Business "${data.businessName.trim()}" opprettet! Du er nå admin.`,
           businessId: existingBusiness.docs[0].id,
         }
       }
 
       const businessId = await createBusinessWithWidgetsServer(userId, data.businessName.trim(), email)
-      await docSnap.ref.delete()
+      await adminAuth.updateUser(userId, { emailVerified: true })
 
       return {
         success: true as const,
+        userId,
         message: `Business "${data.businessName.trim()}" opprettet! Du er nå admin.`,
         businessId,
       }
     }
 
-    await adminDb.collection('pending_users').doc(userId).set({
+    const pendingUser = adminDb.collection('pending_users').doc(userId)
+    if (!(await pendingUser.get()).exists) await pendingUser.set({
       email,
       displayName: typeof data.displayName === 'string' ? data.displayName.trim() : '',
       createdAt: new Date(),
       updatedAt: new Date(),
     })
 
-    await docSnap.ref.delete()
+    await adminAuth.updateUser(userId, { emailVerified: true })
 
     return {
       success: true as const,
+      userId,
       message: 'Email verifisert. Du venter nå på invitasjon fra en bedrift.',
     }
   } catch (error) {

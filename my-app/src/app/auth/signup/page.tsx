@@ -81,7 +81,8 @@ export default function SignupPage() {
         password,
         displayName,
         accountType || undefined,
-        businessName || undefined
+        businessName || undefined,
+        language
       )
 
       if (result.success) {
